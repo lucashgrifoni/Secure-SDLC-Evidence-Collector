@@ -65,6 +65,10 @@ output/
 /artifacts/
 .bundles/
 *.bundle.json
+# Keep committed dogfood bundle outputs so the repo ships with reproducible
+# self-audit evidence. Users' own outputs remain ignored.
+!examples/*/output/
+!examples/*/output/**
 
 # Env files
 .env
