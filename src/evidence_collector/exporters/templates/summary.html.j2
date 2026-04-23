@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Secure SDLC Evidence Summary — {{ bundle.application.name }} {{ bundle.release.release_id }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0f172a;
+    --card: #111827;
+    --muted: #94a3b8;
+    --text: #e2e8f0;
+    --accent: #38bdf8;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --bad: #ef4444;
+    --border: #1f2937;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --muted: #475569;
+      --text: #0f172a;
+      --accent: #0284c7;
+      --border: #e2e8f0;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 24px;
+    line-height: 1.5;
+  }
+  h1, h2, h3 { line-height: 1.2; }
+  h1 { font-size: 1.6rem; margin: 0 0 8px; }
+  h2 { font-size: 1.2rem; margin: 24px 0 12px; }
+  header { margin-bottom: 24px; }
+  .meta { color: var(--muted); font-size: 0.9rem; }
+  .grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .card .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  .card .value { font-size: 1.4rem; font-weight: 600; margin-top: 4px; }
+  .status-ready { color: var(--ok); }
+  .status-conditional { color: var(--warn); }
+  .status-not_ready { color: var(--bad); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 0.9rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th { color: var(--muted); font-weight: 600; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: rgba(148, 163, 184, 0.12);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .pill-met { background: rgba(34, 197, 94, 0.15); color: var(--ok); }
+  .pill-partial { background: rgba(245, 158, 11, 0.15); color: var(--warn); }
+  .pill-missing { background: rgba(239, 68, 68, 0.15); color: var(--bad); }
+  .pill-waived { background: rgba(148, 163, 184, 0.2); color: var(--muted); }
+  .pill-not_applicable { background: rgba(148, 163, 184, 0.2); color: var(--muted); }
+  footer { margin-top: 32px; color: var(--muted); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Secure SDLC Evidence Summary</h1>
+  <div class="meta">
+    <code>{{ bundle.bundle_id }}</code> · generated {{ bundle.generated_at.isoformat() }}
+  </div>
+</header>
+
+<section class="grid">
+  <div class="card">
+    <div class="label">Application</div>
+    <div class="value">{{ bundle.application.name }}</div>
+    <div class="meta"><code>{{ bundle.application.repository }}</code> · {{ bundle.application.environment }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Release</div>
+    <div class="value">{{ bundle.release.release_id }}</div>
+    <div class="meta">
+      commit <code>{{ bundle.release.commit_sha[:12] }}</code>
+      {% if bundle.release.branch %} · branch <code>{{ bundle.release.branch }}</code>{% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="label">Release status</div>
+    <div class="value status-{{ bundle.summary.release_status.value }}">
+      {{ bundle.summary.release_status.value | upper }}
+    </div>
+  </div>
+  <div class="card">
+    <div class="label">Evidence coverage</div>
+    <div class="value">{{ bundle.summary.evidence_coverage_score }}/100</div>
+    <div class="meta">confidence {{ bundle.summary.confidence_score }}/100</div>
+  </div>
+  <div class="card">
+    <div class="label">Controls</div>
+    <div class="value">{{ bundle.summary.total_controls }}</div>
+    <div class="meta">
+      {{ bundle.summary.controls_met }} met · {{ bundle.summary.controls_partial }} partial · {{ bundle.summary.controls_missing }} missing
+    </div>
+  </div>
+</section>
+
+<h2>Controls</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Control</th>
+      <th>Framework</th>
+      <th>Status</th>
+      <th>Criticality</th>
+      <th>Confidence</th>
+      <th>Evidence</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for evaluation in bundle.control_evaluations %}
+    <tr>
+      <td><code>{{ evaluation.control_id }}</code><br><span class="meta">{{ evaluation.control_name }}</span></td>
+      <td>{{ evaluation.framework.value }}</td>
+      <td><span class="pill pill-{{ evaluation.evaluation_status.value }}">{{ evaluation.evaluation_status.value }}</span></td>
+      <td>{{ evaluation.criticality.value }}</td>
+      <td>{{ evaluation.confidence.value }}</td>
+      <td>
+        {% if evaluation.evidence_refs %}
+          {% for ref in evaluation.evidence_refs %}<code>{{ ref }}</code>{% if not loop.last %} {% endif %}{% endfor %}
+        {% else %}-{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if bundle.exceptions %}
+<h2>Approved exceptions</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Exception</th>
+      <th>Control</th>
+      <th>Approver</th>
+      <th>Expires</th>
+      <th>Reference</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for exception in bundle.exceptions %}
+    <tr>
+      <td><code>{{ exception.exception_id }}</code></td>
+      <td><code>{{ exception.control_id }}</code></td>
+      <td>{{ exception.approver }}</td>
+      <td>{{ exception.expires_at.isoformat() }}</td>
+      <td>{{ exception.reference or "-" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if bundle.gaps %}
+<h2>Gaps</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Control</th>
+      <th>Evidence type</th>
+      <th>Criticality</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for gap in bundle.gaps %}
+    <tr>
+      <td><code>{{ gap.control_id }}</code></td>
+      <td>{{ gap.evidence_type.value if gap.evidence_type else "-" }}</td>
+      <td>{{ gap.criticality.value }}</td>
+      <td>{{ gap.description }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h2>Evidence inventory</h2>
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Type</th>
+      <th>Producer</th>
+      <th>Status</th>
+      <th>Confidence</th>
+      <th>Subject</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in bundle.evidence %}
+    <tr>
+      <td><code>{{ item.evidence_id }}</code></td>
+      <td>{{ item.evidence_type.value }}</td>
+      <td>{{ item.producer }}</td>
+      <td>{{ item.status.value }}</td>
+      <td>{{ item.confidence.value }}</td>
+      <td><code>{{ item.subject_ref }}</code></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<footer>
+  Produced by Secure SDLC Evidence Collector · bundle schema {{ bundle.bundle_version }}
+</footer>
+</body>
+</html>

@@ -1,0 +1,116 @@
+# Secure SDLC Evidence Report
+
+**Bundle ID:** `{{ bundle.bundle_id }}`
+**Bundle version:** {{ bundle.bundle_version }}
+**Generated at:** {{ bundle.generated_at.isoformat() }}
+
+## Application
+
+| Field | Value |
+|-------|-------|
+| Name | `{{ bundle.application.name }}` |
+| Repository | `{{ bundle.application.repository }}` |
+| Environment | {{ bundle.application.environment }} |
+| Owner team | {{ bundle.application.owner_team or "-" }} |
+
+## Release
+
+| Field | Value |
+|-------|-------|
+| Release ID | `{{ bundle.release.release_id }}` |
+| Commit SHA | `{{ bundle.release.commit_sha }}` |
+| Branch | `{{ bundle.release.branch }}` |
+| Pipeline run | {{ bundle.release.pipeline_run_id or "-" }} |
+| Build ID | {{ bundle.release.build_id or "-" }} |
+| Artifact digest | `{{ bundle.release.artifact_digest or "-" }}` |
+| Tag | {{ bundle.release.tag or "-" }} |
+
+## Verdict
+
+- **Release status:** `{{ bundle.summary.release_status.value }}`
+- **Evidence coverage score:** {{ bundle.summary.evidence_coverage_score }}/100
+- **Confidence score:** {{ bundle.summary.confidence_score }}/100
+- **Controls:** {{ bundle.summary.controls_met }} met · {{ bundle.summary.controls_partial }} partial · {{ bundle.summary.controls_missing }} missing · {{ bundle.summary.controls_waived }} waived · {{ bundle.summary.controls_not_applicable }} n/a
+{% if bundle.summary.missing_critical_evidence %}
+- **Missing critical evidence:** {{ bundle.summary.missing_critical_evidence | join(", ") }}
+{% else %}
+- **Missing critical evidence:** none
+{% endif %}
+
+## Control evaluations
+
+| Control | Framework | Status | Criticality | Confidence | Evidence refs |
+|---------|-----------|--------|-------------|------------|---------------|
+{% for evaluation in bundle.control_evaluations %}
+| `{{ evaluation.control_id }}` | {{ evaluation.framework.value }} | **{{ evaluation.evaluation_status.value }}** | {{ evaluation.criticality.value }} | {{ evaluation.confidence.value }} | {{ evaluation.evidence_refs | join(", ") if evaluation.evidence_refs else "-" }} |
+{% endfor %}
+
+### Rationales
+
+{% for evaluation in bundle.control_evaluations %}
+- **`{{ evaluation.control_id }}` — {{ evaluation.control_name }}**
+  {{ evaluation.rationale }}
+{% endfor %}
+
+{% if bundle.exceptions %}
+## Approved exceptions
+
+| Exception ID | Control | Approver | Approved at | Expires at | Reference |
+|--------------|---------|----------|-------------|------------|-----------|
+{% for exception in bundle.exceptions %}
+| `{{ exception.exception_id }}` | `{{ exception.control_id }}` | {{ exception.approver }} | {{ exception.approved_at.isoformat() }} | {{ exception.expires_at.isoformat() }} | {{ exception.reference or "-" }} |
+{% endfor %}
+
+### Justifications
+
+{% for exception in bundle.exceptions %}
+- **`{{ exception.exception_id }}`** ({{ exception.control_id }}): {{ exception.justification }}
+{% endfor %}
+{% endif %}
+
+{% if bundle.gaps %}
+## Gaps
+
+| Control | Evidence type | Criticality | Description |
+|---------|---------------|-------------|-------------|
+{% for gap in bundle.gaps %}
+| `{{ gap.control_id }}` | {{ gap.evidence_type.value if gap.evidence_type else "-" }} | {{ gap.criticality.value }} | {{ gap.description }} |
+{% endfor %}
+
+### Remediation hints
+
+{% for gap in bundle.gaps %}
+- **`{{ gap.control_id }}`** — {{ gap.remediation or "No remediation hint available." }}
+{% endfor %}
+{% else %}
+## Gaps
+
+No gaps detected.
+{% endif %}
+
+## Evidence inventory
+
+| ID | Type | Status | Confidence | Producer | Subject |
+|----|------|--------|------------|----------|---------|
+{% for item in bundle.evidence %}
+| `{{ item.evidence_id }}` | {{ item.evidence_type.value }} | {{ item.status.value }} | {{ item.confidence.value }} | {{ item.producer }} | `{{ item.subject_ref }}` |
+{% endfor %}
+
+{% for item in bundle.evidence %}
+### `{{ item.evidence_id }}` — {{ item.evidence_type.value }}
+
+- **Source:** {{ item.source.name }} ({{ item.source.kind }}){% if item.source.version %} · version {{ item.source.version }}{% endif %}
+- **Producer:** {{ item.producer }}
+- **Subject:** `{{ item.subject_ref }}` ({{ item.subject_type.value }})
+- **Status:** {{ item.status.value }} · **Confidence:** {{ item.confidence.value }}{% if item.manual %} · manual attestation{% endif %}
+{% if item.summary %}
+- **Summary:** {{ item.summary }}
+{% endif %}
+{% if item.findings_count %}
+- **Findings:** {% for key, value in item.findings_count.items() %}{{ key }}={{ value }}{% if not loop.last %} · {% endif %}{% endfor %}
+{% endif %}
+{% if item.raw %}
+- **Artifact:** `{{ item.raw.artifact_path or item.raw.artifact_uri }}` ({{ item.raw.integrity_hash or "no hash" }})
+{% endif %}
+
+{% endfor %}
