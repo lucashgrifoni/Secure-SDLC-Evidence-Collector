@@ -1,0 +1,14 @@
+evidence_type: rollback_plan
+producer: "Lucas Henrique Grifoni"
+subject_type: release
+subject_ref: "secure-sdlc-evidence-collector:v0.1.0"
+status: passed
+confidence: medium
+generated_at: "2026-04-23T17:00:00Z"
+summary: >-
+  Rollback plan: revert the v0.1.0 tag and yank the version from PyPI
+  (if published). Downstream consumers can pin the previous commit SHA;
+  no migrations or persistent state are involved in this CLI tool.
+metadata:
+  mttr_target: "< 10 minutes"
+  runbook: "docs/bundle_schema.md#rollback"

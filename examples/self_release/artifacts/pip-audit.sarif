@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "pip-audit",
+          "semanticVersion": "2.7.3",
+          "informationUri": "https://pypi.org/project/pip-audit/",
+          "rules": [
+            {
+              "id": "CVE-2025-71176",
+              "name": "pytest denial of service via XML",
+              "shortDescription": { "text": "pytest <8.4.2 is affected by a CVE in dev-only dependency" },
+              "helpUri": "https://nvd.nist.gov/vuln/detail/CVE-2025-71176"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CVE-2025-71176",
+          "level": "warning",
+          "message": {
+            "text": "pytest <8.4.2 has a vulnerability in fixture teardown. Affects dev-only dependency; not shipped with the published artifact."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "pyproject.toml" },
+                "region": { "startLine": 1 }
+              }
+            }
+          ],
+          "properties": {
+            "package": "pytest",
+            "installed_version": "8.4.2",
+            "affects": "development dependency only",
+            "fixed_in_release": "pytest>=8.4.2 (already satisfied)"
+          }
+        }
+      ]
+    }
+  ]
+}

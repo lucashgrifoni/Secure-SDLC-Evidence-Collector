@@ -1,0 +1,15 @@
+evidence_type: artifact_signature
+producer: "git-tag-signature"
+subject_type: artifact
+subject_ref: "secure-sdlc-evidence-collector:v0.1.0"
+status: passed
+confidence: medium
+generated_at: "2026-04-23T17:45:00Z"
+summary: >-
+  Release integrity anchored by git tag v0.1.0 over commit SHA. A future
+  release (>=0.2.0) will add cosign keyless signing via GitHub Actions
+  OIDC once the public repository and release workflow are in place.
+metadata:
+  signing_method: "git-tag"
+  signing_key: "maintainer-gpg"
+  upgrade_planned: "cosign keyless for v0.2.0"

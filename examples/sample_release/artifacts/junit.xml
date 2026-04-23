@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="payments-api-suite" tests="42" failures="0" errors="0" skipped="1" time="8.42">
+  <testsuite name="tests.unit" tests="30" failures="0" errors="0" skipped="1" time="5.10">
+    <testcase classname="tests.unit.test_payments" name="test_charge_success" time="0.08"/>
+    <testcase classname="tests.unit.test_payments" name="test_charge_fraud_blocked" time="0.11"/>
+    <testcase classname="tests.unit.test_payments" name="test_skipped_migration" time="0.00">
+      <skipped message="not applicable"/>
+    </testcase>
+  </testsuite>
+  <testsuite name="tests.integration" tests="12" failures="0" errors="0" skipped="0" time="3.32">
+    <testcase classname="tests.integration.test_api" name="test_healthz" time="0.42"/>
+    <testcase classname="tests.integration.test_api" name="test_charge_end_to_end" time="1.80"/>
+  </testsuite>
+</testsuites>

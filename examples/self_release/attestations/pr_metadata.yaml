@@ -1,0 +1,16 @@
+evidence_type: pr_metadata
+producer: "local-git-export"
+subject_type: pull_request
+subject_ref: "PR-0-initial-mvp"
+status: passed
+confidence: medium
+generated_at: "2026-04-23T17:00:00Z"
+summary: "Initial MVP landed on master via fast-forward after local review"
+metadata:
+  branch: "master"
+  base: "master"
+  head: "master"
+  merged: true
+  reviewers_required: 1
+  reviewers_approved: 1
+  last_approval_after_last_commit: true

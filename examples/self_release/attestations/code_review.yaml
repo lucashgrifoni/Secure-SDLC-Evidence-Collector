@@ -1,0 +1,16 @@
+evidence_type: code_review
+producer: "solo-maintainer-review"
+subject_type: pull_request
+subject_ref: "PR-0-initial-mvp"
+status: passed
+confidence: medium
+generated_at: "2026-04-23T17:00:00Z"
+summary: >-
+  Initial MVP self-reviewed against the project plan and the repository
+  CLAUDE.md quality rules. All quality gates (ruff, mypy --strict, pytest
+  45/45, 81% coverage) passed before tagging.
+metadata:
+  reviewers_required: 1
+  reviewers_approved: 1
+  last_approval_after_last_commit: true
+  review_method: "self-review; branch protection to be added when the repo is public"

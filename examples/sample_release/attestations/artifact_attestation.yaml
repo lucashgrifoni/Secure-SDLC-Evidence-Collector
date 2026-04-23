@@ -1,0 +1,13 @@
+evidence_type: artifact_attestation
+producer: "cosign-attestation"
+subject_type: artifact
+subject_ref: "payments-api:2026.04.10"
+status: passed
+confidence: high
+generated_at: "2026-04-10T12:50:00Z"
+summary: "SLSA build provenance attestation generated for the release artifact"
+metadata:
+  predicate_type: "https://slsa.dev/provenance/v1"
+  builder_id: "https://github.com/acme/payments-api/.github/workflows/release.yml"
+  builder_version: "v1.0.0"
+  attestation_bundle: "artifacts/payments-api-2026.04.10.attestation.jsonl"

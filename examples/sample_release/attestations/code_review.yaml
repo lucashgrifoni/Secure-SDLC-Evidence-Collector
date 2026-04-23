@@ -1,0 +1,15 @@
+evidence_type: code_review
+producer: "github-pull-request"
+subject_type: pull_request
+subject_ref: "PR-184"
+status: passed
+confidence: high
+generated_at: "2026-04-10T11:45:00Z"
+summary: "PR-184 approved by 2 reviewers after last commit"
+metadata:
+  reviewers_required: 2
+  reviewers_approved: 2
+  last_approval_after_last_commit: true
+  reviewers:
+    - alice@example.com
+    - bob@example.com

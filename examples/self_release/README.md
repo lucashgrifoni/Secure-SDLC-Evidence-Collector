@@ -1,0 +1,67 @@
+# Self-release evidence bundle (v0.1.0)
+
+The Secure SDLC Evidence Collector dogfoods itself: this folder holds the
+real evidence bundle produced by running the collector against its own
+`v0.1.0` release.
+
+## Verdict
+
+| Metric | Value |
+|--------|-------|
+| Release status | `ready` |
+| Evidence coverage | **100 / 100** |
+| Confidence | 60 / 100 (manual attestations) |
+| Controls | 10 met · 0 partial · 0 missing |
+| Evidence count | 12 |
+
+## How it was generated
+
+```bash
+# SAST
+python -m bandit -r src/ -f sarif -o examples/self_release/artifacts/bandit.sarif
+
+# Secrets
+gitleaks detect --source . --no-git \
+  --report-format sarif \
+  --report-path examples/self_release/artifacts/gitleaks.sarif
+
+# SBOM (CycloneDX 1.5)
+python -m cyclonedx_py environment --pyproject pyproject.toml \
+  --of JSON -o examples/self_release/artifacts/sbom.cdx.json
+
+# Tests
+python -m pytest --junitxml=examples/self_release/artifacts/junit.xml
+
+# SCA (pip-audit, converted to SARIF for portability)
+# see examples/self_release/artifacts/pip-audit.sarif
+
+# Everything else (threat model, code review, release approval,
+# rollback plan, artifact signature/attestation, PR metadata) is
+# attested under examples/self_release/attestations/.
+
+# Bundle
+python -m evidence_collector.cli.main run \
+  --application secure-sdlc-evidence-collector \
+  --repository LucasGrifoni/secure-sdlc-evidence-collector \
+  --release-id v0.1.0 --commit-sha "$(git rev-parse HEAD)" --branch master \
+  --artifacts-dir examples/self_release/artifacts \
+  --attestations-dir examples/self_release/attestations \
+  --output-dir examples/self_release/output
+```
+
+## Outputs
+
+- `output/bundle.json` — deterministic canonical bundle.
+- `output/report.md` — human-readable technical report.
+- `output/summary.html` — stakeholder-facing summary.
+
+## Why confidence is 60 and not 100
+
+Every attestation in this bundle is manual (the project is solo-maintained
+at v0.1.0), so the engine correctly downgrades the confidence of the
+controls they support. Automated signals from Bandit, gitleaks, pip-audit,
+CycloneDX, and pytest keep scored evidence at `high` confidence; the
+manual attestations (threat model, code review, approvals, rollback
+plan, signing) sit at `medium`, which pulls the average down. For v0.2.0
+the plan is to replace the signing attestation with cosign keyless, which
+will raise the confidence score automatically.

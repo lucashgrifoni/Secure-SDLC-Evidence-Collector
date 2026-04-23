@@ -1,0 +1,17 @@
+evidence_type: threat_model
+producer: "Lucas Henrique Grifoni"
+subject_type: application
+subject_ref: "secure-sdlc-evidence-collector"
+status: completed
+confidence: medium
+generated_at: "2026-04-23T16:00:00Z"
+summary: >-
+  Threat model documented in plan doc (sections 15, 19 and 21): assets are
+  the bundle integrity and audit lineage; actors include CI pipelines and
+  downstream auditors; trust boundaries are file ingestion and GitHub API.
+  Mitigations applied: 25MB ingest cap, SHA-256 integrity hashes, strict
+  Pydantic schemas, no secret logging, defusedxml for XML parsing.
+link: "Ideia do projeto.md"
+metadata:
+  scope: "v0.1.0 MVP - ingestion, evaluation, export, CLI"
+  review_date: "2026-04-23"

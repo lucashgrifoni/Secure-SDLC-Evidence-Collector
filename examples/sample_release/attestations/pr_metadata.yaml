@@ -1,0 +1,19 @@
+evidence_type: pr_metadata
+producer: "github-pull-request-export"
+subject_type: pull_request
+subject_ref: "PR-184"
+status: passed
+confidence: medium
+generated_at: "2026-04-10T12:00:00Z"
+summary: "Exported PR-184 metadata: 2 approvals after last commit, CI green"
+metadata:
+  number: 184
+  title: "Refactor refund service"
+  author: "alice"
+  base: "main"
+  head: "feature/refund"
+  merged: true
+  reviewers_required: 2
+  reviewers_approved: 2
+  last_approval_after_last_commit: true
+  html_url: "https://github.com/acme/payments-api/pull/184"

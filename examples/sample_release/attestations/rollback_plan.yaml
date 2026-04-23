@@ -1,0 +1,9 @@
+evidence_type: rollback_plan
+producer: "Release Manager"
+subject_type: release
+subject_ref: "payments-api:2026.04.10"
+status: passed
+confidence: medium
+generated_at: "2026-04-10T10:30:00Z"
+summary: "Documented rollback plan in runbook with 15 min MTTR target"
+link: "https://runbooks.example.com/payments-api/rollback/2026-04-10"

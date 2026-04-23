@@ -1,0 +1,15 @@
+evidence_type: release_approval
+producer: "Lucas Henrique Grifoni"
+subject_type: release
+subject_ref: "secure-sdlc-evidence-collector:v0.1.0"
+status: passed
+confidence: medium
+generated_at: "2026-04-23T17:30:00Z"
+approver: "lucas.henriquegrifoni@gmail.com"
+summary: >-
+  v0.1.0 approved for tag and public release after meeting the Definition
+  of Done: bundle, report, summary generated end-to-end, CI pipeline
+  green, README complete, sample fixture reproducible.
+metadata:
+  approval_method: "maintainer self-approval"
+  release_tag: "v0.1.0"

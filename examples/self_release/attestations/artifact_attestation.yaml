@@ -1,0 +1,17 @@
+evidence_type: artifact_attestation
+producer: "build-provenance-manual"
+subject_type: artifact
+subject_ref: "secure-sdlc-evidence-collector:v0.1.0"
+status: passed
+confidence: medium
+generated_at: "2026-04-23T17:45:00Z"
+summary: >-
+  Build provenance recorded: release built from master at commit SHA
+  recorded in release_context, tests and linters passed locally and in CI.
+  SLSA provenance v1 will be produced automatically by GitHub Actions for
+  v0.2.0.
+metadata:
+  builder_id: "local+github-actions"
+  sbom: "examples/self_release/artifacts/sbom.cdx.json"
+  slsa_level_current: "1"
+  slsa_level_target: "3"

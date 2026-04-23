@@ -1,0 +1,10 @@
+evidence_type: release_approval
+producer: "Change Advisory Board"
+subject_type: release
+subject_ref: "payments-api:2026.04.10"
+status: passed
+confidence: high
+generated_at: "2026-04-10T13:00:00Z"
+approver: "releases@example.com"
+change_ticket: "CHG-1234"
+summary: "Release 2026.04.10 formally approved by CAB"

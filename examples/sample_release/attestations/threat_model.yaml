@@ -1,0 +1,12 @@
+evidence_type: threat_model
+producer: "AppSec Team"
+subject_type: application
+subject_ref: "payments-api"
+status: completed
+confidence: medium
+generated_at: "2026-03-22T09:00:00Z"
+summary: "Threat model updated for payments-api refund flow"
+link: "https://wiki.example.com/appsec/payments-api/threat-model"
+metadata:
+  model_version: "2026.1"
+  scope: "refund-flow"

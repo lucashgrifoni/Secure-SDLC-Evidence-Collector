@@ -1,0 +1,12 @@
+evidence_type: artifact_signature
+producer: "cosign"
+subject_type: artifact
+subject_ref: "payments-api:2026.04.10"
+status: passed
+confidence: high
+generated_at: "2026-04-10T12:45:00Z"
+summary: "Artifact signed with cosign using keyless OIDC flow"
+metadata:
+  signature_bundle: "artifacts/payments-api-2026.04.10.sig"
+  algorithm: "ecdsa-p256-sha256"
+  issuer: "https://token.actions.githubusercontent.com"
