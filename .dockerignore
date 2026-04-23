@@ -1,0 +1,26 @@
+.git
+.github
+.venv
+venv
+env
+.pytest_cache
+.mypy_cache
+.ruff_cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.coverage
+coverage.xml
+htmlcov
+output
+tests
+examples
+docs
+.cursorrules
+.claude
+.vscode
+.idea
+Ideia do projeto.md
+Plano de acao e execucao - Claude.md
+seção do gitpage do meu perfil.txt

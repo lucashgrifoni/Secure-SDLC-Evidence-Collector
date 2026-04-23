@@ -1,0 +1,152 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secure-sdlc-evidence-collector"
+version = "0.1.0"
+description = "CLI-first tool to collect, normalize, evaluate and bundle Secure SDLC evidence per release."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Lucas Henrique Grifoni", email = "lucas.henriquegrifoni@gmail.com" },
+]
+keywords = [
+    "appsec",
+    "devsecops",
+    "secure-sdlc",
+    "ssdf",
+    "evidence",
+    "release-readiness",
+    "sarif",
+    "sbom",
+    "audit",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "typer>=0.12,<1.0",
+    "pydantic>=2.6,<3.0",
+    "jinja2>=3.1,<4.0",
+    "pyyaml>=6.0,<7.0",
+    "httpx>=0.27,<1.0",
+    "rich>=13.7,<14.0",
+    "defusedxml>=0.7.1,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9.0",
+    "pytest-cov>=5.0,<6.0",
+    "ruff>=0.6,<1.0",
+    "mypy>=1.10,<2.0",
+    "types-PyYAML>=6.0,<7.0",
+    "types-defusedxml>=0.7,<1.0",
+    "pre-commit>=3.7,<5.0",
+]
+
+[project.scripts]
+sdlc-evidence = "evidence_collector.cli.main:app"
+
+[project.urls]
+Homepage = "https://github.com/LucasGrifoni/secure-sdlc-evidence-collector"
+Issues = "https://github.com/LucasGrifoni/secure-sdlc-evidence-collector/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"evidence_collector" = [
+    "exporters/templates/*.md.j2",
+    "exporters/templates/*.html.j2",
+    "controls/data/*.yaml",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # bugbear
+    "UP",  # pyupgrade
+    "C4",  # comprehensions
+    "SIM", # simplify
+    "RUF", # ruff
+    "S",   # bandit
+    "N",   # pep8-naming
+]
+ignore = [
+    "E501",  # line length handled by formatter
+    "S101",  # assert allowed in tests
+    "B008",  # Typer uses function calls in defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "N802", "N803"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+no_implicit_optional = true
+show_error_codes = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=evidence_collector",
+    "--cov-report=term-missing",
+    "--cov-fail-under=70",
+]
+markers = [
+    "unit: unit tests",
+    "integration: integration tests using fixtures",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["evidence_collector"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
