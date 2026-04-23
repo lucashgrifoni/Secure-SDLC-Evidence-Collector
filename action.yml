@@ -1,0 +1,149 @@
+name: "Secure SDLC Evidence Collector"
+description: >-
+  Collect, normalize and evaluate Secure SDLC evidence per release and
+  produce bundle.json, report.md, and summary.html with an explicit
+  release_status gate.
+author: "Lucas Henrique Grifoni"
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  application:
+    description: "Application name (required)"
+    required: true
+  repository:
+    description: "Repository reference, e.g. owner/repo (defaults to github.repository)"
+    required: false
+    default: ${{ github.repository }}
+  release-id:
+    description: "Release identifier (required)"
+    required: true
+  commit-sha:
+    description: "Commit SHA the release is built from (defaults to github.sha)"
+    required: false
+    default: ${{ github.sha }}
+  branch:
+    description: "Branch name (defaults to github.ref_name)"
+    required: false
+    default: ${{ github.ref_name }}
+  environment:
+    description: "Target environment"
+    required: false
+    default: "production"
+  artifacts-dir:
+    description: "Directory containing raw evidence artifacts (SARIF, SBOM, JUnit)"
+    required: false
+    default: "artifacts"
+  attestations-dir:
+    description: "Directory containing YAML/JSON attestations"
+    required: false
+    default: "attestations"
+  pull-request:
+    description: "GitHub PR number to attach code-review evidence from"
+    required: false
+    default: ""
+  workflow-run:
+    description: "GitHub Actions run ID to attach workflow evidence from"
+    required: false
+    default: ""
+  catalog:
+    description: "Path to a custom control catalog YAML"
+    required: false
+    default: ""
+  output-dir:
+    description: "Where to write bundle.json, report.md, summary.html"
+    required: false
+    default: "output/sdlc-evidence"
+  fail-on:
+    description: "Exit non-zero when release_status reaches: ready|conditional|not_ready"
+    required: false
+    default: "not_ready"
+  python-version:
+    description: "Python version used to run the collector"
+    required: false
+    default: "3.12"
+  version:
+    description: "Version of the collector to install (git ref on this repo)"
+    required: false
+    default: ""
+
+outputs:
+  bundle-path:
+    description: "Absolute path of the generated bundle.json"
+    value: ${{ steps.collect.outputs.bundle-path }}
+  release-status:
+    description: "Final release_status computed by the collector"
+    value: ${{ steps.collect.outputs.release-status }}
+  coverage-score:
+    description: "Evidence coverage score (0-100)"
+    value: ${{ steps.collect.outputs.coverage-score }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install collector
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -n "${{ inputs.version }}" ]; then
+          python -m pip install --upgrade "git+https://github.com/LucasGrifoni/secure-sdlc-evidence-collector@${{ inputs.version }}"
+        elif [ -f "${{ github.action_path }}/pyproject.toml" ]; then
+          python -m pip install "${{ github.action_path }}"
+        else
+          python -m pip install --upgrade "git+https://github.com/LucasGrifoni/secure-sdlc-evidence-collector"
+        fi
+
+    - name: Run Secure SDLC Evidence Collector
+      id: collect
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+        extra_args=()
+        if [ -n "${{ inputs.pull-request }}" ]; then
+          extra_args+=(--pull-request "${{ inputs.pull-request }}")
+        fi
+        if [ -n "${{ inputs.workflow-run }}" ]; then
+          extra_args+=(--workflow-run "${{ inputs.workflow-run }}")
+        fi
+        if [ -n "${{ inputs.catalog }}" ]; then
+          extra_args+=(--catalog "${{ inputs.catalog }}")
+        fi
+        if [ -d "${{ inputs.artifacts-dir }}" ]; then
+          extra_args+=(--artifacts-dir "${{ inputs.artifacts-dir }}")
+        fi
+        if [ -d "${{ inputs.attestations-dir }}" ]; then
+          extra_args+=(--attestations-dir "${{ inputs.attestations-dir }}")
+        fi
+
+        python -m evidence_collector.cli.main run \
+          --application "${{ inputs.application }}" \
+          --repository "${{ inputs.repository }}" \
+          --release-id "${{ inputs.release-id }}" \
+          --commit-sha "${{ inputs.commit-sha }}" \
+          --branch "${{ inputs.branch }}" \
+          --environment "${{ inputs.environment }}" \
+          --output-dir "${{ inputs.output-dir }}" \
+          --fail-on "${{ inputs.fail-on }}" \
+          "${extra_args[@]}" || exit_code=$?
+
+        bundle="${{ inputs.output-dir }}/bundle.json"
+        if [ -f "$bundle" ]; then
+          python - <<PY >>"$GITHUB_OUTPUT"
+        import json, os
+        with open("$bundle", encoding="utf-8") as fh:
+            data = json.load(fh)
+        print(f"bundle-path={os.path.abspath('$bundle')}")
+        print(f"release-status={data['summary']['release_status']}")
+        print(f"coverage-score={data['summary']['evidence_coverage_score']}")
+        PY
+        fi
+
+        exit "${exit_code:-0}"
