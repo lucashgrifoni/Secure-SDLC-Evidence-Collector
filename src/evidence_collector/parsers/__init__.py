@@ -1,0 +1,19 @@
+"""Parsers for raw evidence formats (SARIF, CycloneDX, SPDX, JUnit, attestations)."""
+
+from __future__ import annotations
+
+from evidence_collector.parsers.attestation import parse_attestation
+from evidence_collector.parsers.exception import parse_exception
+from evidence_collector.parsers.junit import parse_junit
+from evidence_collector.parsers.sarif import parse_sarif
+from evidence_collector.parsers.sbom import parse_sbom
+from evidence_collector.parsers.zap import parse_zap
+
+__all__ = [
+    "parse_attestation",
+    "parse_exception",
+    "parse_junit",
+    "parse_sarif",
+    "parse_sbom",
+    "parse_zap",
+]
