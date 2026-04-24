@@ -226,6 +226,18 @@ def cmd_run(
             help="Exit non-zero when release_status reaches this severity: ready|conditional|not_ready",
         ),
     ] = "not_ready",
+    artifact_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--artifact-root",
+            help=(
+                "Base directory that absolute artifact paths are rewritten against. "
+                "Set this (e.g. to the repository root) so the bundle records "
+                "repo-relative paths instead of leaking local filesystem "
+                "locations."
+            ),
+        ),
+    ] = None,
 ) -> None:
     """Run the full pipeline: collect, evaluate, and export the bundle."""
     app_ = _build_application(application, repository, environment, owner_team)
@@ -251,6 +263,7 @@ def cmd_run(
         extra_evidence=extra_evidence,
         output_dir=output_dir,
         catalog_path=catalog_path,
+        artifact_root=artifact_root,
     )
     _render_summary(result)
     _render_collection_errors(result)

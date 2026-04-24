@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Secure SDLC Evidence Summary — secure-sdlc-evidence-collector v0.1.0</title>
+<title>Secure SDLC Evidence Summary — secure-sdlc-evidence-collector v1.0.0</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root {
@@ -96,7 +96,7 @@
 <header>
   <h1>Secure SDLC Evidence Summary</h1>
   <div class="meta">
-    <code>bundle-20260423-secure-sdlc-evidence-collector-v0.1.0-52f9a666</code> · generated 2026-04-23T20:46:05.571370+00:00
+    <code>bundle-20260424-secure-sdlc-evidence-collector-v1.0.0-316e7046</code> · generated 2026-04-24T18:22:18.196711+00:00
   </div>
 </header>
 
@@ -108,9 +108,9 @@
   </div>
   <div class="card">
     <div class="label">Release</div>
-    <div class="value">v0.1.0</div>
+    <div class="value">v1.0.0</div>
     <div class="meta">
-      commit <code>2107bdc73e03</code>
+      commit <code>019e32b00000</code>
  · branch <code>main</code>    </div>
   </div>
   <div class="card">
@@ -122,13 +122,13 @@
   <div class="card">
     <div class="label">Evidence coverage</div>
     <div class="value">100/100</div>
-    <div class="meta">confidence 60/100</div>
+    <div class="meta">confidence 54/100</div>
   </div>
   <div class="card">
     <div class="label">Controls</div>
-    <div class="value">10</div>
+    <div class="value">13</div>
     <div class="meta">
-      10 met · 0 partial · 0 missing
+      13 met · 0 partial · 0 missing
     </div>
   </div>
 </section>
@@ -153,7 +153,7 @@
       <td>high</td>
       <td>high</td>
       <td>
-<code>sast-82e76dd35927</code>      </td>
+<code>sast-a759c03356e5</code>      </td>
     </tr>
     <tr>
       <td><code>SSDF-PW.4</code><br><span class="meta">Reuse existing, well-secured software (SCA)</span></td>
@@ -162,7 +162,7 @@
       <td>high</td>
       <td>high</td>
       <td>
-<code>sca-cde6f78b98f8</code>      </td>
+<code>sca-8a0dc337c2a7</code>      </td>
     </tr>
     <tr>
       <td><code>ORG-SECRETS-SCAN</code><br><span class="meta">Repository-wide secrets scanning</span></td>
@@ -171,7 +171,7 @@
       <td>high</td>
       <td>high</td>
       <td>
-<code>secrets-ef72699eff3d</code>      </td>
+<code>secrets-0d6106b683d6</code>      </td>
     </tr>
     <tr>
       <td><code>SSDF-PS.3</code><br><span class="meta">Archive and protect each software release (SBOM)</span></td>
@@ -180,7 +180,7 @@
       <td>critical</td>
       <td>low</td>
       <td>
-<code>sbom-37f7855f8da4</code> <code>att-493e5e23d0db</code> <code>att-5602f00380e5</code>      </td>
+<code>sbom-6813fe39d5a2</code> <code>att-cc948cb8a6a4</code> <code>att-35354bda8818</code>      </td>
     </tr>
     <tr>
       <td><code>SSDF-PW.8</code><br><span class="meta">Test executable code to identify vulnerabilities</span></td>
@@ -189,7 +189,7 @@
       <td>high</td>
       <td>high</td>
       <td>
-<code>test-947163ade642</code>      </td>
+<code>test-aa6c80a3fe34</code>      </td>
     </tr>
     <tr>
       <td><code>ORG-CODE-REVIEW</code><br><span class="meta">Code review by eligible reviewers</span></td>
@@ -198,7 +198,7 @@
       <td>critical</td>
       <td>low</td>
       <td>
-<code>att-344346777d59</code> <code>att-352e828da303</code>      </td>
+<code>att-fcee80cf86da</code> <code>att-eb11de699a36</code>      </td>
     </tr>
     <tr>
       <td><code>SSDF-PW.1</code><br><span class="meta">Design software to meet security requirements (threat model)</span></td>
@@ -207,7 +207,7 @@
       <td>medium</td>
       <td>low</td>
       <td>
-<code>att-1eebf84557e5</code>      </td>
+<code>att-59a2382eb18a</code>      </td>
     </tr>
     <tr>
       <td><code>ORG-RELEASE-APPROVAL</code><br><span class="meta">Formal release approval</span></td>
@@ -216,7 +216,7 @@
       <td>critical</td>
       <td>low</td>
       <td>
-<code>att-29b0bfd8ba67</code>      </td>
+<code>att-f3bd336bf424</code>      </td>
     </tr>
     <tr>
       <td><code>ORG-REL-ROLLBACK</code><br><span class="meta">Rollback plan exists and was approved</span></td>
@@ -225,7 +225,7 @@
       <td>critical</td>
       <td>low</td>
       <td>
-<code>att-713ed6db892c</code>      </td>
+<code>att-6a5b1ef749bc</code>      </td>
     </tr>
     <tr>
       <td><code>SSDF-PS.2</code><br><span class="meta">Provide a mechanism to verify software release integrity</span></td>
@@ -234,7 +234,34 @@
       <td>critical</td>
       <td>low</td>
       <td>
-<code>att-5602f00380e5</code> <code>att-493e5e23d0db</code>      </td>
+<code>att-35354bda8818</code> <code>att-cc948cb8a6a4</code>      </td>
+    </tr>
+    <tr>
+      <td><code>SAMM-DESIGN-TA-1</code><br><span class="meta">Threat Assessment (Design / Threat Assessment 1)</span></td>
+      <td>OWASP_SAMM</td>
+      <td><span class="pill pill-met">met</span></td>
+      <td>medium</td>
+      <td>low</td>
+      <td>
+<code>att-59a2382eb18a</code>      </td>
+    </tr>
+    <tr>
+      <td><code>SAMM-IMPL-SB-2</code><br><span class="meta">Secure Build (Implementation / Secure Build 2)</span></td>
+      <td>OWASP_SAMM</td>
+      <td><span class="pill pill-met">met</span></td>
+      <td>high</td>
+      <td>low</td>
+      <td>
+<code>sbom-6813fe39d5a2</code> <code>att-35354bda8818</code> <code>att-cc948cb8a6a4</code>      </td>
+    </tr>
+    <tr>
+      <td><code>SAMM-VERIF-ST-1</code><br><span class="meta">Security Testing (Verification / Security Testing 1)</span></td>
+      <td>OWASP_SAMM</td>
+      <td><span class="pill pill-met">met</span></td>
+      <td>high</td>
+      <td>low</td>
+      <td>
+<code>sast-a759c03356e5</code> <code>sca-8a0dc337c2a7</code> <code>att-db21182f1d7e</code>      </td>
     </tr>
   </tbody>
 </table>
@@ -255,39 +282,39 @@
   </thead>
   <tbody>
     <tr>
-      <td><code>sast-82e76dd35927</code></td>
+      <td><code>sast-a759c03356e5</code></td>
       <td>sast_scan</td>
       <td>Bandit</td>
       <td>passed</td>
       <td>high</td>
-      <td><code>2107bdc73e03ce0a2349b5ba8cfe8e00b9218083</code></td>
+      <td><code>019e32b0000000000000000000000000</code></td>
     </tr>
     <tr>
-      <td><code>secrets-ef72699eff3d</code></td>
+      <td><code>secrets-0d6106b683d6</code></td>
       <td>secrets_scan</td>
       <td>gitleaks</td>
       <td>passed</td>
       <td>high</td>
-      <td><code>2107bdc73e03ce0a2349b5ba8cfe8e00b9218083</code></td>
+      <td><code>019e32b0000000000000000000000000</code></td>
     </tr>
     <tr>
-      <td><code>test-947163ade642</code></td>
+      <td><code>test-aa6c80a3fe34</code></td>
       <td>test_result</td>
       <td>pytest tests</td>
       <td>passed</td>
       <td>high</td>
-      <td><code>2107bdc73e03ce0a2349b5ba8cfe8e00b9218083</code></td>
+      <td><code>019e32b0000000000000000000000000</code></td>
     </tr>
     <tr>
-      <td><code>sca-cde6f78b98f8</code></td>
+      <td><code>sca-8a0dc337c2a7</code></td>
       <td>sca_scan</td>
       <td>pip-audit</td>
       <td>passed</td>
       <td>high</td>
-      <td><code>2107bdc73e03ce0a2349b5ba8cfe8e00b9218083</code></td>
+      <td><code>019e32b0000000000000000000000000</code></td>
     </tr>
     <tr>
-      <td><code>sbom-37f7855f8da4</code></td>
+      <td><code>sbom-6813fe39d5a2</code></td>
       <td>sbom</td>
       <td>cyclonedx</td>
       <td>generated</td>
@@ -295,7 +322,7 @@
       <td><code>secure-sdlc-evidence-collector@0.1.0</code></td>
     </tr>
     <tr>
-      <td><code>att-493e5e23d0db</code></td>
+      <td><code>att-cc948cb8a6a4</code></td>
       <td>artifact_attestation</td>
       <td>build-provenance-manual</td>
       <td>passed</td>
@@ -303,7 +330,7 @@
       <td><code>secure-sdlc-evidence-collector:v0.1.0</code></td>
     </tr>
     <tr>
-      <td><code>att-5602f00380e5</code></td>
+      <td><code>att-35354bda8818</code></td>
       <td>artifact_signature</td>
       <td>git-tag-signature</td>
       <td>passed</td>
@@ -311,7 +338,7 @@
       <td><code>secure-sdlc-evidence-collector:v0.1.0</code></td>
     </tr>
     <tr>
-      <td><code>att-344346777d59</code></td>
+      <td><code>att-fcee80cf86da</code></td>
       <td>code_review</td>
       <td>solo-maintainer-review</td>
       <td>passed</td>
@@ -319,7 +346,15 @@
       <td><code>PR-0-initial-mvp</code></td>
     </tr>
     <tr>
-      <td><code>att-352e828da303</code></td>
+      <td><code>att-db21182f1d7e</code></td>
+      <td>dast_scan</td>
+      <td>appsec-review</td>
+      <td>passed</td>
+      <td>low</td>
+      <td><code>secure-sdlc-evidence-collector</code></td>
+    </tr>
+    <tr>
+      <td><code>att-eb11de699a36</code></td>
       <td>pr_metadata</td>
       <td>local-git-export</td>
       <td>passed</td>
@@ -327,7 +362,7 @@
       <td><code>PR-0-initial-mvp</code></td>
     </tr>
     <tr>
-      <td><code>att-29b0bfd8ba67</code></td>
+      <td><code>att-f3bd336bf424</code></td>
       <td>release_approval</td>
       <td>Lucas Henrique Grifoni</td>
       <td>passed</td>
@@ -335,7 +370,7 @@
       <td><code>secure-sdlc-evidence-collector:v0.1.0</code></td>
     </tr>
     <tr>
-      <td><code>att-713ed6db892c</code></td>
+      <td><code>att-6a5b1ef749bc</code></td>
       <td>rollback_plan</td>
       <td>Lucas Henrique Grifoni</td>
       <td>passed</td>
@@ -343,7 +378,7 @@
       <td><code>secure-sdlc-evidence-collector:v0.1.0</code></td>
     </tr>
     <tr>
-      <td><code>att-1eebf84557e5</code></td>
+      <td><code>att-59a2382eb18a</code></td>
       <td>threat_model</td>
       <td>Lucas Henrique Grifoni</td>
       <td>completed</td>

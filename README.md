@@ -1,10 +1,11 @@
 # Secure SDLC Evidence Collector
 
-[![CI](https://img.shields.io/badge/ci-github--actions-blue)](./.github/workflows/ci.yml)
+[![CI](https://img.shields.io/badge/ci-github--actions-blue)](./.github/workflows/github-ci-cd.yml)
+[![Security CI](https://img.shields.io/badge/security--ci-semgrep%20%7C%20trivy%20%7C%20pip--audit-blue)](./.github/workflows/security-ci-cd.yml)
 [![Release](https://img.shields.io/badge/release-v1.0.0-blue)](./CHANGELOG.md)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 ![License Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-green)
-[![Signed with cosign](https://img.shields.io/badge/signed-cosign%20keyless-9cf)](./SECURITY.md)
+[![Signed with cosign](https://img.shields.io/badge/signed-cosign%20keyless-9cf)](./.github/workflows/release.yml)
 ![Tests 54](https://img.shields.io/badge/tests-passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-74%25-brightgreen)
 
@@ -115,7 +116,7 @@ python -m evidence_collector.cli.main run \
     --output-dir output/sample_release
 ```
 
-Expected verdict: `release_status = ready`, coverage 100/100, 10/10 controls
+Expected verdict: `release_status = ready`, coverage 100/100, 13/13 controls
 met, `bundle.json`, `report.md`, `summary.html` in `output/sample_release/`.
 
 Drop the `--attestations-dir` flag to see `release_status = not_ready` with
@@ -155,6 +156,9 @@ drop-in gate in any pipeline.
 - `--attestations-dir PATH` — folder with YAML/JSON attestations
   (repeatable).
 - `--catalog FILE.yaml` — override the default control catalog.
+- `--artifact-root PATH` — base directory that absolute artifact paths
+  are rewritten against, so the bundle records repo-relative paths
+  instead of leaking local filesystem locations. Recommended in CI.
 
 ### GitHub integration (opt-in)
 
@@ -177,11 +181,13 @@ The GitHub collector never logs tokens and reads them from environment only.
 
 ## Control catalog
 
-The default catalog ships with 10 controls covering SAST, SCA, secrets
-scanning, SBOM, tests, code review, threat model, release approval,
-rollback plan, and artifact signing. They are mapped to NIST SSDF practices
-when applicable (PS.2/PS.3/PW.1/PW.4/PW.7/PW.8) and to org-internal IDs for
-everything else.
+The default catalog ships with **13 controls** covering SAST, SCA, secrets
+scanning, SBOM, tests, code review, threat model, release approval, rollback
+plan, artifact signing, and three OWASP SAMM practices (Threat Assessment,
+Secure Build, Security Testing). They are mapped to NIST SSDF practices when
+applicable (PS.2/PS.3/PW.1/PW.4/PW.7/PW.8), to OWASP SAMM practice IDs
+(DESIGN-TA-1, IMPL-SB-2, VERIF-ST-1), and to org-internal IDs for everything
+else.
 
 Inspect it with `sdlc-evidence controls`, or replace it with your own via
 `--catalog path/to/your_catalog.yaml`. Schema:
@@ -239,7 +245,11 @@ tests/
 examples/
   sample_release/ # realistic evidence set used in docs and tests
 .github/
-  workflows/ci.yml  # lint + types + tests + sample bundle job
+  workflows/
+    github-ci-cd.yml        # lint + types + tests + build + sample bundle
+    security-ci-cd.yml      # semgrep + pip-audit + trivy + actionlint
+    release.yml             # quality gates, build, cosign keyless, GitHub Release
+    deploy-github-pages.yml # regenerate the dogfood summary site
 ```
 
 ---
@@ -256,6 +266,49 @@ make run-example   # generate the sample bundle
 ```
 
 The repository ships `.pre-commit-config.yaml` for local hooks (optional).
+
+---
+
+## Validation and evidence
+
+The collector is dogfooded on every push and on every release:
+
+- **`examples/sample_release/`** — synthetic but realistic positive fixture
+  (Semgrep + Trivy + Gitleaks SARIF, CycloneDX SBOM, JUnit, ZAP baseline,
+  YAML attestations). Expected verdict `ready`, 13/13 controls met.
+- **`examples/self_release/`** — the collector's own pipeline evidence,
+  regenerated on `deploy-github-pages.yml` and `release.yml`. This is the
+  dogfood bundle published in each GitHub Release.
+- **`examples/labs/`** — recorded scans produced against the external
+  `App vuln - teste` lab suite (SaaS, identity, cloud-native, data/batch,
+  AI/LLM, industry, OSS-policy) and mapped to expected verdicts in
+  [`docs/traceability.md`](./docs/traceability.md).
+- **Release readiness checklist** — go/no-go criteria for public releases
+  live in [`docs/release-readiness.md`](./docs/release-readiness.md).
+- **Known limitations** — parser scope, heuristics, and classification
+  boundaries are documented in [`docs/limitations.md`](./docs/limitations.md).
+
+Bundle comparison across runs is available via `sdlc-evidence compare
+before.json after.json` and is used in CI to catch regressions.
+
+---
+
+## What the collector does **not** do
+
+- It does **not** scan source code, containers, or infrastructure. It
+  reads the output of tools that do (Semgrep, CodeQL, Trivy, Gitleaks,
+  Syft, ZAP, JUnit, …) and evaluates whether the evidence set satisfies
+  the control catalog.
+- It does **not** replace compliance decisions. A `ready` verdict means
+  "every required critical/high control has evidence attached", not "this
+  release is legally compliant".
+- It does **not** re-run scanners or assert findings severity. Severity
+  and exploitability interpretation remain a human judgement on top of
+  the bundle.
+- It classifies SARIF results into `sast_scan` / `sca_scan` /
+  `secrets_scan` by the driver tool's name. Ambiguous drivers (e.g. a
+  Trivy SARIF that mixes vuln and secret scans) default to the more
+  conservative label; edge cases are listed in `docs/limitations.md`.
 
 ---
 

@@ -15,7 +15,7 @@ Heuristics for evidence classification:
 
 from __future__ import annotations
 
-import uuid
+import hashlib
 from datetime import UTC, datetime
 from typing import Any
 
@@ -78,8 +78,14 @@ _SECRETS_TOOLS: frozenset[str] = frozenset(
 )
 
 
-def _new_evidence_id(prefix: str) -> str:
-    return f"{prefix}-{uuid.uuid4().hex[:12]}"
+def _new_evidence_id(prefix: str, *parts: str) -> str:
+    """Return a deterministic evidence id built from `prefix` + a digest of
+    the tuple of string parts. Any caller that passes the same parts gets
+    the same id, which makes the whole bundle reproducible across runs on
+    identical inputs (see `docs/limitations.md §8`).
+    """
+    digest = hashlib.sha256("||".join(parts).encode("utf-8")).hexdigest()[:12]
+    return f"{prefix}-{digest}"
 
 
 def _raw_ref(artifact: ParsedArtifact, root: str | None = None) -> RawEvidenceRef:
@@ -100,16 +106,34 @@ def _raw_ref(artifact: ParsedArtifact, root: str | None = None) -> RawEvidenceRe
 def _classify_sarif(tool_name: str, override: EvidenceType | None) -> EvidenceType:
     if override is not None:
         return override
+    # Normalize punctuation / whitespace so "Snyk Code", "snyk-code",
+    # "snykcode", and "snyk_code" all match the same token. Without
+    # this, a SAST driver whose name happens to use a different
+    # separator falls through to the SCA bucket (false-positive risk
+    # tracked in docs/limitations.md §2).
     lowered = tool_name.lower()
-    for token in _SAST_TOOLS:
-        if token in lowered:
-            return EvidenceType.SAST_SCAN
-    for token in _SECRETS_TOOLS:
-        if token in lowered:
-            return EvidenceType.SECRETS_SCAN
-    for token in _SCA_TOOLS:
-        if token in lowered:
-            return EvidenceType.SCA_SCAN
+    normalized = lowered.replace("-", " ").replace("_", " ").replace("/", " ")
+    compact = normalized.replace(" ", "")
+    haystacks = (normalized, compact, lowered)
+
+    def _matches(tokens: frozenset[str]) -> bool:
+        for token in tokens:
+            token_norm = token.replace("-", " ").replace("_", " ")
+            token_compact = token_norm.replace(" ", "")
+            if token_norm in normalized or token_compact in compact or token in lowered:
+                return True
+        return False
+
+    # Order matters: check SAST first so composite tools (e.g., "Snyk Code"
+    # where both "snyk" and "snyk-code" can match) are labelled as SAST,
+    # which is more specific than SCA.
+    if _matches(_SAST_TOOLS):
+        return EvidenceType.SAST_SCAN
+    if _matches(_SECRETS_TOOLS):
+        return EvidenceType.SECRETS_SCAN
+    if _matches(_SCA_TOOLS):
+        return EvidenceType.SCA_SCAN
+    _ = haystacks  # kept for future diagnostic rationale if we surface it
     return EvidenceType.SAST_SCAN
 
 
@@ -135,7 +159,9 @@ def normalize_sarif(
         EvidenceType.SECRETS_SCAN: "secrets",
     }.get(evidence_type, "scan")
     return NormalizedEvidence(
-        evidence_id=_new_evidence_id(prefix),
+        evidence_id=_new_evidence_id(
+            prefix, parsed.tool_name, parsed.artifact.integrity_hash, release.commit_sha
+        ),
         evidence_type=evidence_type,
         source=EvidenceSource(name=parsed.tool_name, kind="sarif", version=parsed.tool_version),
         producer=parsed.tool_name,
@@ -163,7 +189,9 @@ def normalize_sbom(
 ) -> NormalizedEvidence:
     subject_ref = parsed.subject_ref or release.artifact_digest or release.release_id
     return NormalizedEvidence(
-        evidence_id=_new_evidence_id("sbom"),
+        evidence_id=_new_evidence_id(
+            "sbom", parsed.artifact.integrity_hash, subject_ref, release.release_id
+        ),
         evidence_type=EvidenceType.SBOM,
         source=EvidenceSource(name=parsed.format, kind="sbom", version=parsed.spec_version),
         producer=parsed.format,
@@ -195,7 +223,9 @@ def normalize_zap(
     status = EvidenceStatus.FAILED if blocking > 0 else EvidenceStatus.PASSED
     primary_target = parsed.target_urls[0] if parsed.target_urls else release.release_id
     return NormalizedEvidence(
-        evidence_id=_new_evidence_id("dast"),
+        evidence_id=_new_evidence_id(
+            "dast", parsed.tool_name, parsed.artifact.integrity_hash, primary_target
+        ),
         evidence_type=EvidenceType.DAST_SCAN,
         source=EvidenceSource(name=parsed.tool_name, kind="dast", version=parsed.tool_version),
         producer=parsed.tool_name,
@@ -226,7 +256,12 @@ def normalize_junit(
     failed = parsed.failures + parsed.errors
     status = EvidenceStatus.PASSED if failed == 0 else EvidenceStatus.FAILED
     return NormalizedEvidence(
-        evidence_id=_new_evidence_id("test"),
+        evidence_id=_new_evidence_id(
+            "test",
+            parsed.suite_name or "junit",
+            parsed.artifact.integrity_hash,
+            release.commit_sha,
+        ),
         evidence_type=EvidenceType.TEST_RESULT,
         source=EvidenceSource(name="junit", kind="junit-xml"),
         producer=parsed.suite_name or "junit",
@@ -259,7 +294,12 @@ def normalize_attestation(
     artifact_root: str | None = None,
 ) -> NormalizedEvidence:
     return NormalizedEvidence(
-        evidence_id=_new_evidence_id("att"),
+        evidence_id=_new_evidence_id(
+            "att",
+            str(parsed.evidence_type),
+            parsed.artifact.integrity_hash,
+            parsed.subject_ref,
+        ),
         evidence_type=parsed.evidence_type,
         source=EvidenceSource(name="manual-attestation", kind="attestation"),
         producer=parsed.producer,
@@ -298,6 +338,7 @@ def normalize_pr_metadata(
     else:
         status = EvidenceStatus.MISSING
     subject_ref = f"PR-{payload.get('number', '?')}"
+    pr_digest_key = f"{payload.get('number', '?')}|{payload.get('html_url', '')}"
     collected_at = payload.get("collected_at")
     if isinstance(collected_at, str):
         try:
@@ -309,7 +350,7 @@ def normalize_pr_metadata(
     else:
         collected_at_dt = datetime.now(tz=UTC)
     return NormalizedEvidence(
-        evidence_id=_new_evidence_id("cr"),
+        evidence_id=_new_evidence_id("cr", pr_digest_key, release.commit_sha),
         evidence_type=EvidenceType.CODE_REVIEW,
         source=EvidenceSource(name="github", kind="scm", uri=payload.get("html_url")),
         producer="github-pull-request",
@@ -342,7 +383,12 @@ def normalize_workflow_run(
     else:
         status = EvidenceStatus.COMPLETED
     return NormalizedEvidence(
-        evidence_id=_new_evidence_id("wf"),
+        evidence_id=_new_evidence_id(
+            "wf",
+            str(payload.get("run_id", "unknown")),
+            str(payload.get("workflow_name", "")),
+            release.commit_sha,
+        ),
         evidence_type=EvidenceType.WORKFLOW_RUN,
         source=EvidenceSource(
             name="github-actions",

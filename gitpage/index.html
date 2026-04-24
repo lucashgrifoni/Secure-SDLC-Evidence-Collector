@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <title>Secure SDLC Evidence Collector - Evidence-ready releases</title>
+  <meta name="description" content="Coleta, normaliza, correlaciona e empacota evidencias de Secure SDLC em bundles auditaveis, rastreaveis e orientados a release." />
+  <meta name="theme-color" content="#0c124c" />
+  <link rel="preconnect" href="https://unpkg.com" crossorigin />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%230c124c'/><circle cx='32' cy='32' r='12' fill='none' stroke='%2308b98b' stroke-width='3'/><circle cx='32' cy='32' r='3' fill='%2308b98b'/></svg>" />
+</head>
+<body data-theme="dark">
+  <a class="skip-link" href="#content">Pular para conteudo</a>
+
+  <header class="nav" role="banner">
+    <div class="nav__inner">
+      <a class="nav__brand" href="#top" aria-label="Inicio">
+        <span class="nav__mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="28" height="28">
+            <circle cx="16" cy="16" r="14" fill="none" stroke="#08b98b" stroke-width="1.4" />
+            <circle cx="16" cy="16" r="7"  fill="none" stroke="#d5d8dd" stroke-width="1.1" opacity="0.6"/>
+            <circle cx="16" cy="16" r="2.4" fill="#08b98b"/>
+            <circle cx="29" cy="16" r="1.6" fill="#08b98b"/>
+            <circle cx="16" cy="29" r="1.6" fill="#d5d8dd"/>
+            <circle cx="3"  cy="16" r="1.6" fill="#d5d8dd"/>
+          </svg>
+        </span>
+        <span class="nav__title">Secure SDLC Evidence Collector</span>
+      </a>
+      <nav class="nav__links" aria-label="Principal">
+        <a href="#problem">Problema</a>
+        <a href="#value">Valor</a>
+        <a href="#model">Modelo</a>
+        <a href="#flow">Fluxo</a>
+        <a href="#scoring">Scoring</a>
+        <a href="#roadmap">Roadmap</a>
+      </nav>
+      <div class="nav__cta">
+        <button class="btn btn--ghost" type="button" data-toggle-motion aria-pressed="false" title="Alternar animacoes">
+          <span class="btn__dot"></span>
+          <span class="btn__label">Motion</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="content">
+
+    <!-- ============ HERO ============ -->
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="hero__stage" aria-hidden="true">
+        <canvas id="hero-canvas"></canvas>
+        <div class="hero__noise"></div>
+        <div class="hero__grid"></div>
+        <div class="hero__glow hero__glow--a"></div>
+        <div class="hero__glow hero__glow--b"></div>
+      </div>
+
+      <div class="hero__content">
+        <div class="hero__badge">
+          <span class="hero__badge-dot" aria-hidden="true"></span>
+          <span>v1.0.0 - CLI-first - Secure SDLC</span>
+        </div>
+        <h1 id="hero-title" class="hero__title">
+          <span class="hero__line">Evidence-ready releases</span>
+          <span class="hero__line hero__line--accent">for Secure SDLC</span>
+        </h1>
+        <p class="hero__lede">
+          Consolidamos sinais tecnicos dispersos em <strong>evidence bundles</strong> auditaveis, rastreaveis e orientados a release.
+          A pergunta nao e <em>"esta release e segura?"</em> - e <em>"quais evidencias comprovam que esta release seguiu um processo minimo de desenvolvimento seguro?"</em>
+        </p>
+        <div class="hero__ctas">
+          <a class="btn btn--primary" href="#flow">
+            <span>Ver fluxo de evidencias</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <a class="btn btn--secondary" href="#model">
+            <span>Explorar MVP</span>
+          </a>
+        </div>
+
+        <dl class="hero__stats" aria-label="Indicadores do bundle de exemplo">
+          <div>
+            <dt>Evidence coverage</dt>
+            <dd data-counter="72" data-suffix="%">0%</dd>
+          </div>
+          <div>
+            <dt>Confidence</dt>
+            <dd data-counter="84" data-suffix="%">0%</dd>
+          </div>
+          <div>
+            <dt>Release status</dt>
+            <dd><span class="chip chip--conditional">conditional</span></dd>
+          </div>
+          <div>
+            <dt>Evidencias</dt>
+            <dd data-counter="10" data-suffix="/10">0</dd>
+          </div>
+        </dl>
+
+        <div class="hero__hint" aria-hidden="true">
+          <span class="hero__hint-line"></span>
+          <span class="hero__hint-label">role para descer</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PROBLEMA ============ -->
+    <section class="section" id="problem" aria-labelledby="problem-title">
+      <div class="wrap">
+        <header class="section__head" data-reveal>
+          <span class="eyebrow">01 - Problema</span>
+          <h2 id="problem-title">Evidencias existem. Prova de processo, nao.</h2>
+          <p class="section__lede">
+            Muitas organizacoes afirmam que praticam Secure SDLC, mas as evidencias ficam espalhadas em pipelines, scanners, PRs, SBOMs, threat models, tickets, aprovacoes e attestations. Sem um modelo unico, auditoria vira garimpo e release vira feeling.
+          </p>
+        </header>
+
+        <ol class="pain-list" role="list">
+          <li data-reveal data-reveal-delay="0">
+            <span class="pain-list__num">01</span>
+            <h3>Auditoria lenta e manual</h3>
+            <p>Coletar evidencias em varias fontes para justificar uma release consome dias - e raramente fica completo.</p>
+          </li>
+          <li data-reveal data-reveal-delay="60">
+            <span class="pain-list__num">02</span>
+            <h3>Baixa rastreabilidade</h3>
+            <p>Existe scanner e processo, mas nao existe encadeamento claro entre commit, pipeline, release e controles atendidos.</p>
+          </li>
+          <li data-reveal data-reveal-delay="120">
+            <span class="pain-list__num">03</span>
+            <h3>Governanca fraca de release</h3>
+            <p>Decisoes de liberacao para producao dependem de checklist informal, sem gate objetivo.</p>
+          </li>
+          <li data-reveal data-reveal-delay="180">
+            <span class="pain-list__num">04</span>
+            <h3>Maturidade dificil de medir</h3>
+            <p>A empresa roda controles, mas nao consegue provar cobertura, consistencia e gaps por produto ou time.</p>
+          </li>
+          <li data-reveal data-reveal-delay="240">
+            <span class="pain-list__num">05</span>
+            <h3>Compliance burocratico</h3>
+            <p>SSDF, SAMM ou controles internos viram exercicio documental em vez de evidencias operacionais.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ============ VALOR ============ -->
+    <section class="section section--alt" id="value" aria-labelledby="value-title">
+      <div class="wrap">
+        <header class="section__head" data-reveal>
+          <span class="eyebrow">02 - Proposta de valor</span>
+          <h2 id="value-title">Prova processo. Nao apenas detecta falha.</h2>
+          <p class="section__lede">
+            O bundle transforma sinais tecnicos dispersos em um pacote padronizado, auditavel e orientado a release. Nao afirma "release segura". Afirma quais praticas minimas foram comprovadas, quais nao foram, e qual a confianca da avaliacao.
+          </p>
+        </header>
+
+        <div class="value-grid">
+          <article class="value-card tilt" data-reveal>
+            <div class="value-card__ico" aria-hidden="true">
+              <svg viewBox="0 0 32 32"><path d="M5 17l6 6 16-16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3>Release readiness orientado a evidencias</h3>
+            <p>A release deixa de depender de checklist informal e passa a depender de um pacote tecnico rastreavel com status <code>ready</code>, <code>conditional</code> ou <code>not_ready</code>.</p>
+          </article>
+          <article class="value-card tilt" data-reveal data-reveal-delay="80">
+            <div class="value-card__ico" aria-hidden="true">
+              <svg viewBox="0 0 32 32"><rect x="5" y="5" width="22" height="22" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 16h12M10 11h12M10 21h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <h3>Compliance pragmatico</h3>
+            <p>Em vez de produzir documentos paralelos, a ferramenta reaproveita evidencias que ja nasceram no fluxo de engenharia e mapeia para SSDF e controles internos.</p>
+          </article>
+          <article class="value-card tilt" data-reveal data-reveal-delay="160">
+            <div class="value-card__ico" aria-hidden="true">
+              <svg viewBox="0 0 32 32"><path d="M4 26l7-10 6 6 5-9 6 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3>Maturidade AppSec mensuravel</h3>
+            <p>Permite medir cobertura, consistencia, excecoes e lacunas de Secure SDLC por produto, squad ou repositorio - com explicacao, nao caixa-preta.</p>
+          </article>
+          <article class="value-card tilt" data-reveal data-reveal-delay="240">
+            <div class="value-card__ico" aria-hidden="true">
+              <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 9v7l5 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <h3>Auditoria e due diligence mais rapidas</h3>
+            <p>Pacote unico com evidencias brutas, normalizadas, avaliacao por controle, excecoes aprovadas e resumos - reduzindo tempo de coleta manual.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MODELO DE EVIDENCIAS ============ -->
+    <section class="section" id="model" aria-labelledby="model-title">
+      <div class="wrap">
+        <header class="section__head" data-reveal>
+          <span class="eyebrow">03 - Modelo conceitual</span>
+          <h2 id="model-title">Raw -&gt; Normalized -&gt; Derived Assertion</h2>
+          <p class="section__lede">
+            O coracao do projeto e o modelo de evidencias. Tres camadas bem separadas preservam lineage e evitam caixa-preta: o artefato bruto da fonte, o registro canonico e a conclusao explicavel sobre um controle.
+          </p>
+        </header>
+
+        <div class="model">
+          <div class="model__stage" data-reveal>
+            <svg class="model__svg" viewBox="0 0 900 300" role="img" aria-label="Transformacao de evidencia bruta em assertion derivada">
+              <defs>
+                <linearGradient id="flowgrad" x1="0" x2="1">
+                  <stop offset="0"   stop-color="#08b98b" stop-opacity="0"/>
+                  <stop offset=".5"  stop-color="#08b98b" stop-opacity=".9"/>
+                  <stop offset="1"   stop-color="#08b98b" stop-opacity="0"/>
+                </linearGradient>
+                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="3" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+
+              <!-- Connection paths -->
+              <path class="model__pipe" d="M170 150 L330 150" />
+              <path class="model__pipe" d="M530 150 L690 150" />
+
+              <!-- Flowing packets -->
+              <circle class="packet packet--1" r="4" fill="#08b98b" filter="url(#glow)"/>
+              <circle class="packet packet--2" r="3" fill="#d5d8dd" filter="url(#glow)"/>
+              <circle class="packet packet--3" r="4" fill="#08b98b" filter="url(#glow)"/>
+              <circle class="packet packet--4" r="3" fill="#d5d8dd" filter="url(#glow)"/>
+
+              <!-- Raw block -->
+              <g transform="translate(30,60)">
+                <rect class="model__block" x="0" y="0" width="140" height="180" rx="10"/>
+                <text class="model__kicker" x="14" y="26">01 raw</text>
+                <text class="model__title"  x="14" y="56">Raw Evidence</text>
+                <text class="model__meta"   x="14" y="90">semgrep.sarif</text>
+                <text class="model__meta"   x="14" y="110">sbom.cdx.json</text>
+                <text class="model__meta"   x="14" y="130">pr-184.json</text>
+                <text class="model__meta"   x="14" y="150">junit.xml</text>
+                <text class="model__hash"   x="14" y="170">sha256:aaa...</text>
+              </g>
+
+              <!-- Normalized block -->
+              <g transform="translate(330,60)">
+                <rect class="model__block model__block--mid" x="0" y="0" width="200" height="180" rx="10"/>
+                <text class="model__kicker" x="14" y="26">02 normalized</text>
+                <text class="model__title"  x="14" y="56">Normalized Evidence</text>
+                <text class="model__meta"   x="14" y="90">evidence_type=sast_scan</text>
+                <text class="model__meta"   x="14" y="108">tool=semgrep</text>
+                <text class="model__meta"   x="14" y="126">status=completed</text>
+                <text class="model__meta"   x="14" y="144">confidence=high</text>
+                <text class="model__hash"   x="14" y="168">evidence_id=ev-001</text>
+              </g>
+
+              <!-- Assertion block -->
+              <g transform="translate(690,60)">
+                <rect class="model__block model__block--end" x="0" y="0" width="180" height="180" rx="10"/>
+                <text class="model__kicker" x="14" y="26">03 derived</text>
+                <text class="model__title"  x="14" y="56">Derived Assertion</text>
+                <text class="model__meta"   x="14" y="90">SSDF-PS.3: met</text>
+                <text class="model__meta"   x="14" y="108">SSDF-PW.7: partial</text>
+                <text class="model__meta"   x="14" y="126">ORG-ROLLBACK: missing</text>
+                <text class="model__hash"   x="14" y="160">rationale required</text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="model__legend">
+            <article class="legend-card" data-reveal>
+              <h4><span class="dot dot--raw"></span>Raw Evidence</h4>
+              <p>Artefato bruto vindo da fonte original - SARIF, CycloneDX, JUnit, payload de PR, attestation manual. Preserva integridade com hash.</p>
+            </article>
+            <article class="legend-card" data-reveal data-reveal-delay="80">
+              <h4><span class="dot dot--norm"></span>Normalized Evidence</h4>
+              <p>Registro canonico com tipo, status, timestamps, lineage, sujeito avaliado e confianca. Um contrato unico para tudo.</p>
+            </article>
+            <article class="legend-card" data-reveal data-reveal-delay="160">
+              <h4><span class="dot dot--assert"></span>Derived Assertion</h4>
+              <p>Conclusao calculada sobre as evidencias normalizadas - sempre com rationale explicita. Score vem com explicacao.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FLUXO OPERACIONAL ============ -->
+    <section class="section section--alt" id="flow" aria-labelledby="flow-title">
+      <div class="wrap">
+        <header class="section__head" data-reveal>
+          <span class="eyebrow">04 - Fluxo operacional</span>
+          <h2 id="flow-title">Do trigger do pipeline ao audit package</h2>
+          <p class="section__lede">
+            Nove etapas com lineage encadeado. Cada etapa produz ou consome artefatos tipados, e nenhuma decisao de release acontece sem rastreabilidade.
+          </p>
+        </header>
+
+        <ol class="flow" aria-label="Etapas do fluxo operacional">
+          <li class="flow__node" data-reveal>
+            <span class="flow__idx">01</span>
+            <h3>Pipeline / Release Trigger</h3>
+            <p>Contexto de execucao: aplicacao, commit, PR, run, artifact digest e release id.</p>
+          </li>
+          <li class="flow__node" data-reveal data-reveal-delay="60">
+            <span class="flow__idx">02</span>
+            <h3>Collectors</h3>
+            <p>Adaptadores por fonte - GitHub Actions, artefatos locais, attestations manuais.</p>
+          </li>
+          <li class="flow__node" data-reveal data-reveal-delay="120">
+            <span class="flow__idx">03</span>
+            <h3>Raw Evidence Store</h3>
+            <p>Armazenamento das evidencias brutas com hash de integridade e provenance.</p>
+          </li>
+          <li class="flow__node" data-reveal data-reveal-delay="180">
+            <span class="flow__idx">04</span>
+            <h3>Normalization Engine</h3>
+            <p>Conversao para o contrato canonico - SARIF, CycloneDX, SPDX, JUnit, payload de PR.</p>
+          </li>
+          <li class="flow__node" data-reveal data-reveal-delay="240">
+            <span class="flow__idx">05</span>
+            <h3>Control Mapping &amp; Scoring</h3>
+            <p>Relaciona evidencia x controle (SSDF, SAMM, interno), calcula cobertura e confianca.</p>
+          </li>
+          <li class="flow__node" data-reveal data-reveal-delay="300">
+            <span class="flow__idx">06</span>
+            <h3>Evidence Bundle</h3>
+            <p>Pacote JSON consolidado - evidencias, avaliacoes, excecoes, summary.</p>
+          </li>
+          <li class="flow__node" data-reveal data-reveal-delay="360">
+            <span class="flow__idx">07</span>
+            <h3>Markdown / HTML Report</h3>
+            <p>Relatorio tecnico legivel e summary para consumo humano e automacao.</p>
+          </li>
+          <li class="flow__node" data-reveal data-reveal-delay="420">
+            <span class="flow__idx">08</span>
+            <h3>Release Gate Decision</h3>
+            <p>Status explicito: <code>ready</code>, <code>conditional</code> ou <code>not_ready</code>.</p>
+          </li>
+          <li class="flow__node" data-reveal data-reveal-delay="480">
+            <span class="flow__idx">09</span>
+            <h3>Audit Package</h3>
+            <p>Pacote pronto para GRC, auditoria interna e due diligence externa.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ============ TIPOS DE EVIDENCIA ============ -->
+    <section class="section" id="evidence-types" aria-labelledby="types-title">
+      <div class="wrap">
+        <header class="section__head" data-reveal>
+          <span class="eyebrow">05 - Tipos de evidencia no MVP</span>
+          <h2 id="types-title">Dez tipos, um contrato canonico</h2>
+          <p class="section__lede">
+            O MVP comeca pequeno, mas cobre as classes que mais aparecem em gates reais. Novas fontes sao plugaveis via collectors sem tocar no modelo de dominio.
+          </p>
+        </header>
+
+        <ul class="types-grid" role="list">
+          <li class="type-chip" data-reveal><span class="type-chip__tag">SAST</span><span>Semgrep, SARIF</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="40"><span class="type-chip__tag">SCA</span><span>Trivy, Snyk</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="80"><span class="type-chip__tag">Secrets</span><span>pre-commit, pipeline</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="120"><span class="type-chip__tag">SBOM</span><span>CycloneDX / SPDX</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="160"><span class="type-chip__tag">Tests</span><span>JUnit, pytest</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="200"><span class="type-chip__tag">Code review</span><span>PR approvals</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="240"><span class="type-chip__tag">Threat model</span><span>link ou attestation</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="280"><span class="type-chip__tag">Release approval</span><span>formal, com aprovador</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="320"><span class="type-chip__tag">Rollback plan</span><span>attestation</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="360"><span class="type-chip__tag">Artifact signature</span><span>ou attestation</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ SCORING ============ -->
+    <section class="section section--alt" id="scoring" aria-labelledby="scoring-title">
+      <div class="wrap">
+        <header class="section__head" data-reveal>
+          <span class="eyebrow">06 - Scoring e status</span>
+          <h2 id="scoring-title">Score sem explicacao nao basta</h2>
+          <p class="section__lede">
+            Nem toda evidencia tem o mesmo peso. Evidencias obrigatorias pesam mais, alguns gaps bloqueiam release mesmo com score alto, e todo status vem com rationale.
+          </p>
+        </header>
+
+        <div class="scoring">
+          <article class="scoring__card scoring__card--lead" data-reveal>
+            <header>
+              <span class="eyebrow">release candidate</span>
+              <h3>payments-api <span class="mono">2026.04.10</span></h3>
+            </header>
+            <div class="scoring__meters">
+              <div class="meter" data-meter="72">
+                <div class="meter__label"><span>Evidence coverage</span><span class="meter__value">72</span></div>
+                <div class="meter__track"><div class="meter__bar" data-bar></div></div>
+              </div>
+              <div class="meter" data-meter="84">
+                <div class="meter__label"><span>Confidence</span><span class="meter__value">84</span></div>
+                <div class="meter__track"><div class="meter__bar meter__bar--alt" data-bar></div></div>
+              </div>
+            </div>
+            <footer>
+              <span class="chip chip--conditional">conditional</span>
+              <span class="scoring__missing">missing: rollback_plan, artifact_signature</span>
+            </footer>
+          </article>
+
+          <div class="scoring__statuses">
+            <article class="status-card status-card--ready" data-reveal>
+              <span class="status-card__chip">ready</span>
+              <p>Evidencias obrigatorias atendidas. Release liberada sem excecao.</p>
+            </article>
+            <article class="status-card status-card--conditional" data-reveal data-reveal-delay="80">
+              <span class="status-card__chip">conditional</span>
+              <p>Faltas nao criticas ou release dependente de excecao aprovada.</p>
+            </article>
+            <article class="status-card status-card--not-ready" data-reveal data-reveal-delay="160">
+              <span class="status-card__chip">not_ready</span>
+              <p>Faltam evidencias criticas ou ha inconsistencias graves.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ OUTPUTS ============ -->
+    <section class="section" id="outputs" aria-labelledby="outputs-title">
+      <div class="wrap">
+        <header class="section__head" data-reveal>
+          <span class="eyebrow">07 - Outputs</span>
+          <h2 id="outputs-title">Quatro saidas para quatro publicos</h2>
+          <p class="section__lede">
+            Uma ingestao, quatro artefatos. Maquina le bundle, engenharia le report, stakeholder le summary, auditoria recebe o pacote completo.
+          </p>
+        </header>
+
+        <div class="outputs">
+          <article class="output-card" data-reveal>
+            <div class="output-card__file">bundle.json</div>
+            <h3>Evidence bundle canonico</h3>
+            <p>Contrato versionado com evidencias, control evaluations, excecoes e summary. Reutilizavel por auditoria e gates de pipeline.</p>
+          </article>
+          <article class="output-card" data-reveal data-reveal-delay="80">
+            <div class="output-card__file">report.md</div>
+            <h3>Relatorio tecnico</h3>
+            <p>Markdown legivel para revisao de engenharia, com lineage de cada evidencia e rationale das avaliacoes.</p>
+          </article>
+          <article class="output-card" data-reveal data-reveal-delay="160">
+            <div class="output-card__file">summary.html</div>
+            <h3>Resumo humano</h3>
+            <p>HTML estatico com status de release, cobertura, gaps e excecoes - pronto para stakeholder nao tecnico.</p>
+          </article>
+          <article class="output-card" data-reveal data-reveal-delay="240">
+            <div class="output-card__file">audit.zip</div>
+            <h3>Audit package</h3>
+            <p>Pacote para GRC e due diligence: bundle + raw evidences + relatorios, com provenance preservado.</p>
+          </article>
+        </div>
+
+        <details class="preview" data-reveal>
+          <summary>Ver exemplo de <code>bundle.json</code> (trecho)</summary>
+<pre><code>{
+  "bundle_version": "1.0.0",
+  "bundle_id": "bundle-2026-04-10-payments-api",
+  "release": {
+    "release_id": "2026.04.10",
+    "commit_sha": "abc123",
+    "artifact_digest": "sha256:1234567890abcdef"
+  },
+  "summary": {
+    "evidence_coverage_score": 72,
+    "confidence_score": 84,
+    "release_status": "conditional",
+    "missing_critical_evidence": ["rollback_plan", "artifact_signature"]
+  }
+}</code></pre>
+        </details>
+      </div>
+    </section>
+
+    <!-- ============ SEGURANCA DO PRODUTO ============ -->
+    <section class="section section--alt" id="self-security" aria-labelledby="sec-title">
+      <div class="wrap">
+        <header class="section__head" data-reveal>
+          <span class="eyebrow">08 - Seguranca do proprio produto</span>
+          <h2 id="sec-title">Manipulando dados sensiveis com postura segura</h2>
+          <p class="section__lede">
+            O collector vive dentro de pipelines que tocam codigo, tokens e artefatos. Ele nasce com regras claras de higiene.
+          </p>
+        </header>
+
+        <ul class="sec-grid" role="list">
+          <li class="sec-item" data-reveal>
+            <h4>Sem segredos em log</h4>
+            <p>Nao logar tokens, URLs assinadas ou artefatos sensiveis.</p>
+          </li>
+          <li class="sec-item" data-reveal data-reveal-delay="60">
+            <h4>Validacao de entrada</h4>
+            <p>Formatos e tamanhos de arquivos ingeridos sao validados antes do parse.</p>
+          </li>
+          <li class="sec-item" data-reveal data-reveal-delay="120">
+            <h4>Hash de integridade</h4>
+            <p>Cada artefato coletado recebe hash e provenance para preservar lineage.</p>
+          </li>
+          <li class="sec-item" data-reveal data-reveal-delay="180">
+            <h4>Least privilege</h4>
+            <p>Politicas minimas de acesso a APIs externas e credenciais isoladas por collector.</p>
+          </li>
+          <li class="sec-item" data-reveal data-reveal-delay="240">
+            <h4>Attestations manuais</h4>
+            <p>Sao evidencias legitimas, mas ponderadas com confianca menor que evidencias automatizadas.</p>
+          </li>
+          <li class="sec-item" data-reveal data-reveal-delay="300">
+            <h4>Reprodutibilidade</h4>
+            <p>Mesma entrada produz mesma avaliacao. Score e status sao deterministicos e explicaveis.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ ROADMAP ============ -->
+    <section class="section" id="roadmap" aria-labelledby="road-title">
+      <div class="wrap">
+        <header class="section__head" data-reveal>
+          <span class="eyebrow">09 - Roadmap</span>
+          <h2 id="road-title">Evolucao por fases, sem perder o nucleo</h2>
+          <p class="section__lede">
+            O MVP e CLI-first e entrega bundle, report e gate. As fases posteriores ampliam fontes, governanca e analytics sem quebrar o contrato de evidencia.
+          </p>
+        </header>
+
+        <div class="roadmap">
+          <article class="phase phase--mvp" data-reveal>
+            <header><span class="phase__tag">MVP - v1.0</span><h3>Fundacao</h3></header>
+            <ul>
+              <li>GitHub + GitHub Actions</li>
+              <li>SAST / SCA / Secrets / SBOM / Tests</li>
+              <li>PR approvals, threat model, rollback</li>
+              <li>Bundle, report.md, summary.html</li>
+              <li>Release gate: ready / conditional / not_ready</li>
+            </ul>
+          </article>
+          <article class="phase" data-reveal data-reveal-delay="80">
+            <header><span class="phase__tag">Fase 2</span><h3>Expansao</h3></header>
+            <ul>
+              <li>GitLab e Azure DevOps</li>
+              <li>Workflow formal de excecoes</li>
+              <li>Mais exporters e relatorios</li>
+              <li>SAMM e controles internos adicionais</li>
+            </ul>
+          </article>
+          <article class="phase" data-reveal data-reveal-delay="160">
+            <header><span class="phase__tag">Fase 3</span><h3>Historico e tendencias</h3></header>
+            <ul>
+              <li>Dashboard historico</li>
+              <li>Tendencias por time / produto</li>
+              <li>Comparativo por release</li>
+              <li>APIs para GRC e auditoria</li>
+            </ul>
+          </article>
+          <article class="phase" data-reveal data-reveal-delay="240">
+            <header><span class="phase__tag">Fase 4</span><h3>Policy-as-code</h3></header>
+            <ul>
+              <li>Gates declarativos</li>
+              <li>Provenance e attestation avancados</li>
+              <li>Analytics de maturidade AppSec</li>
+              <li>Policy packs por framework</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FECHAMENTO ============ -->
+    <section class="section section--close" id="close" aria-labelledby="close-title">
+      <div class="wrap wrap--narrow">
+        <div class="close" data-reveal>
+          <span class="eyebrow">10 - Fechamento</span>
+          <h2 id="close-title">Prova de processo. Rastreavel. Explicavel.</h2>
+          <p>
+            Releases deixam de depender de feeling e passam a depender de evidencia encadeada.
+            O Secure SDLC Evidence Collector nao garante release segura nem entrega compliance automatico -
+            ele mostra, com lineage e rationale, <strong>quais praticas minimas foram comprovadas</strong>,
+            <strong>quais nao foram</strong> e <strong>qual a confianca da avaliacao</strong>.
+          </p>
+          <div class="close__ctas">
+            <a class="btn btn--primary" href="#top">Voltar ao topo</a>
+            <a class="btn btn--secondary" href="#model">Revisitar modelo</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot" role="contentinfo">
+    <div class="wrap foot__inner">
+      <div>
+        <strong>Secure SDLC Evidence Collector</strong>
+        <span class="foot__meta">Evidence-ready releases for Secure SDLC</span>
+      </div>
+      <div class="foot__meta foot__meta--right">
+        <span>CLI-first - Python - open source</span>
+        <span class="mono">v1.0.0</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Libs via CDN -->
+  <script src="https://unpkg.com/three@0.158.0/build/three.min.js" defer></script>
+  <script src="https://unpkg.com/gsap@3.12.5/dist/gsap.min.js" defer></script>
+  <script src="https://unpkg.com/gsap@3.12.5/dist/ScrollTrigger.min.js" defer></script>
+
+  <!-- App -->
+  <script src="assets/js/scene.js" defer></script>
+  <script src="assets/js/main.js" defer></script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 {
- "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+ "$schema": "http./self_release",
  "version": "2.1.0",
  "runs": [
   {
@@ -7,7 +7,7 @@
     "driver": {
      "name": "gitleaks",
      "semanticVersion": "v8.0.0",
-     "informationUri": "https://github.com/gitleaks/gitleaks",
+     "informationUri": "http./self_release",
      "rules": [
       {
        "id": "1password-secret-key",
