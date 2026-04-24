@@ -1,0 +1,42 @@
+name: Bug report
+description: Report a defect in the collector, parsers, or CLI.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please include a minimal reproducer so
+        we can triage quickly. For security issues, use SECURITY.md
+        instead of this public form.
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit SHA
+      placeholder: "v1.0.0 or commit abc123..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproducer
+      description: CLI invocation, minimal input, stack trace.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment (OS, Python version)
+      placeholder: "Ubuntu 22.04, Python 3.12.0"

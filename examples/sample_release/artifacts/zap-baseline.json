@@ -1,0 +1,29 @@
+{
+  "@version": "2.14.0",
+  "@generator": "OWASP ZAP",
+  "@generated": "2026-04-10T12:15:00Z",
+  "site": [
+    {
+      "@name": "https://payments-api.acme.internal",
+      "@host": "payments-api.acme.internal",
+      "@port": "443",
+      "@ssl": "true",
+      "alerts": [
+        {
+          "name": "Information Disclosure - Suspicious Comments",
+          "riskcode": "0",
+          "confidence": "1",
+          "count": "2",
+          "desc": "The response appears to contain suspicious comments which may help an attacker."
+        },
+        {
+          "name": "Missing Anti-clickjacking Header",
+          "riskcode": "1",
+          "confidence": "3",
+          "count": "1",
+          "desc": "The response does not include a Content-Security-Policy frame-ancestors or X-Frame-Options header."
+        }
+      ]
+    }
+  ]
+}

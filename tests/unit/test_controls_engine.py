@@ -119,6 +119,7 @@ def test_full_catalog_evaluation_against_complete_evidence() -> None:
         _evidence(EvidenceType.SAST_SCAN),
         _evidence(EvidenceType.SCA_SCAN),
         _evidence(EvidenceType.SECRETS_SCAN),
+        _evidence(EvidenceType.DAST_SCAN),
         _evidence(EvidenceType.SBOM, status=EvidenceStatus.GENERATED),
         _evidence(EvidenceType.TEST_RESULT),
         _evidence(EvidenceType.CODE_REVIEW),

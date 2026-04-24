@@ -42,6 +42,7 @@ def test_release_ready_with_full_evidence_set() -> None:
         _ev(EvidenceType.SAST_SCAN),
         _ev(EvidenceType.SCA_SCAN),
         _ev(EvidenceType.SECRETS_SCAN),
+        _ev(EvidenceType.DAST_SCAN),
         _ev(EvidenceType.SBOM, status=EvidenceStatus.GENERATED),
         _ev(EvidenceType.TEST_RESULT),
         _ev(EvidenceType.CODE_REVIEW),

@@ -1,0 +1,18 @@
+evidence_type: dast_scan
+producer: "appsec-review"
+subject_type: application
+subject_ref: "secure-sdlc-evidence-collector"
+status: passed
+confidence: low
+generated_at: "2026-04-23T16:30:00Z"
+summary: >-
+  Dynamic application security testing is not applicable: the product is a
+  Python CLI and library, it does not expose an HTTP, RPC, or any other
+  networked surface that a DAST scanner could exercise. This attestation
+  documents the non-applicability so SAMM-VERIF-ST-1's recommended DAST
+  evidence is not a silent gap.
+metadata:
+  applicability: "not_applicable"
+  reason: "CLI / library product; no HTTP surface"
+  reviewed_by: "appsec-review"
+  review_date: "2026-04-23"
