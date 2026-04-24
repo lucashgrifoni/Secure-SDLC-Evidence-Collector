@@ -14,6 +14,7 @@ the ``run`` command. The CLI refuses to write outside the provided
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import sys
@@ -27,6 +28,7 @@ from rich.console import Console
 from rich.table import Table
 
 from evidence_collector import __version__
+from evidence_collector.application.compare import compare_bundles, load_bundle
 from evidence_collector.application.orchestrator import (
     BundleBuildResult,
     build_bundle,
@@ -36,15 +38,18 @@ from evidence_collector.collectors.github import GitHubCollector, GitHubCollecto
 from evidence_collector.domain.enums import ReleaseStatus
 from evidence_collector.domain.models import (
     Application,
+    EvidenceBundle,
     NormalizedEvidence,
     ReleaseContext,
 )
 from evidence_collector.exporters import export_html, export_json, export_markdown
+from evidence_collector.parsers import parse_exception
+from evidence_collector.parsers._common import ParseError
 
 app = typer.Typer(
     name="sdlc-evidence",
     help="Secure SDLC Evidence Collector — collect, evaluate and bundle release evidence.",
-    no_args_is_help=True,
+    no_args_is_help=False,
     add_completion=False,
 )
 console = Console()
@@ -146,8 +151,9 @@ def _render_collection_errors(result: BundleBuildResult) -> None:
         console.print(f"  - {error.path}: {error.reason}")
 
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def main_callback(
+    ctx: typer.Context,
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Enable verbose logging")
     ] = False,
@@ -158,6 +164,9 @@ def main_callback(
         typer.echo(__version__)
         raise typer.Exit(code=0)
     _configure_logging(verbose)
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit(code=0)
 
 
 @app.command("run")
@@ -380,6 +389,154 @@ def cmd_controls(
     console.print(table)
 
 
+@app.command("compare")
+def cmd_compare(
+    before: Annotated[Path, typer.Argument(help="Path to the baseline bundle.json")],
+    after: Annotated[Path, typer.Argument(help="Path to the new bundle.json")],
+    output_format: Annotated[
+        str, typer.Option("--format", help="Output format: table or json")
+    ] = "table",
+) -> None:
+    """Compare two bundle.json files and summarize what changed."""
+    try:
+        baseline = load_bundle(before)
+        candidate = load_bundle(after)
+    except (ValidationError, json.JSONDecodeError, OSError) as exc:
+        console.print(f"[red]Could not load bundles:[/red] {exc}")
+        raise typer.Exit(code=3) from exc
+
+    comparison = compare_bundles(baseline, candidate)
+    if output_format.lower() == "json":
+        console.print_json(data=comparison.to_dict())
+        return
+
+    table = Table(title=f"Bundle diff: {baseline.bundle_id} → {candidate.bundle_id}")
+    table.add_column("Metric")
+    table.add_column("Before")
+    table.add_column("After")
+    table.add_column("Delta")
+    table.add_row(
+        "release_status",
+        comparison.before_release_status.value,
+        comparison.after_release_status.value,
+        "⬆" if comparison.after_release_status == ReleaseStatus.READY else "",
+    )
+    table.add_row(
+        "coverage",
+        str(baseline.summary.evidence_coverage_score),
+        str(candidate.summary.evidence_coverage_score),
+        f"{comparison.coverage_delta:+d}",
+    )
+    table.add_row(
+        "confidence",
+        str(baseline.summary.confidence_score),
+        str(candidate.summary.confidence_score),
+        f"{comparison.confidence_delta:+d}",
+    )
+    console.print(table)
+
+    control_table = Table(title="Control-level diff")
+    control_table.add_column("Control ID")
+    control_table.add_column("Before")
+    control_table.add_column("After")
+    control_table.add_column("Change")
+    for delta in comparison.control_deltas:
+        control_table.add_row(
+            delta.control_id,
+            delta.before.value if delta.before else "-",
+            delta.after.value if delta.after else "-",
+            delta.category,
+        )
+    console.print(control_table)
+
+
+@app.command("schema")
+def cmd_schema(
+    output_path: Annotated[
+        Path | None,
+        typer.Option("--output", help="Write JSON Schema to this file instead of stdout"),
+    ] = None,
+) -> None:
+    """Emit the JSON Schema for EvidenceBundle so teams can validate externally."""
+    schema = EvidenceBundle.model_json_schema()
+    payload = json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False)
+    if output_path is None:
+        typer.echo(payload)
+        return
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(payload + "\n", encoding="utf-8")
+    console.print(f"[green]EvidenceBundle JSON Schema[/green] → {output_path}")
+
+
+exceptions_app = typer.Typer(
+    name="exceptions",
+    help="Inspect and validate Secure SDLC exception (waiver) files.",
+    no_args_is_help=True,
+    add_completion=False,
+)
+app.add_typer(exceptions_app)
+
+
+@exceptions_app.command("validate")
+def cmd_exceptions_validate(
+    path: Annotated[Path, typer.Argument(help="Exception YAML/JSON to validate")],
+) -> None:
+    """Validate an exception file against the canonical schema."""
+    try:
+        exception = parse_exception(path)
+    except (ParseError, FileNotFoundError) as exc:
+        console.print(f"[red]Invalid exception file:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    console.print(
+        f"[green]{exception.exception_id}[/green] valid · control={exception.control_id} "
+        f"· approver={exception.approver} · expires_at={exception.expires_at.isoformat()}"
+    )
+
+
+@exceptions_app.command("list")
+def cmd_exceptions_list(
+    directory: Annotated[
+        Path, typer.Argument(help="Directory containing exception YAML/JSON files")
+    ],
+) -> None:
+    """Walk a directory and list every valid exception."""
+    if not directory.is_dir():
+        console.print(f"[red]Not a directory:[/red] {directory}")
+        raise typer.Exit(code=2)
+    table = Table(title=f"Exceptions in {directory}")
+    table.add_column("Exception ID")
+    table.add_column("Control")
+    table.add_column("Approver")
+    table.add_column("Expires at")
+    table.add_column("Scope")
+    valid = 0
+    invalid = 0
+    for path in sorted(directory.rglob("*")):
+        if path.suffix.lower() not in {".yaml", ".yml", ".json"} or not path.is_file():
+            continue
+        try:
+            exc = parse_exception(path)
+        except (ParseError, FileNotFoundError) as err:
+            invalid += 1
+            console.print(f"[yellow]skipped[/yellow] {path}: {err}")
+            continue
+        valid += 1
+        scope_bits: list[str] = []
+        if exc.scope.application:
+            scope_bits.append(f"app={exc.scope.application}")
+        if exc.scope.release_id:
+            scope_bits.append(f"release={exc.scope.release_id}")
+        table.add_row(
+            exc.exception_id,
+            exc.control_id,
+            exc.approver,
+            exc.expires_at.isoformat(),
+            ", ".join(scope_bits) or "global",
+        )
+    console.print(table)
+    console.print(f"[bold]{valid}[/bold] valid · [yellow]{invalid}[/yellow] invalid")
+
+
 def _fail_on_exit_code(status: ReleaseStatus, threshold: str) -> int:
     threshold_value = threshold.lower()
     rank = {"ready": 0, "conditional": 1, "not_ready": 2}
@@ -395,8 +552,21 @@ def _fail_on_exit_code(status: ReleaseStatus, threshold: str) -> int:
     return 0
 
 
+def _force_utf8_std_streams() -> None:
+    # Windows terminals default to cp1252 and crash on Rich's Unicode
+    # separators (→, ⬆). Reconfigure both streams to UTF-8 so the CLI
+    # works out-of-the-box without requiring PYTHONIOENCODING=utf-8.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        with contextlib.suppress(OSError, ValueError):
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def main() -> None:
     """Console-script entrypoint."""
+    _force_utf8_std_streams()
     # Print banner only when stdout is a TTY, to avoid polluting pipelines.
     if sys.stdout.isatty():
         console.print(

@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a new parser, collector, control, or CLI capability.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: This change preserves the evidence-bundle schema (major bump otherwise).
+        - label: I have read CONTRIBUTING.md.

@@ -1,8 +1,12 @@
 # Secure SDLC Evidence Collector
 
 [![CI](https://img.shields.io/badge/ci-github--actions-blue)](./.github/workflows/ci.yml)
+[![Release](https://img.shields.io/badge/release-v1.0.0-blue)](./CHANGELOG.md)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 ![License Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-green)
+[![Signed with cosign](https://img.shields.io/badge/signed-cosign%20keyless-9cf)](./SECURITY.md)
+![Tests 54](https://img.shields.io/badge/tests-passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-74%25-brightgreen)
 
 **CLI-first AppSec/DevSecOps tool that answers: "Which evidence proves this
 release followed a minimum Secure SDLC process?"**
@@ -41,14 +45,17 @@ This collector reframes the question around **evidence, not findings**:
 
 | Capability | Implementation |
 |-----------|----------------|
-| Evidence ingestion | SARIF (Semgrep, CodeQL, SonarQube, Snyk Code, Trivy, Grype, Gitleaks, …), CycloneDX & SPDX SBOMs, JUnit XML, YAML/JSON attestations |
-| GitHub integration | PR approvals + "last approval after last commit" correctness, GitHub Actions workflow runs |
-| Controls catalog | 10 Secure SDLC controls mapped to NIST SSDF and org-internal IDs, override via `--catalog` |
-| Scoring | Deterministic coverage score + confidence score, explainable rationale per control |
-| Release verdict | `ready` / `conditional` / `not_ready` driven by criticality of gaps, not by the score alone |
-| Outputs | `bundle.json` (byte-stable), `report.md`, `summary.html` |
-| CLI | `run`, `collect`, `evaluate`, `bundle`, `controls` (Typer + rich) |
-| Quality bar | `ruff`, `mypy --strict`, `pytest` with 70% coverage gate, GitHub Actions CI |
+| Evidence ingestion | SARIF (Semgrep, CodeQL, SonarQube, Snyk Code, Trivy, Grype, Gitleaks, Bandit, pip-audit, …), CycloneDX & SPDX SBOMs, JUnit XML, OWASP ZAP JSON (DAST), YAML/JSON attestations and exceptions |
+| SCM integrations | GitHub (PR approvals with "last approval after last commit" verification, Actions runs) and GitLab (MR approvals, pipeline runs) |
+| Controls catalog | 13 controls mapped to NIST SSDF, OWASP SAMM and org-internal IDs; override via `--catalog` |
+| Scoring | Deterministic coverage + confidence scores with per-control rationale |
+| Release verdict | `ready` / `conditional` / `not_ready` driven by gap criticality, never by the score alone |
+| Waivers | Time-bound exceptions with scope (application/release) and expiry — plain YAML/JSON, auditable |
+| Outputs | Deterministic `bundle.json`, Jinja2 `report.md`, and `summary.html` |
+| CLI | `run` · `collect` · `evaluate` · `bundle` · `controls` · `compare` · `schema` · `exceptions list/validate` |
+| Packaging | Reusable GitHub Action (`action.yml`), non-root Docker image, PyPI-ready wheel + sdist |
+| Release integrity | Cosign keyless signing + Sigstore Rekor transparency log on tag push (`release.yml`) |
+| Quality bar | `ruff`, `mypy --strict`, `pytest` with coverage gate, GitHub Actions CI, Dependabot |
 
 ---
 
@@ -119,11 +126,15 @@ explicit missing critical evidence.
 ## CLI
 
 ```
-sdlc-evidence run        # full pipeline: collect + evaluate + export
-sdlc-evidence collect    # walk directories, emit an evidence JSON list
-sdlc-evidence evaluate   # evaluate an existing evidence list, export bundle
-sdlc-evidence bundle     # alias of evaluate
-sdlc-evidence controls   # print the active control catalog
+sdlc-evidence run                    # full pipeline: collect + evaluate + export
+sdlc-evidence collect                # walk directories, emit an evidence JSON list
+sdlc-evidence evaluate               # evaluate an existing evidence list, export bundle
+sdlc-evidence bundle                 # alias of evaluate
+sdlc-evidence controls               # print the active control catalog
+sdlc-evidence compare BEFORE AFTER   # diff two bundles (coverage, status, per-control)
+sdlc-evidence schema [--output PATH] # emit JSON Schema for EvidenceBundle
+sdlc-evidence exceptions validate F  # validate a single waiver file
+sdlc-evidence exceptions list DIR    # list every valid waiver in a directory
 sdlc-evidence --version
 ```
 
@@ -263,13 +274,27 @@ The tool itself follows the security rules it enforces on others:
 
 ---
 
-## Roadmap (post-MVP)
+## Roadmap
 
-- GitLab / Azure DevOps collectors
-- Exception / waiver workflow with approver + expiration
-- Historical analytics (coverage over time per repo/team)
-- `evidence_exception` first-class entity in the bundle
-- API surface (FastAPI) once the CLI is stable
+### Shipped in `1.0.0`
+
+- GitLab / GitLab CI collector (MRs + pipelines).
+- OWASP SAMM secondary framework mapping.
+- OWASP ZAP DAST parser and `dast_scan` evidence type.
+- Time-bound exception (waiver) workflow with scope and expiry.
+- Bundle `compare` command and canonical JSON Schema export.
+- Cosign keyless release signing + Sigstore transparency log.
+- OSS governance (CONTRIBUTING, CoC, SECURITY, CODEOWNERS, Dependabot,
+  issue/PR templates).
+
+### Planned
+
+- Azure DevOps collector (PRs + Pipelines).
+- Historical analytics (coverage trend per repo/team) and a read-only
+  dashboard over saved bundles.
+- FastAPI surface for GRC / audit integrations, once the CLI stabilizes.
+- Additional exporters (SPDX provenance, CycloneDX VEX linking).
+- Policy-as-code catalog validation (e.g. Rego plug-in).
 
 ---
 

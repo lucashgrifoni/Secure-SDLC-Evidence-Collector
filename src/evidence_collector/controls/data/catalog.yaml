@@ -102,3 +102,33 @@ controls:
     criticality: "critical"
     required_evidence_types: ["artifact_signature"]
     recommended_evidence_types: ["artifact_attestation"]
+
+  - control_id: "SAMM-DESIGN-TA-1"
+    framework: "OWASP_SAMM"
+    name: "Threat Assessment (Design / Threat Assessment 1)"
+    description: >-
+      OWASP SAMM secondary mapping: threat modeling activity performed for
+      the release scope. Complements SSDF-PW.1 with a practice-based view.
+    criticality: "medium"
+    required_evidence_types: ["threat_model"]
+    recommended_evidence_types: []
+
+  - control_id: "SAMM-IMPL-SB-2"
+    framework: "OWASP_SAMM"
+    name: "Secure Build (Implementation / Secure Build 2)"
+    description: >-
+      OWASP SAMM mapping: build integrity evidence (SBOM + signature or
+      attestation) must be produced to support verifiable delivery.
+    criticality: "high"
+    required_evidence_types: ["sbom"]
+    recommended_evidence_types: ["artifact_signature", "artifact_attestation"]
+
+  - control_id: "SAMM-VERIF-ST-1"
+    framework: "OWASP_SAMM"
+    name: "Security Testing (Verification / Security Testing 1)"
+    description: >-
+      OWASP SAMM mapping: automated security testing evidence (SAST + SCA)
+      must cover the release commit.
+    criticality: "high"
+    required_evidence_types: ["sast_scan"]
+    recommended_evidence_types: ["sca_scan", "dast_scan"]

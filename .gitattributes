@@ -1,0 +1,16 @@
+# Normalize line endings across platforms: stored as LF in git, checked out
+# with platform-native EOL. Keeps Windows clones from emitting CRLF warnings
+# and keeps shell scripts + workflows working on Linux runners.
+* text=auto eol=lf
+
+# Binary assets: never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.whl binary

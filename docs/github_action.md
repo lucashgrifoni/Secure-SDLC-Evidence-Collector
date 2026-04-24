@@ -34,7 +34,7 @@ jobs:
 
       # Step 2 — assemble the evidence bundle
       - id: collect
-        uses: LucasGrifoni/secure-sdlc-evidence-collector@v0.1.0
+        uses: LucasGrifoni/secure-sdlc-evidence-collector@v1.0.0
         with:
           application: "payments-api"
           release-id: ${{ github.ref_name }}
@@ -98,12 +98,12 @@ a non-root UID (`10001:10001`) and expects evidence volumes mounted into
 `/workspace`:
 
 ```bash
-docker build -t sdlc-evidence:0.1.0 .
+docker build -t sdlc-evidence:1.0.0 .
 docker run --rm \
   -v "$PWD/artifacts:/workspace/artifacts:ro" \
   -v "$PWD/attestations:/workspace/attestations:ro" \
   -v "$PWD/output:/workspace/output" \
-  sdlc-evidence:0.1.0 run \
+  sdlc-evidence:1.0.0 run \
     --application payments-api \
     --repository acme/payments-api \
     --release-id 2026.04.10 \
