@@ -1,0 +1,24 @@
+{
+  "version": "2.1.0",
+  "$schema": "http./06-industry-regulated-lab",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "fullName": "Trivy Vulnerability Scanner",
+          "informationUri": "http./06-industry-regulated-lab",
+          "name": "Trivy",
+          "rules": [],
+          "version": "0.68.1"
+        }
+      },
+      "results": [],
+      "columnKind": "utf16CodeUnits",
+      "originalUriBaseIds": {
+        "ROOTPATH": {
+          "uri": "fil./06-industry-regulated-lab Grifoni\\Downloads\\My Projects - AppSec \u0026 DevSecOps\\App vuln - teste\\06-industry-regulated-lab/"
+        }
+      }
+    }
+  ]
+}

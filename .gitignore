@@ -75,3 +75,7 @@ output/
 .env.*
 !.env.example
 seção do gitpage do meu perfil.txt
+
+# GitPage authoring scratch (contains local author paths — never commit)
+gitpage/CURSOR_PROMPT_GITPAGE.md
+gitpage/node_modules/

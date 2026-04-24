@@ -16,8 +16,12 @@ from pathlib import Path
 
 # Element and ParseError are used only for typing and exception handling.
 # All parsing is delegated to defusedxml below.
-from xml.etree.ElementTree import Element  # nosec B405 - type only
-from xml.etree.ElementTree import ParseError as StdParseError  # nosec B405 - exception only
+from xml.etree.ElementTree import (
+    Element,  # nosec B405 - type only  # nosemgrep: python.lang.security.use-defused-xml.use-defused-xml
+)
+from xml.etree.ElementTree import (
+    ParseError as StdParseError,  # nosec B405 - exception only  # nosemgrep: python.lang.security.use-defused-xml.use-defused-xml
+)
 
 from defusedxml import ElementTree as SafeET
 

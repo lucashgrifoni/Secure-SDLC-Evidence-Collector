@@ -1,0 +1,88 @@
+{
+  "bundle_version": "1.0.0",
+  "bundle_id": "bundle-2026-04-10-payments-api",
+  "application": {
+    "name": "payments-api",
+    "repository": "acme/payments-api",
+    "environment": "production"
+  },
+  "release": {
+    "release_id": "2026.04.10",
+    "commit_sha": "abc123",
+    "branch": "main",
+    "pipeline_run_id": "gha-93821",
+    "build_id": "build-2041",
+    "artifact_digest": "sha256:1234567890abcdef"
+  },
+  "evidence": [
+    {
+      "evidence_id": "ev-001",
+      "evidence_type": "sast_scan",
+      "source_system": "github_actions",
+      "producer": "semgrep",
+      "subject_type": "repository",
+      "subject_ref": "acme/payments-api",
+      "status": "passed",
+      "confidence": "high",
+      "generated_at": "2026-04-10T12:10:00Z",
+      "collected_at": "2026-04-10T12:12:00Z",
+      "artifact_path": "artifacts/semgrep.sarif",
+      "integrity_hash": "sha256:aaa"
+    },
+    {
+      "evidence_id": "ev-002",
+      "evidence_type": "code_review",
+      "source_system": "github",
+      "producer": "pull_request",
+      "subject_type": "pull_request",
+      "subject_ref": "PR-184",
+      "status": "passed",
+      "confidence": "high",
+      "metadata": {
+        "reviewers_required": 2,
+        "reviewers_approved": 2,
+        "last_approval_after_last_commit": true
+      }
+    },
+    {
+      "evidence_id": "ev-003",
+      "evidence_type": "sbom",
+      "source_system": "github_actions",
+      "producer": "cyclonedx",
+      "subject_type": "artifact",
+      "subject_ref": "payments-api:2026.04.10",
+      "status": "generated",
+      "confidence": "high",
+      "artifact_path": "artifacts/sbom.cdx.json"
+    }
+  ],
+  "control_evaluations": [
+    {
+      "control_id": "SSDF-PS.3",
+      "framework": "NIST_SSDF",
+      "control_name": "Protect code from unauthorized access and tampering",
+      "evaluation_status": "met",
+      "severity_if_missing": "high",
+      "evidence_refs": ["ev-002", "ev-003"],
+      "rationale": "Pull request reviewed and artifact inventory generated"
+    },
+    {
+      "control_id": "ORG-REL-ROLLBACK",
+      "framework": "ORG_INTERNAL",
+      "control_name": "Rollback plan exists and was approved",
+      "evaluation_status": "missing",
+      "severity_if_missing": "critical",
+      "evidence_refs": [],
+      "rationale": "No rollback evidence associated with this release"
+    }
+  ],
+  "summary": {
+    "evidence_coverage_score": 72,
+    "confidence_score": 84,
+    "release_status": "conditional",
+    "missing_critical_evidence": [
+      "rollback_plan",
+      "artifact_signature"
+    ]
+  }
+}

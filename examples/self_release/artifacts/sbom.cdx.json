@@ -7,7 +7,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/agronholm/apscheduler"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -30,17 +30,17 @@
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/psf/cachecontrol/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/psf/cachecontrol"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://pypi.org/project/CacheControl/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -69,22 +69,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://deprecated.readthedocs.io/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/laurent-laporte-pro/deprecated/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/laurent-laporte-pro/deprecated"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/laurent-laporte-pro/deprecated"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -107,22 +107,22 @@
         {
           "comment": "from packaging metadata Project-URL: download",
           "type": "distribution",
-          "url": "http://pypi.python.org/pypi/imageio"
+          "url": "htt./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: documentation",
           "type": "documentation",
-          "url": "https://imageio.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: source",
           "type": "other",
-          "url": "https://github.com/imageio/imageio"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: homepage",
           "type": "website",
-          "url": "https://github.com/imageio/imageio"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -145,27 +145,27 @@
         {
           "comment": "from packaging metadata Project-URL: Chat",
           "type": "chat",
-          "url": "https://discord.gg/pallets"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://jinja.palletsprojects.com/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pallets/jinja/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Donate",
           "type": "other",
-          "url": "https://palletsprojects.com/donate"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changes",
           "type": "release-notes",
-          "url": "https://jinja.palletsprojects.com/changes/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -188,17 +188,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://docs.makotemplates.org"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/sqlalchemy/mako"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://www.makotemplates.org/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -221,27 +221,27 @@
         {
           "comment": "from packaging metadata Project-URL: Chat",
           "type": "chat",
-          "url": "https://discord.gg/pallets"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://markupsafe.palletsprojects.com/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pallets/markupsafe/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Donate",
           "type": "other",
-          "url": "https://palletsprojects.com/donate"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changes",
           "type": "release-notes",
-          "url": "https://markupsafe.palletsprojects.com/page/changes/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -264,7 +264,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://people.csail.mit.edu/hubert/pyaudio/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -287,7 +287,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/jpadilla/pyjwt"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -316,7 +316,7 @@
         {
           "comment": "from packaging metadata Project-URL: homepage",
           "type": "website",
-          "url": "https://www.riverbankcomputing.com/software/pyqt/"
+          "url": "http./self_release"
         }
       ],
       "name": "PyQt5",
@@ -331,7 +331,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://www.riverbankcomputing.com/software/pyqt/"
+          "url": "http./self_release"
         }
       ],
       "name": "PyQt5-Qt5",
@@ -346,7 +346,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/Python-SIP/sip"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -369,37 +369,37 @@
         {
           "comment": "from packaging metadata: Download-URL",
           "type": "distribution",
-          "url": "https://pypi.org/project/PyYAML/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pyyaml.org/wiki/PyYAMLDocumentation"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/yaml/pyyaml/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Mailing lists",
           "type": "other",
-          "url": "http://lists.sourceforge.net/lists/listinfo/yaml-core"
+          "url": "htt./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source Code",
           "type": "other",
-          "url": "https://github.com/yaml/pyyaml"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: CI",
           "type": "other",
-          "url": "https://github.com/yaml/pyyaml/actions"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://pyyaml.org/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -422,27 +422,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pygments.org/docs"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/pygments/pygments/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pygments/pygments"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/pygments/pygments/blob/master/CHANGES"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://pygments.org"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -465,17 +465,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://docs.sqlalchemy.org"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/sqlalchemy/sqlalchemy/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://www.sqlalchemy.org"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -504,7 +504,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/Uberi/speech_recognition#readme"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -527,27 +527,27 @@
         {
           "comment": "from packaging metadata Project-URL: Chat",
           "type": "chat",
-          "url": "https://discord.gg/pallets"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://werkzeug.palletsprojects.com/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pallets/werkzeug/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Donate",
           "type": "other",
-          "url": "https://palletsprojects.com/donate"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changes",
           "type": "release-notes",
-          "url": "https://werkzeug.palletsprojects.com/page/changes/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -570,12 +570,12 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://aiosqlite.omnilib.dev"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Github",
           "type": "vcs",
-          "url": "https://github.com/omnilib/aiosqlite"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -598,27 +598,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://alembic.sqlalchemy.org/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/sqlalchemy/alembic/issues/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/sqlalchemy/alembic/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://alembic.sqlalchemy.org/en/latest/changelog.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://alembic.sqlalchemy.org"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -641,27 +641,27 @@
         {
           "comment": "from packaging metadata: Download-URL",
           "type": "distribution",
-          "url": "http://pypi.python.org/pypi/altgraph"
+          "url": "htt./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://altgraph.readthedocs.io/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/ronaldoussoren/altgraph/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/ronaldoussoren/altgraph"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://altgraph.readthedocs.io"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -684,27 +684,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://github.com/fastapi/annotated-doc"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/fastapi/annotated-doc/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/fastapi/annotated-doc/release-notes.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/fastapi/annotated-doc"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/fastapi/annotated-doc"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -727,17 +727,17 @@
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/annotated-types/annotated-types"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/annotated-types/annotated-types/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/annotated-types/annotated-types"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -760,22 +760,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://anyio.readthedocs.io/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/agronholm/anyio/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source code",
           "type": "other",
-          "url": "https://github.com/agronholm/anyio"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://anyio.readthedocs.io/en/stable/versionhistory.html"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -798,12 +798,12 @@
         {
           "comment": "from packaging metadata: Download-URL",
           "type": "distribution",
-          "url": "https://github.com/mpcabd/python-arabic-reshaper/tarball/master"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/mpcabd/python-arabic-reshaper/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -826,27 +826,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://argon2-cffi.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://github.com/sponsors/hynek"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tidelift",
           "type": "other",
-          "url": "https://tidelift.com/?utm_source=lifter&utm_medium=referral&utm_campaign=hynek"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/hynek/argon2-cffi/blob/main/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: GitHub",
           "type": "vcs",
-          "url": "https://github.com/hynek/argon2-cffi"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -869,22 +869,22 @@
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://github.com/sponsors/hynek"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tidelift",
           "type": "other",
-          "url": "https://tidelift.com/?utm_source=lifter&utm_medium=referral&utm_campaign=hynek"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/hynek/argon2-cffi-bindings/blob/main/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: GitHub",
           "type": "vcs",
-          "url": "https://github.com/hynek/argon2-cffi-bindings"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -907,17 +907,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://arrow.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/arrow-py/arrow/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/arrow-py/arrow"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -940,7 +940,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/wbond/asn1crypto"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -963,27 +963,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://www.attrs.org/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://github.com/sponsors/hynek"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tidelift",
           "type": "other",
-          "url": "https://tidelift.com/subscription/pkg/pypi-attrs?utm_source=pypi-attrs&utm_medium=pypi"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://www.attrs.org/en/stable/changelog.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: GitHub",
           "type": "vcs",
-          "url": "https://github.com/python-attrs/attrs"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1006,37 +1006,37 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://bandit.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/PyCQA/bandit/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Discord",
           "type": "other",
-          "url": "https://discord.gg/qYxpadCgkx"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source Code",
           "type": "other",
-          "url": "https://github.com/PyCQA/bandit"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Release Notes",
           "type": "other",
-          "url": "https://github.com/PyCQA/bandit/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Sponsor",
           "type": "other",
-          "url": "https://psfmember.org/civicrm/contribute/transact/?reset=1&id=42"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://bandit.readthedocs.io/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1059,12 +1059,12 @@
         {
           "comment": "from packaging metadata Project-URL: Download",
           "type": "distribution",
-          "url": "https://www.crummy.com/software/BeautifulSoup/bs4/download/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://www.crummy.com/software/BeautifulSoup/bs4/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1087,7 +1087,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/mahmoud/boltons"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1110,7 +1110,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/bastikr/boolean.py"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1133,17 +1133,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://docs.aws.amazon.com/boto3/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/boto/boto3"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/boto/boto3"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1166,7 +1166,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/boto/botocore"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1195,7 +1195,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/facelessuser/bracex"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1218,22 +1218,22 @@
         {
           "comment": "from packaging metadata Project-URL: issues",
           "type": "issue-tracker",
-          "url": "https://github.com/pypa/build/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: source",
           "type": "other",
-          "url": "https://github.com/pypa/build"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: changelog",
           "type": "release-notes",
-          "url": "https://build.pypa.io/en/stable/changelog.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: homepage",
           "type": "website",
-          "url": "https://build.pypa.io"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1262,7 +1262,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/tkem/cachetools/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1285,12 +1285,12 @@
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/certifi/python-certifi"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/certifi/python-certifi"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1319,32 +1319,32 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://cffi.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/python-cffi/cffi/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source Code",
           "type": "other",
-          "url": "https://github.com/python-cffi/cffi"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Downloads",
           "type": "other",
-          "url": "https://github.com/python-cffi/cffi/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Contact",
           "type": "other",
-          "url": "https://groups.google.com/forum/#!forum/python-cffi"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://cffi.readthedocs.io/en/latest/whatsnew.html"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1367,7 +1367,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/asottile/cfgv"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1390,22 +1390,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://chardet.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/chardet/chardet/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: GitHub Project",
           "type": "other",
-          "url": "https://github.com/chardet/chardet"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/chardet/chardet"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1428,22 +1428,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://charset-normalizer.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/jawah/charset_normalizer/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Code",
           "type": "other",
-          "url": "https://github.com/jawah/charset_normalizer"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/jawah/charset_normalizer/blob/master/CHANGELOG.md"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1466,27 +1466,27 @@
         {
           "comment": "from packaging metadata Project-URL: Chat",
           "type": "chat",
-          "url": "https://discord.gg/pallets"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://click.palletsprojects.com/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pallets/click/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Donate",
           "type": "other",
-          "url": "https://palletsprojects.com/donate"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changes",
           "type": "release-notes",
-          "url": "https://click.palletsprojects.com/page/changes/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1509,22 +1509,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://click-option-group.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/click-contrib/click-option-group/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Code",
           "type": "other",
-          "url": "https://github.com/click-contrib/click-option-group"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/click-contrib/click-option-group"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1547,7 +1547,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/tartley/colorama"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1570,22 +1570,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://contourpy.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://contourpy.readthedocs.io/en/latest/changelog.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/contourpy/contourpy"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/contourpy/contourpy"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1608,32 +1608,32 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://coverage.readthedocs.io/en/7.13.5"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/coveragepy/coveragepy/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Mastodon",
           "type": "other",
-          "url": "https://hachyderm.io/@coveragepy"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Mastodon (nedbat)",
           "type": "other",
-          "url": "https://hachyderm.io/@nedbat"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://tidelift.com/subscription/pkg/pypi-coverage?utm_source=pypi-coverage&utm_medium=referral&utm_campaign=pypi"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/coveragepy/coveragepy"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1662,27 +1662,27 @@
         {
           "comment": "from packaging metadata Project-URL: documentation",
           "type": "documentation",
-          "url": "https://cryptography.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: issues",
           "type": "issue-tracker",
-          "url": "https://github.com/pyca/cryptography/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: source",
           "type": "other",
-          "url": "https://github.com/pyca/cryptography/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: changelog",
           "type": "release-notes",
-          "url": "https://cryptography.io/en/latest/changelog/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: homepage",
           "type": "website",
-          "url": "https://github.com/pyca/cryptography"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1703,32 +1703,32 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://doc.courtbouillon.org/cssselect2/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/Kozea/cssselect2/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Code",
           "type": "other",
-          "url": "https://github.com/Kozea/cssselect2/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Donation",
           "type": "other",
-          "url": "https://opencollective.com/courtbouillon"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/Kozea/cssselect2/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://doc.courtbouillon.org/cssselect2/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1751,12 +1751,12 @@
         {
           "comment": "from packaging metadata Project-URL: repository",
           "type": "vcs",
-          "url": "https://github.com/matplotlib/cycler"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: homepage",
           "type": "website",
-          "url": "https://matplotlib.org/cycler/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1779,32 +1779,32 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://cyclonedx-bom-tool.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/CycloneDX/cyclonedx-python/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://owasp.org/donate/?reponame=www-project-cyclonedx&title=OWASP+CycloneDX"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/CycloneDX/cyclonedx-python/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/CycloneDX/cyclonedx-python/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/CycloneDX/cyclonedx-python/#readme"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1833,32 +1833,32 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://cyclonedx-python-library.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/CycloneDX/cyclonedx-python-lib/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://owasp.org/donate/?reponame=www-project-cyclonedx&title=OWASP+CycloneDX"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/CycloneDX/cyclonedx-python-lib/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/CycloneDX/cyclonedx-python-lib"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/CycloneDX/cyclonedx-python-lib/#readme"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1893,17 +1893,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://deep-translator.readthedocs.io/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/nidhaloff/deep_translator"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/nidhaloff/deep_translator"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1926,12 +1926,12 @@
         {
           "comment": "from packaging metadata: Download-URL",
           "type": "distribution",
-          "url": "https://pypi.python.org/pypi/defusedxml"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/tiran/defusedxml"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1954,22 +1954,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://distlib.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/pypa/distlib/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pypa/distlib"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/pypa/distlib"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -1998,7 +1998,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/python-distro/distro"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2021,22 +2021,22 @@
         {
           "comment": "from packaging metadata Project-URL: documentation",
           "type": "documentation",
-          "url": "https://dnspython.readthedocs.io/en/stable/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: issues",
           "type": "issue-tracker",
-          "url": "https://github.com/rthalley/dnspython/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: repository",
           "type": "vcs",
-          "url": "https://github.com/rthalley/dnspython.git"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: homepage",
           "type": "website",
-          "url": "https://www.dnspython.org"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2059,32 +2059,32 @@
         {
           "comment": "from packaging metadata Project-URL: Download",
           "type": "distribution",
-          "url": "https://pypi.org/project/docutils/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://docutils.sourceforge.io/docs/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue tracker",
           "type": "issue-tracker",
-          "url": "https://sourceforge.net/p/docutils/bugs/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Code",
           "type": "other",
-          "url": "https://sourceforge.net/p/docutils/code/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://docutils.sourceforge.io/HISTORY.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://docutils.sourceforge.io"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2119,7 +2119,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/JoshData/python-email-validator"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2142,7 +2142,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/Kronuz/esprima-python"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2165,22 +2165,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://openpyxl.pages.heptapod.net/et_xmlfile/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tracker",
           "type": "issue-tracker",
-          "url": "https://foss.heptapod.net/openpyxl/et_xmfile/-/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://foss.heptapod.net/openpyxl/et_xmlfile"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://foss.heptapod.net/openpyxl/et_xmlfile"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2203,17 +2203,17 @@
         {
           "comment": "from packaging metadata Project-URL: Issue Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/agronholm/exceptiongroup/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source code",
           "type": "other",
-          "url": "https://github.com/agronholm/exceptiongroup"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/agronholm/exceptiongroup/blob/main/CHANGES.rst"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2236,17 +2236,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://python-face.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/mahmoud/face"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/mahmoud/face"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2269,27 +2269,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://fastapi.tiangolo.com/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/fastapi/fastapi/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://fastapi.tiangolo.com/release-notes/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/fastapi/fastapi"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/fastapi/fastapi"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2312,22 +2312,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://py-filelock.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/tox-dev/py-filelock/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/tox-dev/py-filelock"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/tox-dev/py-filelock"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2350,7 +2350,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "http://github.com/fonttools/fonttools"
+          "url": "htt./self_release"
         }
       ],
       "licenses": [
@@ -2373,27 +2373,27 @@
         {
           "comment": "from packaging metadata: Download-URL",
           "type": "distribution",
-          "url": "https://github.com/py-pdf/fpdf2/tarball/2.7.9"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://py-pdf.github.io/fpdf2/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/py-pdf/fpdf2/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Code",
           "type": "other",
-          "url": "https://github.com/py-pdf/fpdf2"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://py-pdf.github.io/fpdf2/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2416,7 +2416,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/ypcrts/fqdn"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2439,7 +2439,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/rougier/freetype-py"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2462,12 +2462,12 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://glom.readthedocs.io/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/mahmoud/glom"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2490,7 +2490,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/googleapis/google-cloud-python/tree/main/packages/google-ai-generativelanguage"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2513,12 +2513,12 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://googleapis.dev/python/google-api-core/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/googleapis/python-api-core"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2547,7 +2547,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/googleapis/google-api-python-client/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2570,7 +2570,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/googleapis/google-auth-library-python"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2603,7 +2603,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/GoogleCloudPlatform/google-auth-library-python-httplib2"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2626,7 +2626,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/googleapis/python-genai"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2649,7 +2649,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/google/generative-ai-python"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2672,7 +2672,7 @@
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/googleapis/google-cloud-python/tree/main/packages/googleapis-common-protos"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2695,27 +2695,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://greenlet.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/python-greenlet/greenlet/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source Code",
           "type": "other",
-          "url": "https://github.com/python-greenlet/greenlet/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changes",
           "type": "release-notes",
-          "url": "https://greenlet.readthedocs.io/en/latest/changes.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://greenlet.readthedocs.io/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2736,22 +2736,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://grpc.github.io/grpc/python"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/grpc/grpc/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source Code",
           "type": "other",
-          "url": "https://github.com/grpc/grpc"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://grpc.io"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2774,7 +2774,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://grpc.io"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2797,7 +2797,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/python-hyper/h11"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2820,7 +2820,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/html5lib/html5lib-python"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2843,17 +2843,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://www.encode.io/httpcore"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/encode/httpcore"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://www.encode.io/httpcore/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2876,7 +2876,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/httplib2/httplib2"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2899,7 +2899,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/MagicStack/httptools"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2922,22 +2922,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://www.python-httpx.org"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/encode/httpx"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/encode/httpx/blob/master/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/encode/httpx"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2966,7 +2966,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/florimondmanca/httpx-sse"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -2989,17 +2989,17 @@
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/di/id/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/di/id"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://pypi.org/project/id/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3022,7 +3022,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/pre-commit/identify"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3045,17 +3045,17 @@
         {
           "comment": "from packaging metadata Project-URL: Issue tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/kjd/idna/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/kjd/idna"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/kjd/idna/blob/master/HISTORY.rst"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3078,12 +3078,12 @@
         {
           "comment": "from packaging metadata: Download-URL",
           "type": "distribution",
-          "url": "http://pypi.python.org/pypi/imageio-ffmpeg"
+          "url": "htt./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/imageio/imageio-ffmpeg"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3112,7 +3112,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/python/importlib_metadata"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3135,7 +3135,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/pytest-dev/iniconfig"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3158,22 +3158,22 @@
         {
           "comment": "from packaging metadata Project-URL: Bug Reports",
           "type": "issue-tracker",
-          "url": "https://github.com/bolsote/isoduration/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/bolsote/isoduration/blob/master/CHANGELOG"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/bolsote/isoduration"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/bolsote/isoduration"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3196,7 +3196,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/jaraco/jaraco.classes"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3219,7 +3219,7 @@
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/jaraco/jaraco.context"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3242,7 +3242,7 @@
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/jaraco/jaraco.functools"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3265,7 +3265,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/pydantic/jiter/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3288,7 +3288,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/jmespath/jmespath.py"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3311,7 +3311,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/stefankoegl/python-json-pointer"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3334,37 +3334,37 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://python-jsonschema.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/python-jsonschema/jsonschema/issues/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/python-jsonschema/jsonschema"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://github.com/sponsors/Julian"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tidelift",
           "type": "other",
-          "url": "https://tidelift.com/subscription/pkg/pypi-jsonschema?utm_source=pypi-jsonschema&utm_medium=referral&utm_campaign=pypi-link"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/python-jsonschema/jsonschema/blob/main/CHANGELOG.rst"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/python-jsonschema/jsonschema"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3393,32 +3393,32 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://jsonschema-specifications.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/python-jsonschema/jsonschema-specifications/issues/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/python-jsonschema/jsonschema-specifications"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://github.com/sponsors/Julian"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tidelift",
           "type": "other",
-          "url": "https://tidelift.com/subscription/pkg/pypi-jsonschema-specifications?utm_source=pypi-jsonschema-specifications&utm_medium=referral&utm_campaign=pypi-link"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/python-jsonschema/jsonschema-specifications"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3441,7 +3441,7 @@
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/jaraco/keyring"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3464,22 +3464,22 @@
         {
           "comment": "from packaging metadata Project-URL: documentation",
           "type": "documentation",
-          "url": "https://kiwisolver.readthedocs.io/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: changelog",
           "type": "release-notes",
-          "url": "https://github.com/nucleic/kiwi/blob/main/releasenotes.rst"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: repository",
           "type": "vcs",
-          "url": "https://github.com/nucleic/kiwi"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: homepage",
           "type": "website",
-          "url": "https://github.com/nucleic/kiwi"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3502,12 +3502,12 @@
         {
           "comment": "from packaging metadata Project-URL: Download",
           "type": "distribution",
-          "url": "https://github.com/lark-parser/lark/tarball/master"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/lark-parser/lark"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3530,12 +3530,12 @@
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/mypyc/mypyc/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/mypyc/librt"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3558,7 +3558,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/aboutcode-org/license-expression"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3581,17 +3581,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://limits.readthedocs.org"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/alisaifee/limits"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://limits.readthedocs.org"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3614,17 +3614,17 @@
         {
           "comment": "from packaging metadata Project-URL: Bug Tracker",
           "type": "issue-tracker",
-          "url": "https://bugs.launchpad.net/lxml"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/lxml/lxml"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://lxml.de/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3647,12 +3647,12 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://markdown-it-py.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/executablebooks/markdown-it-py"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3675,37 +3675,37 @@
         {
           "comment": "from packaging metadata Project-URL: Download",
           "type": "distribution",
-          "url": "https://matplotlib.org/stable/install/index.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://matplotlib.org"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/matplotlib/matplotlib/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Forum",
           "type": "other",
-          "url": "https://discourse.matplotlib.org/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source Code",
           "type": "other",
-          "url": "https://github.com/matplotlib/matplotlib"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Donate",
           "type": "other",
-          "url": "https://numfocus.org/donate-to-matplotlib"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://matplotlib.org"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3728,17 +3728,17 @@
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/modelcontextprotocol/python-sdk/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/modelcontextprotocol/python-sdk"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://modelcontextprotocol.io"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3761,7 +3761,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/executablebooks/mdurl"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3784,12 +3784,12 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://more-itertools.readthedocs.io/en/stable/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/more-itertools/more-itertools"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3812,22 +3812,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "http://docs.getmoto.org/en/latest/"
+          "url": "htt./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/getmoto/moto/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/getmoto/moto/blob/master/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/getmoto/moto"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3850,22 +3850,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "http://mpmath.org/doc/current/"
+          "url": "htt./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/fredrik-johansson/mpmath/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/fredrik-johansson/mpmath"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "http://mpmath.org/"
+          "url": "htt./self_release"
         }
       ],
       "licenses": [
@@ -3888,27 +3888,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://msgpack-python.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/msgpack/msgpack-python/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/msgpack/msgpack-python/blob/main/ChangeLog.rst"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/msgpack/msgpack-python/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://msgpack.org/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3931,27 +3931,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://mypy.readthedocs.io/en/stable/index.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/python/mypy/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/python/mypy/blob/master/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/python/mypy"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://www.mypy-lang.org/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3974,7 +3974,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/python/mypy_extensions"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -3997,7 +3997,7 @@
         {
           "comment": "from packaging metadata Project-URL: Source Code",
           "type": "other",
-          "url": "https://github.com/messense/nh3"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4020,7 +4020,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/ekalinin/nodeenv"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4043,32 +4043,32 @@
         {
           "comment": "from packaging metadata Project-URL: download",
           "type": "distribution",
-          "url": "https://pypi.org/project/numpy/#files"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: documentation",
           "type": "documentation",
-          "url": "https://numpy.org/doc/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/numpy/numpy/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: source",
           "type": "other",
-          "url": "https://github.com/numpy/numpy"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: release notes",
           "type": "other",
-          "url": "https://numpy.org/doc/stable/release"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: homepage",
           "type": "website",
-          "url": "https://numpy.org"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4089,7 +4089,7 @@
         {
           "comment": "PackageSource: Local",
           "type": "distribution",
-          "url": "file:///C:/Users/Lucas%20Grifoni/Downloads/My%20Projects%20-%20AppSec%20%26%20DevSecOps/Projeto%20-%20Threat%20Modeling%20%28App%20Suite%20Modeling%29"
+          "url": "fil./self_release"
         }
       ],
       "licenses": [
@@ -4111,12 +4111,12 @@
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/openai/openai-python"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/openai/openai-python"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4145,22 +4145,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://openpyxl.readthedocs.io/en/stable/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tracker",
           "type": "issue-tracker",
-          "url": "https://foss.heptapod.net/openpyxl/openpyxl/-/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://foss.heptapod.net/openpyxl/openpyxl"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://openpyxl.readthedocs.io"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4183,12 +4183,12 @@
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/open-telemetry/opentelemetry-python"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-api"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4211,12 +4211,12 @@
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/open-telemetry/opentelemetry-python"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp-proto-common"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4239,12 +4239,12 @@
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/open-telemetry/opentelemetry-python"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp-proto-http"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4267,12 +4267,12 @@
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/open-telemetry/opentelemetry-python-contrib"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/opentelemetry-instrumentation"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4295,12 +4295,12 @@
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/open-telemetry/opentelemetry-python-contrib"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-requests"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4323,12 +4323,12 @@
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/open-telemetry/opentelemetry-python-contrib"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/open-telemetry/opentelemetry-python-contrib/instrumentation/opentelemetry-instrumentation-threading"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4351,12 +4351,12 @@
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/open-telemetry/opentelemetry-python"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-proto"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4379,12 +4379,12 @@
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/open-telemetry/opentelemetry-python"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-sdk"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4407,12 +4407,12 @@
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/open-telemetry/opentelemetry-python"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-semantic-conventions"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4435,12 +4435,12 @@
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/open-telemetry/opentelemetry-python-contrib"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/util/opentelemetry-util-http"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4463,7 +4463,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/wbond/oscrypto"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4486,37 +4486,37 @@
         {
           "comment": "PackageSource: Local",
           "type": "distribution",
-          "url": "file:///C:/Users/Lucas%20Grifoni/Downloads/My%20Projects%20-%20AppSec%20%26%20DevSecOps/4.Projeto%20-%20OSS%20Security%20Policy%20as%20Code%20Starter%20Kit"
+          "url": "fil./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://github.com/lucashgrifoni/OSS-Security-Policy-as-Code-Starter-Kit#readme"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/lucashgrifoni/OSS-Security-Policy-as-Code-Starter-Kit/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Security",
           "type": "other",
-          "url": "https://github.com/lucashgrifoni/OSS-Security-Policy-as-Code-Starter-Kit/blob/main/SECURITY.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/lucashgrifoni/OSS-Security-Policy-as-Code-Starter-Kit/blob/main/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/lucashgrifoni/OSS-Security-Policy-as-Code-Starter-Kit"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/lucashgrifoni/OSS-Security-Policy-as-Code-Starter-Kit"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4538,32 +4538,32 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://github.com/lucashgrifoni/OSS-Security-Policy-as-Code-Starter-Kit#readme"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/lucashgrifoni/OSS-Security-Policy-as-Code-Starter-Kit/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Security",
           "type": "other",
-          "url": "https://github.com/lucashgrifoni/OSS-Security-Policy-as-Code-Starter-Kit/blob/main/SECURITY.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/lucashgrifoni/OSS-Security-Policy-as-Code-Starter-Kit/blob/main/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/lucashgrifoni/OSS-Security-Policy-as-Code-Starter-Kit"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/lucashgrifoni/OSS-Security-Policy-as-Code-Starter-Kit"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4586,7 +4586,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/package-url/packageurl-python"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4609,12 +4609,12 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://packaging.pypa.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pypa/packaging"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4635,17 +4635,17 @@
         {
           "comment": "from packaging metadata Project-URL: documentation",
           "type": "documentation",
-          "url": "https://pandas.pydata.org/docs/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: repository",
           "type": "vcs",
-          "url": "https://github.com/pandas-dev/pandas"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: homepage",
           "type": "website",
-          "url": "https://pandas.pydata.org"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4668,12 +4668,12 @@
         {
           "comment": "from packaging metadata: Download-URL",
           "type": "distribution",
-          "url": "https://pypi.python.org/packages/source/p/passlib/passlib-1.7.4.tar.gz"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://passlib.readthedocs.io"
+          "url": "http./self_release"
         }
       ],
       "name": "passlib",
@@ -4688,17 +4688,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://python-path-specification.readthedocs.io/en/latest/index.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/cpburnz/python-pathspec/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source Code",
           "type": "other",
-          "url": "https://github.com/cpburnz/python-pathspec"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4721,7 +4721,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/pdfminer/pdfminer.six"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4744,7 +4744,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/jsvine/pdfplumber"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4767,17 +4767,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://docs.peewee-orm.com/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/coleifer/peewee/blob/master/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/coleifer/peewee"
+          "url": "http./self_release"
         }
       ],
       "name": "peewee",
@@ -4792,12 +4792,12 @@
         {
           "comment": "from packaging metadata: Download-URL",
           "type": "distribution",
-          "url": "https://github.com/erocarrera/pefile/releases/download/v2024.8.26/pefile-2024.8.26.tar.gz"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/erocarrera/pefile"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4820,37 +4820,37 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pillow.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Mastodon",
           "type": "other",
-          "url": "https://fosstodon.org/@pillow"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/python-pillow/Pillow"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Release notes",
           "type": "other",
-          "url": "https://pillow.readthedocs.io/en/stable/releasenotes/index.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://tidelift.com/subscription/pkg/pypi-pillow?utm_source=pypi-pillow&utm_medium=pypi"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/python-pillow/Pillow/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://python-pillow.github.io"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4873,22 +4873,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pip.pypa.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pypa/pip"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://pip.pypa.io/en/stable/news/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://pip.pypa.io/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4911,22 +4911,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pip.pypa.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pypa/pip"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://pip.pypa.io/en/stable/news/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://pip.pypa.io/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4949,7 +4949,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "http://github.com/di/pip-api"
+          "url": "htt./self_release"
         }
       ],
       "licenses": [
@@ -4972,7 +4972,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/nexB/pip-requirements-parser"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -4995,17 +4995,17 @@
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/pypa/pip-audit/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pypa/pip-audit"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://pypi.org/project/pip-audit/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5028,27 +5028,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://platformdirs.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/tox-dev/platformdirs/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/tox-dev/platformdirs"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://platformdirs.readthedocs.io/en/latest/changelog.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/tox-dev/platformdirs"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5087,7 +5087,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/pre-commit/pre-commit"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5110,12 +5110,12 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://prometheus.github.io/client_python/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/prometheus/client_python"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5136,12 +5136,12 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://googleapis.dev/python/proto-plus/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/googleapis/proto-plus-python"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5163,7 +5163,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://developers.google.com/protocol-buffers/"
+          "url": "http./self_release"
         }
       ],
       "name": "protobuf",
@@ -5178,37 +5178,37 @@
         {
           "comment": "from packaging metadata Project-URL: Download",
           "type": "distribution",
-          "url": "https://pypi.org/project/psycopg2/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://www.psycopg.org/docs/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/psycopg/psycopg2/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Code",
           "type": "other",
-          "url": "https://github.com/psycopg/psycopg2"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changes",
           "type": "release-notes",
-          "url": "https://www.psycopg.org/docs/news.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://psycopg.org/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://psycopg.org/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5231,22 +5231,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://py-serializable.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/madpah/serializable/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/madpah/serializable"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/madpah/serializable#readme"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5275,27 +5275,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://docs.pyhanko.eu/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/MatthiasValvekens/pyHanko/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source Code",
           "type": "other",
-          "url": "https://github.com/MatthiasValvekens/pyHanko"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changes",
           "type": "release-notes",
-          "url": "https://docs.pyhanko.eu/en/latest/changelog.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/MatthiasValvekens/pyHanko"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5318,27 +5318,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pyasn1.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/pyasn1/pyasn1/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pyasn1/pyasn1"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://pyasn1.readthedocs.io/en/latest/changelog.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/pyasn1/pyasn1"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5367,22 +5367,22 @@
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/pyasn1/pyasn1-modules/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pyasn1/pyasn1-modules"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/pyasn1/pyasn1-modules/blob/master/CHANGES.txt"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/pyasn1/pyasn1-modules"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5405,12 +5405,12 @@
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pygobject/pycairo"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://pycairo.readthedocs.io"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5431,7 +5431,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/eliben/pycparser"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5460,27 +5460,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://docs.pydantic.dev"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pydantic/pydantic"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://github.com/sponsors/samuelcolvin"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://docs.pydantic.dev/latest/changelog/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/pydantic/pydantic"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5503,27 +5503,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://docs.pydantic.dev/dev-v2/concepts/pydantic_settings/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pydantic/pydantic-settings"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://github.com/sponsors/samuelcolvin"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/pydantic/pydantic-settings/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/pydantic/pydantic-settings"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5546,22 +5546,22 @@
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pydantic/pydantic-core"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://github.com/sponsors/samuelcolvin"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/pydantic/pydantic-core"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/pydantic/pydantic-core"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5584,7 +5584,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "http://pydub.com"
+          "url": "htt./self_release"
         }
       ],
       "licenses": [
@@ -5607,7 +5607,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/MatthiasValvekens/pyHanko/tree/master/pkgs/pyhanko-certvalidator"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5630,22 +5630,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pyinstaller.org"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source Code",
           "type": "other",
-          "url": "https://github.com/pyinstaller/pyinstaller"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Release Notes",
           "type": "other",
-          "url": "https://pyinstaller.org/en/stable/CHANGES.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://pyinstaller.org"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5668,12 +5668,12 @@
         {
           "comment": "from packaging metadata: Download-URL",
           "type": "distribution",
-          "url": "https://pypi.org/project/pyinstaller-hooks-contrib"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/pyinstaller/pyinstaller-hooks-contrib"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5702,27 +5702,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pyauth.github.io/pyotp"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/pyauth/pyotp/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source Code",
           "type": "other",
-          "url": "https://github.com/pyauth/pyotp"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Change Log",
           "type": "release-notes",
-          "url": "https://github.com/pyauth/pyotp/blob/master/Changes.rst"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/pyotp/pyotp"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5745,17 +5745,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pyparsing-docs.readthedocs.io/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pyparsing/pyparsing.git"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/pyparsing/pyparsing/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5778,22 +5778,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pypdf.readthedocs.io/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Reports",
           "type": "issue-tracker",
-          "url": "https://github.com/py-pdf/pypdf/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/py-pdf/pypdf"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://pypdf.readthedocs.io/en/latest/meta/CHANGELOG.html"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5816,27 +5816,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pypdfium2.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/pypdfium2-team/pypdfium2/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pypdfium2-team/pypdfium2"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://pypdfium2.readthedocs.io/en/stable/changelog.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/pypdfium2-team/pypdfium2"
+          "url": "http./self_release"
         }
       ],
       "name": "pypdfium2",
@@ -5851,17 +5851,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pyproject-hooks.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pypa/pyproject-hooks"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://pyproject-hooks.readthedocs.io/en/latest/changelog.html"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5884,32 +5884,32 @@
         {
           "comment": "from packaging metadata Project-URL: Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/pytest-dev/pytest/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Contact",
           "type": "other",
-          "url": "https://docs.pytest.org/en/stable/contact.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://docs.pytest.org/en/stable/sponsor.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pytest-dev/pytest"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://docs.pytest.org/en/stable/changelog.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://docs.pytest.org/en/latest/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5932,27 +5932,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pytest-asyncio.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/pytest-dev/pytest-asyncio/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source Code",
           "type": "other",
-          "url": "https://github.com/pytest-dev/pytest-asyncio"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://pytest-asyncio.readthedocs.io/en/latest/reference/changelog.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/pytest-dev/pytest-asyncio"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -5975,22 +5975,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pytest-cov.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/pytest-dev/pytest-cov/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://pytest-cov.readthedocs.io/en/latest/changelog.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/pytest-dev/pytest-cov"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6013,27 +6013,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://python-bidi.readthedocs.io/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/MeirKriheli/python-bidi/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/MeirKriheli/python-bidi/blob/master/CHANGELOG.rst"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/MeirKriheli/python-bidi"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/MeirKriheli/python-bidi"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6056,17 +6056,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://dateutil.readthedocs.io/en/stable/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/dateutil/dateutil"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/dateutil/dateutil"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6095,27 +6095,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://python-discovery.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/tox-dev/python-discovery/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/tox-dev/python-discovery"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/tox-dev/python-discovery/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/tox-dev/python-discovery"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6138,22 +6138,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://python-docx.readthedocs.org/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/python-openxml/python-docx/blob/master/HISTORY.rst"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/python-openxml/python-docx"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/python-openxml/python-docx"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6176,7 +6176,7 @@
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/theskumar/python-dotenv"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6199,7 +6199,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "http://github.com/madzak/python-json-logger"
+          "url": "htt./self_release"
         }
       ],
       "licenses": [
@@ -6222,22 +6222,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://kludex.github.io/python-multipart/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/Kludex/python-multipart"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/Kludex/python-multipart/blob/master/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/Kludex/python-multipart"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6260,22 +6260,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://python-pptx.readthedocs.io/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/scanny/python-pptx/blob/master/HISTORY.rst"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/scanny/python-pptx"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/scanny/python-pptx"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6298,12 +6298,12 @@
         {
           "comment": "from packaging metadata: Download-URL",
           "type": "distribution",
-          "url": "https://pypi.org/project/pytz/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "http://pythonhosted.org/pytz"
+          "url": "htt./self_release"
         }
       ],
       "licenses": [
@@ -6326,32 +6326,32 @@
         {
           "comment": "from packaging metadata Project-URL: Docs",
           "type": "documentation",
-          "url": "https://mhammond.github.io/pywin32/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Support Requests",
           "type": "other",
-          "url": "https://github.com/mhammond/pywin32/discussions"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bugs",
           "type": "other",
-          "url": "https://github.com/mhammond/pywin32/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Mailing List",
           "type": "other",
-          "url": "https://mail.python.org/mailman/listinfo/python-win32"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changes",
           "type": "release-notes",
-          "url": "https://github.com/mhammond/pywin32/blob/main/CHANGES.txt"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/mhammond/pywin32"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6374,7 +6374,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/enthought/pywin32-ctypes"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6397,7 +6397,7 @@
         {
           "comment": "from packaging metadata Project-URL: Home-page",
           "type": "website",
-          "url": "https://github.com/pypa/readme_renderer"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6420,27 +6420,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://redis.readthedocs.io/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/redis/redis-py/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Code",
           "type": "other",
-          "url": "https://github.com/redis/redis-py"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changes",
           "type": "release-notes",
-          "url": "https://github.com/redis/redis-py/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/redis/redis-py"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6463,37 +6463,37 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://referencing.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/python-jsonschema/referencing/issues/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/python-jsonschema/referencing"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://github.com/sponsors/Julian"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tidelift",
           "type": "other",
-          "url": "https://tidelift.com/subscription/pkg/pypi-referencing?utm_source=pypi-referencing&utm_medium=referral&utm_campaign=pypi-link"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://referencing.readthedocs.io/en/stable/changes/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/python-jsonschema/referencing"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6516,7 +6516,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://www.reportlab.com/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6549,12 +6549,12 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://requests.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/psf/requests"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6583,17 +6583,17 @@
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/requests/toolbelt"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/requests/toolbelt/blob/master/HISTORY.rst"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://toolbelt.readthedocs.io/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6616,27 +6616,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://github.com/getsentry/responses/blob/master/README.rst"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/getsentry/responses/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source Code",
           "type": "other",
-          "url": "https://github.com/getsentry/responses"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changes",
           "type": "release-notes",
-          "url": "https://github.com/getsentry/responses/blob/master/CHANGES"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/getsentry/responses"
+          "url": "http./self_release"
         }
       ],
       "name": "responses",
@@ -6651,7 +6651,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/naimetti/rfc3339-validator"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6674,7 +6674,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "http://rfc3986.readthedocs.io"
+          "url": "htt./self_release"
         }
       ],
       "licenses": [
@@ -6697,7 +6697,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/naimetti/rfc3986-validator"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6720,22 +6720,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://github.com/willynilly/rfc3987-syntax#readme"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/willynilly/rfc3987-syntax/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/willynilly/rfc3987-syntax"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/willynilly/rfc3987-syntax"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6758,12 +6758,12 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://rich.readthedocs.io/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/Textualize/rich"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6802,37 +6802,37 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://rpds.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/crate-py/rpds/issues/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/crate-py/rpds"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Upstream",
           "type": "other",
-          "url": "https://github.com/orium/rpds"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://github.com/sponsors/Julian"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tidelift",
           "type": "other",
-          "url": "https://tidelift.com/subscription/pkg/pypi-rpds-py?utm_source=pypi-rpds-py&utm_medium=referral&utm_campaign=pypi-link"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/crate-py/rpds"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6855,12 +6855,12 @@
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/sybrenstuvel/python-rsa"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://stuvel.eu/rsa"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6889,22 +6889,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://yaml.dev/doc/ruamel.yaml"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tracker",
           "type": "issue-tracker",
-          "url": "https://sourceforge.net/p/ruamel-yaml/tickets/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://sourceforge.net/p/ruamel-yaml/code/ci/default/tree/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Home",
           "type": "website",
-          "url": "https://sourceforge.net/p/ruamel-yaml/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6927,22 +6927,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://yaml.dev/doc/ruamel.yaml.clib/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tracker",
           "type": "issue-tracker",
-          "url": "https://sourceforge.net/p/ruamel-yaml-clib/tickets/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://sourceforge.net/p/ruamel-yaml-clib/code/ci/default/tree/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Home",
           "type": "website",
-          "url": "https://sourceforge.net/p/ruamel-yaml-clib/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -6965,22 +6965,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://docs.astral.sh/ruff/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/astral-sh/ruff/blob/main/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/astral-sh/ruff"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://docs.astral.sh/ruff"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7003,7 +7003,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/boto/s3transfer"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7026,27 +7026,27 @@
         {
           "comment": "from packaging metadata Project-URL: download",
           "type": "distribution",
-          "url": "https://github.com/scipy/scipy/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: documentation",
           "type": "documentation",
-          "url": "https://docs.scipy.org/doc/scipy/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/scipy/scipy/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: source",
           "type": "other",
-          "url": "https://github.com/scipy/scipy"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: homepage",
           "type": "website",
-          "url": "https://scipy.org/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7069,12 +7069,12 @@
         {
           "comment": "from packaging metadata Project-URL: Docs",
           "type": "documentation",
-          "url": "http://seaborn.pydata.org"
+          "url": "htt./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/mwaskom/seaborn"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7097,17 +7097,17 @@
         {
           "comment": "PackageSource: Local",
           "type": "distribution",
-          "url": "file:///C:/Users/Lucas%20Grifoni/Downloads/My%20Projects%20-%20AppSec%20%26%20DevSecOps/5.Projeto%20-%20Secure%20SDLC%20Evidence%20Collector"
+          "url": "fil./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/LucasGrifoni/secure-sdlc-evidence-collector/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/LucasGrifoni/secure-sdlc-evidence-collector"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7135,7 +7135,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/rbarrois/python-semanticversion"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7158,27 +7158,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://semgrep.dev/docs"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/semgrep/semgrep/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/semgrep/semgrep/blob/develop/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/semgrep/semgrep"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://semgrep.dev"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7201,17 +7201,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://setuptools.pypa.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pypa/setuptools"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://setuptools.pypa.io/en/stable/history.html"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7234,7 +7234,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/sarugaku/shellingham"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7257,7 +7257,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/benjaminp/six"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7280,17 +7280,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://slowapi.readthedocs.io/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/laurents/slowapi"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/laurents/slowapi"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7329,17 +7329,17 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://sniffio.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://sniffio.readthedocs.io/en/latest/history.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/python-trio/sniffio"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7360,7 +7360,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "http://www.grantjenks.com/docs/sortedcontainers/"
+          "url": "htt./self_release"
         }
       ],
       "licenses": [
@@ -7383,7 +7383,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/facelessuser/soupsieve"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7406,7 +7406,7 @@
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/sysid/sse-starlette"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7429,27 +7429,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://starlette.dev/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/Kludex/starlette"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://github.com/sponsors/Kludex"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://starlette.dev/release-notes/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/Kludex/starlette"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7472,12 +7472,12 @@
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://opendev.org/openstack/stevedore"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://docs.openstack.org/stevedore"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7506,7 +7506,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/deeplook/svglib"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7529,7 +7529,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/astanin/python-tabulate"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7552,7 +7552,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/jd/tenacity"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7575,32 +7575,32 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://doc.courtbouillon.org/tinycss2/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/Kozea/tinycss2/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Code",
           "type": "other",
-          "url": "https://github.com/Kozea/tinycss2/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Donation",
           "type": "other",
-          "url": "https://opencollective.com/courtbouillon"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/Kozea/tinycss2/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://www.courtbouillon.org/tinycss2"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7623,12 +7623,12 @@
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/hukkin/tomli/blob/master/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/hukkin/tomli"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7651,12 +7651,12 @@
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/hukkin/tomli-w/blob/master/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/hukkin/tomli-w"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7695,22 +7695,22 @@
         {
           "comment": "from packaging metadata Project-URL: wiki",
           "type": "other",
-          "url": "https://github.com/tqdm/tqdm/wiki"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: changelog",
           "type": "release-notes",
-          "url": "https://tqdm.github.io/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: repository",
           "type": "vcs",
-          "url": "https://github.com/tqdm/tqdm"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: homepage",
           "type": "website",
-          "url": "https://tqdm.github.io"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7731,22 +7731,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://twine.readthedocs.io/en/latest/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pypa/twine/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Packaging tutorial",
           "type": "other",
-          "url": "https://packaging.python.org/tutorials/packaging-projects/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://twine.readthedocs.io/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7769,27 +7769,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://typer.tiangolo.com"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/fastapi/typer/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://typer.tiangolo.com/release-notes/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/fastapi/typer"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/fastapi/typer"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7812,27 +7812,27 @@
         {
           "comment": "from packaging metadata Project-URL: Chat",
           "type": "chat",
-          "url": "https://gitter.im/python/typing"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/python/typeshed/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changes",
           "type": "release-notes",
-          "url": "https://github.com/typeshed-internal/stub_uploader/blob/main/data/changelogs/PyYAML.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: GitHub",
           "type": "vcs",
-          "url": "https://github.com/python/typeshed"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/python/typeshed"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7855,27 +7855,27 @@
         {
           "comment": "from packaging metadata Project-URL: Chat",
           "type": "chat",
-          "url": "https://gitter.im/python/typing"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/python/typeshed/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changes",
           "type": "release-notes",
-          "url": "https://github.com/typeshed-internal/stub_uploader/blob/main/data/changelogs/jsonschema.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: GitHub",
           "type": "vcs",
-          "url": "https://github.com/python/typeshed"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/python/typeshed"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7898,22 +7898,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://pydantic.github.io/typing-inspection/dev/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pydantic/typing-inspection"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/pydantic/typing-inspection/blob/main/HISTORY.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/pydantic/typing-inspection"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7936,32 +7936,32 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://typing-extensions.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/python/typing_extensions/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Q & A",
           "type": "other",
-          "url": "https://github.com/python/typing/discussions"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changes",
           "type": "release-notes",
-          "url": "https://github.com/python/typing_extensions/blob/main/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/python/typing_extensions"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Home",
           "type": "website",
-          "url": "https://github.com/python/typing_extensions"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -7984,22 +7984,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://tzdata.python.org"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Reports",
           "type": "issue-tracker",
-          "url": "https://github.com/python/tzdata/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/python/tzdata"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/python/tzdata"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8022,17 +8022,17 @@
         {
           "comment": "from packaging metadata Project-URL: Issue tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/regebro/tzlocal/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source code",
           "type": "other",
-          "url": "https://github.com/regebro/tzlocal"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/regebro/tzlocal/blob/master/CHANGES.txt"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8055,7 +8055,7 @@
         {
           "comment": "from packaging metadata Project-URL: homepage",
           "type": "website",
-          "url": "https://gitlab.linss.com/open-source/python/uri-template"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8078,12 +8078,12 @@
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/python-hyper/uritemplate"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://uritemplate.readthedocs.org"
+          "url": "http./self_release"
         }
       ],
       "name": "uritemplate",
@@ -8098,7 +8098,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/tkem/uritools/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8121,22 +8121,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://urllib3.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/urllib3/urllib3/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Code",
           "type": "other",
-          "url": "https://github.com/urllib3/urllib3"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/urllib3/urllib3/blob/main/CHANGES.rst"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8159,32 +8159,32 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://docs.astral.sh/uv"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Discord",
           "type": "other",
-          "url": "https://discord.gg/astral-sh"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Releases",
           "type": "other",
-          "url": "https://github.com/astral-sh/uv/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/astral-sh/uv/blob/main/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/astral-sh/uv"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://pypi.org/project/uv/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8205,22 +8205,22 @@
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/encode/uvicorn"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://github.com/sponsors/encode"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/encode/uvicorn/blob/master/CHANGELOG.md"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://www.uvicorn.org/"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8249,22 +8249,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://virtualenv.pypa.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/pypa/virtualenv/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/pypa/virtualenv"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/pypa/virtualenv"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8287,32 +8287,32 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://watchfiles.helpmanual.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/samuelcolvin/watchfiles"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://github.com/sponsors/samuelcolvin"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/samuelcolvin/watchfiles/releases"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/samuelcolvin/watchfiles"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/samuelcolvin/watchfiles"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8335,7 +8335,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/facelessuser/wcmatch"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8358,12 +8358,12 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://webcolors.readthedocs.io"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Source Code",
           "type": "other",
-          "url": "https://github.com/ubernostrum/webcolors"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8392,7 +8392,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/SimonSapin/python-webencodings"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8415,27 +8415,27 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://websockets.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/python-websockets/websockets/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Funding",
           "type": "other",
-          "url": "https://tidelift.com/subscription/pkg/pypi-websockets?utm_source=pypi-websockets&utm_medium=referral&utm_campaign=readme"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://websockets.readthedocs.io/en/stable/project/changelog.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/python-websockets/websockets"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8464,22 +8464,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://wrapt.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug Tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/GrahamDumpleton/wrapt/issues/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://wrapt.readthedocs.io/en/latest/changes.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/GrahamDumpleton/wrapt"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8502,22 +8502,22 @@
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "https://xhtml2pdf.readthedocs.io/"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Bug tracker",
           "type": "issue-tracker",
-          "url": "https://github.com/xhtml2pdf/xhtml2pdf/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://xhtml2pdf.readthedocs.io/en/latest/release-notes.html"
+          "url": "http./self_release"
         },
         {
           "comment": "from packaging metadata Project-URL: Repository",
           "type": "vcs",
-          "url": "https://github.com/xhtml2pdf/xhtml2pdf"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8540,7 +8540,7 @@
         {
           "comment": "from packaging metadata: Home-page",
           "type": "website",
-          "url": "https://github.com/jmcnamara/XlsxWriter"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8569,7 +8569,7 @@
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://github.com/martinblech/xmltodict"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -8592,7 +8592,7 @@
         {
           "comment": "from packaging metadata Project-URL: Source",
           "type": "other",
-          "url": "https://github.com/jaraco/zipp"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -10555,12 +10555,12 @@
         {
           "comment": "from pyproject urls: Issues",
           "type": "issue-tracker",
-          "url": "https://github.com/LucasGrifoni/secure-sdlc-evidence-collector/issues"
+          "url": "http./self_release"
         },
         {
           "comment": "from pyproject urls: Homepage",
           "type": "website",
-          "url": "https://github.com/LucasGrifoni/secure-sdlc-evidence-collector"
+          "url": "http./self_release"
         }
       ],
       "licenses": [
@@ -10589,35 +10589,35 @@
           "externalReferences": [
             {
               "type": "build-system",
-              "url": "https://github.com/CycloneDX/cyclonedx-python/actions"
+              "url": "http./self_release"
             },
             {
               "type": "distribution",
-              "url": "https://pypi.org/project/cyclonedx-bom/"
+              "url": "http./self_release"
             },
             {
               "type": "documentation",
-              "url": "https://cyclonedx-bom-tool.readthedocs.io/"
+              "url": "http./self_release"
             },
             {
               "type": "issue-tracker",
-              "url": "https://github.com/CycloneDX/cyclonedx-python/issues"
+              "url": "http./self_release"
             },
             {
               "type": "license",
-              "url": "https://github.com/CycloneDX/cyclonedx-python/blob/main/LICENSE"
+              "url": "http./self_release"
             },
             {
               "type": "release-notes",
-              "url": "https://github.com/CycloneDX/cyclonedx-python/blob/main/CHANGELOG.md"
+              "url": "http./self_release"
             },
             {
               "type": "vcs",
-              "url": "https://github.com/CycloneDX/cyclonedx-python/"
+              "url": "http./self_release"
             },
             {
               "type": "website",
-              "url": "https://github.com/CycloneDX/cyclonedx-python/#readme"
+              "url": "http./self_release"
             }
           ],
           "group": "CycloneDX",
@@ -10638,35 +10638,35 @@
           "externalReferences": [
             {
               "type": "build-system",
-              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/actions"
+              "url": "http./self_release"
             },
             {
               "type": "distribution",
-              "url": "https://pypi.org/project/cyclonedx-python-lib/"
+              "url": "http./self_release"
             },
             {
               "type": "documentation",
-              "url": "https://cyclonedx-python-library.readthedocs.io/"
+              "url": "http./self_release"
             },
             {
               "type": "issue-tracker",
-              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/issues"
+              "url": "http./self_release"
             },
             {
               "type": "license",
-              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/blob/main/LICENSE"
+              "url": "http./self_release"
             },
             {
               "type": "release-notes",
-              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/blob/main/CHANGELOG.md"
+              "url": "http./self_release"
             },
             {
               "type": "vcs",
-              "url": "https://github.com/CycloneDX/cyclonedx-python-lib"
+              "url": "http./self_release"
             },
             {
               "type": "website",
-              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/#readme"
+              "url": "http./self_release"
             }
           ],
           "group": "CycloneDX",
@@ -10687,7 +10687,7 @@
   },
   "serialNumber": "urn:uuid:07edee08-aded-41a9-812f-e588ee79abd1",
   "version": 1,
-  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "$schema": "htt./self_release",
   "bomFormat": "CycloneDX",
   "specVersion": "1.6"
 }
