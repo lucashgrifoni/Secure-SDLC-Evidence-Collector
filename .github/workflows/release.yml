@@ -141,7 +141,7 @@ jobs:
           name: release-bundle
           path: bundle
       - name: Install cosign
-        uses: sigstore/cosign-installer@4959ce089c160fddf62f7b42464195ba1a56d382 # v3.6.0
+        uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
       - name: Sign Python artifacts (keyless)
         env:
           COSIGN_EXPERIMENTAL: "1"
