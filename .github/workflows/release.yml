@@ -111,7 +111,7 @@ jobs:
           echo "hashes=$(echo "${digests}" | base64 -w0)" >>"${GITHUB_OUTPUT}"
 
       - name: Upload dist artifacts
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python-dist
           path: dist/
@@ -180,7 +180,7 @@ jobs:
             --fail-on conditional
 
       - name: Upload release evidence
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-evidence
           path: release-evidence/
@@ -453,7 +453,7 @@ jobs:
           done
 
       - name: Upload image SBOM as workflow artifact
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: image-sbom
           path: image-sbom.cdx.json
