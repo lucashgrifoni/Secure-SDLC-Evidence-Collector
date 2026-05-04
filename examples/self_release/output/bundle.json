@@ -5,7 +5,7 @@
     "owner_team": null,
     "repository": "LucasGrifoni/secure-sdlc-evidence-collector"
   },
-  "bundle_id": "bundle-20260504-secure-sdlc-evidence-collector-v1.0.1-8dd7ece4",
+  "bundle_id": "bundle-20260504-secure-sdlc-evidence-collector-v1.0.1-088f37d4",
   "bundle_version": "1.0.0",
   "control_evaluations": [
     {
@@ -13,55 +13,55 @@
       "control_id": "SSDF-PW.7",
       "control_name": "Review and/or analyze human-readable code (SAST)",
       "criticality": "high",
-      "evaluated_at": "2026-05-04T21:56:49.546775Z",
+      "evaluated_at": "2026-05-04T22:04:23.330353Z",
       "evaluation_status": "met",
       "evidence_refs": [
-        "sast-63e1cd3d5202"
+        "sast-04aef21cc8d5"
       ],
       "exception_refs": [],
       "framework": "NIST_SSDF",
       "missing_recommended_evidence_types": [],
       "missing_required_evidence_types": [],
-      "rationale": "Control SSDF-PW.7 is met by evidence ['sast-63e1cd3d5202']."
+      "rationale": "Control SSDF-PW.7 is met by evidence ['sast-04aef21cc8d5']."
     },
     {
       "confidence": "high",
       "control_id": "SSDF-PW.4",
       "control_name": "Reuse existing, well-secured software (SCA)",
       "criticality": "high",
-      "evaluated_at": "2026-05-04T21:56:49.546775Z",
+      "evaluated_at": "2026-05-04T22:04:23.330353Z",
       "evaluation_status": "met",
       "evidence_refs": [
-        "sca-100001e88533"
+        "sca-cfa9150179d1"
       ],
       "exception_refs": [],
       "framework": "NIST_SSDF",
       "missing_recommended_evidence_types": [],
       "missing_required_evidence_types": [],
-      "rationale": "Control SSDF-PW.4 is met by evidence ['sca-100001e88533']."
+      "rationale": "Control SSDF-PW.4 is met by evidence ['sca-cfa9150179d1']."
     },
     {
       "confidence": "high",
       "control_id": "ORG-SECRETS-SCAN",
       "control_name": "Repository-wide secrets scanning",
       "criticality": "high",
-      "evaluated_at": "2026-05-04T21:56:49.546775Z",
+      "evaluated_at": "2026-05-04T22:04:23.330353Z",
       "evaluation_status": "met",
       "evidence_refs": [
-        "secrets-9fc05e5b16bd"
+        "secrets-f812fd12af03"
       ],
       "exception_refs": [],
       "framework": "ORG_INTERNAL",
       "missing_recommended_evidence_types": [],
       "missing_required_evidence_types": [],
-      "rationale": "Control ORG-SECRETS-SCAN is met by evidence ['secrets-9fc05e5b16bd']."
+      "rationale": "Control ORG-SECRETS-SCAN is met by evidence ['secrets-f812fd12af03']."
     },
     {
       "confidence": "low",
       "control_id": "SSDF-PS.3",
       "control_name": "Archive and protect each software release (SBOM)",
       "criticality": "critical",
-      "evaluated_at": "2026-05-04T21:56:49.546775Z",
+      "evaluated_at": "2026-05-04T22:04:23.330353Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "sbom-fa4411ec7c46",
@@ -79,23 +79,23 @@
       "control_id": "SSDF-PW.8",
       "control_name": "Test executable code to identify vulnerabilities",
       "criticality": "high",
-      "evaluated_at": "2026-05-04T21:56:49.546775Z",
+      "evaluated_at": "2026-05-04T22:04:23.330353Z",
       "evaluation_status": "met",
       "evidence_refs": [
-        "test-5414151f5efa"
+        "test-2aa2c48eb31f"
       ],
       "exception_refs": [],
       "framework": "NIST_SSDF",
       "missing_recommended_evidence_types": [],
       "missing_required_evidence_types": [],
-      "rationale": "Control SSDF-PW.8 is met by evidence ['test-5414151f5efa']."
+      "rationale": "Control SSDF-PW.8 is met by evidence ['test-2aa2c48eb31f']."
     },
     {
       "confidence": "low",
       "control_id": "ORG-CODE-REVIEW",
       "control_name": "Code review by eligible reviewers",
       "criticality": "critical",
-      "evaluated_at": "2026-05-04T21:56:49.546775Z",
+      "evaluated_at": "2026-05-04T22:04:23.330353Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-fcee80cf86da",
@@ -112,7 +112,7 @@
       "control_id": "SSDF-PW.1",
       "control_name": "Design software to meet security requirements (threat model)",
       "criticality": "medium",
-      "evaluated_at": "2026-05-04T21:56:49.546775Z",
+      "evaluated_at": "2026-05-04T22:04:23.330353Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-59a2382eb18a"
@@ -128,7 +128,7 @@
       "control_id": "ORG-RELEASE-APPROVAL",
       "control_name": "Formal release approval",
       "criticality": "critical",
-      "evaluated_at": "2026-05-04T21:56:49.546775Z",
+      "evaluated_at": "2026-05-04T22:04:23.330353Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-f3bd336bf424"
@@ -144,7 +144,7 @@
       "control_id": "ORG-REL-ROLLBACK",
       "control_name": "Rollback plan exists and was approved",
       "criticality": "critical",
-      "evaluated_at": "2026-05-04T21:56:49.546775Z",
+      "evaluated_at": "2026-05-04T22:04:23.330353Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-6a5b1ef749bc"
@@ -160,7 +160,7 @@
       "control_id": "SSDF-PS.2",
       "control_name": "Provide a mechanism to verify software release integrity",
       "criticality": "critical",
-      "evaluated_at": "2026-05-04T21:56:49.546775Z",
+      "evaluated_at": "2026-05-04T22:04:23.330353Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-35354bda8818",
@@ -177,7 +177,7 @@
       "control_id": "SAMM-DESIGN-TA-1",
       "control_name": "Threat Assessment (Design / Threat Assessment 1)",
       "criticality": "medium",
-      "evaluated_at": "2026-05-04T21:56:49.546775Z",
+      "evaluated_at": "2026-05-04T22:04:23.330353Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-59a2382eb18a"
@@ -193,7 +193,7 @@
       "control_id": "SAMM-IMPL-SB-2",
       "control_name": "Secure Build (Implementation / Secure Build 2)",
       "criticality": "high",
-      "evaluated_at": "2026-05-04T21:56:49.546775Z",
+      "evaluated_at": "2026-05-04T22:04:23.330353Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "sbom-fa4411ec7c46",
@@ -211,26 +211,26 @@
       "control_id": "SAMM-VERIF-ST-1",
       "control_name": "Security Testing (Verification / Security Testing 1)",
       "criticality": "high",
-      "evaluated_at": "2026-05-04T21:56:49.546775Z",
+      "evaluated_at": "2026-05-04T22:04:23.330353Z",
       "evaluation_status": "met",
       "evidence_refs": [
-        "sast-63e1cd3d5202",
-        "sca-100001e88533",
+        "sast-04aef21cc8d5",
+        "sca-cfa9150179d1",
         "att-db21182f1d7e"
       ],
       "exception_refs": [],
       "framework": "OWASP_SAMM",
       "missing_recommended_evidence_types": [],
       "missing_required_evidence_types": [],
-      "rationale": "Control SAMM-VERIF-ST-1 is met by evidence ['sast-63e1cd3d5202', 'sca-100001e88533', 'att-db21182f1d7e']."
+      "rationale": "Control SAMM-VERIF-ST-1 is met by evidence ['sast-04aef21cc8d5', 'sca-cfa9150179d1', 'att-db21182f1d7e']."
     }
   ],
   "evidence": [
     {
-      "collected_at": "2026-05-04T21:56:49.533933Z",
-      "commit_sha": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "collected_at": "2026-05-04T22:04:23.316583Z",
+      "commit_sha": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "confidence": "high",
-      "evidence_id": "sast-63e1cd3d5202",
+      "evidence_id": "sast-04aef21cc8d5",
       "evidence_type": "sast_scan",
       "findings_count": {
         "critical": 0,
@@ -258,15 +258,15 @@
         "version": "1.9.4"
       },
       "status": "passed",
-      "subject_ref": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "subject_ref": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "subject_type": "commit",
       "summary": "Bandit reported 0 findings (high/critical=0)"
     },
     {
-      "collected_at": "2026-05-04T21:56:49.533933Z",
-      "commit_sha": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "collected_at": "2026-05-04T22:04:23.317583Z",
+      "commit_sha": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "confidence": "high",
-      "evidence_id": "secrets-9fc05e5b16bd",
+      "evidence_id": "secrets-f812fd12af03",
       "evidence_type": "secrets_scan",
       "findings_count": {
         "critical": 0,
@@ -294,15 +294,15 @@
         "version": "v8.0.0"
       },
       "status": "passed",
-      "subject_ref": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "subject_ref": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "subject_type": "commit",
       "summary": "gitleaks reported 0 findings (high/critical=0)"
     },
     {
-      "collected_at": "2026-05-04T21:56:49.533933Z",
-      "commit_sha": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "collected_at": "2026-05-04T22:04:23.317583Z",
+      "commit_sha": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "confidence": "high",
-      "evidence_id": "test-5414151f5efa",
+      "evidence_id": "test-2aa2c48eb31f",
       "evidence_type": "test_result",
       "findings_count": {
         "errors": 0,
@@ -329,15 +329,15 @@
         "version": null
       },
       "status": "passed",
-      "subject_ref": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "subject_ref": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "subject_type": "commit",
       "summary": "45 tests executed, 0 failures, 0 errors, 0 skipped, duration 0.31s"
     },
     {
-      "collected_at": "2026-05-04T21:56:49.533933Z",
-      "commit_sha": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "collected_at": "2026-05-04T22:04:23.317583Z",
+      "commit_sha": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "confidence": "high",
-      "evidence_id": "sca-100001e88533",
+      "evidence_id": "sca-cfa9150179d1",
       "evidence_type": "sca_scan",
       "findings_count": {
         "critical": 0,
@@ -365,13 +365,13 @@
         "version": "2.7.3"
       },
       "status": "passed",
-      "subject_ref": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "subject_ref": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "subject_type": "commit",
       "summary": "pip-audit reported 1 findings (high/critical=0)"
     },
     {
-      "collected_at": "2026-05-04T21:56:49.537932Z",
-      "commit_sha": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "collected_at": "2026-05-04T22:04:23.321779Z",
+      "commit_sha": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "confidence": "high",
       "evidence_id": "sbom-fa4411ec7c46",
       "evidence_type": "sbom",
@@ -404,8 +404,8 @@
       "summary": "CYCLONEDX SBOM with 260 components (spec 1.6)"
     },
     {
-      "collected_at": "2026-05-04T21:56:49.537932Z",
-      "commit_sha": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "collected_at": "2026-05-04T22:04:23.322771Z",
+      "commit_sha": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "confidence": "medium",
       "evidence_id": "att-cc948cb8a6a4",
       "evidence_type": "artifact_attestation",
@@ -439,8 +439,8 @@
       "summary": "Build provenance recorded: release built from master at commit SHA recorded in release_context, tests and linters passed locally and in CI. SLSA provenance v1 will be produced automatically by GitHub Actions for v0.2.0."
     },
     {
-      "collected_at": "2026-05-04T21:56:49.538932Z",
-      "commit_sha": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "collected_at": "2026-05-04T22:04:23.322771Z",
+      "commit_sha": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "confidence": "medium",
       "evidence_id": "att-35354bda8818",
       "evidence_type": "artifact_signature",
@@ -473,8 +473,8 @@
       "summary": "Release integrity anchored by git tag v0.1.0 over commit SHA. A future release (>=0.2.0) will add cosign keyless signing via GitHub Actions OIDC once the public repository and release workflow are in place."
     },
     {
-      "collected_at": "2026-05-04T21:56:49.539932Z",
-      "commit_sha": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "collected_at": "2026-05-04T22:04:23.323771Z",
+      "commit_sha": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "confidence": "medium",
       "evidence_id": "att-fcee80cf86da",
       "evidence_type": "code_review",
@@ -508,8 +508,8 @@
       "summary": "Initial MVP self-reviewed against the project plan and the repository CLAUDE.md quality rules. All quality gates (ruff, mypy --strict, pytest 45/45, 81% coverage) passed before tagging."
     },
     {
-      "collected_at": "2026-05-04T21:56:49.539932Z",
-      "commit_sha": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "collected_at": "2026-05-04T22:04:23.323771Z",
+      "commit_sha": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "confidence": "low",
       "evidence_id": "att-db21182f1d7e",
       "evidence_type": "dast_scan",
@@ -543,8 +543,8 @@
       "summary": "Dynamic application security testing is not applicable: the product is a Python CLI and library, it does not expose an HTTP, RPC, or any other networked surface that a DAST scanner could exercise. This attestation documents the non-applicability so SAMM-VERIF-ST-1's recommended DAST evidence is not a silent gap."
     },
     {
-      "collected_at": "2026-05-04T21:56:49.540932Z",
-      "commit_sha": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "collected_at": "2026-05-04T22:04:23.324771Z",
+      "commit_sha": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "confidence": "medium",
       "evidence_id": "att-eb11de699a36",
       "evidence_type": "pr_metadata",
@@ -581,8 +581,8 @@
       "summary": "Initial MVP landed on master via fast-forward after local review"
     },
     {
-      "collected_at": "2026-05-04T21:56:49.541244Z",
-      "commit_sha": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "collected_at": "2026-05-04T22:04:23.324771Z",
+      "commit_sha": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "confidence": "medium",
       "evidence_id": "att-f3bd336bf424",
       "evidence_type": "release_approval",
@@ -615,8 +615,8 @@
       "summary": "v0.1.0 approved for tag and public release after meeting the Definition of Done: bundle, report, summary generated end-to-end, CI pipeline green, README complete, sample fixture reproducible."
     },
     {
-      "collected_at": "2026-05-04T21:56:49.541244Z",
-      "commit_sha": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "collected_at": "2026-05-04T22:04:23.325771Z",
+      "commit_sha": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "confidence": "medium",
       "evidence_id": "att-6a5b1ef749bc",
       "evidence_type": "rollback_plan",
@@ -648,8 +648,8 @@
       "summary": "Rollback plan: revert the v0.1.0 tag and yank the version from PyPI (if published). Downstream consumers can pin the previous commit SHA; no migrations or persistent state are involved in this CLI tool."
     },
     {
-      "collected_at": "2026-05-04T21:56:49.542252Z",
-      "commit_sha": "040a153c4167a8a4070303d1d7b497dadac136e9",
+      "collected_at": "2026-05-04T22:04:23.325771Z",
+      "commit_sha": "a5370741b29497a2aedf627ba0f4649a996998a3",
       "confidence": "medium",
       "evidence_id": "att-59a2382eb18a",
       "evidence_type": "threat_model",
@@ -684,12 +684,12 @@
   ],
   "exceptions": [],
   "gaps": [],
-  "generated_at": "2026-05-04T21:56:49.546775Z",
+  "generated_at": "2026-05-04T22:04:23.330353Z",
   "release": {
     "artifact_digest": null,
     "branch": "main",
     "build_id": null,
-    "commit_sha": "040a153c4167a8a4070303d1d7b497dadac136e9",
+    "commit_sha": "a5370741b29497a2aedf627ba0f4649a996998a3",
     "pipeline_run_id": null,
     "release_id": "v1.0.1",
     "tag": "v1.0.1"

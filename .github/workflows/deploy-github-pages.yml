@@ -40,6 +40,10 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .
 
+      - name: Install docs extras
+        run: |
+          python -m pip install -e ".[docs]"
+
       - name: Generate evidence summary
         run: |
           mkdir -p site
@@ -56,6 +60,14 @@ jobs:
           cp site/evidence/summary.html site/index.html
           cp README.md site/README.md
           cp CHANGELOG.md site/CHANGELOG.md
+
+      # Build the mkdocs technical site into a `docs/` sub-path so the
+      # Pages root continues to host the evidence summary HTML and the
+      # technical docs are reachable at `/docs/`. Both ship from the
+      # same Pages deploy.
+      - name: Build mkdocs technical site
+        run: |
+          python -m mkdocs build --strict --site-dir site/docs
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4

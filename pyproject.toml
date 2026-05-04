@@ -31,6 +31,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Security",
     "Topic :: Software Development :: Quality Assurance",
 ]
@@ -62,6 +63,11 @@ api = [
 ]
 logs = [
     "structlog>=24.1,<26.0",
+]
+docs = [
+    "mkdocs>=1.6,<2.0",
+    "mkdocs-material>=9.5,<10.0",
+    "pymdown-extensions>=10.7,<11.0",
 ]
 
 [project.scripts]
