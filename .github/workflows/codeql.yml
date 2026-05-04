@@ -1,0 +1,76 @@
+# Native CodeQL analysis
+#
+# `security-ci-cd.yml` already uses CodeQL transitively via Semgrep/Snyk,
+# but those scanners only emit SARIF. To get CodeQL alerts indexed on
+# the GitHub Security tab (Code scanning) we need a workflow that
+# initializes the CodeQL database itself.
+#
+# Why a dedicated workflow:
+#   - Code scanning UI groups alerts by tool name. Running CodeQL here
+#     keeps its alerts separate from Semgrep's.
+#   - The default-suite queries are tuned for "security and quality"
+#     and produce far fewer false positives than the security-extended
+#     suite at the cost of slightly lower recall.
+#   - The schedule lets us catch advisories that were published *after*
+#     a code change merged.
+
+name: CodeQL
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: "0 4 * * 2"  # weekly, Tuesday 04:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["python", "actions"]
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      # Pure Python project — no compilation step required. The
+      # autobuild action exists so this workflow keeps working if a
+      # native extension is ever introduced.
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
+        with:
+          category: "/language:${{ matrix.language }}"
