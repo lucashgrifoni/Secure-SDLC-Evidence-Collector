@@ -107,8 +107,50 @@ def _exit_code_for_status(status: ReleaseStatus) -> int:
     return 0
 
 
+# When the user passes `--json-logs` (or sets SDLC_JSON_LOGS=1 in the
+# environment) the CLI emits one JSON object per major event instead of
+# Rich tables. Pipelines parse NDJSON better than ANSI-colored tables.
+_LOG_JSON: bool = False
+
+
+def _emit_event(event: str, **fields: object) -> None:
+    """Emit a structured event line.
+
+    In JSON mode this prints one NDJSON object to stdout. In Rich mode
+    it does nothing — visible UI for human runs is produced by the
+    `_render_*` helpers below. Keeping a single emission point means a
+    future migration to `structlog` can replace this body without
+    touching the call sites.
+    """
+    if not _LOG_JSON:
+        return
+    payload: dict[str, object] = {"event": event, **fields}
+    typer.echo(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+
+
 def _render_summary(result: BundleBuildResult) -> None:
     summary = result.bundle.summary
+
+    if _LOG_JSON:
+        _emit_event(
+            "bundle_built",
+            bundle_id=result.bundle.bundle_id,
+            release_status=summary.release_status.value,
+            coverage=summary.evidence_coverage_score,
+            confidence=summary.confidence_score,
+            controls_met=summary.controls_met,
+            controls_partial=summary.controls_partial,
+            controls_missing=summary.controls_missing,
+            controls_waived=summary.controls_waived,
+            controls_not_applicable=summary.controls_not_applicable,
+            evidence_count=len(result.bundle.evidence),
+            missing_critical_evidence=list(summary.missing_critical_evidence),
+            bundle_json=str(result.json_path) if result.json_path else None,
+            report_md=str(result.markdown_path) if result.markdown_path else None,
+            summary_html=str(result.html_path) if result.html_path else None,
+        )
+        return
+
     table = Table(title="Release readiness summary", show_header=False, box=None)
     table.add_row("Bundle ID", result.bundle.bundle_id)
     table.add_row("Release status", f"[bold]{summary.release_status.value}[/bold]")
@@ -146,6 +188,10 @@ def _render_collection_errors(result: BundleBuildResult) -> None:
     errors = result.collection_report.errors
     if not errors:
         return
+    if _LOG_JSON:
+        for error in errors:
+            _emit_event("collection_error", path=str(error.path), reason=error.reason)
+        return
     console.print("[yellow]Collection warnings:[/yellow]")
     for error in errors:
         console.print(f"  - {error.path}: {error.reason}")
@@ -157,9 +203,25 @@ def main_callback(
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Enable verbose logging")
     ] = False,
+    json_logs: Annotated[
+        bool,
+        typer.Option(
+            "--json-logs",
+            help="Emit machine-readable NDJSON events instead of Rich tables. "
+            "Useful in CI; can also be set with SDLC_JSON_LOGS=1.",
+        ),
+    ] = False,
     version: Annotated[bool, typer.Option("--version", help="Print version and exit")] = False,
 ) -> None:
     """Secure SDLC Evidence Collector CLI."""
+    import os
+
+    global _LOG_JSON
+    _LOG_JSON = bool(json_logs) or os.environ.get("SDLC_JSON_LOGS", "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
     if version:
         typer.echo(__version__)
         raise typer.Exit(code=0)

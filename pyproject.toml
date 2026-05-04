@@ -53,6 +53,15 @@ dev = [
     "types-PyYAML>=6.0,<7.0",
     "types-defusedxml>=0.7,<1.0",
     "pre-commit>=3.7,<5.0",
+    "hypothesis>=6.100,<7.0",
+    "mutmut>=2.5,<3.0",
+]
+api = [
+    "fastapi>=0.115,<1.0",
+    "uvicorn[standard]>=0.30,<1.0",
+]
+logs = [
+    "structlog>=24.1,<26.0",
 ]
 
 [project.scripts]
@@ -138,6 +147,18 @@ markers = [
     "unit: unit tests",
     "integration: integration tests using fixtures",
 ]
+
+[tool.mutmut]
+# Focus mutmut on the high-value modules. Mutation testing the entire
+# tree is too slow to be practical in CI; the parsers, scoring, and
+# control engine are where assertion strength matters most.
+paths_to_mutate = [
+    "src/evidence_collector/parsers/",
+    "src/evidence_collector/scoring/",
+    "src/evidence_collector/controls/",
+]
+runner = "python -m pytest -q --no-cov tests/unit"
+backup = false
 
 [tool.coverage.run]
 branch = true
