@@ -9,7 +9,7 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 > `Owner` column so we don't double-up. The `Last touched` column is in
 > ISO 8601 (UTC) so a stale row is obvious by inspection.
 
-**Last updated:** 2026-05-04 (Tier 3 shipped)
+**Last updated:** 2026-05-04 (Tier 4 shipped — full roadmap done)
 
 **Released versions:** v1.0.0 (2026-04-23) · v1.0.1 (2026-05-04, maturity polish)
 
@@ -19,9 +19,9 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 
 | Metric                          | Current | Target | Notes                                                                |
 |---------------------------------|---------|--------|----------------------------------------------------------------------|
-| Tests passing                   | 134     | —      | unit + integration (+3 from Tier 3 hypothesis property tests)        |
-| Line + branch coverage          | 77.9 %  | 85 %   | floor enforced at 70 %                                               |
-| `mypy --strict` source files    | 55      | —      | zero issues                                                          |
+| Tests passing                   | 143     | —      | unit + integration (+9 from Tier 4: API + OSCAL exporter)            |
+| Line + branch coverage          | 77.5 %  | 85 %   | floor enforced at 70 %                                               |
+| `mypy --strict` source files    | 61      | —      | zero issues                                                          |
 | `ruff` violations               | 0       | 0      | enforced in CI and pre-commit                                        |
 | `actionlint` violations         | 0       | 0      | enforced via `pre-commit` and CI                                     |
 | Workflows pinned by SHA         | yes     | yes    | third-party actions                                                  |
@@ -64,13 +64,13 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 
 ## Tier 4 — Scale and community
 
-| ID   | Item                                          | Status  | Owner | Last touched | Notes |
-|------|-----------------------------------------------|---------|-------|--------------|-------|
-| T4.1 | Plugin system for custom parsers              | pending | —     | —            |       |
-| T4.2 | Optional FastAPI REST surface                 | pending | —     | —            |       |
-| T4.3 | OSCAL exporter                                | pending | —     | —            |       |
-| T4.4 | GitHub Discussions + labels + stale-bot       | pending | —     | —            |       |
-| T4.5 | Conventional-commit-driven release tooling    | pending | —     | —            |       |
+| ID   | Item                                          | Status  | Owner | Last touched | Notes                                                                                              |
+|------|-----------------------------------------------|---------|-------|--------------|----------------------------------------------------------------------------------------------------|
+| T4.1 | Plugin system for custom parsers              | done    | LHG   | 2026-05-04   | entry-point groups in pyproject.toml + `evidence_collector.plugins` discovery + `sdlc-evidence plugins` CLI; auto-wiring deferred  |
+| T4.2 | Optional FastAPI REST surface                 | done    | LHG   | 2026-05-04   | `[api]` extra; read-only surface (`/healthz`, `/version`, `/schema`, `/catalog`, `/plugins`); 5 unit tests |
+| T4.3 | OSCAL exporter                                | done    | LHG   | 2026-05-04   | `sdlc-evidence oscal` command; OSCAL 1.1.x Catalog model; 4 unit tests including UUID stability    |
+| T4.4 | Issue labels + stale-bot                      | partial | LHG   | 2026-05-04   | `.github/labels.yml` synced via `labels.yml` workflow; `stale.yml` daily cleanup; **Discussions enable still requires GitHub UI action** |
+| T4.5 | Conventional-commit-driven release tooling    | done    | LHG   | 2026-05-04   | release-please workflow + config + manifest seeded at v1.0.1; merging the PR auto-tags and triggers `release.yml` |
 
 ---
 
@@ -116,3 +116,24 @@ need a one-time configuration step on a third-party platform.
   of the Pages deploy alongside the existing evidence summary at `/`;
   T3.5 CI matrix Python 3.12 + 3.13. Tests 131 → 134,
   mypy strict files 54 → 55.
+- **2026-05-04** — Tier 4 complete. T4.1 plugin system: entry-point
+  groups `evidence_collector.parsers` and `evidence_collector.collectors`
+  in pyproject.toml; `evidence_collector.plugins` discovery API;
+  `sdlc-evidence plugins` CLI; `docs/plugins.md` contract published;
+  auto-wiring into `LocalArtifactCollector` deferred to a follow-up.
+  T4.2 optional FastAPI surface under `[api]` extra; read-only
+  endpoints (healthz, version, schema, catalog, plugins) with 5 unit
+  tests. T4.3 OSCAL Catalog exporter via `sdlc-evidence oscal` (OSCAL
+  1.1.x); 4 unit tests including UUID stability across runs. T4.4
+  partial: `.github/labels.yml` synced by `labels.yml` workflow,
+  `stale.yml` daily cleanup with conservative thresholds; enabling
+  GitHub Discussions still needs a UI action. T4.5 release-please
+  workflow + config + manifest seeded at v1.0.1 — merging the
+  release-please PR will auto-tag and trigger `release.yml`. The
+  hypothesis test surfaced a real parser bug (`_parse_float` accepted
+  `-inf`/`nan`); fixed by clamping to default. Tests 134 → 143,
+  mypy strict files 55 → 61.
+
+**Roadmap status:** all four tiers shipped. The single remaining
+non-engineering action is enabling GitHub Discussions in repo settings
+(documented under "External actions still required").
