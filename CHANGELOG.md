@@ -4,6 +4,44 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] — 2026-05-04
+
+Maturity polish on top of 1.0.0. No behavioural changes to the bundle
+schema, CLI surface, or GitHub Action contract.
+
+### Added
+
+- **PyPI publishing job** in `release.yml` using OIDC trusted publisher
+  (no long-lived `PYPI_API_TOKEN`); gated to `refs/tags/v*` pushes and
+  the `pypi` GitHub environment.
+- **Schema dogfood step** in `github-ci-cd.yml`: every CI run now exports
+  the bundle JSON Schema and validates the freshly generated sample
+  bundle against it with `jsonschema`. Closes the self-attesting loop.
+- **Targeted parser tests** for `parsers/exception.py` and
+  `parsers/junit.py`: invalid ISO datetimes, unsupported datetime
+  types, non-mapping `scope`, malformed/empty XML, legacy `skip`
+  attribute, single `<testsuite>` root with malformed numeric
+  attributes (exercises the `_parse_int` / `_parse_float` fallbacks).
+- **Hardened security CI** (`security-ci-cd.yml`): Snyk Code, CodeQL,
+  Trivy (vuln + misconfig + secrets), Dependency Review, Gitleaks,
+  actionlint, Harden-Runner egress audit, and pinning third-party
+  actions by immutable commit SHA with a trailing semantic-tag comment.
+
+### Changed
+
+- README badges now reflect the real numbers (123 tests passing,
+  ~78% line+branch coverage) instead of the stale 1.0.0 figures.
+- Repository now ships a top-level `.gitattributes` enforcing LF for
+  text files. Stops Windows clones from emitting CRLF→LF warnings on
+  the GitPage assets and ensures shell scripts and workflows stay
+  Linux-compatible.
+
+### Removed
+
+- `.github/workflows/dependabot.yml` — that file was a misplaced
+  template; the active Dependabot configuration lives at
+  `.github/dependabot.yml`, where GitHub expects it.
+
 ## [1.0.0] — 2026-04-23
 
 First stable release. The bundle schema, CLI surface, GitHub Action

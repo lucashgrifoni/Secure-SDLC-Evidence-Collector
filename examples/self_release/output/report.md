@@ -1,8 +1,8 @@
 # Secure SDLC Evidence Report
 
-**Bundle ID:** `bundle-20260424-secure-sdlc-evidence-collector-v1.0.0-316e7046`
+**Bundle ID:** `bundle-20260504-secure-sdlc-evidence-collector-v1.0.1-5df1f8be`
 **Bundle version:** 1.0.0
-**Generated at:** 2026-04-24T18:22:18.196711+00:00
+**Generated at:** 2026-05-04T20:17:48.739664+00:00
 
 ## Application
 
@@ -17,13 +17,13 @@
 
 | Field | Value |
 |-------|-------|
-| Release ID | `v1.0.0` |
-| Commit SHA | `019e32b0000000000000000000000000` |
+| Release ID | `v1.0.1` |
+| Commit SHA | `3dc987821768ebd86ef76b875ec9b8445fa864a3` |
 | Branch | `main` |
 | Pipeline run | - |
 | Build ID | - |
 | Artifact digest | `-` |
-| Tag | - |
+| Tag | v1.0.1 |
 
 ## Verdict
 
@@ -37,32 +37,32 @@
 
 | Control | Framework | Status | Criticality | Confidence | Evidence refs |
 |---------|-----------|--------|-------------|------------|---------------|
-| `SSDF-PW.7` | NIST_SSDF | **met** | high | high | sast-a759c03356e5 |
-| `SSDF-PW.4` | NIST_SSDF | **met** | high | high | sca-8a0dc337c2a7 |
-| `ORG-SECRETS-SCAN` | ORG_INTERNAL | **met** | high | high | secrets-0d6106b683d6 |
-| `SSDF-PS.3` | NIST_SSDF | **met** | critical | low | sbom-6813fe39d5a2, att-cc948cb8a6a4, att-35354bda8818 |
-| `SSDF-PW.8` | NIST_SSDF | **met** | high | high | test-aa6c80a3fe34 |
+| `SSDF-PW.7` | NIST_SSDF | **met** | high | high | sast-0cb8c7ee41ad |
+| `SSDF-PW.4` | NIST_SSDF | **met** | high | high | sca-c32c6ef42138 |
+| `ORG-SECRETS-SCAN` | ORG_INTERNAL | **met** | high | high | secrets-b64bdb711e6e |
+| `SSDF-PS.3` | NIST_SSDF | **met** | critical | low | sbom-fa4411ec7c46, att-cc948cb8a6a4, att-35354bda8818 |
+| `SSDF-PW.8` | NIST_SSDF | **met** | high | high | test-b7f4d8235d1b |
 | `ORG-CODE-REVIEW` | ORG_INTERNAL | **met** | critical | low | att-fcee80cf86da, att-eb11de699a36 |
 | `SSDF-PW.1` | NIST_SSDF | **met** | medium | low | att-59a2382eb18a |
 | `ORG-RELEASE-APPROVAL` | ORG_INTERNAL | **met** | critical | low | att-f3bd336bf424 |
 | `ORG-REL-ROLLBACK` | ORG_INTERNAL | **met** | critical | low | att-6a5b1ef749bc |
 | `SSDF-PS.2` | NIST_SSDF | **met** | critical | low | att-35354bda8818, att-cc948cb8a6a4 |
 | `SAMM-DESIGN-TA-1` | OWASP_SAMM | **met** | medium | low | att-59a2382eb18a |
-| `SAMM-IMPL-SB-2` | OWASP_SAMM | **met** | high | low | sbom-6813fe39d5a2, att-35354bda8818, att-cc948cb8a6a4 |
-| `SAMM-VERIF-ST-1` | OWASP_SAMM | **met** | high | low | sast-a759c03356e5, sca-8a0dc337c2a7, att-db21182f1d7e |
+| `SAMM-IMPL-SB-2` | OWASP_SAMM | **met** | high | low | sbom-fa4411ec7c46, att-35354bda8818, att-cc948cb8a6a4 |
+| `SAMM-VERIF-ST-1` | OWASP_SAMM | **met** | high | low | sast-0cb8c7ee41ad, sca-c32c6ef42138, att-db21182f1d7e |
 
 ### Rationales
 
 - **`SSDF-PW.7` — Review and/or analyze human-readable code (SAST)**
-  Control SSDF-PW.7 is met by evidence ['sast-a759c03356e5'].
+  Control SSDF-PW.7 is met by evidence ['sast-0cb8c7ee41ad'].
 - **`SSDF-PW.4` — Reuse existing, well-secured software (SCA)**
-  Control SSDF-PW.4 is met by evidence ['sca-8a0dc337c2a7'].
+  Control SSDF-PW.4 is met by evidence ['sca-c32c6ef42138'].
 - **`ORG-SECRETS-SCAN` — Repository-wide secrets scanning**
-  Control ORG-SECRETS-SCAN is met by evidence ['secrets-0d6106b683d6'].
+  Control ORG-SECRETS-SCAN is met by evidence ['secrets-b64bdb711e6e'].
 - **`SSDF-PS.3` — Archive and protect each software release (SBOM)**
-  Control SSDF-PS.3 is met by evidence ['sbom-6813fe39d5a2', 'att-cc948cb8a6a4', 'att-35354bda8818'].
+  Control SSDF-PS.3 is met by evidence ['sbom-fa4411ec7c46', 'att-cc948cb8a6a4', 'att-35354bda8818'].
 - **`SSDF-PW.8` — Test executable code to identify vulnerabilities**
-  Control SSDF-PW.8 is met by evidence ['test-aa6c80a3fe34'].
+  Control SSDF-PW.8 is met by evidence ['test-b7f4d8235d1b'].
 - **`ORG-CODE-REVIEW` — Code review by eligible reviewers**
   Control ORG-CODE-REVIEW is met by evidence ['att-fcee80cf86da', 'att-eb11de699a36'].
 - **`SSDF-PW.1` — Design software to meet security requirements (threat model)**
@@ -76,9 +76,9 @@
 - **`SAMM-DESIGN-TA-1` — Threat Assessment (Design / Threat Assessment 1)**
   Control SAMM-DESIGN-TA-1 is met by evidence ['att-59a2382eb18a'].
 - **`SAMM-IMPL-SB-2` — Secure Build (Implementation / Secure Build 2)**
-  Control SAMM-IMPL-SB-2 is met by evidence ['sbom-6813fe39d5a2', 'att-35354bda8818', 'att-cc948cb8a6a4'].
+  Control SAMM-IMPL-SB-2 is met by evidence ['sbom-fa4411ec7c46', 'att-35354bda8818', 'att-cc948cb8a6a4'].
 - **`SAMM-VERIF-ST-1` — Security Testing (Verification / Security Testing 1)**
-  Control SAMM-VERIF-ST-1 is met by evidence ['sast-a759c03356e5', 'sca-8a0dc337c2a7', 'att-db21182f1d7e'].
+  Control SAMM-VERIF-ST-1 is met by evidence ['sast-0cb8c7ee41ad', 'sca-c32c6ef42138', 'att-db21182f1d7e'].
 
 
 ## Gaps
@@ -89,11 +89,11 @@ No gaps detected.
 
 | ID | Type | Status | Confidence | Producer | Subject |
 |----|------|--------|------------|----------|---------|
-| `sast-a759c03356e5` | sast_scan | passed | high | Bandit | `019e32b0000000000000000000000000` |
-| `secrets-0d6106b683d6` | secrets_scan | passed | high | gitleaks | `019e32b0000000000000000000000000` |
-| `test-aa6c80a3fe34` | test_result | passed | high | pytest tests | `019e32b0000000000000000000000000` |
-| `sca-8a0dc337c2a7` | sca_scan | passed | high | pip-audit | `019e32b0000000000000000000000000` |
-| `sbom-6813fe39d5a2` | sbom | generated | high | cyclonedx | `secure-sdlc-evidence-collector@0.1.0` |
+| `sast-0cb8c7ee41ad` | sast_scan | passed | high | Bandit | `3dc987821768ebd86ef76b875ec9b8445fa864a3` |
+| `secrets-b64bdb711e6e` | secrets_scan | passed | high | gitleaks | `3dc987821768ebd86ef76b875ec9b8445fa864a3` |
+| `test-b7f4d8235d1b` | test_result | passed | high | pytest tests | `3dc987821768ebd86ef76b875ec9b8445fa864a3` |
+| `sca-c32c6ef42138` | sca_scan | passed | high | pip-audit | `3dc987821768ebd86ef76b875ec9b8445fa864a3` |
+| `sbom-fa4411ec7c46` | sbom | generated | high | cyclonedx | `secure-sdlc-evidence-collector@0.1.0` |
 | `att-cc948cb8a6a4` | artifact_attestation | passed | medium | build-provenance-manual | `secure-sdlc-evidence-collector:v0.1.0` |
 | `att-35354bda8818` | artifact_signature | passed | medium | git-tag-signature | `secure-sdlc-evidence-collector:v0.1.0` |
 | `att-fcee80cf86da` | code_review | passed | medium | solo-maintainer-review | `PR-0-initial-mvp` |
@@ -103,35 +103,35 @@ No gaps detected.
 | `att-6a5b1ef749bc` | rollback_plan | passed | medium | Lucas Henrique Grifoni | `secure-sdlc-evidence-collector:v0.1.0` |
 | `att-59a2382eb18a` | threat_model | completed | medium | Lucas Henrique Grifoni | `secure-sdlc-evidence-collector` |
 
-### `sast-a759c03356e5` — sast_scan
+### `sast-0cb8c7ee41ad` — sast_scan
 
 - **Source:** Bandit (sarif) · version 1.9.4- **Producer:** Bandit
-- **Subject:** `019e32b0000000000000000000000000` (commit)
+- **Subject:** `3dc987821768ebd86ef76b875ec9b8445fa864a3` (commit)
 - **Status:** passed · **Confidence:** high- **Summary:** Bandit reported 0 findings (high/critical=0)
 - **Findings:** critical=0 · high=0 · medium=0 · low=0 · info=0- **Artifact:** `examples\self_release\artifacts\bandit.sarif` (sha256:bb9ad4a5c50d13a0c8a184c6d406202b6e3ea23199a15ebf3514dc83c13733eb)
 
-### `secrets-0d6106b683d6` — secrets_scan
+### `secrets-b64bdb711e6e` — secrets_scan
 
 - **Source:** gitleaks (sarif) · version v8.0.0- **Producer:** gitleaks
-- **Subject:** `019e32b0000000000000000000000000` (commit)
+- **Subject:** `3dc987821768ebd86ef76b875ec9b8445fa864a3` (commit)
 - **Status:** passed · **Confidence:** high- **Summary:** gitleaks reported 0 findings (high/critical=0)
 - **Findings:** critical=0 · high=0 · medium=0 · low=0 · info=0- **Artifact:** `examples\self_release\artifacts\gitleaks.sarif` (sha256:8c99bf9ee1e5399d1160091d33c085c3c82388dbc570206841c3f3716597a6a5)
 
-### `test-aa6c80a3fe34` — test_result
+### `test-b7f4d8235d1b` — test_result
 
 - **Source:** junit (junit-xml)- **Producer:** pytest tests
-- **Subject:** `019e32b0000000000000000000000000` (commit)
+- **Subject:** `3dc987821768ebd86ef76b875ec9b8445fa864a3` (commit)
 - **Status:** passed · **Confidence:** high- **Summary:** 45 tests executed, 0 failures, 0 errors, 0 skipped, duration 0.31s
 - **Findings:** total=45 · failures=0 · errors=0 · skipped=0- **Artifact:** `examples\self_release\artifacts\junit.xml` (sha256:b8c1a82bcddc8a81ab818e221455266e5c79841518a91be66a06852c25205689)
 
-### `sca-8a0dc337c2a7` — sca_scan
+### `sca-c32c6ef42138` — sca_scan
 
 - **Source:** pip-audit (sarif) · version 2.7.3- **Producer:** pip-audit
-- **Subject:** `019e32b0000000000000000000000000` (commit)
+- **Subject:** `3dc987821768ebd86ef76b875ec9b8445fa864a3` (commit)
 - **Status:** passed · **Confidence:** high- **Summary:** pip-audit reported 1 findings (high/critical=0)
 - **Findings:** critical=0 · high=0 · medium=1 · low=0 · info=0- **Artifact:** `examples\self_release\artifacts\pip-audit.sarif` (sha256:8aac5fd8a1d3c8ed4d44e5f711a08bbd33086eee6d35b264a24ea802f1a9fee7)
 
-### `sbom-6813fe39d5a2` — sbom
+### `sbom-fa4411ec7c46` — sbom
 
 - **Source:** cyclonedx (sbom) · version 1.6- **Producer:** cyclonedx
 - **Subject:** `secure-sdlc-evidence-collector@0.1.0` (artifact)
