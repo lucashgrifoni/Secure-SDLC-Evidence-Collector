@@ -321,7 +321,12 @@ The tool itself follows the security rules it enforces on others:
 - 25 MB safety cap per ingested artifact to avoid resource exhaustion,
 - strict Pydantic schema (`extra='forbid'`) on every canonical type —
   unexpected fields in an attestation or bundle are a hard error,
-- deterministic JSON serialization so audit integrity hashes are stable,
+- **structurally deterministic** JSON: the bundle is byte-stable across
+  runs once the four evaluation-time fields (`bundle_id`, `generated_at`,
+  per-evidence `collected_at`, per-control `evaluated_at`) are stripped.
+  Integrity hashes, evidence ordering, control verdicts, gaps, and
+  scores are byte-stable. Enforced by a CI gate that re-runs the sample
+  pipeline and compares normalized SHA-256.
 - XML parsing without external entity resolution,
 - no PR body, reviewer email, or token ever written to logs.
 

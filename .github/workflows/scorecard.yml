@@ -1,0 +1,82 @@
+# OpenSSF Scorecard
+#
+# Publishes a public Scorecard report for the repository. The report
+# evaluates the project against the OpenSSF Scorecard checks (branch
+# protection, dependency update tools, signed releases, SAST, etc.) and
+# uploads the SARIF result to the GitHub Security tab.
+#
+# Score visibility:
+#   - The badge can be displayed via https://api.securityscorecards.dev
+#   - The full report is also available at
+#     https://securityscorecards.dev/viewer/?uri=github.com/<owner>/<repo>
+#
+# Required one-time setup:
+#   - On a public repository, no secrets are required for the basic
+#     report. To enable the Branch-Protection check Scorecard needs a
+#     fine-grained PAT with `metadata: read` scoped to the repo, stored
+#     as the `SCORECARD_READ_TOKEN` secret. Without it the check is
+#     simply skipped (other checks still run).
+
+name: OpenSSF Scorecard
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: "0 5 * * 1"  # weekly, Monday 05:00 UTC
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: scorecard-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analysis:
+    name: Run Scorecard analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write   # upload SARIF
+      id-token: write          # publish to OpenSSF transparency log
+      contents: read           # read repo metadata
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Run analysis
+        uses: ossf/scorecard-action@62b2cac7ed8198b15735ed49ab1e5cf35480ba46 # v2.4.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # `publish_results: true` posts the score to the public
+          # OpenSSF transparency log. Required for the badge to render.
+          publish_results: true
+          # Uncomment when the SCORECARD_READ_TOKEN secret is configured
+          # for the Branch-Protection / Webhooks checks:
+          # repo_token: ${{ secrets.SCORECARD_READ_TOKEN }}
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: scorecard-sarif
+          path: results.sarif
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload SARIF to Security tab
+        uses: github/codeql-action/upload-sarif@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
+        with:
+          sarif_file: results.sarif
+          category: openssf-scorecard

@@ -152,6 +152,61 @@ jobs:
           print("Bundle conforms to its exported JSON Schema.")
           PY
 
+      # Structural-determinism gate. Running `run` twice against the same
+      # inputs must produce a byte-identical bundle once we strip the
+      # evaluation-time timestamps (`generated_at`, per-evidence
+      # `collected_at`, per-control `evaluated_at`) and the `bundle_id`
+      # whose suffix is derived at run time. What we are enforcing:
+      #
+      #   * SHA-256 integrity hashes of all collected artifacts match.
+      #   * Control evaluations and gaps fire identically.
+      #   * Coverage / confidence scores and release status match.
+      #   * Evidence ordering, metadata, and references are byte-stable.
+      #
+      # If this fails, the bundle has gained a non-trivial source of
+      # nondeterminism — investigate before shipping.
+      - name: Determinism gate (re-run, normalize, compare SHA-256)
+        run: |
+          python -m evidence_collector.cli.main run \
+            --application payments-api \
+            --repository acme/payments-api \
+            --release-id 2026.04.10 \
+            --commit-sha abcdef1234567890 \
+            --branch main \
+            --artifacts-dir examples/sample_release/artifacts \
+            --attestations-dir examples/sample_release/attestations \
+            --output-dir output/sample_release_rerun \
+            --fail-on not_ready
+          python - <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          VOLATILE_TOP = {"bundle_id", "generated_at"}
+          VOLATILE_EVIDENCE = {"collected_at"}
+          VOLATILE_CONTROL = {"evaluated_at"}
+
+          def normalize(path: Path) -> bytes:
+              data = json.loads(path.read_text(encoding="utf-8"))
+              for key in VOLATILE_TOP:
+                  data.pop(key, None)
+              for ev in data.get("evidence", []):
+                  for key in VOLATILE_EVIDENCE:
+                      ev.pop(key, None)
+              for ev in data.get("control_evaluations", []):
+                  for key in VOLATILE_CONTROL:
+                      ev.pop(key, None)
+              return json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
+
+          first = hashlib.sha256(normalize(Path("output/sample_release/bundle.json"))).hexdigest()
+          second = hashlib.sha256(normalize(Path("output/sample_release_rerun/bundle.json"))).hexdigest()
+          if first != second:
+              print(f"Bundle drift detected between runs: {first} vs {second}", file=sys.stderr)
+              sys.exit(1)
+          print(f"Structural determinism OK · normalized sha256={first}")
+          PY
+
       - name: Upload sample bundle
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
