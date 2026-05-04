@@ -1,0 +1,54 @@
+# Sync the labels declared in `.github/labels.yml` to the repository.
+#
+# Runs whenever `.github/labels.yml` changes on `main`, plus weekly so
+# manual divergence (someone renaming a label in the UI) heals
+# automatically. `delete: true` means labels removed from the YAML are
+# also removed from the repo — useful for aggressive pruning, dangerous
+# if you forget. The history is in this file.
+
+name: Sync labels
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/labels.yml
+      - .github/workflows/labels.yml
+  schedule:
+    - cron: "0 7 * * 1"  # weekly, Monday 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: labels-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Sync issue and PR labels
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Apply labels
+        uses: micnncim/action-label-syncer@3abd5ab72fda571e69fffd97bd4e0033dd5f495c # v1.3.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          manifest: .github/labels.yml
+          # Removing a label from labels.yml deletes it from the repo.
+          # Toggle to false if you want additive-only sync.
+          prune: true

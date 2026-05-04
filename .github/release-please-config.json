@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "python",
+  "include-component-in-tag": false,
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
+  "draft": false,
+  "prerelease": false,
+  "include-v-in-tag": true,
+  "changelog-sections": [
+    { "type": "feat",     "section": "Added",      "hidden": false },
+    { "type": "fix",      "section": "Fixed",      "hidden": false },
+    { "type": "perf",     "section": "Changed",    "hidden": false },
+    { "type": "refactor", "section": "Changed",    "hidden": false },
+    { "type": "docs",     "section": "Documentation", "hidden": false },
+    { "type": "build",    "section": "Build",      "hidden": false },
+    { "type": "ci",       "section": "CI",         "hidden": false },
+    { "type": "test",     "section": "Tests",      "hidden": true },
+    { "type": "chore",    "section": "Chores",     "hidden": true }
+  ],
+  "packages": {
+    ".": {
+      "package-name": "secure-sdlc-evidence-collector",
+      "extra-files": [
+        "src/evidence_collector/__init__.py",
+        "src/evidence_collector/collectors/github.py",
+        "src/evidence_collector/collectors/gitlab.py"
+      ]
+    }
+  }
+}

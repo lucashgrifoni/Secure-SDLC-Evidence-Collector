@@ -525,6 +525,57 @@ def cmd_compare(
     console.print(control_table)
 
 
+@app.command("oscal")
+def cmd_oscal(
+    output_path: Annotated[
+        Path | None,
+        typer.Option("--output", help="Write OSCAL Catalog JSON to this file instead of stdout"),
+    ] = None,
+    catalog_path: Annotated[
+        Path | None,
+        typer.Option("--catalog", help="Override the default control catalog YAML"),
+    ] = None,
+) -> None:
+    """Render the control catalog as an OSCAL Catalog JSON document.
+
+    Useful for importing into OSCAL-native auditor tooling (FedRAMP,
+    HITRUST, StateRAMP, etc.). The output conforms to OSCAL 1.1.x.
+    """
+    from evidence_collector.controls import default_catalog, load_catalog
+    from evidence_collector.exporters.oscal import export_oscal_catalog
+
+    controls = load_catalog(catalog_path) if catalog_path else list(default_catalog())
+    payload = json.dumps(
+        export_oscal_catalog(controls), indent=2, sort_keys=True, ensure_ascii=False
+    )
+    if output_path is None:
+        typer.echo(payload)
+        return
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(payload + "\n", encoding="utf-8")
+    console.print(f"[green]OSCAL Catalog[/green] → {output_path}")
+
+
+@app.command("plugins")
+def cmd_plugins() -> None:
+    """List parser and collector plugins registered via entry-points."""
+    from evidence_collector.plugins import list_plugins
+
+    listing = list_plugins()
+    if _LOG_JSON:
+        typer.echo(json.dumps(listing, indent=2, sort_keys=True))
+        return
+    table = Table(title="Discovered plugins", show_header=True)
+    table.add_column("Group")
+    table.add_column("Names", overflow="fold")
+    for group, names in listing.items():
+        table.add_row(group, ", ".join(names) if names else "[dim]<none>[/dim]")
+    console.print(table)
+    console.print(
+        "[dim]See docs/plugins.md for how to register custom parsers and collectors.[/dim]"
+    )
+
+
 @app.command("schema")
 def cmd_schema(
     output_path: Annotated[

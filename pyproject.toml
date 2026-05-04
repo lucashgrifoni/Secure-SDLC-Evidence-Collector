@@ -73,6 +73,25 @@ docs = [
 [project.scripts]
 sdlc-evidence = "evidence_collector.cli.main:main"
 
+# Plugin entry-point groups. Third parties can register custom parsers
+# without forking by declaring their own entries under these groups in
+# their package's `pyproject.toml`. The collector discovers them via
+# `evidence_collector.plugins.discover_parsers()` /
+# `discover_collectors()`. Built-in entries are listed here so the
+# discovery API and the source of truth match.
+[project.entry-points."evidence_collector.parsers"]
+sarif = "evidence_collector.parsers:parse_sarif"
+sbom = "evidence_collector.parsers:parse_sbom"
+junit = "evidence_collector.parsers:parse_junit"
+zap = "evidence_collector.parsers:parse_zap"
+attestation = "evidence_collector.parsers:parse_attestation"
+exception = "evidence_collector.parsers:parse_exception"
+
+[project.entry-points."evidence_collector.collectors"]
+local = "evidence_collector.collectors.local:LocalArtifactCollector"
+github = "evidence_collector.collectors.github:GitHubCollector"
+gitlab = "evidence_collector.collectors.gitlab:GitLabCollector"
+
 [project.urls]
 Homepage = "https://github.com/LucasGrifoni/secure-sdlc-evidence-collector"
 Issues = "https://github.com/LucasGrifoni/secure-sdlc-evidence-collector/issues"

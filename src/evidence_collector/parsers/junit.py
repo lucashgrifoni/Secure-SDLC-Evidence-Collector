@@ -54,12 +54,21 @@ def _parse_int(value: str | None, default: int = 0) -> int:
 
 
 def _parse_float(value: str | None, default: float = 0.0) -> float:
+    # JUnit `time` values are wall-clock seconds — reject anything that
+    # is non-finite (`nan`, `inf`, `-inf`) or negative. A producer that
+    # emits those is broken; treating it as the default is safer than
+    # propagating nonsense into downstream coverage/score calculations.
     if value is None:
         return default
     try:
-        return float(value)
+        parsed = float(value)
     except ValueError:
         return default
+    import math
+
+    if not math.isfinite(parsed) or parsed < 0.0:
+        return default
+    return parsed
 
 
 def _parse_tree(path: Path) -> Element:

@@ -1,0 +1,104 @@
+# Canonical issue/PR labels.
+#
+# Synced by `.github/workflows/labels.yml` whenever this file changes
+# on `main`. Adding a label here and pushing is enough; the workflow
+# will create or update the matching label on the repository. Removing
+# a label here will delete it from the repository (the workflow runs
+# in `delete: true` mode), so prune carefully.
+
+# Triage state
+- name: needs-triage
+  color: "fbca04"
+  description: Newly opened, awaiting first triage decision
+
+- name: triaged
+  color: "d4c5f9"
+  description: Triage done; ready for an owner
+
+- name: blocked
+  color: "b60205"
+  description: Cannot move forward until an external dependency resolves
+
+# Type of work
+- name: bug
+  color: "d73a4a"
+  description: Confirmed defect against documented behaviour
+
+- name: enhancement
+  color: "a2eeef"
+  description: New feature or capability
+
+- name: refactor
+  color: "c2e0c6"
+  description: Internal change with no user-visible behaviour shift
+
+- name: documentation
+  color: "0075ca"
+  description: README, ADRs, threat model, or mkdocs site
+
+- name: security
+  color: "b60205"
+  description: Security-relevant; keep on a short SLA
+
+- name: performance
+  color: "f9d0c4"
+  description: Latency, throughput, or memory work
+
+# Component
+- name: area/parsers
+  color: "fef2c0"
+  description: SARIF / SBOM / JUnit / ZAP / attestation / exception parsers
+
+- name: area/collectors
+  color: "fef2c0"
+  description: Local, GitHub, GitLab evidence collectors
+
+- name: area/scoring
+  color: "fef2c0"
+  description: Coverage, confidence, release_status engine
+
+- name: area/cli
+  color: "fef2c0"
+  description: Typer surface, doctor, plugins, oscal, schema commands
+
+- name: area/release
+  color: "fef2c0"
+  description: release.yml, signing, SLSA provenance, cosign, PyPI, container
+
+- name: area/ci
+  color: "fef2c0"
+  description: github-ci-cd, security-ci-cd, mutation, scorecard, codeql workflows
+
+- name: area/docs-site
+  color: "fef2c0"
+  description: mkdocs, gitpage, GitHub Pages deploy
+
+# Community
+- name: good first issue
+  color: "7057ff"
+  description: Approachable for new contributors
+
+- name: help wanted
+  color: "008672"
+  description: Extra attention is welcome
+
+# Lifecycle
+- name: stale
+  color: "ededed"
+  description: Marked stale by the stale-bot; will close if no activity
+
+- name: pinned
+  color: "0e8a16"
+  description: Stale-bot leaves this issue alone
+
+- name: dependencies
+  color: "0366d6"
+  description: Dependabot or manual dependency bump
+
+- name: ci
+  color: "0366d6"
+  description: Touches CI pipelines
+
+- name: github-actions
+  color: "0366d6"
+  description: Touches reusable Actions or workflow templates

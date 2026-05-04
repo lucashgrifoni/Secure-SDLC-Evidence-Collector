@@ -1,0 +1,61 @@
+# Auto-close issues and PRs that have gone quiet.
+#
+# Conservative defaults: 60 days of inactivity to mark stale, 14 more
+# to close. Issues labelled `pinned`, `security`, or `blocked` are
+# exempt — those should stay open until resolved. Pull requests get a
+# tighter 30/7 cycle since stale PRs rot fast.
+
+name: Stale issue and PR cleanup
+
+on:
+  schedule:
+    - cron: "0 8 * * *"  # daily, 08:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: stale-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stale:
+    name: Mark and close stale items
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - name: Process stale items
+        uses: actions/stale@28ca1036281a5e5922ead5184a1bbf96e5fc984e # v9.0.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          days-before-issue-stale: 60
+          days-before-issue-close: 14
+          days-before-pr-stale: 30
+          days-before-pr-close: 7
+          stale-issue-label: stale
+          stale-pr-label: stale
+          exempt-issue-labels: "pinned,security,blocked"
+          exempt-pr-labels: "pinned,security,blocked,dependencies"
+          stale-issue-message: |
+            This issue has been quiet for 60 days. If it is still
+            relevant, leave a short update or remove the `stale`
+            label; otherwise it will close in 14 days.
+          stale-pr-message: |
+            This pull request has been quiet for 30 days. Push a new
+            commit, leave a comment, or remove the `stale` label to
+            keep it open; otherwise it will close in 7 days.
+          close-issue-message: |
+            Closing due to inactivity. Reopen with new context if the
+            problem persists.
+          close-pr-message: |
+            Closing this pull request due to inactivity. Re-open or
+            open a new PR when ready to continue.
+          operations-per-run: 50
