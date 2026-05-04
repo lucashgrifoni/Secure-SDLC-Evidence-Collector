@@ -47,7 +47,7 @@ class GitLabCollectorConfig:
     project: str
     api_base: str = _DEFAULT_API
     token: str | None = None
-    user_agent: str = "secure-sdlc-evidence-collector/1.0.0"
+    user_agent: str = "secure-sdlc-evidence-collector/1.0.1"
 
     @classmethod
     def from_env(cls, project: str, api_base: str = _DEFAULT_API) -> GitLabCollectorConfig:

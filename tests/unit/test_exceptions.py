@@ -143,3 +143,72 @@ justification: "short"
     )
     with pytest.raises(ParseError):
         parse_exception(path)
+
+
+def test_parse_exception_rejects_missing_required_fields(tmp_path: Path) -> None:
+    path = tmp_path / "missing.yaml"
+    path.write_text(
+        """
+exception_id: EXC-2026-099
+control_id: SSDF-PW.1
+""",
+        encoding="utf-8",
+    )
+    with pytest.raises(ParseError, match="missing required fields"):
+        parse_exception(path)
+
+
+def test_parse_exception_rejects_invalid_iso_datetime(tmp_path: Path) -> None:
+    path = tmp_path / "bad_dt.yaml"
+    path.write_text(
+        """
+exception_id: EXC-2026-100
+control_id: SSDF-PW.1
+approver: appsec-lead@example.com
+approved_at: "not-a-real-datetime"
+expires_at: 2026-07-10T10:00:00Z
+justification: "No new trust boundary; follow-up scheduled for next quarter."
+""",
+        encoding="utf-8",
+    )
+    with pytest.raises(ParseError, match="Invalid ISO 8601 datetime"):
+        parse_exception(path)
+
+
+def test_parse_exception_rejects_unsupported_datetime_type(tmp_path: Path) -> None:
+    # Pure JSON cannot represent native datetimes, so an integer is treated
+    # as an unsupported type by the parser's _parse_datetime helper.
+    path = tmp_path / "bad_type.json"
+    path.write_text(
+        """
+{
+  "exception_id": "EXC-2026-101",
+  "control_id": "SSDF-PW.1",
+  "approver": "appsec-lead@example.com",
+  "approved_at": 12345,
+  "expires_at": "2026-07-10T10:00:00Z",
+  "justification": "No new trust boundary; follow-up scheduled for next quarter."
+}
+""",
+        encoding="utf-8",
+    )
+    with pytest.raises(ParseError, match="Unsupported approved_at type"):
+        parse_exception(path)
+
+
+def test_parse_exception_rejects_non_mapping_scope(tmp_path: Path) -> None:
+    path = tmp_path / "bad_scope.yaml"
+    path.write_text(
+        """
+exception_id: EXC-2026-102
+control_id: SSDF-PW.1
+approver: appsec-lead@example.com
+approved_at: 2026-04-10T10:00:00Z
+expires_at: 2026-07-10T10:00:00Z
+justification: "No new trust boundary; follow-up scheduled for next quarter."
+scope: "payments-api"
+""",
+        encoding="utf-8",
+    )
+    with pytest.raises(ParseError, match=r"scope.*must be a mapping"):
+        parse_exception(path)

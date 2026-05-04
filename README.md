@@ -2,12 +2,12 @@
 
 [![CI](https://img.shields.io/badge/ci-github--actions-blue)](./.github/workflows/github-ci-cd.yml)
 [![Security CI](https://img.shields.io/badge/security--ci-semgrep%20%7C%20trivy%20%7C%20pip--audit-blue)](./.github/workflows/security-ci-cd.yml)
-[![Release](https://img.shields.io/badge/release-v1.0.0-blue)](./CHANGELOG.md)
+[![Release](https://img.shields.io/badge/release-v1.0.1-blue)](./CHANGELOG.md)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 ![License Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-green)
 [![Signed with cosign](https://img.shields.io/badge/signed-cosign%20keyless-9cf)](./.github/workflows/release.yml)
-![Tests 54](https://img.shields.io/badge/tests-passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-74%25-brightgreen)
+![Tests 123](https://img.shields.io/badge/tests-123%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-78%25-brightgreen)
 
 **CLI-first AppSec/DevSecOps tool that answers: "Which evidence proves this
 release followed a minimum Secure SDLC process?"**
