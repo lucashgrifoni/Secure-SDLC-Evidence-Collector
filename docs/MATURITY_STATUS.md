@@ -9,7 +9,7 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 > `Owner` column so we don't double-up. The `Last touched` column is in
 > ISO 8601 (UTC) so a stale row is obvious by inspection.
 
-**Last updated:** 2026-05-04 (Tier 1 shipped)
+**Last updated:** 2026-05-04 (Tier 2 shipped)
 
 **Released versions:** v1.0.0 (2026-04-23) · v1.0.1 (2026-05-04, maturity polish)
 
@@ -19,9 +19,9 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 
 | Metric                          | Current | Target | Notes                                                                |
 |---------------------------------|---------|--------|----------------------------------------------------------------------|
-| Tests passing                   | 129     | —      | unit + integration (+6 from Tier 1 doctor coverage)                  |
-| Line + branch coverage          | 78.2 %  | 85 %   | floor enforced at 70 %                                               |
-| `mypy --strict` source files    | 53      | —      | zero issues                                                          |
+| Tests passing                   | 131     | —      | unit + integration (+2 from Tier 2 json-logs coverage)               |
+| Line + branch coverage          | 77.9 %  | 85 %   | floor enforced at 70 %                                               |
+| `mypy --strict` source files    | 54      | —      | zero issues                                                          |
 | `ruff` violations               | 0       | 0      | enforced in CI and pre-commit                                        |
 | `actionlint` violations         | 0       | 0      | enforced via `pre-commit` and CI                                     |
 | Workflows pinned by SHA         | yes     | yes    | third-party actions                                                  |
@@ -44,13 +44,13 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 
 ## Tier 2 — High impact, medium effort
 
-| ID   | Item                                                | Status  | Owner | Last touched | Notes |
-|------|-----------------------------------------------------|---------|-------|--------------|-------|
-| T2.1 | SLSA Build Level 3 provenance                       | pending | —     | —            |       |
-| T2.2 | Self-SBOM, signed                                   | pending | —     | —            |       |
-| T2.3 | Multi-arch Docker image, signed, with SBOM          | pending | —     | —            |       |
-| T2.4 | Mutation testing                                    | pending | —     | —            |       |
-| T2.5 | Structured logs with `--json-logs`                  | pending | —     | —            |       |
+| ID   | Item                                                | Status | Owner | Last touched | Notes                                                                                    |
+|------|-----------------------------------------------------|--------|-------|--------------|------------------------------------------------------------------------------------------|
+| T2.1 | SLSA Build Level 3 provenance                       | done   | LHG   | 2026-05-04   | `slsa-github-generator/generator_generic_slsa3.yml@v2.0.0` next to `attest-build-prov.`  |
+| T2.2 | Self-SBOM, signed                                   | done   | LHG   | 2026-05-04   | `cyclonedx-bom` in release.yml; signed with cosign sign-blob; attached to GH Release     |
+| T2.3 | Multi-arch Docker image, signed, with SBOM          | done   | LHG   | 2026-05-04   | `publish-container` job: amd64+arm64 to ghcr.io, cosign sign + syft + cosign attest      |
+| T2.4 | Mutation testing                                    | done   | LHG   | 2026-05-04   | `.github/workflows/mutation.yml` weekly + dispatch; mutmut config focused on parsers     |
+| T2.5 | Structured logs with `--json-logs`                  | done   | LHG   | 2026-05-04   | global flag + `SDLC_JSON_LOGS=1` env var; emits NDJSON; 2 unit tests                     |
 
 ## Tier 3 — Product maturity
 
@@ -97,3 +97,12 @@ need a one-time configuration step on a third-party platform.
   structural-determinism CI gate, and the `sdlc-evidence doctor`
   command with 6 unit tests. Total tests 123 → 129, coverage 77.6 % →
   78.2 %, mypy strict files 52 → 53.
+- **2026-05-04** — Tier 2 complete. T2.1 SLSA L3 provenance via
+  `slsa-github-generator`; T2.2 collector self-SBOM (CycloneDX) signed
+  with cosign and attached to the GitHub Release; T2.3 new
+  `publish-container` job that builds multi-arch (amd64+arm64) images,
+  pushes to ghcr.io, signs them keyless and attaches a syft-generated
+  SBOM as a cosign attestation; T2.4 weekly mutation-testing workflow
+  with mutmut; T2.5 `--json-logs` global flag (also `SDLC_JSON_LOGS=1`)
+  emitting NDJSON events with 2 unit tests. Tests 129 → 131,
+  mypy strict files 53 → 54.

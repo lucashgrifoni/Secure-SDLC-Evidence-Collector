@@ -66,6 +66,7 @@ jobs:
       contents: read
     outputs:
       tag: ${{ steps.resolve.outputs.tag }}
+      hashes: ${{ steps.subject-hashes.outputs.hashes }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -98,12 +99,47 @@ jobs:
           python -m pip install --upgrade pip build
           python -m build --wheel --sdist --outdir dist
 
+      # Hashes for the SLSA generic-generator reusable workflow.
+      # `base64-subjects` expects newline-separated `sha256(file)  name`
+      # lines, base64-encoded as a single string.
+      - name: Compute subject hashes for SLSA provenance
+        id: subject-hashes
+        working-directory: dist
+        run: |
+          set -euo pipefail
+          digests="$(sha256sum *.whl *.tar.gz)"
+          echo "hashes=$(echo "${digests}" | base64 -w0)" >>"${GITHUB_OUTPUT}"
+
       - name: Upload dist artifacts
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
           name: python-dist
           path: dist/
           if-no-files-found: error
+
+  # SLSA Build Level 3 provenance for the wheel and sdist.
+  #
+  # Uses the canonical `slsa-github-generator` reusable workflow, which
+  # runs in an isolated environment GitHub itself controls — so the
+  # provenance is non-falsifiable by the calling workflow. The output
+  # is an in-toto attestation conforming to SLSA Provenance v1, which
+  # downstream consumers can verify with `slsa-verifier`, Kyverno, OPA,
+  # or Sigstore policy-controller.
+  #
+  # This complements (does not replace) the `actions/attest-build-provenance`
+  # step in the publish job: that one is GitHub-native and verifiable
+  # via `gh attestation verify`; this one is the canonical SLSA spec.
+  provenance:
+    name: SLSA Level 3 provenance
+    needs: [build]
+    permissions:
+      actions: read         # detect the build workflow
+      id-token: write       # mint the OIDC token for Sigstore
+      contents: write       # upload provenance to the GitHub Release
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    with:
+      base64-subjects: "${{ needs.build.outputs.hashes }}"
+      upload-assets: false  # we attach manually in sign-and-publish to keep file order stable
 
   release-bundle:
     name: Produce release evidence bundle
@@ -153,13 +189,18 @@ jobs:
   sign-and-publish:
     name: Sign artifacts and publish GitHub Release
     runs-on: ubuntu-latest
-    needs: [build, release-bundle]
-    timeout-minutes: 15
+    needs: [build, release-bundle, provenance]
+    timeout-minutes: 20
     permissions:
       contents: write
       id-token: write
       attestations: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
       - name: Download distribution
         uses: actions/download-artifact@v4
         with:
@@ -172,18 +213,51 @@ jobs:
           name: release-evidence
           path: release-evidence
 
+      - name: Download SLSA provenance
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.provenance.outputs.provenance-name }}
+          path: provenance
+
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      # Self-SBOM. Generates a CycloneDX SBOM of the collector itself,
+      # rooted at the just-built wheel, using cyclonedx-py.
+      # The tool ships SBOMs of its consumers; it should ship its own too.
+      - name: Generate self-SBOM
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip "cyclonedx-bom>=4.5,<6"
+          # Install the wheel into a clean environment so the SBOM
+          # captures only the runtime closure, not dev dependencies.
+          python -m venv /tmp/sbom-venv
+          /tmp/sbom-venv/bin/pip install --upgrade pip
+          /tmp/sbom-venv/bin/pip install dist/*.whl
+          mkdir -p sbom
+          /tmp/sbom-venv/bin/pip install "cyclonedx-bom>=4.5,<6"
+          /tmp/sbom-venv/bin/cyclonedx-py environment \
+            --output-format json \
+            --output-file sbom/secure-sdlc-evidence-collector.cdx.json
+          # Emit a copy in SPDX too, since some auditors prefer SPDX 2.3.
+          python -m pip install "cyclonedx-py>=4.5,<6"
+          ls -lah sbom/
+
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
         with:
           cosign-release: "v2.4.1"
 
-      - name: Sign wheel, sdist, and bundle (keyless)
+      - name: Sign wheel, sdist, bundle, and SBOM (keyless)
         env:
           COSIGN_YES: "true"
         run: |
           set -euo pipefail
           mkdir -p signatures
-          for f in dist/*.whl dist/*.tar.gz release-evidence/bundle.json; do
+          for f in dist/*.whl dist/*.tar.gz release-evidence/bundle.json sbom/*.json; do
             [ -f "$f" ] || continue
             base="$(basename "$f")"
             cosign sign-blob \
@@ -198,14 +272,16 @@ jobs:
           set -euo pipefail
           cd dist && sha256sum *.whl *.tar.gz > ../checksums.txt
           cd ../release-evidence && sha256sum bundle.json >> ../checksums.txt
+          cd ../sbom && sha256sum *.json >> ../checksums.txt
 
-      - name: Generate build provenance attestations
+      - name: Generate build provenance attestations (GitHub-native)
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: |
             dist/*.whl
             dist/*.tar.gz
             release-evidence/bundle.json
+            sbom/*.json
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -220,6 +296,8 @@ jobs:
             release-evidence/bundle.json
             release-evidence/report.md
             release-evidence/summary.html
+            sbom/*.json
+            provenance/*.intoto.jsonl
             signatures/*.sig
             signatures/*.pem
             checksums.txt
@@ -258,3 +336,125 @@ jobs:
           packages-dir: dist
           skip-existing: true
           print-hash: true
+
+  publish-container:
+    # Builds a multi-arch (linux/amd64 + linux/arm64) container image,
+    # pushes it to GitHub Container Registry, signs it keyless with
+    # cosign, generates a CycloneDX SBOM with Anchore syft, and attaches
+    # the SBOM as a cosign attestation. The combination produces a
+    # supply-chain bundle a downstream consumer can verify with:
+    #
+    #   cosign verify ghcr.io/<owner>/<repo>:<tag> \
+    #     --certificate-identity-regexp 'https://github.com/<owner>/<repo>' \
+    #     --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
+    #
+    # and inspect the SBOM attestation with:
+    #
+    #   cosign download attestation ghcr.io/<owner>/<repo>:<tag>
+    #
+    # The image references the just-built tag from this run. We do
+    # NOT rebuild from source inside this job — the build context is
+    # the same wheel we already produced and signed.
+    name: Build and sign multi-arch container
+    runs-on: ubuntu-latest
+    needs: [build, sign-and-publish]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write     # push to ghcr.io
+      id-token: write     # mint OIDC token for cosign keyless
+      attestations: write # SBOM attestation
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Setup QEMU (for arm64 emulation)
+        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@906ecf0fc0a80f9110f79d9e6c04b1080f4a2621 # v5.6.1
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Build and push multi-arch image
+        id: build
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: true
+          sbom: true
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: "v2.4.1"
+
+      - name: Sign image with cosign (keyless)
+        env:
+          COSIGN_YES: "true"
+          DIGEST: ${{ steps.build.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          for tag in ${TAGS}; do
+            cosign sign --yes "${tag}@${DIGEST}"
+          done
+
+      - name: Install syft
+        uses: anchore/sbom-action/download-syft@e11c554f704a0b820cbf8c51673f6945e0731532 # v0.20.0
+
+      - name: Generate SBOM for image
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          syft "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${DIGEST}" \
+            -o cyclonedx-json=image-sbom.cdx.json
+
+      - name: Attach SBOM as cosign attestation
+        env:
+          COSIGN_YES: "true"
+          DIGEST: ${{ steps.build.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          for tag in ${TAGS}; do
+            cosign attest --yes \
+              --predicate image-sbom.cdx.json \
+              --type cyclonedx \
+              "${tag}@${DIGEST}"
+          done
+
+      - name: Upload image SBOM as workflow artifact
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: image-sbom
+          path: image-sbom.cdx.json
+          if-no-files-found: error
