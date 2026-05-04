@@ -9,7 +9,7 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 > `Owner` column so we don't double-up. The `Last touched` column is in
 > ISO 8601 (UTC) so a stale row is obvious by inspection.
 
-**Last updated:** 2026-05-04 (Tier 2 shipped)
+**Last updated:** 2026-05-04 (Tier 3 shipped)
 
 **Released versions:** v1.0.0 (2026-04-23) · v1.0.1 (2026-05-04, maturity polish)
 
@@ -19,9 +19,9 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 
 | Metric                          | Current | Target | Notes                                                                |
 |---------------------------------|---------|--------|----------------------------------------------------------------------|
-| Tests passing                   | 131     | —      | unit + integration (+2 from Tier 2 json-logs coverage)               |
+| Tests passing                   | 134     | —      | unit + integration (+3 from Tier 3 hypothesis property tests)        |
 | Line + branch coverage          | 77.9 %  | 85 %   | floor enforced at 70 %                                               |
-| `mypy --strict` source files    | 54      | —      | zero issues                                                          |
+| `mypy --strict` source files    | 55      | —      | zero issues                                                          |
 | `ruff` violations               | 0       | 0      | enforced in CI and pre-commit                                        |
 | `actionlint` violations         | 0       | 0      | enforced via `pre-commit` and CI                                     |
 | Workflows pinned by SHA         | yes     | yes    | third-party actions                                                  |
@@ -54,13 +54,13 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 
 ## Tier 3 — Product maturity
 
-| ID   | Item                                       | Status  | Owner | Last touched | Notes |
-|------|--------------------------------------------|---------|-------|--------------|-------|
-| T3.1 | ADRs in `docs/adr/`                        | pending | —     | —            |       |
-| T3.2 | Public threat model                        | pending | —     | —            |       |
-| T3.3 | Property-based testing with `hypothesis`   | pending | —     | —            |       |
-| T3.4 | mkdocs-material site                       | pending | —     | —            |       |
-| T3.5 | Python 3.13 in CI matrix                   | pending | —     | —            |       |
+| ID   | Item                                       | Status | Owner | Last touched | Notes                                                                                     |
+|------|--------------------------------------------|--------|-------|--------------|-------------------------------------------------------------------------------------------|
+| T3.1 | ADRs in `docs/adr/`                        | done   | LHG   | 2026-05-04   | 5 ADRs covering Pydantic v2, deterministic JSON, Typer, evidence-first, catalog override  |
+| T3.2 | Public threat model                        | done   | LHG   | 2026-05-04   | `THREAT_MODEL.md` at repo root: STRIDE-by-component, residual risks, supply-chain section |
+| T3.3 | Property-based testing with `hypothesis`   | done   | LHG   | 2026-05-04   | 3 properties on JUnit, SARIF, scoring monotonicity; surfaced `critical` bucket as a real classifier  |
+| T3.4 | mkdocs-material site                       | done   | LHG   | 2026-05-04   | `mkdocs.yml`, `docs/index.md`; published at `/docs/` of the GitHub Pages deploy           |
+| T3.5 | Python 3.13 in CI matrix                   | done   | LHG   | 2026-05-04   | `github-ci-cd.yml` quality job runs in matrix `[3.12, 3.13]`; classifiers updated         |
 
 ## Tier 4 — Scale and community
 
@@ -106,3 +106,13 @@ need a one-time configuration step on a third-party platform.
   with mutmut; T2.5 `--json-logs` global flag (also `SDLC_JSON_LOGS=1`)
   emitting NDJSON events with 2 unit tests. Tests 129 → 131,
   mypy strict files 53 → 54.
+- **2026-05-04** — Tier 3 complete. T3.1 5 ADRs (Pydantic v2,
+  deterministic JSON, Typer, evidence-first, catalog override);
+  T3.2 public threat model `THREAT_MODEL.md` (STRIDE per component,
+  residual risks, supply-chain mitigations); T3.3 hypothesis property
+  tests for JUnit attribute fuzzing, SARIF severity classification, and
+  scoring monotonicity — surfaced `critical` as a real bucket the
+  hand-written tests had missed; T3.4 mkdocs-material site at `/docs/`
+  of the Pages deploy alongside the existing evidence summary at `/`;
+  T3.5 CI matrix Python 3.12 + 3.13. Tests 131 → 134,
+  mypy strict files 54 → 55.
