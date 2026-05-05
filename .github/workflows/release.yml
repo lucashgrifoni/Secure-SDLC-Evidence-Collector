@@ -111,7 +111,7 @@ jobs:
         working-directory: dist
         run: |
           set -euo pipefail
-          digests="$(sha256sum *.whl *.tar.gz)"
+          digests="$(sha256sum -- *.whl *.tar.gz)"
           echo "hashes=$(echo "${digests}" | base64 -w0)" >>"${GITHUB_OUTPUT}"
 
       - name: Upload dist artifacts
@@ -275,9 +275,9 @@ jobs:
       - name: Generate SHA-256 checksums
         run: |
           set -euo pipefail
-          cd dist && sha256sum *.whl *.tar.gz > ../checksums.txt
+          cd dist && sha256sum -- *.whl *.tar.gz > ../checksums.txt
           cd ../release-evidence && sha256sum bundle.json >> ../checksums.txt
-          cd ../sbom && sha256sum *.json >> ../checksums.txt
+          cd ../sbom && sha256sum -- *.json >> ../checksums.txt
 
       - name: Generate build provenance attestations (GitHub-native)
         uses: actions/attest-build-provenance@v1
