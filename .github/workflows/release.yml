@@ -280,7 +280,7 @@ jobs:
           cd ../sbom && sha256sum -- *.json >> ../checksums.txt
 
       - name: Generate build provenance attestations (GitHub-native)
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             dist/*.whl
