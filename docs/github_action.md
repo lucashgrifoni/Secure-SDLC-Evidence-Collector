@@ -34,7 +34,7 @@ jobs:
 
       # Step 2 — assemble the evidence bundle
       - id: collect
-        uses: LucasGrifoni/secure-sdlc-evidence-collector@v1.0.0
+        uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v1.1.0
         with:
           application: "payments-api"
           release-id: ${{ github.ref_name }}

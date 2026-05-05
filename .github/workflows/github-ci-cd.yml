@@ -45,13 +45,17 @@ jobs:
       - name: Install project
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          # `[api]` is required so mypy --strict can resolve the fastapi
+          # imports in `src/evidence_collector/api/app.py`. The runtime
+          # API is still optional for end-users; it is only force-installed
+          # in CI so the type-check has every symbol available.
+          python -m pip install -e ".[dev,api]"
 
       - name: Ruff lint
-        run: python -m ruff check src tests
+        run: python -m ruff check src tests scripts
 
       - name: Ruff format check
-        run: python -m ruff format --check src tests
+        run: python -m ruff format --check src tests scripts
 
       - name: Mypy strict type-check
         run: python -m mypy src tests

@@ -71,10 +71,9 @@ def main() -> None:
             if not artifacts.is_dir():
                 continue
             for f in artifacts.iterdir():
-                if f.suffix.lower() in {".sarif", ".json", ".xml"}:
-                    if _scrub_file(f, lab_dir.name):
-                        touched += 1
-                        print(f"scrubbed {f.relative_to(COLLECTOR_ROOT)}")
+                if f.suffix.lower() in {".sarif", ".json", ".xml"} and _scrub_file(f, lab_dir.name):
+                    touched += 1
+                    print(f"scrubbed {f.relative_to(COLLECTOR_ROOT)}")
     for root, hint in ((SELF, "self_release"), (SAMPLE, "sample_release")):
         if not root.is_dir():
             continue

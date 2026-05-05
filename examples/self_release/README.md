@@ -42,8 +42,8 @@ python -m pytest --junitxml=examples/self_release/artifacts/junit.xml
 # Bundle
 python -m evidence_collector.cli.main run \
   --application secure-sdlc-evidence-collector \
-  --repository LucasGrifoni/secure-sdlc-evidence-collector \
-  --release-id v0.1.0 --commit-sha "$(git rev-parse HEAD)" --branch master \
+  --repository lucashgrifoni/Secure-SDLC-Evidence-Collector \
+  --release-id v1.1.0 --commit-sha "$(git rev-parse HEAD)" --branch main \
   --artifacts-dir examples/self_release/artifacts \
   --attestations-dir examples/self_release/attestations \
   --output-dir examples/self_release/output

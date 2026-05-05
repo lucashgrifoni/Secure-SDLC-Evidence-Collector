@@ -75,6 +75,8 @@ nav:
   - Bundle schema reference: bundle_schema.md
   - GitHub Action: github_action.md
   - Release readiness: release-readiness.md
+  - Public repository readiness: publication-readiness.md
+  - Plugins: plugins.md
   - Limitations: limitations.md
   - Traceability: traceability.md
   - Maturity:

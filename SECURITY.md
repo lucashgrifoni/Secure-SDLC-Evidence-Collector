@@ -48,8 +48,11 @@ The tool is designed with the same rules it enforces on others:
 - XML parsing via `defusedxml` (no external entity resolution),
 - no PR body, reviewer email, or token ever written to logs,
 - deterministic bundle JSON so audit integrity hashes are stable,
-- releases signed keyless with cosign (Sigstore Rekor transparency log)
-  starting with `v1.0.0`.
+- `release.yml` is configured to sign releases keyless with cosign
+  (Sigstore Rekor transparency log) and to attach SLSA Build Level 3
+  provenance. The first signed public release will be `v1.1.0`; until
+  that release ships, no public artefact in this project carries a
+  cosign signature.
 
 ## Scope
 

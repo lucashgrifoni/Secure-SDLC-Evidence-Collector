@@ -1,6 +1,7 @@
 .PHONY: install install-dev lint format typecheck test test-cov run-example clean
 
 PY ?= python
+RUFF_TARGETS ?= src tests scripts
 
 install:
 	$(PY) -m pip install -e .
@@ -9,11 +10,11 @@ install-dev:
 	$(PY) -m pip install -e ".[dev]"
 
 lint:
-	ruff check src tests
+	ruff check $(RUFF_TARGETS)
 
 format:
-	ruff format src tests
-	ruff check --fix src tests
+	ruff format $(RUFF_TARGETS)
+	ruff check --fix $(RUFF_TARGETS)
 
 typecheck:
 	mypy src tests

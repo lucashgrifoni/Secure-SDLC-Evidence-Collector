@@ -4,20 +4,24 @@ Formal go/no-go criteria for tagging a new public release of the Secure
 SDLC Evidence Collector. The project does **not** ship until every
 criterion is ticked and the evidence linked below is current.
 
-The criteria below are the project's public answer to the 15-criteria
-publication gate used for the 2026-05-01 public-repository decision.
+For turning the private repository public, use the stricter
+[public repository readiness gate](./publication-readiness.md), currently
+targeted at **2026-06-05**. That gate supersedes the older 2026-05-01
+publication target.
 
-**Last validation pass: 2026-04-24 — 114 tests passing, coverage 76%,
-ruff + mypy strict clean, local Semgrep/Trivy/Gitleaks/Bandit/pip-audit
-clean on runtime deps, 7/7 labs produce the expected `not_ready`
-baseline, determinism confirmed on two consecutive runs.**
+**Last local validation pass: 2026-05-05 — 143 tests passing, coverage
+77.39%, `ruff check .` clean, `mypy src tests` clean, `actionlint` clean,
+`gitleaks detect --source . --no-git --redact` clean, `python -m
+pip_audit .` clean, Trivy secret/misconfig clean, sample release `ready`,
+sample without attestations `not_ready`. Semgrep and Bandit were not
+available/run in this local pass.**
 
 ---
 
 ## Quality gates
 
-- [ ] `ruff check src tests` → clean.
-- [ ] `ruff format --check src tests` → clean.
+- [ ] `ruff check src tests scripts` → clean.
+- [ ] `ruff format --check src tests scripts` → clean.
 - [ ] `mypy --strict src tests` → zero errors.
 - [ ] `pytest` → all tests pass and `--cov-fail-under=70` is met.
 - [ ] `sdlc-evidence` console script installs from a clean venv
