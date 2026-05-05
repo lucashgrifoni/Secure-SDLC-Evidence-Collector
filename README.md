@@ -368,7 +368,12 @@ public repository with the external setup listed in
 - Plugin entry-point system, optional FastAPI read-only surface,
   OSCAL exporter, `release-please` workflow, issue labels + stale-bot.
 
-### Planned
+### Considered for future versions
+
+These are open ideas, not commitments — none has design, ADR, or
+scheduled milestone behind it yet. They are listed so users can see
+the direction of travel and open a Discussion if any becomes
+load-bearing for their use case.
 
 - Azure DevOps collector (PRs + Pipelines).
 - Historical analytics (coverage trend per repo/team) and a read-only
