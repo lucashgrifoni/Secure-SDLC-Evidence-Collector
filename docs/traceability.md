@@ -9,7 +9,57 @@ This document maps every public promise the collector makes (documented in
 4. **Recorded (obtained) verdict** at the last validation pass.
 5. **Negative / edge / misuse counterpart** (where applicable).
 
-Last refreshed: **2026-04-24** (v1.0.0 + readiness pass).
+Last refreshed: **2026-05-05** (maturity/higiene rodada on top of the
+`v1.1.0` release-readiness merge in `main`, commit `17dede2`).
+
+### Refresh notes — 2026-05-05
+
+What was re-run from this matrix in this rodada:
+
+- **Sample-release positive fixture (`examples/sample_release/`)** —
+  `python -m evidence_collector.cli.main run` produced
+  `release_status = ready`, coverage 100, confidence 59, **13/13
+  controls met**, evidence count 13. The four output directories
+  used were `output/cursor-validation-{run,collect,evaluate,oscal,schema}`
+  and were cleaned at the end of the rodada.
+- **Sample-release negative scenario (no `--attestations-dir`)** —
+  produced `release_status = not_ready`, coverage 47, confidence 100,
+  **6 missing**, **2 partial**, **5 met**, exit code `2` by design.
+  Missing critical controls observed: `ORG-CODE-REVIEW`,
+  `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`, `SSDF-PS.2`. This
+  matches §4 row "A critical control lacks required evidence".
+- **`compare` against the canonical sample** —
+  `examples/sample_release/output/bundle.json` vs. the new
+  `output/cursor-validation-run/bundle.json` reported
+  `coverage_delta=0`, `confidence_delta=0`, all 13 controls
+  `unchanged`. The `ready -> ready` headline is preserved across the
+  rename (the canonical sample still ships under the
+  `payments-api / 2026.04.10` release context, so the bundle IDs
+  differ — that is by design, not a regression).
+- **`oscal` and `schema` exports** — both succeeded with
+  deterministic UUID/JSON output as documented in §5.
+
+What was **not** re-run in this rodada:
+
+- `examples/labs/*` — the recorded lab scans were not re-driven.
+  None of the lab fixtures changed since 2026-04-24, so the §3 lab
+  rows are reported as "matches" by inheritance from the previous
+  pass. To revalidate, run `bash scripts/scan_all_labs.sh` from a
+  shell with the original lab corpus mounted (Bash on Windows is
+  available via Git Bash; the helper script does not need to be
+  rewritten for PowerShell).
+- The GitHub / GitLab collectors against live APIs — no token was
+  set in this rodada (`doctor --json` reports both as
+  `absent (collectors will skip SCM)`). The unit and contract tests
+  for both collectors are exercised by the regular `pytest` run
+  documented in `release-readiness.md`.
+- Docker build — Docker daemon not active in this pass. The §4
+  fixture rows that depend on the container fall back to the local
+  CLI invocation.
+
+Refresh outcome: every row in §1, §2, §3 and §4 is consistent with
+what the CLI produced on 2026-05-05. No row needed an `obtained ≠
+expected` correction.
 
 ---
 
