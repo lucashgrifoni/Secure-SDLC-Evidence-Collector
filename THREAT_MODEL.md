@@ -110,11 +110,26 @@ observe metadata (which repos we're reading). We accept this.
 | **Container image tampering**         | Image is signed with `cosign sign` keyless; SBOM is attached as a `cosign attest` predicate (CycloneDX type).               |
 | **Schema drift between collector and consumer** | `sdlc-evidence schema` exports the Pydantic-derived JSON Schema; CI re-validates the sample bundle against it on every run. |
 
-### 2.5 Supply chain of the collector itself
+### 2.5 Tier 4 surfaces — FastAPI, plugins, OSCAL
+
+These three surfaces shipped in v1.1.0 and add attack surface beyond
+the original CLI / parser / collector loop. They are listed
+separately because they are **opt-in** and most operators will not
+turn them on.
+
+| Surface | Threat | Mitigation |
+|---|---|---|
+| **FastAPI read-only API** (`src/evidence_collector/api/app.py`, behind `[api]` extra) | Unauthenticated HTTP server exposing schema/catalog/plugins/version/healthz. Run on a public network, an attacker can fingerprint the deployment and read the active control catalog. | Endpoints are **read-only** — no `POST/PUT/DELETE`, no bundle ingestion, no token in the response. The `[api]` extra is opt-in, the binding host is the operator's choice (FastAPI default `127.0.0.1` if started via the example `uvicorn` invocation in `docs/`), and the surface is documented as "internal/CI-side, do not expose to the public internet" in the README and the FastAPI section of the docs. No auth is enforced because the operator who runs the API is also the one who has read access to the bundle inputs; adding token auth without a real multi-tenant requirement would be theatre. |
+| **Plugin entry-point system** (`evidence_collector.parsers` and `evidence_collector.collectors` groups, discovered by `evidence_collector.plugins`) | Any package installed in the same Python environment can register itself as a parser or collector and be discovered by `sdlc-evidence plugins`. A typo-squatted PyPI package could pose as a legitimate parser. | Discovery is **list-only** today — `sdlc-evidence plugins` enumerates registered entry points and `docs/plugins.md` documents the contract, but auto-wiring into `LocalArtifactCollector` is **explicitly deferred** (see `MATURITY_STATUS.md` T4.1 note). Until auto-wiring lands, third-party plugins must be invoked by the operator deliberately, so a typo-squat does not get loaded just by being installed. When auto-wiring lands, the bundle must record `provider` (entry-point name + version) per evidence so a downstream auditor can see which plugin produced what. |
+| **OSCAL exporter** (`sdlc-evidence oscal`) | Outputs an OSCAL 1.1.x Catalog of the active control catalog. A malicious catalog override + OSCAL export could publish a misleading catalog to a downstream OSCAL consumer. | OSCAL output is read-only and deterministic; the catalog source path is captured in the bundle so the OSCAL document can always be tied back to its source. The same `--catalog` substitution risk applies as in §2.3 row 1. |
+
+Residual risk: an operator who runs the FastAPI surface bound to `0.0.0.0` on a runner with a public IP exposes the catalog and schema. We surface this in the docs but do not refuse to bind there — that decision belongs to the operator.
+
+### 2.6 Supply chain of the collector itself
 
 | Threat                                | Mitigation                                                                                                                  |
 |---------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| **Compromised third-party action**    | All third-party actions in workflows are pinned by SHA, with the semantic tag in a trailing comment. Dependabot opens PRs to refresh SHAs (Actions ecosystem; major bumps blocked to require human review).  |
+| **Compromised third-party action**    | Third-party actions in workflows are pinned by full SHA with the semantic tag in a trailing comment, with two documented structural exceptions: `slsa-framework/slsa-github-generator/.../v2.0.0` (the SLSA generator's reusable-workflow contract requires tag-pin) and `pypa/gh-action-pypi-publish@release/v1` (the PyPA Trusted Publisher pattern). The full inventory and rationale are in `melhorias/pinning-actions-2026-05-05.md`. Dependabot opens PRs to refresh SHAs (Actions ecosystem; major bumps land only after human review and a local validation note in `melhorias/dependabot-triagem-2026-05-05.md`). |
 | **Compromised Python dependency**     | `Dependabot` covers `pip`, `github-actions` and `docker` ecosystems weekly. `pip-audit` runs in security-ci-cd.yml.         |
 | **PyPI package squatting / build hijack** | PyPI publish uses OIDC Trusted Publisher (no long-lived `PYPI_API_TOKEN`); only the `release.yml` workflow can publish.    |
 | **Container base image vulnerabilities** | Base image is `python:3.12-slim-bookworm`; Trivy filesystem + image scan in security-ci-cd.yml; SBOM attestation lets consumers re-scan.  |

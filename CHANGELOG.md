@@ -6,6 +6,37 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Cross-OS determinism gate.** `github-ci-cd.yml` now produces the
+  sample bundle on a `windows-latest` runner in addition to
+  `ubuntu-latest`, and a new `cross-os-determinism` job re-validates
+  the normalize-then-SHA-256 invariant across both. The promise in
+  `docs/limitations.md §8` ("Linux and Windows should produce the
+  same bundle") is now machine-checked instead of human-checked.
+- **SARIF classification calibration suite**
+  (`tests/unit/test_classification_calibration.py`, 25 tests) that
+  locks down the documented FP/FN behaviour from
+  `docs/limitations.md §2`.
+- **Behaviour test coverage on the four lowest-coverage modules**:
+  `test_compare.py` (11 tests), `test_gitlab_collector.py` (15
+  tests), `test_jinja.py` (7 tests), `test_cli_more_commands.py`
+  (10 tests). Total coverage 77.39 % → **86.38 %** (above the 85 %
+  maturity target); test count 143 → **211**.
+- **`examples/sample_release/exceptions/`** fixture demonstrating
+  `sdlc-evidence exceptions validate / list` against a real
+  schema-valid waiver, scoped to a different release context so the
+  canonical sample bundle stays `ready 13/13`.
+- **Pre-release runbook**
+  (`melhorias/runbook-publicacao-v1-1-0-2026-05-05.md`) and
+  **post-release verification script**
+  (`scripts/verify-release.sh`) automating cosign verify-blob,
+  slsa-verifier, GHCR verify, attestation download and PyPI
+  fresh-venv smoke.
+- **Tier 4 surface coverage in `THREAT_MODEL.md`**: new STRIDE rows
+  for the FastAPI read-only API, plugin entry-point system and
+  OSCAL exporter (Section 2.5).
+
 ### Changed
 
 - **`parsers/junit.py`**: moved the `# nosemgrep:
@@ -17,6 +48,30 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   placement fix, not a behaviour change. Verified clean with
   `semgrep scan --config p/security-audit --config p/secrets` (148
   rules, 0 findings).
+- **All third-party action `uses:` are now SHA-pinned with version
+  comment.** The 6 actions previously on tag pin
+  (`actions/attest-build-provenance@v1`, `actions/deploy-pages@v4`,
+  `actions/download-artifact@v4`, `actions/upload-pages-artifact`
+  bumped from v4 to v5 and SHA-pinned in the same diff,
+  `sigstore/cosign-installer@v3`, `softprops/action-gh-release@v2`)
+  were converted using SHAs resolved via
+  `gh api repos/<owner>/<repo>/commits/<tag>`. Two structural
+  exceptions remain documented:
+  `slsa-framework/slsa-github-generator/.../v2.0.0` (reusable
+  workflow contract requires tag pin) and
+  `pypa/gh-action-pypi-publish@release/v1` (Trusted-Publisher
+  pattern). Inventory: `melhorias/pinning-actions-2026-05-05.md`.
+- **`THREAT_MODEL.md` 2.6 supply-chain row** corrected to acknowledge
+  the two structural pin exceptions, with pointer to the dossier.
+- **Dependabot HOLD list resolved**: 2 PRs merged
+  (`actions/upload-pages-artifact@v5`, `docker/login-action@v4`),
+  4 closed via `@dependabot ignore this major version` with
+  rationale (mutmut 3 dropped Windows native support; release-please
+  v5 / attest-build-provenance v4 / codeql-action v4 are major
+  bumps deferred until the first signed public release establishes
+  a baseline).
+- **README "Roadmap > Planned" renamed to "Considered for future
+  versions"** with explicit "open ideas, not commitments" framing.
 
 ### Documentation
 
@@ -30,18 +85,21 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   remains a release-time dependency.
 - Refreshed `docs/traceability.md` to "Last refreshed: 2026-05-05"
   and added a "Refresh notes — 2026-05-05" section documenting
-  exactly which scenarios were re-driven this round (sample positive,
-  sample negative, `compare`, `oscal`, `schema`) and which were
-  inherited from the prior pass (`examples/labs/*`, live SCM, Docker
-  build).
+  exactly which scenarios were re-driven this round (sample positive
+  ready 13/13, sample negative not_ready 6 missing exit code 2,
+  `compare` 0 deltas, `oscal` and `schema` exports, **all 7
+  `examples/labs/*` re-evaluated against committed artifacts with
+  the same `not_ready` outcomes documented in §3-§4**, fresh
+  `pip install -e .` smoke run in a clean venv) and which were
+  inherited (live SCM with token, Docker build).
 - Reconciled `docs/MATURITY_STATUS.md` headline numbers with the
-  observed baseline: coverage `77.5 %` → `77.39 %`, added bandit /
-  semgrep rows, downgraded the SHA-pinning row from absolute "yes"
-  to "mostly SHA" with a pointer to the Dependabot triage dossier,
-  and rewrote the "External actions still required" table with
-  honest 2026-05-05 status (repo is private, PyPI project absent,
-  no branch protection, no Discussions, GHAS off, Scorecard not yet
-  run).
+  observed baseline: coverage `77.5 %` → **`86.38 %`** (above the
+  85 % target), added bandit / semgrep rows, set the SHA-pinning
+  row to "full SHA except 2 documented structural exceptions",
+  rewrote the "External actions still required" table with honest
+  2026-05-05 status (repo private, PyPI absent, no branch
+  protection, no Discussions, GHAS off, Scorecard not yet run),
+  added 2026-05-05 change-log entries.
 
 ## [1.1.0] — 2026-05-05
 

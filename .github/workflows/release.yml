@@ -206,19 +206,19 @@ jobs:
           persist-credentials: false
 
       - name: Download distribution
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: python-dist
           path: dist
 
       - name: Download release evidence
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: release-evidence
           path: release-evidence
 
       - name: Download SLSA provenance
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: ${{ needs.provenance.outputs.provenance-name }}
           path: provenance
@@ -252,7 +252,7 @@ jobs:
           ls -lah sbom/
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1
         with:
           cosign-release: "v2.4.1"
 
@@ -280,7 +280,7 @@ jobs:
           cd ../sbom && sha256sum -- *.json >> ../checksums.txt
 
       - name: Generate build provenance attestations (GitHub-native)
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018 # v1.4.4
         with:
           subject-path: |
             dist/*.whl
@@ -289,7 +289,7 @@ jobs:
             sbom/*.json
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ needs.build.outputs.tag }}
           name: ${{ needs.build.outputs.tag }}
@@ -330,7 +330,7 @@ jobs:
       id-token: write
     steps:
       - name: Download distribution
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: python-dist
           path: dist
@@ -417,7 +417,7 @@ jobs:
           sbom: true
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1
         with:
           cosign-release: "v2.4.1"
 

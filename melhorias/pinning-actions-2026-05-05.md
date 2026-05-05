@@ -59,23 +59,36 @@ a ponta.
 | `slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml` | `v2.0.0` | E **reusable workflow**, nao action. A propria documentacao do SLSA generator [exige pin por tag major versao](https://github.com/slsa-framework/slsa-github-generator/blob/main/RELEASE.md) por causa do contrato de OIDC + trusted-builder. Pinar por SHA quebra a verificacao de provenance. |
 | `pypa/gh-action-pypi-publish` | `release/v1` | Padrao oficial do PyPA para Trusted Publisher OIDC. O ref `release/v1` e atualizado pela equipe PyPA com correcoes de seguranca dentro da major v1. OpenSSF Scorecard reconhece este pin como aceitavel. Trocar por SHA quebra a continuidade de Trusted Publisher se a maintainer da action mover o ponteiro. |
 
-### Tag-pinned, candidatas a conversao em rodada de hardening
+### Tag-pinned convertidas para SHA na rodada de 2026-05-05 (atualizacao)
 
-Todas as seis abaixo ainda nao foram exercitadas em release publica
-(Pages deploy nunca rodou no ambiente publico, primeiro release nao
-existe). Convertelas agora antes da primeira release real adiciona
-risco sem ganho. Devem ser convertidas na rodada de hardening
-imediatamente apos a primeira release `v1.1.0` ser publicada e
-verificada de ponta a ponta.
+As seis candidatas inicialmente listadas para "rodada de hardening
+pos-release" foram convertidas para SHA + comentario de versao na
+mesma sessao do dia 2026-05-05, depois que o usuario pediu para
+executar todos os pontos de melhoria que dependem apenas de codigo.
+A conversao foi mecanica e validada com `actionlint` clean. SHAs
+obtidos via `gh api repos/<owner>/<repo>/commits/<tag>` e a versao
+exata identificada via `gh api repos/<owner>/<repo>/tags?per_page=100`
+filtrando pelo SHA. Atualizacao de log:
 
-| Action | Pin atual | Workflow afetado | Acao recomendada |
+| Action | Pin novo | Workflow afetado | Status |
 |---|---|---|---|
-| `actions/attest-build-provenance` | `@v1` | `release.yml` | converter para SHA + `# v1.x.y` apos primeira release validar provenance |
-| `actions/deploy-pages` | `@v4` | `deploy-github-pages.yml` | converter para SHA + `# v4.x.y` apos primeiro deploy publico |
-| `actions/download-artifact` | `@v4` | `release.yml` | converter junto com upload-artifact (que ja esta em v7) na proxima sincronizacao |
-| `actions/upload-pages-artifact` | `@v4` | `deploy-github-pages.yml` | converter junto com `deploy-pages` |
-| `sigstore/cosign-installer` | `@v3` | `release.yml` | converter para SHA apos primeira execucao do cosign keyless real |
-| `softprops/action-gh-release` | `@v2` | `release.yml` | converter para SHA apos primeira GitHub Release ser criada |
+| `actions/attest-build-provenance` | `@ef244123eb79f2f7a7e75d99086184180e6d0018 # v1.4.4` | `release.yml` | convertido |
+| `actions/deploy-pages` | `@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5` | `deploy-github-pages.yml` | convertido |
+| `actions/download-artifact` | `@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0` | `release.yml` (3 ocorrencias) | convertido |
+| `actions/upload-pages-artifact` | `@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0` | `deploy-github-pages.yml` | convertido |
+| `sigstore/cosign-installer` | `@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1` | `release.yml` (2 ocorrencias) | convertido |
+| `softprops/action-gh-release` | `@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2` | `release.yml` | convertido |
+
+Observacao: o pin `# v1.4.4` em `attest-build-provenance` mantem a
+**major v1**, deliberadamente nao seguindo a Dependabot PR #13 que
+propoe `v4`. A v4 trocou a base de Node 20 para Node 24 e tem
+breaking changes no contrato de attestation; deve ser avaliada na
+proxima rodada de hardening. Mesmo motivo para `cosign-installer`
+(v3 -> v4 muda mecanismo de instalacao) e `action-gh-release` (v2 ->
+v3 muda contrato de release notes). As tres permanecem em **majors
+estaveis** com SHA fixo. Quando Dependabot recriar PRs de major
+bump, eles sobem como decisao explicita acompanhada de release
+notes validadas.
 
 ## Acoes nesta rodada
 
