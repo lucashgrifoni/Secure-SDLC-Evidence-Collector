@@ -18,7 +18,6 @@ Todo o conteudo vive dentro desta pasta (`gitpage/`). Nenhum arquivo fora dela e
 gitpage/
   index.html
   README.md
-  CURSOR_PROMPT_GITPAGE.md
   assets/
     css/
       styles.css

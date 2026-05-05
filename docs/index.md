@@ -16,6 +16,8 @@ operate it in a real pipeline**.
 - **[Release readiness model](./release-readiness.md)** — how
   `ready` / `conditional` / `not_ready` is decided, and how to wire
   the verdict into pipeline gates.
+- **[Public repository readiness gate](./publication-readiness.md)** —
+  mandatory acceptance criteria before making the repository public.
 - **[Limitations](./limitations.md)** — what the collector explicitly
   does not do, so adopters do not assume coverage that is not there.
 - **[Traceability matrix](./traceability.md)** — control-to-evidence
@@ -33,28 +35,30 @@ operate it in a real pipeline**.
 |--------------------------------------|-------------------------------------------------------------------------------------------|
 | CLI (`sdlc-evidence`)                | `src/evidence_collector/cli/main.py`                                                      |
 | GitHub Action                        | [`action.yml`](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/action.yml) |
-| Container image                      | `ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector:latest` (signed with cosign keyless) |
-| Wheel + sdist                        | PyPI: `secure-sdlc-evidence-collector` (signed; published via OIDC trusted publisher)     |
+| Container image                      | `release.yml` builds and signs `ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector` (multi-arch, cosign keyless + SBOM attestation) on tag push. The first publicly verifiable image will be `:v1.1.0`. |
+| Wheel + sdist                        | Built and signed by `release.yml`; PyPI publishing is configured but still depends on the external Trusted Publisher setup tracked in `MATURITY_STATUS.md`. |
 | Bundle JSON Schema                   | Exported by `sdlc-evidence schema`; validated in CI on every run.                         |
 
 ## Verifying signatures
 
-Every release artifact is signed with **cosign keyless** and recorded
-on the **Sigstore Rekor** transparency log. To verify a wheel:
+`release.yml` is configured to sign every release artifact with
+**cosign keyless** and to record each signature on the **Sigstore
+Rekor** transparency log. Once the first signed `v1.1.0` release is
+published, you can verify the wheel with:
 
 ```bash
 cosign verify-blob \
-  --certificate signatures/secure_sdlc_evidence_collector-1.0.1-py3-none-any.whl.pem \
-  --signature signatures/secure_sdlc_evidence_collector-1.0.1-py3-none-any.whl.sig \
+  --certificate signatures/secure_sdlc_evidence_collector-1.1.0-py3-none-any.whl.pem \
+  --signature signatures/secure_sdlc_evidence_collector-1.1.0-py3-none-any.whl.sig \
   --certificate-identity-regexp 'https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  secure_sdlc_evidence_collector-1.0.1-py3-none-any.whl
+  secure_sdlc_evidence_collector-1.1.0-py3-none-any.whl
 ```
 
-To verify the container image:
+To verify the container image (after the first published `v1.1.0`):
 
 ```bash
-cosign verify ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector:latest \
+cosign verify ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector:v1.1.0 \
   --certificate-identity-regexp 'https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
 ```
@@ -63,7 +67,7 @@ To inspect the SBOM attestation:
 
 ```bash
 cosign download attestation \
-  ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector:latest
+  ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector:v1.1.0
 ```
 
 ## Reporting issues

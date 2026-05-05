@@ -2,12 +2,12 @@
 
 [![CI](https://img.shields.io/badge/ci-github--actions-blue)](./.github/workflows/github-ci-cd.yml)
 [![Security CI](https://img.shields.io/badge/security--ci-semgrep%20%7C%20trivy%20%7C%20pip--audit-blue)](./.github/workflows/security-ci-cd.yml)
-[![Release](https://img.shields.io/badge/release-v1.0.1-blue)](./CHANGELOG.md)
-![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
+[![Release](https://img.shields.io/badge/release-v1.1.0-blue)](./CHANGELOG.md)
+![Python 3.12 & 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)
 ![License Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-green)
-[![Signed with cosign](https://img.shields.io/badge/signed-cosign%20keyless-9cf)](./.github/workflows/release.yml)
-![Tests 123](https://img.shields.io/badge/tests-123%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-78%25-brightgreen)
+[![Cosign signing configured](https://img.shields.io/badge/release%20signing-cosign%20keyless%20(configured)-9cf)](./.github/workflows/release.yml)
+![Tests 143](https://img.shields.io/badge/tests-143%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-77%25-brightgreen)
 
 **CLI-first AppSec/DevSecOps tool that answers: "Which evidence proves this
 release followed a minimum Secure SDLC process?"**
@@ -53,9 +53,9 @@ This collector reframes the question around **evidence, not findings**:
 | Release verdict | `ready` / `conditional` / `not_ready` driven by gap criticality, never by the score alone |
 | Waivers | Time-bound exceptions with scope (application/release) and expiry — plain YAML/JSON, auditable |
 | Outputs | Deterministic `bundle.json`, Jinja2 `report.md`, and `summary.html` |
-| CLI | `run` · `collect` · `evaluate` · `bundle` · `controls` · `compare` · `schema` · `exceptions list/validate` |
-| Packaging | Reusable GitHub Action (`action.yml`), non-root Docker image, PyPI-ready wheel + sdist |
-| Release integrity | Cosign keyless signing + Sigstore Rekor transparency log on tag push (`release.yml`) |
+| CLI | `run` · `collect` · `evaluate` · `bundle` · `controls` · `compare` · `oscal` · `plugins` · `schema` · `doctor` · `exceptions list/validate` |
+| Packaging | Reusable GitHub Action (`action.yml`), non-root Docker image, wheel + sdist build verified locally; PyPI publish wired via OIDC Trusted Publisher and pending external setup. |
+| Release integrity | `release.yml` is configured to perform cosign keyless signing + Sigstore Rekor transparency log + SLSA Build Level 3 provenance on tag push. The first signed public release will be `v1.1.0`. |
 | Quality bar | `ruff`, `mypy --strict`, `pytest` with coverage gate, GitHub Actions CI, Dependabot |
 
 ---
@@ -133,7 +133,10 @@ sdlc-evidence evaluate               # evaluate an existing evidence list, expor
 sdlc-evidence bundle                 # alias of evaluate
 sdlc-evidence controls               # print the active control catalog
 sdlc-evidence compare BEFORE AFTER   # diff two bundles (coverage, status, per-control)
+sdlc-evidence oscal [--output PATH]  # render the control catalog as OSCAL Catalog JSON
+sdlc-evidence plugins                # list parser and collector entry-point plugins
 sdlc-evidence schema [--output PATH] # emit JSON Schema for EvidenceBundle
+sdlc-evidence doctor [--json]        # run local environment health checks
 sdlc-evidence exceptions validate F  # validate a single waiver file
 sdlc-evidence exceptions list DIR    # list every valid waiver in a directory
 sdlc-evidence --version
@@ -258,9 +261,9 @@ examples/
 
 ```bash
 make install-dev
-make lint          # ruff check
+make lint          # ruff check on src, tests and scripts
 make format        # ruff format + fix
-make typecheck     # mypy --strict on src/
+make typecheck     # mypy --strict on src/ and tests/
 make test          # pytest with coverage gate (>=70%)
 make run-example   # generate the sample bundle
 ```
@@ -341,16 +344,35 @@ The tool itself follows the security rules it enforces on others:
 - OWASP ZAP DAST parser and `dast_scan` evidence type.
 - Time-bound exception (waiver) workflow with scope and expiry.
 - Bundle `compare` command and canonical JSON Schema export.
-- Cosign keyless release signing + Sigstore transparency log.
 - OSS governance (CONTRIBUTING, CoC, SECURITY, CODEOWNERS, Dependabot,
   issue/PR templates).
+
+### Shipped in `1.1.0`
+
+Tier 1–4 maturity work. **Configured in code or workflow** — every
+externally verifiable signal (signed assets on PyPI / GHCR, public
+Scorecard score, CodeQL alerts on the Security tab) materialises only
+after the first public `v1.1.0` release runs end-to-end against a
+public repository with the external setup listed in
+[`docs/MATURITY_STATUS.md §External actions`](./docs/MATURITY_STATUS.md).
+
+- OpenSSF Scorecard, native CodeQL, expanded `pre-commit`,
+  structural-determinism gate, `sdlc-evidence doctor` health check.
+- `release.yml` configured with SLSA Build Level 3 provenance via
+  `slsa-github-generator`, cosign keyless signing of wheel/sdist/bundle/SBOM,
+  collector self-SBOM (CycloneDX), multi-arch (amd64+arm64) container
+  image to `ghcr.io` signed and SBOM-attested with cosign.
+- Property-based testing (Hypothesis), 5 ADRs, public threat model,
+  mkdocs-material site at `/docs/`, CI matrix Python 3.12 + 3.13,
+  weekly mutation testing.
+- Plugin entry-point system, optional FastAPI read-only surface,
+  OSCAL exporter, `release-please` workflow, issue labels + stale-bot.
 
 ### Planned
 
 - Azure DevOps collector (PRs + Pipelines).
 - Historical analytics (coverage trend per repo/team) and a read-only
   dashboard over saved bundles.
-- FastAPI surface for GRC / audit integrations, once the CLI stabilizes.
 - Additional exporters (SPDX provenance, CycloneDX VEX linking).
 - Policy-as-code catalog validation (e.g. Rego plug-in).
 

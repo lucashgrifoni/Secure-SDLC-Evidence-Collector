@@ -43,13 +43,17 @@ jobs:
       - name: Install project
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          # `[api]` so mypy --strict can resolve fastapi imports in
+          # `src/evidence_collector/api/app.py` during the type-check
+          # gate. The runtime release artefact is still installed
+          # without `[api]` further down.
+          python -m pip install -e ".[dev,api]"
 
       - name: Ruff lint
-        run: python -m ruff check src tests
+        run: python -m ruff check src tests scripts
 
       - name: Ruff format check
-        run: python -m ruff format --check src tests
+        run: python -m ruff format --check src tests scripts
 
       - name: Mypy strict type-check
         run: python -m mypy src tests
@@ -107,7 +111,7 @@ jobs:
         working-directory: dist
         run: |
           set -euo pipefail
-          digests="$(sha256sum *.whl *.tar.gz)"
+          digests="$(sha256sum -- *.whl *.tar.gz)"
           echo "hashes=$(echo "${digests}" | base64 -w0)" >>"${GITHUB_OUTPUT}"
 
       - name: Upload dist artifacts
@@ -226,24 +230,25 @@ jobs:
           cache: pip
 
       # Self-SBOM. Generates a CycloneDX SBOM of the collector itself,
-      # rooted at the just-built wheel, using cyclonedx-py.
+      # rooted at the just-built wheel, using cyclonedx-bom.
       # The tool ships SBOMs of its consumers; it should ship its own too.
+      # Only CycloneDX JSON is produced here. SPDX 2.3 is intentionally
+      # not generated to keep the supply-chain surface small; auditors
+      # who require SPDX can convert the CycloneDX SBOM with
+      # `cyclonedx-cli convert` downstream.
       - name: Generate self-SBOM
         run: |
           set -euo pipefail
-          python -m pip install --upgrade pip "cyclonedx-bom>=4.5,<6"
           # Install the wheel into a clean environment so the SBOM
           # captures only the runtime closure, not dev dependencies.
           python -m venv /tmp/sbom-venv
           /tmp/sbom-venv/bin/pip install --upgrade pip
           /tmp/sbom-venv/bin/pip install dist/*.whl
-          mkdir -p sbom
           /tmp/sbom-venv/bin/pip install "cyclonedx-bom>=4.5,<6"
+          mkdir -p sbom
           /tmp/sbom-venv/bin/cyclonedx-py environment \
             --output-format json \
             --output-file sbom/secure-sdlc-evidence-collector.cdx.json
-          # Emit a copy in SPDX too, since some auditors prefer SPDX 2.3.
-          python -m pip install "cyclonedx-py>=4.5,<6"
           ls -lah sbom/
 
       - name: Install cosign
@@ -270,9 +275,9 @@ jobs:
       - name: Generate SHA-256 checksums
         run: |
           set -euo pipefail
-          cd dist && sha256sum *.whl *.tar.gz > ../checksums.txt
+          cd dist && sha256sum -- *.whl *.tar.gz > ../checksums.txt
           cd ../release-evidence && sha256sum bundle.json >> ../checksums.txt
-          cd ../sbom && sha256sum *.json >> ../checksums.txt
+          cd ../sbom && sha256sum -- *.json >> ../checksums.txt
 
       - name: Generate build provenance attestations (GitHub-native)
         uses: actions/attest-build-provenance@v1
@@ -307,8 +312,8 @@ jobs:
     # Requires a one-time setup on PyPI:
     #   1. Create the project `secure-sdlc-evidence-collector` on PyPI.
     #   2. Under "Manage > Publishing", add a GitHub trusted publisher with:
-    #        Owner:           LucasGrifoni
-    #        Repository:      <this repo name>
+    #        Owner:           lucashgrifoni
+    #        Repository:      Secure-SDLC-Evidence-Collector
     #        Workflow:        release.yml
     #        Environment:     pypi
     # No PYPI_API_TOKEN is needed: PyPI mints a short-lived token from the

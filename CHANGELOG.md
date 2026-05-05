@@ -4,6 +4,106 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] — 2026-05-05
+
+First release that carries the Tier 1–4 maturity work that landed on
+`main` after `v1.0.1` (commits `040a153`, `a537074`, `4a59c74`, `1f84619`).
+The bundle schema, CLI flags, GitHub Action input/output contract, and
+environment variables remain backwards-compatible with `1.0.x`.
+
+### Added
+
+- **Tier 1 — externally visible quality signals.** OpenSSF Scorecard and
+  native CodeQL workflows; expanded `pre-commit` config covering Gitleaks,
+  actionlint and hygiene hooks; structural-determinism gate that re-runs
+  the sample pipeline and compares normalized SHA-256; `sdlc-evidence
+  doctor` health check command (`--json` output for CI).
+- **Tier 2 — supply-chain hardening configured in `release.yml`.** SLSA
+  Build Level 3 provenance via `slsa-github-generator`; collector
+  self-SBOM (CycloneDX) signed with cosign; multi-arch container
+  (amd64 + arm64) pushed to `ghcr.io`, signed keyless with cosign and
+  attested with a syft-generated SBOM; weekly mutation testing workflow
+  with `mutmut`; global `--json-logs` flag (also `SDLC_JSON_LOGS=1`)
+  emitting NDJSON.
+- **Tier 3 — product maturity.** Five ADRs under `docs/adr/` covering
+  Pydantic v2, deterministic JSON, Typer, evidence-first design, and
+  catalog override; public `THREAT_MODEL.md` (STRIDE per component,
+  residual risks, supply-chain section); Hypothesis property tests for
+  JUnit attribute fuzzing, SARIF severity classification and scoring
+  monotonicity; `mkdocs-material` technical site published at `/docs/`
+  of the GitHub Pages deploy; CI matrix Python 3.12 and 3.13.
+- **Tier 4 — scale and community.** Plugin entry-point groups
+  (`evidence_collector.parsers`, `evidence_collector.collectors`) with
+  discovery API and `sdlc-evidence plugins` CLI; optional FastAPI
+  read-only surface under the `[api]` extra (`/healthz`, `/version`,
+  `/schema`, `/catalog`, `/plugins`); `sdlc-evidence oscal` exporter
+  rendering the catalog as an OSCAL 1.1.x Catalog document; issue
+  labels synced via `labels.yml` workflow and daily stale cleanup;
+  `release-please` workflow seeded for conventional-commit releases.
+
+### Changed
+
+- **Repository identity.** Homepage, Issues, Source, Docker image
+  source, GitHub Action install fallback, CONTRIBUTING clone URL,
+  CODEOWNERS, Dependabot reviewers, Issue Template links and the
+  release.yml Trusted Publisher comment now all point to
+  `lucashgrifoni/Secure-SDLC-Evidence-Collector` (the actual remote)
+  instead of the legacy mixed-case `LucasGrifoni/secure-sdlc-evidence-collector`.
+- **Modern license metadata in `pyproject.toml`.** Replaced the
+  deprecated `license = { text = "Apache-2.0" }` table and the
+  `License :: OSI Approved :: Apache Software License` classifier with
+  a SPDX `license = "Apache-2.0"` expression and a `license-files =
+  ["LICENSE"]` entry. `LICENSE` itself is now the canonical full
+  Apache-2.0 text so GitHub detects the license as Apache-2.0 instead
+  of `Other`.
+- **CI lint scope.** `github-ci-cd.yml` and the Makefile `lint` /
+  `format` targets now include `scripts/` so helper scripts stay under
+  the same Ruff quality gate as `src/` and `tests/`.
+- **README badges and roadmap.** Tests/coverage badges updated to
+  reflect the current local baseline (143 tests, 77.39% coverage).
+- **Documentation honesty.** README, `docs/index.md`,
+  `docs/release-readiness.md`, `docs/MATURITY_STATUS.md` and
+  `CHANGELOG.md` now distinguish *configured* (workflow exists),
+  *locally validated* (gate ran), *remotely validated* (CI run linked)
+  and *published / verified* (release asset and signature). Cosign /
+  SLSA / PyPI / GHCR claims are downgraded to "configured" until the
+  first signed `v1.1.0` release exists.
+- **`docs/release-readiness.md`** points to the stricter
+  [public repository readiness gate](./docs/publication-readiness.md),
+  targeted at 2026-06-05.
+- **`mkdocs.yml` nav** now includes `docs/publication-readiness.md`
+  and `docs/plugins.md` (previously off the nav).
+- **Self-release dogfood bundle** regenerated against the corrected
+  `lucashgrifoni/Secure-SDLC-Evidence-Collector` repository name.
+
+### Fixed
+
+- **Dockerfile `HEALTHCHECK`.** Lightweight liveness probe runs
+  `sdlc-evidence --version`.
+- **`scripts/scrub_lab_artifacts.py`** reformatted to satisfy
+  `ruff format --check` once `scripts/` joined the lint targets.
+
+### Removed
+
+- `Plano de acao e execucao - Claude.md` — legacy execution-handoff
+  document. Its content is captured by `docs/release-readiness.md`,
+  `docs/MATURITY_ROADMAP.md`, `docs/MATURITY_STATUS.md` and the
+  `melhorias/` planning dossier.
+
+### Pending external actions for publication (tracked outside this changelog)
+
+- Make repository public; enable Discussions, branch protection on
+  `main`, code scanning, and secret scanning.
+- Create `secure-sdlc-evidence-collector` on PyPI and configure the
+  Trusted Publisher (owner `lucashgrifoni`, repo
+  `Secure-SDLC-Evidence-Collector`, workflow `release.yml`,
+  environment `pypi`).
+- Create the GitHub `pypi` environment.
+- Until those are done, `release.yml` will run quality, build and
+  release-bundle but the `publish-pypi` and `publish-container` jobs
+  will short-circuit on missing prerequisites. No claim of "published
+  on PyPI" or "image signed in GHCR" can be made yet.
+
 ## [1.0.1] — 2026-05-04
 
 Maturity polish on top of 1.0.0. No behavioural changes to the bundle
