@@ -41,6 +41,9 @@ RUN python -m pip install --no-index --find-links=/wheels \
 USER sdlc
 WORKDIR /workspace
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD sdlc-evidence --version >/dev/null || exit 1
+
 ENTRYPOINT ["sdlc-evidence"]
 CMD ["--help"]
 
@@ -48,4 +51,4 @@ LABEL org.opencontainers.image.title="secure-sdlc-evidence-collector" \
       org.opencontainers.image.description="Collect, normalize, evaluate and bundle Secure SDLC evidence per release." \
       org.opencontainers.image.authors="Lucas Henrique Grifoni <lucas.henriquegrifoni@gmail.com>" \
       org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.source="https://github.com/LucasGrifoni/secure-sdlc-evidence-collector"
+      org.opencontainers.image.source="https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector"

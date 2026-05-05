@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/LucasGrifoni/secure-sdlc-evidence-collector/security/advisories/new
+    url: https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/security/advisories/new
     about: Report a vulnerability privately via GitHub Security Advisories.
   - name: Discussions
-    url: https://github.com/LucasGrifoni/secure-sdlc-evidence-collector/discussions
+    url: https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/discussions
     about: Questions, architecture chat, or feedback on the evidence model.

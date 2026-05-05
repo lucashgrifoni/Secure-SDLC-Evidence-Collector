@@ -12,7 +12,7 @@ updates:
       - "deps"
       - "python"
     reviewers:
-      - "LucasGrifoni"
+      - "lucashgrifoni"
     commit-message:
       prefix: "chore(deps)"
 
@@ -28,7 +28,7 @@ updates:
       - "deps"
       - "ci"
     reviewers:
-      - "LucasGrifoni"
+      - "lucashgrifoni"
     commit-message:
       prefix: "chore(ci)"
 
@@ -44,6 +44,6 @@ updates:
       - "deps"
       - "docker"
     reviewers:
-      - "LucasGrifoni"
+      - "lucashgrifoni"
     commit-message:
       prefix: "chore(docker)"

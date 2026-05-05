@@ -1,10 +1,10 @@
 # Default owner for every change
-*                                   @LucasGrifoni
+*                                   @lucashgrifoni
 
 # Critical areas
-/src/evidence_collector/domain/     @LucasGrifoni
-/src/evidence_collector/controls/   @LucasGrifoni
-/src/evidence_collector/scoring/    @LucasGrifoni
-/src/evidence_collector/parsers/    @LucasGrifoni
-/.github/workflows/                 @LucasGrifoni
-/SECURITY.md                        @LucasGrifoni
+/src/evidence_collector/domain/     @lucashgrifoni
+/src/evidence_collector/controls/   @lucashgrifoni
+/src/evidence_collector/scoring/    @lucashgrifoni
+/src/evidence_collector/parsers/    @lucashgrifoni
+/.github/workflows/                 @lucashgrifoni
+/SECURITY.md                        @lucashgrifoni

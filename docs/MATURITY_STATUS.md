@@ -25,7 +25,7 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 | `ruff` violations               | 0       | 0      | enforced in CI and pre-commit                                        |
 | `actionlint` violations         | 0       | 0      | enforced via `pre-commit` and CI                                     |
 | Workflows pinned by SHA         | yes     | yes    | third-party actions                                                  |
-| Release artifacts signed        | yes     | yes    | cosign keyless + Sigstore Rekor                                      |
+| Release artifacts signed        | configured | yes | cosign keyless + Sigstore Rekor wired in `release.yml`; first signed public release will be `v1.1.0`. No signed asset has been published yet. |
 | Determinism gate                | yes     | yes    | structural SHA-256 compare in CI; volatile fields documented         |
 | Native CodeQL coverage          | yes     | yes    | `python` and `actions` languages on push, PR, and weekly schedule    |
 | OpenSSF Scorecard score         | pending | ≥ 7    | workflow shipped; first run executes after this commit reaches main  |

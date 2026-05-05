@@ -18,8 +18,8 @@ quickly.
 ## Development setup
 
 ```bash
-git clone https://github.com/LucasGrifoni/secure-sdlc-evidence-collector
-cd secure-sdlc-evidence-collector
+git clone https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector
+cd Secure-SDLC-Evidence-Collector
 python -m venv .venv
 source .venv/bin/activate        # PowerShell: .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"

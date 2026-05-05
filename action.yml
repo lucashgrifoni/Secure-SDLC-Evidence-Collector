@@ -92,11 +92,11 @@ runs:
       run: |
         set -euo pipefail
         if [ -n "${{ inputs.version }}" ]; then
-          python -m pip install --upgrade "git+https://github.com/LucasGrifoni/secure-sdlc-evidence-collector@${{ inputs.version }}"
+          python -m pip install --upgrade "git+https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector@${{ inputs.version }}"
         elif [ -f "${{ github.action_path }}/pyproject.toml" ]; then
           python -m pip install "${{ github.action_path }}"
         else
-          python -m pip install --upgrade "git+https://github.com/LucasGrifoni/secure-sdlc-evidence-collector"
+          python -m pip install --upgrade "git+https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector"
         fi
 
     - name: Run Secure SDLC Evidence Collector
