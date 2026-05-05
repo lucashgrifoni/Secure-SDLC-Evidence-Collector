@@ -9,9 +9,14 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 > `Owner` column so we don't double-up. The `Last touched` column is in
 > ISO 8601 (UTC) so a stale row is obvious by inspection.
 
-**Last updated:** 2026-05-04 (Tier 4 shipped — full roadmap done)
+**Last updated:** 2026-05-05 (release-readiness for v1.1.0 merged into
+`main`; maturity/higiene rodada validated baseline)
 
-**Released versions:** v1.0.0 (2026-04-23) · v1.0.1 (2026-05-04, maturity polish)
+**Released versions:** v1.0.0 (2026-04-23) · v1.0.1 (2026-05-04,
+maturity polish) · v1.1.0 prepared in code on `main` (commit
+`17dede2`); the **first signed public release** is still gated on the
+external actions table below — no GitHub Release, no PyPI artifact,
+no GHCR image has been published yet.
 
 ---
 
@@ -20,15 +25,17 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 | Metric                          | Current | Target | Notes                                                                |
 |---------------------------------|---------|--------|----------------------------------------------------------------------|
 | Tests passing                   | 143     | —      | unit + integration (+9 from Tier 4: API + OSCAL exporter)            |
-| Line + branch coverage          | 77.5 %  | 85 %   | floor enforced at 70 %                                               |
+| Line + branch coverage          | 77.39 % | 85 %   | floor enforced at 70 %; measured on 2026-05-05 maturity rodada       |
 | `mypy --strict` source files    | 61      | —      | zero issues                                                          |
-| `ruff` violations               | 0       | 0      | enforced in CI and pre-commit                                        |
+| `ruff` violations               | 0       | 0      | enforced in CI and pre-commit; scope `src tests scripts`             |
 | `actionlint` violations         | 0       | 0      | enforced via `pre-commit` and CI                                     |
-| Workflows pinned by SHA         | yes     | yes    | third-party actions                                                  |
+| `bandit -r src` issues          | 0       | 0      | 3697 LOC scanned, no Low/Medium/High/Undefined                       |
+| `semgrep` (security-audit + secrets) findings | 0 | 0 | 148 rules across 206 files; nosemgrep placement fixed in `parsers/junit.py` |
+| Workflows pinned (third-party)  | mostly SHA | full SHA | 20+ third-party actions pinned to full SHA + version comment; 8 still on tag — 2 by structural design (`slsa-github-generator` reusable workflow @ tag, `pypa/gh-action-pypi-publish@release/v1` Trusted-Publisher pattern) and 6 candidates for conversion in a post-first-release hardening pass (`attest-build-provenance@v1`, `deploy-pages@v4`, `download-artifact@v4`, `upload-pages-artifact@v4`, `cosign-installer@v3`, `action-gh-release@v2`). Inventory: `melhorias/pinning-actions-2026-05-05.md`. |
 | Release artifacts signed        | configured | yes | cosign keyless + Sigstore Rekor wired in `release.yml`; first signed public release will be `v1.1.0`. No signed asset has been published yet. |
 | Determinism gate                | yes     | yes    | structural SHA-256 compare in CI; volatile fields documented         |
-| Native CodeQL coverage          | yes     | yes    | `python` and `actions` languages on push, PR, and weekly schedule    |
-| OpenSSF Scorecard score         | pending | ≥ 7    | workflow shipped; first run executes after this commit reaches main  |
+| Native CodeQL coverage          | yes     | yes    | `python` and `actions` languages on push, PR, and weekly schedule; SARIF upload blocked while repo is private (see external actions) |
+| OpenSSF Scorecard score         | pending | ≥ 7    | workflow shipped; first run requires the repository to be public     |
 
 ---
 
@@ -77,14 +84,20 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 ## External actions still required
 
 These items cannot be completed by editing the repository alone — they
-need a one-time configuration step on a third-party platform.
+need a one-time configuration step on a third-party platform. Status
+checked on 2026-05-05.
 
-| Action                                            | Owner | Done? | Notes                                                                                              |
+| Action                                            | Owner | Done? | Status / how it was checked                                                                        |
 |---------------------------------------------------|-------|-------|----------------------------------------------------------------------------------------------------|
-| Create the project on PyPI                        | LHG   | no    | Required before the `publish-pypi` job in `release.yml` can succeed.                               |
+| Make the GitHub repository public                 | LHG   | no    | `gh api repos/lucashgrifoni/Secure-SDLC-Evidence-Collector` returns `"visibility":"private"`. Until this changes, the Security CI/CD upload-sarif jobs (CodeQL/Trivy/Semgrep), Dependency Review, and Scorecard cannot publish results. Documented in `melhorias/analise-falhas-security-ci-2026-05-05.md`. |
+| Create the project on PyPI                        | LHG   | no    | Required before the `publish-pypi` job in `release.yml` can succeed. `pypi.org/pypi/secure-sdlc-evidence-collector/json` returns 404. |
 | Add GitHub Trusted Publisher on PyPI              | LHG   | no    | Owner `lucashgrifoni`, repo `Secure-SDLC-Evidence-Collector`, workflow `release.yml`, env `pypi`.  |
-| Enable GitHub Discussions                         | LHG   | no    | Tier 4 prerequisite.                                                                               |
-| Configure branch protection on `main`             | LHG   | no    | Required for OpenSSF Scorecard "Branch-Protection" check to score above zero.                      |
+| Create the GitHub `pypi` environment              | LHG   | no    | Needed for the OIDC token exchange against PyPI Trusted Publisher.                                  |
+| Configure branch protection on `main`             | LHG   | no    | Required for OpenSSF Scorecard "Branch-Protection" check to score above zero. `gh api repos/.../branches/main/protection` returns 404. |
+| Enable GitHub Discussions                         | LHG   | no    | Tier 4 prerequisite. `gh repo view` shows `hasDiscussionsEnabled=false`.                            |
+| Enable GitHub code scanning + secret scanning     | LHG   | no    | Repo metadata reports `security_and_analysis: null` while repo is private; both turn on automatically once the repo becomes public. |
+| Run OpenSSF Scorecard                             | LHG   | no    | Workflow shipped (`scorecard.yml`); needs the repo to be public so the action can read public branch-protection / dependency metadata. |
+| Add `SNYK_TOKEN` secret (optional)                | LHG   | no    | Only required if the Snyk jobs in `security-ci-cd.yml` are kept. Without it those jobs fail at the `Authenticate Snyk` step. |
 
 ---
 
@@ -134,6 +147,35 @@ need a one-time configuration step on a third-party platform.
   `-inf`/`nan`); fixed by clamping to default. Tests 134 → 143,
   mypy strict files 55 → 61.
 
-**Roadmap status:** all four tiers shipped. The single remaining
-non-engineering action is enabling GitHub Discussions in repo settings
-(documented under "External actions still required").
+**Roadmap status:** all four tiers shipped in code on `main`. The
+remaining work is the **External actions** table above; until those
+land the project is internally `GO WITH CAVEATS` (sample release
+green, all local gates green) and externally `NO-GO` for tagging the
+first signed public release.
+
+- **2026-05-05** — release-readiness pass for `v1.1.0` merged into
+  `main` (commit `17dede2`): repository identity normalized to
+  `lucashgrifoni/Secure-SDLC-Evidence-Collector`, canonical
+  Apache-2.0 LICENSE + PEP 639 metadata, version bump 1.0.1→1.1.0,
+  CI installs `.[dev,api]` so `mypy --strict` resolves the FastAPI
+  surface, scripts/ under ruff, public claims downgraded to
+  "configured in `release.yml`" until the first signed release.
+  Validated with `python -m build` (no license warning) and the same
+  local-gate set documented in
+  `docs/release-readiness.md`. Eight Dependabot PRs (#1, #2, #3, #4,
+  #6, #7, #8, #9) and the `ossf/scorecard-action` patch (#14) were
+  triaged and merged on the same day; six newer Dependabot PRs that
+  surfaced during the merge cycle (#11 `mutmut`, #12
+  `release-please-action`, #13 `attest-build-provenance`, #15
+  `actions/upload-pages-artifact`, #16 `docker/login-action`, #17
+  `github/codeql-action`) are tracked under HOLD in
+  `melhorias/dependabot-triagem-2026-05-05.md` because they touch
+  release/SLSA/CodeQL surfaces that need the first public release as
+  baseline.
+- **2026-05-05** — maturity/higiene rodada (this update): re-ran the
+  full local gate set including `bandit -r src` (0 findings) and
+  `semgrep --config p/security-audit --config p/secrets` (148 rules,
+  0 findings) after fixing the placement of the `# nosemgrep`
+  suppression in `parsers/junit.py`. Reconciled `MATURITY_STATUS.md`,
+  `release-readiness.md` and `traceability.md` with the observed
+  state.

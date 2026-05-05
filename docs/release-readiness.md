@@ -9,12 +9,26 @@ For turning the private repository public, use the stricter
 targeted at **2026-06-05**. That gate supersedes the older 2026-05-01
 publication target.
 
-**Last local validation pass: 2026-05-05 — 143 tests passing, coverage
-77.39%, `ruff check .` clean, `mypy src tests` clean, `actionlint` clean,
-`gitleaks detect --source . --no-git --redact` clean, `python -m
-pip_audit .` clean, Trivy secret/misconfig clean, sample release `ready`,
-sample without attestations `not_ready`. Semgrep and Bandit were not
-available/run in this local pass.**
+**Last local validation pass: 2026-05-05 (maturity/higiene rodada) —
+143 tests passing, coverage 77.39 %, `ruff check src tests scripts`
+clean, `ruff format --check` clean, `mypy --strict src tests` clean
+(61 source files), `actionlint` clean, `gitleaks detect --source .
+--no-git --redact` clean, `python -m pip_audit .` clean (project
+scope), Trivy `fs --scanners secret,misconfig` clean (Dockerfile 0
+misconfigurations), `python -m bandit -r src` clean (0 issues across
+3697 LOC), `semgrep scan --config p/security-audit --config p/secrets`
+clean (148 rules, 0 findings) after relocating the `# nosemgrep`
+suppression to the line where the `from xml.etree.ElementTree import`
+statement actually starts in `src/evidence_collector/parsers/junit.py`
+(parsing itself remains delegated to `defusedxml`). Sample release
+`ready` (coverage 100, confidence 59, 13/13 controls met). Sample
+release without `--attestations-dir` `not_ready` with the four
+expected missing critical controls (`ORG-CODE-REVIEW`,
+`ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`, `SSDF-PS.2`) and exit
+code 2 by design. `compare` of the sample bundle against itself
+reports 0 deltas. `oscal` and `schema` exports succeed. Docker daemon
+not active in this pass — Docker build remains a release-time
+dependency.**
 
 ---
 

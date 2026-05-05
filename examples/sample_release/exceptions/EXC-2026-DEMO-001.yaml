@@ -1,0 +1,17 @@
+# Demo exception used by examples/sample_release/exceptions/README.md.
+# Scoped to a release context the canonical sample fixture does NOT use,
+# so loading this file with --exceptions-dir against the canonical
+# sample release does not change the sample's ready 13/13 verdict.
+exception_id: "EXC-2026-DEMO-001"
+control_id: "SSDF-PW.1"
+approver: "appsec-lead@example.com"
+approved_at: "2026-05-05T10:00:00Z"
+expires_at: "2026-08-05T10:00:00Z"
+justification: >-
+  Demo waiver: no new trust boundary introduced in this synthetic
+  release. The next quarterly threat model refresh will cover the
+  missing review for SSDF-PW.1.
+reference: "DEMO-WAIVER-001"
+scope:
+  application: "exceptions-demo"
+  release_id: "2026.05.05-exceptions-demo"

@@ -4,6 +4,45 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- **`parsers/junit.py`**: moved the `# nosemgrep:
+  python.lang.security.use-defused-xml.use-defused-xml` suppression
+  to the line where the `from xml.etree.ElementTree import (...)`
+  statement actually starts so Semgrep stops reporting the two
+  type-only / exception-only stdlib imports. The actual XML
+  parsing remains delegated to `defusedxml`; this is a comment
+  placement fix, not a behaviour change. Verified clean with
+  `semgrep scan --config p/security-audit --config p/secrets` (148
+  rules, 0 findings).
+
+### Documentation
+
+- Refreshed `docs/release-readiness.md` "Last local validation pass"
+  to record the 2026-05-05 maturity rodada: ruff/format/mypy/pytest
+  green, actionlint clean, gitleaks/pip-audit/Trivy clean, **bandit
+  clean (0 issues across 3697 LOC)**, **semgrep clean (148 rules)**,
+  sample release `ready` 13/13, sample without attestations
+  `not_ready` with the four expected missing critical controls and
+  exit code 2 by design. Docker daemon not active in this pass —
+  remains a release-time dependency.
+- Refreshed `docs/traceability.md` to "Last refreshed: 2026-05-05"
+  and added a "Refresh notes — 2026-05-05" section documenting
+  exactly which scenarios were re-driven this round (sample positive,
+  sample negative, `compare`, `oscal`, `schema`) and which were
+  inherited from the prior pass (`examples/labs/*`, live SCM, Docker
+  build).
+- Reconciled `docs/MATURITY_STATUS.md` headline numbers with the
+  observed baseline: coverage `77.5 %` → `77.39 %`, added bandit /
+  semgrep rows, downgraded the SHA-pinning row from absolute "yes"
+  to "mostly SHA" with a pointer to the Dependabot triage dossier,
+  and rewrote the "External actions still required" table with
+  honest 2026-05-05 status (repo is private, PyPI project absent,
+  no branch protection, no Discussions, GHAS off, Scorecard not yet
+  run).
+
 ## [1.1.0] — 2026-05-05
 
 First release that carries the Tier 1–4 maturity work that landed on
