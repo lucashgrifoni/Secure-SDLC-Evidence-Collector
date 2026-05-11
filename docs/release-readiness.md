@@ -9,8 +9,8 @@ For turning the private repository public, use the stricter
 targeted at **2026-06-05**. That gate supersedes the older 2026-05-01
 publication target.
 
-**Last local validation pass: 2026-05-05 (maturity/higiene rodada) —
-143 tests passing, coverage 77.39 %, `ruff check src tests scripts`
+**Last local validation pass: 2026-05-10 (post-publication hardening
+pass) — 227 tests passing, coverage 87.43 %, `ruff check src tests scripts`
 clean, `ruff format --check` clean, `mypy --strict src tests` clean
 (61 source files), `actionlint` clean, `gitleaks detect --source .
 --no-git --redact` clean, `python -m pip_audit .` clean (project
@@ -30,6 +30,26 @@ reports 0 deltas. `oscal` and `schema` exports succeed. Docker daemon
 not active in this pass — Docker build remains a release-time
 dependency.**
 
+**Re-validation completed on 2026-05-10 (post-publication hardening
+pass, branch `chore/post-publication-hardening-v1-1-1`).** The pass
+changed the CLI module layout (commands split under `cli/commands/`),
+raised `--cov-fail-under` from 70 to 80, added the `sdlc-evidence
+verify` command, promoted classification confidence to a first-class
+bundle field, added a deterministic `bundle.json` SHA-256 snapshot
+test, and inserted `step-security/harden-runner` in all GitHub
+Actions Linux jobs (windows runners and the SLSA generator reusable
+workflow are documented exclusions). All local gates listed above
+were re-run on 2026-05-10 against the branch tip: `pytest` 227
+passed, coverage 87.43 % (above the new 80 % floor), `ruff check`
+clean, `ruff format --check` clean, `mypy --strict` clean (88 source
+files), `actionlint` clean, `python -m bandit -r src` clean, `python
+-m pip_audit .` clean (project scope). `gitleaks` and `semgrep` were
+not available on the local machine for this pass — both still run as
+required checks in `security-ci-cd.yml`. The sample release still
+produces `ready 13/13` with structural SHA-256
+`34f3025e3791616b4490784cad12b61f3cf208a9f665ae73bfa6bdfa6e16ae93`
+(matches `tests/fixtures/sample_release_snapshot.sha256`).
+
 ---
 
 ## Quality gates
@@ -37,7 +57,7 @@ dependency.**
 - [ ] `ruff check src tests scripts` → clean.
 - [ ] `ruff format --check src tests scripts` → clean.
 - [ ] `mypy --strict src tests` → zero errors.
-- [ ] `pytest` → all tests pass and `--cov-fail-under=70` is met.
+- [ ] `pytest` → all tests pass and `--cov-fail-under=80` is met.
 - [ ] `sdlc-evidence` console script installs from a clean venv
       (`python -m pip install -e ".[dev]"`) on Linux **and** Windows.
 - [ ] Docker image builds from `Dockerfile` and runs the sample bundle as a
