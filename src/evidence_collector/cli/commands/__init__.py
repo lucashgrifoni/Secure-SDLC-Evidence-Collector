@@ -28,6 +28,7 @@ from . import (
     plugins,
     run,
     schema,
+    verify,
 )
 
 CommandRegister = Callable[[typer.Typer], None]
@@ -46,6 +47,7 @@ COMMAND_MODULES: Final[tuple[CommandRegister, ...]] = (
     plugins.register,
     schema.register,
     doctor.register,
+    verify.register,
     exceptions.register,
 )
 
