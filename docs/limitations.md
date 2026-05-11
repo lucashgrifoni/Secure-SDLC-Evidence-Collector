@@ -35,6 +35,13 @@ into exactly one `evidence_type` based on the driver name.
 - Mitigation: the classification heuristic and the fallback label are
   both documented in the bundle's `evidence[*].rationale` field, so
   reviewers can see why the collector chose a label.
+- Since `v1.1.1` the bundle also surfaces a first-class
+  `evidence[*].classification` field with `confidence` (`high` / `medium`
+  / `low`), `reason` (`driver_match` / `manual_override` /
+  `fallback_sast`) and the original `driver_name`. Downstream consumers
+  can filter or weight evidence by classification confidence without
+  parsing the `rationale` prose, and a `fallback_sast` reason is a
+  reliable signal that the underlying tool was unknown to the heuristic.
 
 ## 3 · Evidence quality is shallow
 
