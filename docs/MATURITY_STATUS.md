@@ -9,8 +9,11 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 > `Owner` column so we don't double-up. The `Last touched` column is in
 > ISO 8601 (UTC) so a stale row is obvious by inspection.
 
-**Last updated:** 2026-05-05 (release-readiness for v1.1.0 merged into
-`main`; maturity/higiene rodada validated baseline)
+**Last updated:** 2026-05-10 (post-publication hardening pass: docs
+reconciled, coverage gate raised, CLI modularized, harden-runner,
+classification confidence, `verify` command, snapshot test).
+Previous update: 2026-05-05 (release-readiness for v1.1.0 merged into
+`main`; maturity/higiene rodada validated baseline).
 
 **Released versions:** v1.0.0 (2026-04-23) · v1.0.1 (2026-05-04,
 maturity polish) · v1.1.0 prepared in code on `main` (commit
@@ -24,14 +27,14 @@ no GHCR image has been published yet.
 
 | Metric                          | Current | Target | Notes                                                                |
 |---------------------------------|---------|--------|----------------------------------------------------------------------|
-| Tests passing                   | 143     | —      | unit + integration (+9 from Tier 4: API + OSCAL exporter)            |
-| Line + branch coverage          | 77.39 % | 85 %   | floor enforced at 70 %; measured on 2026-05-05 maturity rodada       |
+| Tests passing                   | 227     | —      | unit + integration; +84 from the 2026-05-05 coverage push and post-publication hardening (CLI refactor + classification confidence + `verify` command + snapshot test) |
+| Line + branch coverage          | 87.43 % | 85 %   | meets target; floor raised from 70 % to 80 % in `pyproject.toml`; measured on 2026-05-05 maturity rodada and re-validated on 2026-05-10 after the hardening pass |
 | `mypy --strict` source files    | 61      | —      | zero issues                                                          |
 | `ruff` violations               | 0       | 0      | enforced in CI and pre-commit; scope `src tests scripts`             |
 | `actionlint` violations         | 0       | 0      | enforced via `pre-commit` and CI                                     |
 | `bandit -r src` issues          | 0       | 0      | 3697 LOC scanned, no Low/Medium/High/Undefined                       |
 | `semgrep` (security-audit + secrets) findings | 0 | 0 | 148 rules across 206 files; nosemgrep placement fixed in `parsers/junit.py` |
-| Workflows pinned (third-party)  | full SHA except 2 structural exceptions | same | All 26 third-party action references pin a full SHA + version comment, except 2 documented structural exceptions (`slsa-framework/slsa-github-generator/.../v2.0.0` reusable-workflow contract, `pypa/gh-action-pypi-publish@release/v1` Trusted-Publisher pattern). The 6 candidates that previously sat on tag (`attest-build-provenance`, `deploy-pages`, `download-artifact`, `upload-pages-artifact`, `cosign-installer`, `action-gh-release`) were converted to SHA on 2026-05-05. Inventory: `melhorias/pinning-actions-2026-05-05.md`. |
+| Workflows pinned (third-party)  | full SHA except 2 structural exceptions | same | All 26 third-party action references pin a full SHA + version comment, except 2 documented structural exceptions (`slsa-framework/slsa-github-generator/.../v2.0.0` reusable-workflow contract, `pypa/gh-action-pypi-publish@release/v1` Trusted-Publisher pattern). The 6 candidates that previously sat on tag (`attest-build-provenance`, `deploy-pages`, `download-artifact`, `upload-pages-artifact`, `cosign-installer`, `action-gh-release`) were converted to SHA on 2026-05-05. Inventory: `docs/program/actions-pinning-inventory.md`. |
 | Release artifacts signed        | configured | yes | cosign keyless + Sigstore Rekor wired in `release.yml`; first signed public release will be `v1.1.0`. No signed asset has been published yet. |
 | Determinism gate                | yes     | yes    | structural SHA-256 compare in CI; volatile fields documented         |
 | Native CodeQL coverage          | yes     | yes    | `python` and `actions` languages on push, PR, and weekly schedule; SARIF upload blocked while repo is private (see external actions) |
@@ -89,7 +92,7 @@ checked on 2026-05-05.
 
 | Action                                            | Owner | Done? | Status / how it was checked                                                                        |
 |---------------------------------------------------|-------|-------|----------------------------------------------------------------------------------------------------|
-| Make the GitHub repository public                 | LHG   | no    | `gh api repos/lucashgrifoni/Secure-SDLC-Evidence-Collector` returns `"visibility":"private"`. Until this changes, the Security CI/CD upload-sarif jobs (CodeQL/Trivy/Semgrep), Dependency Review, and Scorecard cannot publish results. Documented in `melhorias/analise-falhas-security-ci-2026-05-05.md`. |
+| Make the GitHub repository public                 | LHG   | no    | `gh api repos/lucashgrifoni/Secure-SDLC-Evidence-Collector` returns `"visibility":"private"`. Until this changes, the Security CI/CD upload-sarif jobs (CodeQL/Trivy/Semgrep), Dependency Review, and Scorecard cannot publish results. Documented in `docs/program/_archive/2026-05-05/security-ci-failure-analysis.md`. |
 | Create the project on PyPI                        | LHG   | no    | Required before the `publish-pypi` job in `release.yml` can succeed. `pypi.org/pypi/secure-sdlc-evidence-collector/json` returns 404. |
 | Add GitHub Trusted Publisher on PyPI              | LHG   | no    | Owner `lucashgrifoni`, repo `Secure-SDLC-Evidence-Collector`, workflow `release.yml`, env `pypi`.  |
 | Create the GitHub `pypi` environment              | LHG   | no    | Needed for the OIDC token exchange against PyPI Trusted Publisher.                                  |
@@ -169,7 +172,7 @@ first signed public release.
   `release-please-action`, #13 `attest-build-provenance`, #15
   `actions/upload-pages-artifact`, #16 `docker/login-action`, #17
   `github/codeql-action`) are tracked under HOLD in
-  `melhorias/dependabot-triagem-2026-05-05.md` because they touch
+  `docs/program/dependabot-triage.md` because they touch
   release/SLSA/CodeQL surfaces that need the first public release as
   baseline.
 - **2026-05-05** — maturity/higiene rodada (this update): re-ran the

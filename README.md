@@ -6,8 +6,8 @@
 ![Python 3.12 & 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)
 ![License Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-green)
 [![Cosign signing configured](https://img.shields.io/badge/release%20signing-cosign%20keyless%20(configured)-9cf)](./.github/workflows/release.yml)
-![Tests 143](https://img.shields.io/badge/tests-143%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-77%25-brightgreen)
+![Tests 227](https://img.shields.io/badge/tests-227%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen)
 
 **CLI-first AppSec/DevSecOps tool that answers: "Which evidence proves this
 release followed a minimum Secure SDLC process?"**
