@@ -264,7 +264,7 @@ make install-dev
 make lint          # ruff check on src, tests and scripts
 make format        # ruff format + fix
 make typecheck     # mypy --strict on src/ and tests/
-make test          # pytest with coverage gate (>=70%)
+make test          # pytest with coverage gate (>=80%)
 make run-example   # generate the sample bundle
 ```
 
