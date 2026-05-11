@@ -1,0 +1,14 @@
+# Structural SHA-256 of examples/sample_release/bundle.json after stripping
+# volatile fields (bundle_id, generated_at, evidence[*].collected_at,
+# control_evaluations[*].evaluated_at). See
+# tests/integration/test_bundle_snapshot.py and
+# src/evidence_collector/application/integrity.py.
+#
+# Regeneration workflow (only when an intentional bundle change lands):
+#
+#   1. pytest tests/integration/test_bundle_snapshot.py — the test prints
+#      the new digest in its failure output.
+#   2. Replace the digest line below.
+#   3. Explain in the PR description why the bundle changed and link the
+#      change in CHANGELOG.md.
+34f3025e3791616b4490784cad12b61f3cf208a9f665ae73bfa6bdfa6e16ae93
