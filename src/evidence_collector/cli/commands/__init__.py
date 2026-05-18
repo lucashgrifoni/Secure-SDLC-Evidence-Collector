@@ -30,6 +30,7 @@ from . import (
     run,
     schema,
     verify,
+    vex,
 )
 
 CommandRegister = Callable[[typer.Typer], None]
@@ -50,6 +51,7 @@ COMMAND_MODULES: Final[tuple[CommandRegister, ...]] = (
     doctor.register,
     verify.register,
     enrich.register,
+    vex.register,
     exceptions.register,
 )
 
