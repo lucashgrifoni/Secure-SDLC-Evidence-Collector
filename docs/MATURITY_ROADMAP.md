@@ -102,6 +102,68 @@ collector's evidence-first nicho without growing the public surface.
 
 **Shipped from Tier 5 (this branch, 2026-05-18):** T5.1, T5.2, T5.3, T5.5.
 
+## Tier 6 — OSS-first standards alignment + AI evidence + sustainability (v2.0)
+
+Added 2026-05-18 after a second market scan. Hard constraint: **100 %
+open source**, no proprietary SDKs as required deps, every upstream
+project + standard must be free and Apache-2.0 (or compatible) licensed.
+
+Items target a **single v2.0 release** after v1.2.0 publishes. The
+x.0 jump is positional (signals the OSS-first / standards-aligned
+pivot); all schema changes are additive so a v1.x consumer reading a
+v2.x bundle still parses every field it knew. Full plan in
+[`docs/program/plan-tier-6-v2.0.md`](program/plan-tier-6-v2.0.md)
+(generated from the approved plan at
+`~/.claude/plans/fa-a-uma-pesquisa-detalhada-squishy-lovelace.md`).
+
+### Phase A — Standards alignment (~10 days)
+
+| ID    | Item                                                          | Driver                                                                                              |
+|-------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| T6.1  | CycloneDX 1.7 parser update                                   | ECMA-424 standard since 2026-03-25. Adds `lifecycles`, `tlp`, `distribution`, inline VEX.           |
+| T6.2  | OSV parser + OSV-Scanner SARIF driver row                     | OSV Schema is the OSS-only vulnerability lingua franca; OSV-Scanner v2.3.5 is what teams actually run. |
+| T6.3  | in-toto Witness predicate type                                | SBOMit + Witness expect specific predicate types; today T5.5 emits a generic project predicate.     |
+| T6.4  | SSDF 1.2 catalog (`catalog-ssdf-1.2.yaml`)                    | NIST SP 800-218 Rev. 1 finalizes 2026 with refined PS.3, PW.7, RV.* tasks.                          |
+
+### Phase B — AI track (~9 days)
+
+| ID    | Item                                                          | Driver                                                                                              |
+|-------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| T6.5  | AI catalog + 5 new evidence types + 3 new parsers             | SP 800-218A SSDF AI Profile + OWASP LLM/MCP/Agentic Top 10. Zero OSS scanners ingest these today.   |
+
+### Phase C — Risk-weighted verdict + multi-VEX (~7 days)
+
+| ID    | Item                                                          | Driver                                                                                              |
+|-------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| T6.6  | Risk-based release status (`evaluate --risk-mode epss-weighted`) | Today `release_status` only sees evidence presence. Folding EPSS + KEV in closes "checklist theater". |
+| T6.7  | Multi-VEX consumer (OpenVEX + CycloneDX VEX + CSAF VEX)       | Vendors ship different VEX dialects; whoever consolidates wins. SPDX VEX deferred (low adoption).   |
+
+### Phase D — Regulatory + Graph (~10 days)
+
+| ID    | Item                                                          | Driver                                                                                              |
+|-------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| T6.8  | EU CRA mode (`run --profile cra-2026`) + FedRAMP 20x KSI catalog | EU CRA reporting starts 2026-09-11; FedRAMP 20x mandates OSCAL AR 2026-09-30. Same release.        |
+| T6.9  | GUAC ingestion adapter + watch daemon (`[watch]` extra)       | GUAC OpenSSF Incubating; "continuous ATO" is the operational pattern CRA codifies.                  |
+
+### Phase E — Community / sustainability (~6 days, parallel)
+
+| ID    | Item                                                          | Driver                                                                                              |
+|-------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| T6.C1 | OpenSSF Best Practices Badge — **passing** tier               | Free, OSS, public signal. Silver deferred to v2.1+ once governance docs have a track record.        |
+| T6.C2 | GitHub Secure Open Source Fund application (Apr 2026 cohort)  | Apache-2.0 security tooling qualifies. $10K + Azure credits + mentoring. Backup: Alpha-Omega Tier 2. |
+| T6.C3 | Governance + contributor ladder docs                          | Prereq for Silver badge and for the Secure OSS Fund narrative. `GOVERNANCE.md`, `MAINTAINERS.md`.   |
+| T6.C4 | Reproducible wheel build (`setuptools-reproducible` or `uv --reproducible`) | Bundle output already deterministic; the wheel itself is not. Closes the last reproducibility gap.  |
+| T6.C5 | Rego/Kyverno policy snippets                                  | Admission controllers consuming our bundle work out of the box. Closes "what do I do with this JSON". |
+
+### Tier 6 out of scope (additions to existing OOS list)
+
+- **SPDX VEX consumer** — low real-world adoption; revisit if a major SBOM vendor commits.
+- **Source-track SLSA** — spec deferred upstream; Build track L3 is enough.
+- **Paid scanner parsers** (Snyk, Veracode, Mend.io, JFrog Xray) — forbidden by the 100 %-OSS constraint.
+- **In-house EPSS-like model** — FIRST's feed is free and trusted; rolling our own is rent-seeking.
+- **OpenSSF Best Practices Badge Gold tier** — needs multi-maintainer + bug bounty; not a v2.x goal.
+- **AI agent execution** — we *ingest* AI evidence; we do not *run* prompts. The watch daemon is a webhook receiver, not an agentic loop.
+
 ---
 
 ## How items move forward
