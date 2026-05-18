@@ -75,6 +75,33 @@ These are the items that move the project from "well engineered" to
 | T4.4 | GitHub Discussions + issue labels + stale-bot| Signals "alive project" — `good first issue`, `help wanted`, abandoned issues auto-closed.      |
 | T4.5 | Conventional-commit-driven release tooling   | `release-please` or `semantic-release` so version bumps and changelog entries are mechanical.   |
 
+## Tier 5 — Evidence enrichment and supply-chain alignment
+
+Added 2026-05-18 after the post-publication market scan. Each item maps
+a 2026 industry signal (EPSS/KEV adoption, EU CRA, FedRAMP 20x, OpenVEX,
+in-toto + Sigstore consolidation) to a specific extension that fits the
+collector's evidence-first nicho without growing the public surface.
+
+| ID   | Item                                                          | Why it matters                                                                                                              |
+|------|---------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| T5.1 | EPSS + CISA KEV enrichment (`sdlc-evidence enrich`)           | Only ~2.3% of CVSS 7+ vulns are exploited. EPSS percentile + KEV flag let release_status reflect real risk, not severity theater. |
+| T5.2 | OpenVEX export (`sdlc-evidence vex`)                          | EU CRA (Sept 2026) requires machine-readable VEX next to the SBOM. Avoids forcing consumers to reverse-engineer the bundle. |
+| T5.3 | OSCAL Assessment Results export (`oscal --kind assessment-results`) | FedRAMP 20x (Sept 2026) mandates machine-readable AR. Bundle evaluations → OSCAL findings + observations.                  |
+| T5.4 | CycloneDX 1.7 parser update (lifecycle phase, TLP, VEX inline)| ECMA-424 standard since 2026; current parser tops out at 1.5.                                                                |
+| T5.5 | in-toto Statement v1 wrapper (`sdlc-evidence statement`)      | Bundle becomes natively consumable by Sigstore cosign, GUAC, Kyverno, OPA Gatekeeper. No bespoke envelope code downstream.  |
+| T5.6 | SSDF 1.2 catalog upgrade (`catalog-v1.2.yaml`)                | NIST SP 800-218r1 is in final review; current catalog tracks 1.1.                                                            |
+| T5.7 | SSDF AI Profile (`catalog-ai.yaml`)                           | SP 800-218A enumerates AI-specific controls (training data lineage, model card, red team). Empty space in the scanner market.|
+| T5.8 | EU CRA mode (`--profile cra-2026`)                            | Filters and packages evidence to meet the 24h vuln reporting + 10y retention windows.                                       |
+| T5.9 | FedRAMP 20x KSI mapping (`catalog-fedramp-20x-ksi.yaml`)      | Translates internal controls to Key Security Indicators FedRAMP 20x will validate automatically.                            |
+| T5.10| GUAC ingestion adapter                                        | Collector becomes a producer of canonical evidence; GUAC remains the graph view across all producers.                       |
+| T5.11| Continuous mode (`sdlc-evidence watch`)                       | Daemon that re-runs on webhook events; persists historical bundles. Aligns with continuous ATO and CRA reporting.            |
+| T5.12| Risk-based release status (EPSS-weighted)                     | Today `ready/conditional/not_ready` only sees evidence presence. Folding EPSS/KEV in resolves "checklist theater" critique.  |
+| T5.13| MCP/agentic evidence types                                    | OWASP MCP Top 10 and Agentic Top 10 (2026) define risks no scanner covers yet. New types: `model_card`, `prompt_injection_test_result`, `mcp_tool_inventory`. |
+| T5.14| Multi-VEX consumer (OpenVEX + CycloneDX VEX + CSAF + SPDX)    | Vendors ship different VEX formats; whoever consolidates wins.                                                              |
+| T5.15| Market-positioning page                                       | Explicit comparison with Chainguard Enforce / Kusari / Scribe so first-touch users understand the nicho.                    |
+
+**Shipped from Tier 5 (this branch, 2026-05-18):** T5.1, T5.2, T5.3, T5.5.
+
 ---
 
 ## How items move forward

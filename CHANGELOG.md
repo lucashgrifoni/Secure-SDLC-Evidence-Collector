@@ -6,6 +6,34 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+#### 2026-05-18 — Tier 5: evidence enrichment + supply-chain alignment
+
+- **EPSS + CISA KEV enrichment** (`sdlc-evidence enrich`). New
+  `evidence_collector.intelligence` package loads the public EPSS feed
+  (FIRST.org, CSV or .csv.gz) and the CISA KEV catalog and attaches a
+  compact `vulnerability_intelligence` summary to every evidence record
+  that carries CVE ids. Air-gap friendly: no network in the CLI; users
+  point at local feed files. SARIF and CycloneDX parsers now extract
+  CVE ids into a new `evidence[*].cve_ids` field.
+- **OpenVEX 0.2.0 export** (`sdlc-evidence vex`). Emits one OpenVEX
+  statement per CVE, mapping bundle exceptions to `not_affected` with
+  justification, KEV-listed CVEs to `affected` with action statement,
+  and the rest to `under_investigation`. Document `@id` is a UUIDv5
+  over (application, repository, release_id, commit_sha) so the file
+  is deterministic across runs.
+- **OSCAL Assessment Results export** (`sdlc-evidence oscal --kind
+  assessment-results`). Renders the bundle's `ControlEvaluation` list
+  as an OSCAL 1.1.2 `assessment-results` document — the FedRAMP 20x
+  machine-readable shape. UUIDs are stable UUIDv5 across runs.
+- **in-toto Statement v1 wrapper** (`sdlc-evidence statement`).
+  Wraps the bundle as an in-toto Statement with a project-specific
+  predicateType, deterministic UUIDv5 subject name, and an optional
+  unsigned DSSE envelope ready for `cosign sign-blob`. Makes the
+  bundle natively consumable by Sigstore, GUAC, Kyverno, and OPA
+  Gatekeeper without bespoke envelope code.
+
 ### Fixed
 
 #### 2026-05-17 — cross-OS structural-SHA stability
