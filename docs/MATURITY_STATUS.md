@@ -9,11 +9,19 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 > `Owner` column so we don't double-up. The `Last touched` column is in
 > ISO 8601 (UTC) so a stale row is obvious by inspection.
 
-**Last updated:** 2026-05-10 (post-publication hardening pass: docs
+**Last updated:** 2026-05-17 (post-publication hardening pass v1.1.1:
+cross-OS structural-SHA fix in `normalize_bundle`, snapshot fixture
+regenerated, self-release dogfood revalidated to `ready 13/13`,
+`docs/traceability.md` lab counts corrected to current behaviour,
+`.gitleaks.toml` + `.semgrepignore` + pre-commit hooks fixed so the
+local gate is reproducible end-to-end). All 16 pre-commit hooks pass
+for the first time end-to-end. Evidence pack under
+[`output/publication-2026-05-17/`](../output/publication-2026-05-17/).
+Previous updates: 2026-05-10 (post-publication hardening pass: docs
 reconciled, coverage gate raised, CLI modularized, harden-runner,
-classification confidence, `verify` command, snapshot test).
-Previous update: 2026-05-05 (release-readiness for v1.1.0 merged into
-`main`; maturity/higiene rodada validated baseline).
+classification confidence, `verify` command, snapshot test);
+2026-05-05 (release-readiness for v1.1.0 merged into `main`;
+maturity/higiene rodada validated baseline).
 
 **Released versions:** v1.0.0 (2026-04-23) · v1.0.1 (2026-05-04,
 maturity polish) · v1.1.0 prepared in code on `main` (commit
@@ -27,13 +35,15 @@ no GHCR image has been published yet.
 
 | Metric                          | Current | Target | Notes                                                                |
 |---------------------------------|---------|--------|----------------------------------------------------------------------|
-| Tests passing                   | 227     | —      | unit + integration; +84 from the 2026-05-05 coverage push and post-publication hardening (CLI refactor + classification confidence + `verify` command + snapshot test) |
-| Line + branch coverage          | 87.43 % | 85 %   | meets target; floor raised from 70 % to 80 % in `pyproject.toml`; measured on 2026-05-05 maturity rodada and re-validated on 2026-05-10 after the hardening pass |
-| `mypy --strict` source files    | 61      | —      | zero issues                                                          |
+| Tests passing                   | 233     | —      | unit + integration; +6 from the 2026-05-17 cross-OS integrity test suite (`tests/unit/test_integrity.py`) |
+| Line + branch coverage          | 87.68 % | 85 %   | meets target; floor at 80 % in `pyproject.toml`; re-measured on 2026-05-17 |
+| `mypy --strict` source files    | 89      | —      | zero issues; coverage now reaches both `src` and `tests` cleanly     |
 | `ruff` violations               | 0       | 0      | enforced in CI and pre-commit; scope `src tests scripts`             |
 | `actionlint` violations         | 0       | 0      | enforced via `pre-commit` and CI                                     |
-| `bandit -r src` issues          | 0       | 0      | 3697 LOC scanned, no Low/Medium/High/Undefined                       |
-| `semgrep` (security-audit + secrets) findings | 0 | 0 | 148 rules across 206 files; nosemgrep placement fixed in `parsers/junit.py` |
+| `bandit -r src` issues          | 0       | 0      | 4148 LOC scanned, no Low/Medium/High/Undefined                       |
+| `semgrep` (security-audit + secrets) findings | 0 | 0 | 148 rules across 263 files; `.semgrepignore` added so the local scan does not exhaust semgrep-core stack on Windows |
+| `gitleaks` findings             | 0       | 0      | `.gitleaks.toml` extended to allowlist `.venv*` and other gitignored caches so `--no-git` does not report 200 false positives from third-party SPDX license indexes |
+| `pre-commit run --all-files`    | all green | all green | mypy hook now passes the required additional_dependencies (typer/rich/fastapi/httpx/jinja2/defusedxml/types-defusedxml) and the explicit `src` target; `check-json` excludes intentionally malformed lab SBOMs |
 | Workflows pinned (third-party)  | full SHA except 2 structural exceptions | same | All 26 third-party action references pin a full SHA + version comment, except 2 documented structural exceptions (`slsa-framework/slsa-github-generator/.../v2.0.0` reusable-workflow contract, `pypa/gh-action-pypi-publish@release/v1` Trusted-Publisher pattern). The 6 candidates that previously sat on tag (`attest-build-provenance`, `deploy-pages`, `download-artifact`, `upload-pages-artifact`, `cosign-installer`, `action-gh-release`) were converted to SHA on 2026-05-05. Inventory: `docs/program/actions-pinning-inventory.md`. |
 | Release artifacts signed        | configured | yes | cosign keyless + Sigstore Rekor wired in `release.yml`; first signed public release will be `v1.1.0`. No signed asset has been published yet. |
 | Determinism gate                | yes     | yes    | structural SHA-256 compare in CI; volatile fields documented         |
@@ -175,10 +185,46 @@ first signed public release.
   `docs/program/dependabot-triage.md` because they touch
   release/SLSA/CodeQL surfaces that need the first public release as
   baseline.
-- **2026-05-05** — maturity/higiene rodada (this update): re-ran the
+- **2026-05-05** — maturity/higiene rodada: re-ran the
   full local gate set including `bandit -r src` (0 findings) and
   `semgrep --config p/security-audit --config p/secrets` (148 rules,
   0 findings) after fixing the placement of the `# nosemgrep`
   suppression in `parsers/junit.py`. Reconciled `MATURITY_STATUS.md`,
   `release-readiness.md` and `traceability.md` with the observed
   state.
+- **2026-05-17** — post-publication hardening pass v1.1.1 (this
+  update). Three issues found by the 2026-05-17 pre-publication
+  validation pack and resolved in the same session:
+  (1) `normalize_bundle()` was hashing `evidence[*].raw.artifact_path`
+  literally, so the structural SHA-256 differed between Windows and
+  Linux runs of the same inputs. Fixed by POSIX-normalizing the
+  separator at hash time (`src/evidence_collector/application/integrity.py`),
+  by passing `artifact_root=repo_root` from
+  `tests/integration/test_bundle_snapshot.py` so the absolute path is
+  rebased to repo-relative, and by adding `tests/unit/test_integrity.py`
+  with 6 dedicated tests for the helper. Snapshot fixture bumped from
+  `34f3025e…` to `a42920b3…`; new digest is identical on both OSes.
+  (2) Self-release dogfood was reporting `not_ready` in the validation
+  pack because the validation script omitted `--attestations-dir` — the
+  attestations were already committed. To prevent recurrence, added
+  `make run-self-release` and regenerated
+  `examples/self_release/output/*` against v1.1.0 schema (now includes
+  the `classification` field). (3) `docs/traceability.md §4` claimed
+  "6 missing critical" for `examples/labs/01-core-saas-lab`; the actual
+  current behaviour is 4 missing critical (5 for `04-data-batch-lab`
+  which lacks an SBOM attestation). Replaced the stale row with three
+  explicit rows naming the controls, and added a "Refresh notes —
+  2026-05-17" section listing what was re-run and what is still
+  deferred. Side fixes discovered during validation: `.gitleaks.toml`
+  extended to allowlist `.venv*` and cache directories (otherwise
+  `gitleaks --no-git` reports 200 false positives from third-party
+  SPDX indexes); `.semgrepignore` added so `semgrep scan` is
+  reproducible on Windows; pre-commit `mypy` hook fixed to pass an
+  explicit target and the missing additional_dependencies; pre-commit
+  `check-json` excludes intentionally malformed lab SBOMs; 9 lab
+  fixtures auto-normalized CRLF→LF by the `mixed-line-ending` hook.
+  Tests 227 → **233**, coverage 87.43 % → **87.68 %**, mypy strict
+  files 61 → **89** (full visibility into `tests/` and the API
+  surface). Evidence pack:
+  [`output/publication-2026-05-17/`](../output/publication-2026-05-17/);
+  session handoff: [`docs/program/HANDOFF-2026-05-17.md`](program/HANDOFF-2026-05-17.md).
