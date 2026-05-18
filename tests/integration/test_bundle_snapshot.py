@@ -45,15 +45,27 @@ SNAPSHOT_FILE = (
 
 
 def _produce_sample_bundle(output_dir: Path, sample_release_root: Path) -> Path:
-    """Reproduce the canonical sample bundle into ``output_dir`` and return its path."""
+    """Reproduce the canonical sample bundle into ``output_dir`` and return its path.
+
+    ``artifact_root`` is the repository root, which makes
+    ``evidence[*].raw.artifact_path`` resolve to a path **relative to** the
+    repo (for example ``examples/sample_release/artifacts/junit.xml``)
+    rather than an absolute path that would embed the runner's home
+    directory (``C:\\Users\\…`` on Windows, ``/home/runner/…`` on Linux).
+    Without this rebase the structural SHA-256 would be runner-specific
+    even after :func:`normalize_bundle` POSIX-normalizes the separator,
+    defeating the cross-OS guarantee this test is meant to lock.
+    """
     application = Application(name="payments-api", repository="acme/payments-api")
     release = ReleaseContext(release_id="2026.04.10", commit_sha="abcdef1234567890")
+    repo_root = sample_release_root.parent.parent
     run_pipeline(
         application=application,
         release=release,
         artifacts_dirs=[sample_release_root / "artifacts"],
         attestations_dirs=[sample_release_root / "attestations"],
         output_dir=output_dir,
+        artifact_root=repo_root,
     )
     bundle_path = output_dir / "bundle.json"
     assert bundle_path.is_file(), f"sample run produced no bundle at {bundle_path}"

@@ -6,6 +6,29 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+#### 2026-05-17 — cross-OS structural-SHA stability
+
+- **`normalize_bundle` now POSIX-normalizes `evidence[*].raw.artifact_path`
+  before hashing.** Previously the helper trusted whatever separator the
+  host had baked into the bundle, so Windows runs produced a different
+  structural SHA-256 than Linux runs for the same inputs. The fix
+  changes only the hash-time view; the bundle written to disk still
+  records native separators. New unit tests
+  (`tests/unit/test_integrity.py`) lock the cross-OS behaviour directly,
+  and the `test_sample_release_bundle_sha256_snapshot` integration test
+  now passes `artifact_root=repo_root` so paths are recorded relative to
+  the repo (not absolute, which would still be runner-specific).
+- **Snapshot fixture bumped**
+  (`tests/fixtures/sample_release_snapshot.sha256`) from
+  `34f3025e3791…` to `a42920b3b7b5…` (cross-OS fix on 2026-05-17),
+  then to `5e1498cdfdca…` on 2026-05-18 because the
+  `mixed-line-ending` pre-commit hook renormalized four sample-release
+  input fixtures from CRLF to LF, changing their SHA-256 (which is
+  carried into `bundle.json` as `evidence[*].raw.integrity_hash`).
+  The current digest is identical on Windows and Linux.
+
 ### Added
 
 #### 2026-05-10 — post-publication hardening pass
