@@ -7,6 +7,7 @@ attempting to fully model each specification.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -21,6 +22,8 @@ from evidence_collector.parsers._common import (
 
 SbomFormat = Literal["cyclonedx", "spdx"]
 
+_CVE_PATTERN = re.compile(r"\bCVE-(?:19|20)\d{2}-\d{4,7}\b", re.IGNORECASE)
+
 
 @dataclass
 class ParsedSbom:
@@ -30,6 +33,7 @@ class ParsedSbom:
     component_count: int
     subject_ref: str | None
     serial_number: str | None = None
+    cve_ids: list[str] = field(default_factory=list)
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -79,17 +83,54 @@ def _spdx_subject(data: dict[str, Any]) -> str | None:
     return None
 
 
+def _collect_cves_from_string(value: Any, sink: set[str]) -> None:
+    """Append every CVE id found in ``value`` (if it is a string) to ``sink``."""
+    if isinstance(value, str):
+        for match in _CVE_PATTERN.findall(value):
+            sink.add(match.upper())
+
+
+def _collect_cves_from_references(references: Any, sink: set[str]) -> None:
+    """Append every CVE id found across CycloneDX ``references[*].id`` entries."""
+    if not isinstance(references, list):
+        return
+    for ref in references:
+        if isinstance(ref, dict):
+            _collect_cves_from_string(ref.get("id"), sink)
+
+
+def _cyclonedx_cve_ids(data: dict[str, Any]) -> list[str]:
+    """Extract distinct CVE IDs from a CycloneDX BOM's vulnerabilities block.
+
+    CycloneDX 1.4+ allows embedding vulnerabilities directly in the SBOM
+    (``vulnerabilities[*].id`` plus optional ``references[*].id`` for
+    cross-references like CVE→GHSA mappings). We collect both.
+    """
+    found: set[str] = set()
+    vulns = data.get("vulnerabilities")
+    if not isinstance(vulns, list):
+        return []
+    for vuln in vulns:
+        if not isinstance(vuln, dict):
+            continue
+        _collect_cves_from_string(vuln.get("id"), found)
+        _collect_cves_from_references(vuln.get("references"), found)
+    return sorted(found)
+
+
 def parse_sbom(path: str | Path) -> ParsedSbom:
     resolved = ensure_file(path)
     data = load_json(resolved)
     sbom_format = _detect_format(data, resolved)
 
+    cve_ids: list[str] = []
     if sbom_format == "cyclonedx":
         spec_version = data.get("specVersion")
         serial_number = data.get("serialNumber")
         component_count = _cyclonedx_component_count(data)
         subject_ref = _cyclonedx_subject(data)
         content_type = "application/vnd.cyclonedx+json"
+        cve_ids = _cyclonedx_cve_ids(data)
     else:
         spec_version = data.get("spdxVersion")
         serial_number = data.get("documentNamespace")
@@ -105,5 +146,6 @@ def parse_sbom(path: str | Path) -> ParsedSbom:
         component_count=component_count,
         subject_ref=subject_ref,
         serial_number=str(serial_number) if serial_number else None,
+        cve_ids=cve_ids,
         raw=data,
     )

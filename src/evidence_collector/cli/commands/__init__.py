@@ -22,6 +22,7 @@ from . import (
     compare,
     controls,
     doctor,
+    enrich,
     evaluate,
     exceptions,
     oscal,
@@ -48,6 +49,7 @@ COMMAND_MODULES: Final[tuple[CommandRegister, ...]] = (
     schema.register,
     doctor.register,
     verify.register,
+    enrich.register,
     exceptions.register,
 )
 

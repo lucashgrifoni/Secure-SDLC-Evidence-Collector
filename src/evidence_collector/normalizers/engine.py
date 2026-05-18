@@ -229,6 +229,7 @@ def normalize_sarif(
         generated_at=None,
         raw=_raw_ref(parsed.artifact, artifact_root),
         findings_count=dict(parsed.findings_count),
+        cve_ids=list(parsed.cve_ids),
         summary=(
             f"{parsed.tool_name} reported {parsed.total_findings} findings "
             f"(high/critical={parsed.findings_count.get('critical', 0) + parsed.findings_count.get('high', 0)})"
@@ -259,6 +260,7 @@ def normalize_sbom(
         generated_at=None,
         raw=_raw_ref(parsed.artifact, artifact_root),
         findings_count={"components": parsed.component_count},
+        cve_ids=list(parsed.cve_ids),
         summary=(
             f"{parsed.format.upper()} SBOM with {parsed.component_count} components "
             f"(spec {parsed.spec_version})"

@@ -33,6 +33,12 @@ VOLATILE_TOP: Final[frozenset[str]] = frozenset({"bundle_id", "generated_at"})
 VOLATILE_EVIDENCE: Final[frozenset[str]] = frozenset({"collected_at"})
 VOLATILE_CONTROL: Final[frozenset[str]] = frozenset({"evaluated_at"})
 
+# Volatile timestamps nested inside the optional vulnerability_intelligence
+# block. ``enriched_at`` records *when* the EPSS/KEV feed was applied, not
+# *which* feed (that detail lives in ``epss_feed_date`` and ``kev_feed_date``
+# which DO contribute to the structural hash so a feed bump is detectable).
+VOLATILE_VULN_INTEL: Final[frozenset[str]] = frozenset({"enriched_at"})
+
 # Keys inside each entry of evidence[*].raw[*] whose value is a filesystem
 # path and must be normalized to POSIX form before hashing.
 PATH_KEYS_IN_RAW: Final[frozenset[str]] = frozenset({"artifact_path"})
@@ -83,6 +89,14 @@ def _strip_keys(entries: object, keys: frozenset[str]) -> list[dict[str, object]
     return dict_entries
 
 
+def _strip_volatile_in_vuln_intel(entry: dict[str, object]) -> None:
+    """Drop ``enriched_at`` from ``vulnerability_intelligence`` if present."""
+    intel = entry.get("vulnerability_intelligence")
+    if isinstance(intel, dict):
+        for key in VOLATILE_VULN_INTEL:
+            intel.pop(key, None)
+
+
 def normalize_bundle(data: dict[str, object]) -> bytes:
     """Strip volatile fields and return a canonical UTF-8 JSON byte stream.
 
@@ -94,6 +108,7 @@ def normalize_bundle(data: dict[str, object]) -> bytes:
         data.pop(key, None)
     for entry in _strip_keys(data.get("evidence"), VOLATILE_EVIDENCE):
         _normalize_raw_paths(entry)
+        _strip_volatile_in_vuln_intel(entry)
     _strip_keys(data.get("control_evaluations"), VOLATILE_CONTROL)
     return json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
 
