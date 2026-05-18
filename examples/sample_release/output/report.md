@@ -1,8 +1,8 @@
 # Secure SDLC Evidence Report
 
-**Bundle ID:** `bundle-20260424-payments-api-2026.04.10-c8d47d08`
+**Bundle ID:** `bundle-20260517-payments-api-2026.04.10-4609b212`
 **Bundle version:** 1.0.0
-**Generated at:** 2026-04-24T18:22:17.744672+00:00
+**Generated at:** 2026-05-17T17:07:38.842120+00:00
 
 ## Application
 
@@ -193,4 +193,3 @@ No gaps detected.
 - **Subject:** `payments-api` (application)
 - **Status:** completed · **Confidence:** medium · manual attestation- **Summary:** Threat model updated for payments-api refund flow
 - **Artifact:** `examples\sample_release\attestations\threat_model.yaml` (sha256:f6d5ec38328ef7dd319e39f78e2fc53cc78dede302c0d85dfb25fb1b870acce6)
-

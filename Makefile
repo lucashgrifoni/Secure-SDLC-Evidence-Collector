@@ -1,4 +1,4 @@
-.PHONY: install install-dev lint format typecheck test test-cov run-example clean
+.PHONY: install install-dev lint format typecheck test test-cov run-example run-self-release clean
 
 PY ?= python
 RUFF_TARGETS ?= src tests scripts
@@ -34,7 +34,20 @@ run-example:
 		--branch main \
 		--artifacts-dir examples/sample_release/artifacts \
 		--attestations-dir examples/sample_release/attestations \
+		--artifact-root . \
 		--output-dir output/sample_release
+
+run-self-release:
+	$(PY) -m evidence_collector.cli.main run \
+		--application secure-sdlc-evidence-collector \
+		--repository lucashgrifoni/Secure-SDLC-Evidence-Collector \
+		--release-id v1.1.0 \
+		--commit-sha 17dede200000000000000000000000000000000a \
+		--branch main \
+		--artifacts-dir examples/self_release/artifacts \
+		--attestations-dir examples/self_release/attestations \
+		--artifact-root . \
+		--output-dir examples/self_release/output
 
 clean:
 	rm -rf build/ dist/ *.egg-info src/*.egg-info
