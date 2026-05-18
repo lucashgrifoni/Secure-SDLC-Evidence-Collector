@@ -29,6 +29,7 @@ from . import (
     plugins,
     run,
     schema,
+    statement,
     verify,
     vex,
 )
@@ -52,6 +53,7 @@ COMMAND_MODULES: Final[tuple[CommandRegister, ...]] = (
     verify.register,
     enrich.register,
     vex.register,
+    statement.register,
     exceptions.register,
 )
 
