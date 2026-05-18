@@ -1,8 +1,8 @@
-# Self-release evidence bundle (v0.1.0)
+# Self-release evidence bundle (v1.1.0)
 
 The Secure SDLC Evidence Collector dogfoods itself: this folder holds the
 real evidence bundle produced by running the collector against its own
-`v0.1.0` release.
+`v1.1.0` release.
 
 ## Verdict
 
@@ -10,9 +10,13 @@ real evidence bundle produced by running the collector against its own
 |--------|-------|
 | Release status | `ready` |
 | Evidence coverage | **100 / 100** |
-| Confidence | 60 / 100 (manual attestations) |
-| Controls | 10 met · 0 partial · 0 missing |
-| Evidence count | 12 |
+| Confidence | 54 / 100 (manual attestations) |
+| Controls | 13 met · 0 partial · 0 missing |
+| Evidence count | 13 |
+
+Regenerate with `make run-self-release` (regenerates the bundle in
+`examples/self_release/output/` against the committed artefacts and
+attestations).
 
 ## How it was generated
 

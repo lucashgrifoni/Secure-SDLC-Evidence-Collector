@@ -12,6 +12,7 @@ where the rationale would be easy to forget and expensive to re-derive.
 - [ADR-0003 — Typer for the CLI](./0003-typer-cli.md)
 - [ADR-0004 — Schema-first, evidence-first product framing](./0004-evidence-first.md)
 - [ADR-0005 — Replaceable control catalog with org overrides](./0005-control-catalog-override.md)
+- [ADR-0006 — CLI command modularization](./0006-cli-command-modularization.md)
 
 ## Format
 

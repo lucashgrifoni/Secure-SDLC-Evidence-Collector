@@ -28,6 +28,11 @@ repos:
         args: ["--fix=lf"]
       - id: check-yaml
       - id: check-json
+        # Lab fixtures sometimes ship intentionally malformed JSON (e.g.
+        # truncated SBOMs) to exercise tolerant-parser paths in the
+        # collector. Those are evidence input, not code we own — exclude
+        # the lab artifacts directory from this hook only.
+        exclude: '^examples/labs/.*/artifacts/.*\.json$'
       - id: check-toml
       - id: check-added-large-files
         args: ["--maxkb=1024"]
@@ -37,7 +42,12 @@ repos:
       - id: detect-private-key
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+    # Pin matches the lower bound of ruff>=0.6,<1.0 that pip resolves
+    # in CI (currently 0.9.x). When this constraint changes in
+    # pyproject.toml, bump this `rev:` to a tag that produces the same
+    # `format` behavior, otherwise local and CI will disagree on
+    # multi-line assert layouts.
+    rev: v0.9.10
     hooks:
       - id: ruff
         args: [--fix]
@@ -50,7 +60,25 @@ repos:
         additional_dependencies:
           - pydantic>=2.6
           - types-PyYAML
-        args: [--config-file=pyproject.toml]
+          # The CLI uses typer/rich and the optional API uses fastapi.
+          # Without these mypy emits "Cannot find implementation or
+          # library stub" for every module that imports them, drowning
+          # real type findings. Keep this list in sync with the [api]
+          # extra in pyproject.toml when API deps change.
+          - typer>=0.12
+          - rich>=13.7
+          - fastapi>=0.111
+          - httpx>=0.27
+          - jinja2>=3.1
+          - defusedxml>=0.7
+          - types-defusedxml
+        # `pass_filenames: false` means pre-commit does not append matched
+        # paths to the command line, so the args list must contain at
+        # least one target (otherwise mypy errors with "Missing target
+        # module, package, files, or command"). Pin the target to the
+        # collector's source tree to match `mypy --strict src tests`
+        # without the test files (which are covered by the CI job).
+        args: [--config-file=pyproject.toml, src]
         pass_filenames: false
         files: ^src/
 

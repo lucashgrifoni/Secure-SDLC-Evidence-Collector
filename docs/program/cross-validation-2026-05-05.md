@@ -1,5 +1,13 @@
 # Validacao cruzada - Codex + Claude Code
 
+> **Nota historica (2026-05-10).** Este documento foi escrito quando a pasta
+> de governanca ainda se chamava `melhorias/`. As referencias internas a
+> `melhorias/...` ficam preservadas porque retratam o estado do repositorio
+> em 2026-05-05. Para localizar o arquivo atual, consulte
+> [`docs/program/README.md`](./README.md) ou
+> [`melhorias/README.md`](../../melhorias/README.md), que mantem o mapa de
+> redirecionamento ate o expurgo.
+
 Data: 2026-05-05
 Repositorio: `C:\Users\Lucas Grifoni\Downloads\My Projects - AppSec & DevSecOps\5.Projeto - Secure SDLC Evidence Collector`
 HEAD remoto/local: `1f84619d8835bad8ad8ee818e36dfe2666225378`

@@ -1,7 +1,7 @@
 # Triagem Dependabot — Fase 8 do plano de publicacao v1.1.0
 
 Data: 2026-05-05
-Plano de origem: `melhorias/plano-de-acao-publicacao-v1-1-0-2026-05-05.md`
+Plano de origem: `docs/program/_archive/2026-05-05/plan-publication.md`
 PR base mergeada: #10 (release-readiness para v1.1.0) em `main` (`17dede2`).
 
 ## Resumo executivo
@@ -77,7 +77,7 @@ imediato.
   vermelhos do Security CI/CD viram verdes automaticamente
   (`Resource not accessible by integration` desaparece). Validar isso
   reabrindo um PR sintetico ou rerodando o ultimo workflow, como
-  registrado em `melhorias/analise-falhas-security-ci-2026-05-05.md`.
+  registrado em `docs/program/_archive/2026-05-05/security-ci-failure-analysis.md`.
 
 ## Conformidade com o plano
 

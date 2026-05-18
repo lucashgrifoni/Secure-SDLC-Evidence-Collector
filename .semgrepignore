@@ -1,0 +1,28 @@
+# Semgrep ignore patterns for the Secure SDLC Evidence Collector.
+#
+# Semgrep's default scan walks the working tree (including untracked
+# directories like local virtual environments and caches), which on a
+# Windows host can exhaust the semgrep-core stack. Excluding the
+# usual ephemeral surfaces keeps `semgrep scan --config p/security-audit
+# --config p/secrets` reproducible across developer machines without
+# affecting CI (where these directories don't exist).
+
+# Local virtual environments
+.venv/
+.venv*/
+venv/
+env/
+ENV/
+
+# Tooling caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+__pycache__/
+
+# Generated bundles and evidence packs
+output/
+
+# Documentation site builds
+site/

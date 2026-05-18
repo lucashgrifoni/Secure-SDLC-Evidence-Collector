@@ -17,7 +17,7 @@ Por que primeiro: liberar a publicacao tambem desbloqueia
 **imediatamente** 9 falhas vermelhas do Security CI/CD que hoje sao
 limitacao de visibilidade (CodeQL/Trivy/Semgrep upload-sarif,
 Dependency Review, Scorecard). Documentado em
-`melhorias/analise-falhas-security-ci-2026-05-05.md`.
+`docs/program/_archive/2026-05-05/security-ci-failure-analysis.md`.
 
 Acao na UI: <https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/settings>
 > Danger Zone > Change visibility > Make public.

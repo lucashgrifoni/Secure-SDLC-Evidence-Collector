@@ -6,8 +6,8 @@
 ![Python 3.12 & 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)
 ![License Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-green)
 [![Cosign signing configured](https://img.shields.io/badge/release%20signing-cosign%20keyless%20(configured)-9cf)](./.github/workflows/release.yml)
-![Tests 143](https://img.shields.io/badge/tests-143%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-77%25-brightgreen)
+![Tests 233](https://img.shields.io/badge/tests-233%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen)
 
 **CLI-first AppSec/DevSecOps tool that answers: "Which evidence proves this
 release followed a minimum Secure SDLC process?"**
@@ -55,7 +55,7 @@ This collector reframes the question around **evidence, not findings**:
 | Outputs | Deterministic `bundle.json`, Jinja2 `report.md`, and `summary.html` |
 | CLI | `run` · `collect` · `evaluate` · `bundle` · `controls` · `compare` · `oscal` · `plugins` · `schema` · `doctor` · `exceptions list/validate` |
 | Packaging | Reusable GitHub Action (`action.yml`), non-root Docker image, wheel + sdist build verified locally; PyPI publish wired via OIDC Trusted Publisher and pending external setup. |
-| Release integrity | `release.yml` is configured to perform cosign keyless signing + Sigstore Rekor transparency log + SLSA Build Level 3 provenance on tag push. The first signed public release will be `v1.1.0`. |
+| Release integrity | `release.yml` is configured to perform cosign keyless signing + Sigstore Rekor transparency log + SLSA Build Level 3 provenance on tag push. The first signed public release will be `v1.1.1` (the v1.1.0 cut prepared in code stayed internal while the post-publication hardening pass landed). |
 | Quality bar | `ruff`, `mypy --strict`, `pytest` with coverage gate, GitHub Actions CI, Dependabot |
 
 ---
@@ -264,7 +264,7 @@ make install-dev
 make lint          # ruff check on src, tests and scripts
 make format        # ruff format + fix
 make typecheck     # mypy --strict on src/ and tests/
-make test          # pytest with coverage gate (>=70%)
+make test          # pytest with coverage gate (>=80%)
 make run-example   # generate the sample bundle
 ```
 
@@ -352,8 +352,10 @@ The tool itself follows the security rules it enforces on others:
 Tier 1–4 maturity work. **Configured in code or workflow** — every
 externally verifiable signal (signed assets on PyPI / GHCR, public
 Scorecard score, CodeQL alerts on the Security tab) materialises only
-after the first public `v1.1.0` release runs end-to-end against a
-public repository with the external setup listed in
+after the first public release (`v1.1.1`, see
+[`docs/program/EXTERNAL-ACTIONS-2026-05-18.md`](./docs/program/EXTERNAL-ACTIONS-2026-05-18.md))
+runs end-to-end against a public repository with the external setup
+listed in
 [`docs/MATURITY_STATUS.md §External actions`](./docs/MATURITY_STATUS.md).
 
 - OpenSSF Scorecard, native CodeQL, expanded `pre-commit`,

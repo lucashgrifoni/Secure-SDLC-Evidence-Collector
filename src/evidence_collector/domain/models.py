@@ -103,6 +103,22 @@ class RawEvidenceRef(_BaseModel):
         return self
 
 
+class EvidenceClassification(_BaseModel):
+    """How the ``evidence_type`` of a record was decided.
+
+    Promotes the implicit confidence signal previously visible only in
+    ``evaluation.rationale`` text to a first-class bundle field so
+    downstream consumers can weight or filter evidence by classification
+    confidence without parsing free-form prose. The taxonomy is small on
+    purpose: any new ``reason`` value MUST be documented in
+    ``docs/limitations.md`` so reviewers know what to expect.
+    """
+
+    confidence: ConfidenceLevel
+    reason: Annotated[str, Field(min_length=1, max_length=60)]
+    driver_name: str | None = Field(default=None, max_length=120)
+
+
 class NormalizedEvidence(_BaseModel):
     """Canonical evidence record after normalization.
 
@@ -117,6 +133,15 @@ class NormalizedEvidence(_BaseModel):
     subject_ref: Annotated[str, Field(min_length=1, max_length=500)]
     status: EvidenceStatus
     confidence: ConfidenceLevel = ConfidenceLevel.MEDIUM
+    classification: EvidenceClassification | None = Field(
+        default=None,
+        description=(
+            "Optional classification provenance for the evidence_type. "
+            "Populated by parsers that apply a heuristic (currently the "
+            "SARIF normalizer); absent when the evidence type is "
+            "self-evident from the format (SBOM, JUnit, ZAP)."
+        ),
+    )
     release_id: Annotated[str, Field(min_length=1, max_length=100)]
     commit_sha: Annotated[str, Field(min_length=7, max_length=64)]
     generated_at: datetime | None = None
