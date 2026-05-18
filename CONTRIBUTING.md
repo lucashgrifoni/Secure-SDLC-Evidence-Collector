@@ -85,6 +85,41 @@ orchestrator and CLI against `examples/sample_release/`.
 See [SECURITY.md](./SECURITY.md). Please do not open public issues for
 security-sensitive reports.
 
+## Becoming a maintainer
+
+This project follows a lightweight, BDFL-led governance model
+documented in [GOVERNANCE.md](./GOVERNANCE.md). The current maintainer
+roster lives in [MAINTAINERS.md](./MAINTAINERS.md).
+
+Contributors who want to take on a larger role go through three
+visible stages:
+
+1. **Contributor.** Anyone with a merged PR. No special access; full
+   credit in the changelog. This is where everyone starts.
+2. **Triager.** Granted after three substantive merged PRs *or* one
+   bigger feature contribution, plus a track record of helpful issue
+   triage (≥10 issues commented on, ≥3 issues closed via reproduction
+   or PR). Triagers get the `triage` GitHub permission: label, close,
+   re-open, edit issues and PRs, but **not** push to protected
+   branches.
+3. **Maintainer.** Granted by consensus of existing maintainers after
+   six months of Triager-level work, demonstrated familiarity with at
+   least two subsystems (parsers, normalizers, exporters, controls,
+   CLI), and visible alignment with the project's evidence-first
+   philosophy. Maintainers can merge PRs, approve release tags, and
+   add or remove Triagers.
+
+Maintainers commit to:
+
+- responding to security reports within five business days,
+- reviewing assigned PRs within ten business days,
+- not unilaterally introducing breaking changes to the bundle schema,
+- recusing themselves from reviewing their own changes.
+
+Stepping down is encouraged when life happens. There is no
+"emeritus" tier yet; if and when the maintainer roster grows past
+three people, that policy gets added to `GOVERNANCE.md`.
+
 ## License
 
 By contributing you agree that your contribution is licensed under the
