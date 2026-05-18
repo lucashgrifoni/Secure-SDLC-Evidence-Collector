@@ -101,6 +101,6 @@ def test_json_logs_env_var_enables_mode(
     parsed = [
         json.loads(line) for line in result.output.splitlines() if line.strip().startswith("{")
     ]
-    assert any(
-        e.get("event") == "bundle_built" for e in parsed
-    ), f"SDLC_JSON_LOGS=1 should switch to JSON mode; got {result.output!r}"
+    assert any(e.get("event") == "bundle_built" for e in parsed), (
+        f"SDLC_JSON_LOGS=1 should switch to JSON mode; got {result.output!r}"
+    )

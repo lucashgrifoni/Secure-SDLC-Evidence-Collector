@@ -42,7 +42,12 @@ repos:
       - id: detect-private-key
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+    # Pin matches the lower bound of ruff>=0.6,<1.0 that pip resolves
+    # in CI (currently 0.9.x). When this constraint changes in
+    # pyproject.toml, bump this `rev:` to a tag that produces the same
+    # `format` behavior, otherwise local and CI will disagree on
+    # multi-line assert layouts.
+    rev: v0.9.10
     hooks:
       - id: ruff
         args: [--fix]
