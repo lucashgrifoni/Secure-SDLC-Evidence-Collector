@@ -1,8 +1,8 @@
 # Secure SDLC Evidence Report
 
-**Bundle ID:** `bundle-20260517-payments-api-2026.04.10-4609b212`
+**Bundle ID:** `bundle-20260518-payments-api-2026.04.10-fb2d5a16`
 **Bundle version:** 1.0.0
-**Generated at:** 2026-05-17T17:07:38.842120+00:00
+**Generated at:** 2026-05-18T12:20:30.416661+00:00
 
 ## Application
 
@@ -37,9 +37,9 @@
 
 | Control | Framework | Status | Criticality | Confidence | Evidence refs |
 |---------|-----------|--------|-------------|------------|---------------|
-| `SSDF-PW.7` | NIST_SSDF | **met** | high | high | sast-4004d3521dec |
-| `SSDF-PW.4` | NIST_SSDF | **met** | high | high | sca-4d1ce4767d91 |
-| `ORG-SECRETS-SCAN` | ORG_INTERNAL | **met** | high | high | secrets-e4485cd2e6bb |
+| `SSDF-PW.7` | NIST_SSDF | **met** | high | high | sast-cfcf7a634b32 |
+| `SSDF-PW.4` | NIST_SSDF | **met** | high | high | sca-54e49b31bec7 |
+| `ORG-SECRETS-SCAN` | ORG_INTERNAL | **met** | high | high | secrets-3bc6ef3a7a0a |
 | `SSDF-PS.3` | NIST_SSDF | **met** | critical | low | sbom-8f24db8264b4, att-eeab3847be8e, att-4fdd0c6e65a1 |
 | `SSDF-PW.8` | NIST_SSDF | **met** | high | high | test-3ba115181f49 |
 | `ORG-CODE-REVIEW` | ORG_INTERNAL | **met** | critical | low | att-61dda6456f8e, att-b0fcf22e94ec |
@@ -49,16 +49,16 @@
 | `SSDF-PS.2` | NIST_SSDF | **met** | critical | low | att-4fdd0c6e65a1, att-eeab3847be8e |
 | `SAMM-DESIGN-TA-1` | OWASP_SAMM | **met** | medium | low | att-361af230e38f |
 | `SAMM-IMPL-SB-2` | OWASP_SAMM | **met** | high | low | sbom-8f24db8264b4, att-4fdd0c6e65a1, att-eeab3847be8e |
-| `SAMM-VERIF-ST-1` | OWASP_SAMM | **met** | high | high | sast-4004d3521dec, sca-4d1ce4767d91, dast-08076130f344 |
+| `SAMM-VERIF-ST-1` | OWASP_SAMM | **met** | high | high | sast-cfcf7a634b32, sca-54e49b31bec7, dast-f6a61122d5a3 |
 
 ### Rationales
 
 - **`SSDF-PW.7` — Review and/or analyze human-readable code (SAST)**
-  Control SSDF-PW.7 is met by evidence ['sast-4004d3521dec'].
+  Control SSDF-PW.7 is met by evidence ['sast-cfcf7a634b32'].
 - **`SSDF-PW.4` — Reuse existing, well-secured software (SCA)**
-  Control SSDF-PW.4 is met by evidence ['sca-4d1ce4767d91'].
+  Control SSDF-PW.4 is met by evidence ['sca-54e49b31bec7'].
 - **`ORG-SECRETS-SCAN` — Repository-wide secrets scanning**
-  Control ORG-SECRETS-SCAN is met by evidence ['secrets-e4485cd2e6bb'].
+  Control ORG-SECRETS-SCAN is met by evidence ['secrets-3bc6ef3a7a0a'].
 - **`SSDF-PS.3` — Archive and protect each software release (SBOM)**
   Control SSDF-PS.3 is met by evidence ['sbom-8f24db8264b4', 'att-eeab3847be8e', 'att-4fdd0c6e65a1'].
 - **`SSDF-PW.8` — Test executable code to identify vulnerabilities**
@@ -78,7 +78,7 @@
 - **`SAMM-IMPL-SB-2` — Secure Build (Implementation / Secure Build 2)**
   Control SAMM-IMPL-SB-2 is met by evidence ['sbom-8f24db8264b4', 'att-4fdd0c6e65a1', 'att-eeab3847be8e'].
 - **`SAMM-VERIF-ST-1` — Security Testing (Verification / Security Testing 1)**
-  Control SAMM-VERIF-ST-1 is met by evidence ['sast-4004d3521dec', 'sca-4d1ce4767d91', 'dast-08076130f344'].
+  Control SAMM-VERIF-ST-1 is met by evidence ['sast-cfcf7a634b32', 'sca-54e49b31bec7', 'dast-f6a61122d5a3'].
 
 
 ## Gaps
@@ -89,12 +89,12 @@ No gaps detected.
 
 | ID | Type | Status | Confidence | Producer | Subject |
 |----|------|--------|------------|----------|---------|
-| `secrets-e4485cd2e6bb` | secrets_scan | passed | high | gitleaks | `abcdef1234567890` |
+| `secrets-3bc6ef3a7a0a` | secrets_scan | passed | high | gitleaks | `abcdef1234567890` |
 | `test-3ba115181f49` | test_result | passed | high | payments-api-suite | `abcdef1234567890` |
 | `sbom-8f24db8264b4` | sbom | generated | high | cyclonedx | `pkg:generic/acme/payments-api@2026.04.10` |
-| `sast-4004d3521dec` | sast_scan | passed | high | semgrep | `abcdef1234567890` |
-| `sca-4d1ce4767d91` | sca_scan | passed | high | trivy | `abcdef1234567890` |
-| `dast-08076130f344` | dast_scan | passed | high | OWASP ZAP | `http./sample_release` |
+| `sast-cfcf7a634b32` | sast_scan | passed | high | semgrep | `abcdef1234567890` |
+| `sca-54e49b31bec7` | sca_scan | passed | high | trivy | `abcdef1234567890` |
+| `dast-f6a61122d5a3` | dast_scan | passed | high | OWASP ZAP | `http./sample_release` |
 | `att-eeab3847be8e` | artifact_attestation | passed | medium | cosign-attestation | `payments-api:2026.04.10` |
 | `att-4fdd0c6e65a1` | artifact_signature | passed | medium | cosign | `payments-api:2026.04.10` |
 | `att-61dda6456f8e` | code_review | passed | medium | github-pull-request | `PR-184` |
@@ -103,12 +103,12 @@ No gaps detected.
 | `att-790592cda958` | rollback_plan | passed | medium | Release Manager | `payments-api:2026.04.10` |
 | `att-361af230e38f` | threat_model | completed | medium | AppSec Team | `payments-api` |
 
-### `secrets-e4485cd2e6bb` — secrets_scan
+### `secrets-3bc6ef3a7a0a` — secrets_scan
 
 - **Source:** gitleaks (sarif) · version 8.18.4- **Producer:** gitleaks
 - **Subject:** `abcdef1234567890` (commit)
 - **Status:** passed · **Confidence:** high- **Summary:** gitleaks reported 0 findings (high/critical=0)
-- **Findings:** critical=0 · high=0 · medium=0 · low=0 · info=0- **Artifact:** `examples\sample_release\artifacts\gitleaks.sarif` (sha256:52bea27587b62a3a58d5de3e70c43b31ae26db98951b7eabf0579a3836be26a3)
+- **Findings:** critical=0 · high=0 · medium=0 · low=0 · info=0- **Artifact:** `examples\sample_release\artifacts\gitleaks.sarif` (sha256:3ccb3d37a2b3a6ee3a3146a6bedd8238addb4e138f0492555803a4c4b7fd534b)
 
 ### `test-3ba115181f49` — test_result
 
@@ -124,26 +124,26 @@ No gaps detected.
 - **Status:** generated · **Confidence:** high- **Summary:** CYCLONEDX SBOM with 3 components (spec 1.5)
 - **Findings:** components=3- **Artifact:** `examples\sample_release\artifacts\sbom.cdx.json` (sha256:84088064a42486df71ca5567ce4857b6b6ecf1a5445f76166c19c83057ed977e)
 
-### `sast-4004d3521dec` — sast_scan
+### `sast-cfcf7a634b32` — sast_scan
 
 - **Source:** semgrep (sarif) · version 1.70.0- **Producer:** semgrep
 - **Subject:** `abcdef1234567890` (commit)
 - **Status:** passed · **Confidence:** high- **Summary:** semgrep reported 2 findings (high/critical=0)
-- **Findings:** critical=0 · high=0 · medium=1 · low=1 · info=0- **Artifact:** `examples\sample_release\artifacts\semgrep.sarif` (sha256:6caa493f968b93d1a8281a1616dd087852484efe16e6d3eb61815b5ac7dc8667)
+- **Findings:** critical=0 · high=0 · medium=1 · low=1 · info=0- **Artifact:** `examples\sample_release\artifacts\semgrep.sarif` (sha256:7b0a9f4e140945d4bec39ffb4f2340366336e1d74c639bccf2d33dcf74f969ef)
 
-### `sca-4d1ce4767d91` — sca_scan
+### `sca-54e49b31bec7` — sca_scan
 
 - **Source:** trivy (sarif) · version 0.52.0- **Producer:** trivy
 - **Subject:** `abcdef1234567890` (commit)
 - **Status:** passed · **Confidence:** high- **Summary:** trivy reported 1 findings (high/critical=0)
-- **Findings:** critical=0 · high=0 · medium=1 · low=0 · info=0- **Artifact:** `examples\sample_release\artifacts\trivy.sarif` (sha256:3d47248a9060d3c95ef1ae59243e337bc05d5451d46a6ca0aa314e48f85c92b7)
+- **Findings:** critical=0 · high=0 · medium=1 · low=0 · info=0- **Artifact:** `examples\sample_release\artifacts\trivy.sarif` (sha256:acab632c4fa3302c2c6acba37a5c4f36630b7993df1fd14bb94ebe165da25c5d)
 
-### `dast-08076130f344` — dast_scan
+### `dast-f6a61122d5a3` — dast_scan
 
 - **Source:** OWASP ZAP (dast) · version 2.14.0- **Producer:** OWASP ZAP
 - **Subject:** `http./sample_release` (application)
 - **Status:** passed · **Confidence:** high- **Summary:** OWASP ZAP DAST reported 3 findings across 1 target(s); high/critical=0
-- **Findings:** critical=0 · high=0 · medium=0 · low=1 · info=2- **Artifact:** `examples\sample_release\artifacts\zap-baseline.json` (sha256:7d1dc2fd3e1134e9d157dba4af945bed053850f7d082831cb50706317b322bf8)
+- **Findings:** critical=0 · high=0 · medium=0 · low=1 · info=2- **Artifact:** `examples\sample_release\artifacts\zap-baseline.json` (sha256:c5bb8ca639728d37dd4fee2a629e39de4e0510b307e560d1b1f77d4c5d9067db)
 
 ### `att-eeab3847be8e` — artifact_attestation
 

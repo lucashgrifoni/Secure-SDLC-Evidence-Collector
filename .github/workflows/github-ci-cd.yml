@@ -328,32 +328,28 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Install collector (for shared normalize_bundle helper)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
       - name: Compare normalized SHA-256 across OSes
+        # Uses the same `normalize_bundle` helper that
+        # `tests/integration/test_bundle_snapshot.py` and the
+        # `sdlc-evidence verify` CLI consume, so this gate cannot drift
+        # from the in-repo implementation. The helper POSIX-normalizes
+        # `evidence[*].raw.artifact_path` before hashing, which is the
+        # only difference that legitimately varies between a Linux and
+        # Windows pipeline run on the same inputs.
         run: |
           python - <<'PY'
-          import hashlib
-          import json
           import sys
           from pathlib import Path
 
-          VOLATILE_TOP = {"bundle_id", "generated_at"}
-          VOLATILE_EVIDENCE = {"collected_at"}
-          VOLATILE_CONTROL = {"evaluated_at"}
+          from evidence_collector.application.integrity import structural_sha256
 
-          def normalize(path: Path) -> bytes:
-              data = json.loads(path.read_text(encoding="utf-8"))
-              for key in VOLATILE_TOP:
-                  data.pop(key, None)
-              for ev in data.get("evidence", []):
-                  for key in VOLATILE_EVIDENCE:
-                      ev.pop(key, None)
-              for ev in data.get("control_evaluations", []):
-                  for key in VOLATILE_CONTROL:
-                      ev.pop(key, None)
-              return json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
-
-          linux = hashlib.sha256(normalize(Path("linux/bundle.json"))).hexdigest()
-          windows = hashlib.sha256(normalize(Path("windows/bundle.json"))).hexdigest()
+          linux = structural_sha256(Path("linux/bundle.json"))
+          windows = structural_sha256(Path("windows/bundle.json"))
           if linux != windows:
               print(
                   f"Cross-OS bundle drift detected: linux={linux} windows={windows}",

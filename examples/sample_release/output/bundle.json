@@ -5,7 +5,7 @@
     "owner_team": null,
     "repository": "acme/payments-api"
   },
-  "bundle_id": "bundle-20260517-payments-api-2026.04.10-4609b212",
+  "bundle_id": "bundle-20260518-payments-api-2026.04.10-fb2d5a16",
   "bundle_version": "1.0.0",
   "control_evaluations": [
     {
@@ -13,55 +13,55 @@
       "control_id": "SSDF-PW.7",
       "control_name": "Review and/or analyze human-readable code (SAST)",
       "criticality": "high",
-      "evaluated_at": "2026-05-17T17:07:38.842120Z",
+      "evaluated_at": "2026-05-18T12:20:30.415661Z",
       "evaluation_status": "met",
       "evidence_refs": [
-        "sast-4004d3521dec"
+        "sast-cfcf7a634b32"
       ],
       "exception_refs": [],
       "framework": "NIST_SSDF",
       "missing_recommended_evidence_types": [],
       "missing_required_evidence_types": [],
-      "rationale": "Control SSDF-PW.7 is met by evidence ['sast-4004d3521dec']."
+      "rationale": "Control SSDF-PW.7 is met by evidence ['sast-cfcf7a634b32']."
     },
     {
       "confidence": "high",
       "control_id": "SSDF-PW.4",
       "control_name": "Reuse existing, well-secured software (SCA)",
       "criticality": "high",
-      "evaluated_at": "2026-05-17T17:07:38.842120Z",
+      "evaluated_at": "2026-05-18T12:20:30.415661Z",
       "evaluation_status": "met",
       "evidence_refs": [
-        "sca-4d1ce4767d91"
+        "sca-54e49b31bec7"
       ],
       "exception_refs": [],
       "framework": "NIST_SSDF",
       "missing_recommended_evidence_types": [],
       "missing_required_evidence_types": [],
-      "rationale": "Control SSDF-PW.4 is met by evidence ['sca-4d1ce4767d91']."
+      "rationale": "Control SSDF-PW.4 is met by evidence ['sca-54e49b31bec7']."
     },
     {
       "confidence": "high",
       "control_id": "ORG-SECRETS-SCAN",
       "control_name": "Repository-wide secrets scanning",
       "criticality": "high",
-      "evaluated_at": "2026-05-17T17:07:38.842120Z",
+      "evaluated_at": "2026-05-18T12:20:30.416661Z",
       "evaluation_status": "met",
       "evidence_refs": [
-        "secrets-e4485cd2e6bb"
+        "secrets-3bc6ef3a7a0a"
       ],
       "exception_refs": [],
       "framework": "ORG_INTERNAL",
       "missing_recommended_evidence_types": [],
       "missing_required_evidence_types": [],
-      "rationale": "Control ORG-SECRETS-SCAN is met by evidence ['secrets-e4485cd2e6bb']."
+      "rationale": "Control ORG-SECRETS-SCAN is met by evidence ['secrets-3bc6ef3a7a0a']."
     },
     {
       "confidence": "low",
       "control_id": "SSDF-PS.3",
       "control_name": "Archive and protect each software release (SBOM)",
       "criticality": "critical",
-      "evaluated_at": "2026-05-17T17:07:38.842120Z",
+      "evaluated_at": "2026-05-18T12:20:30.416661Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "sbom-8f24db8264b4",
@@ -79,7 +79,7 @@
       "control_id": "SSDF-PW.8",
       "control_name": "Test executable code to identify vulnerabilities",
       "criticality": "high",
-      "evaluated_at": "2026-05-17T17:07:38.842120Z",
+      "evaluated_at": "2026-05-18T12:20:30.416661Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "test-3ba115181f49"
@@ -95,7 +95,7 @@
       "control_id": "ORG-CODE-REVIEW",
       "control_name": "Code review by eligible reviewers",
       "criticality": "critical",
-      "evaluated_at": "2026-05-17T17:07:38.842120Z",
+      "evaluated_at": "2026-05-18T12:20:30.416661Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-61dda6456f8e",
@@ -112,7 +112,7 @@
       "control_id": "SSDF-PW.1",
       "control_name": "Design software to meet security requirements (threat model)",
       "criticality": "medium",
-      "evaluated_at": "2026-05-17T17:07:38.842120Z",
+      "evaluated_at": "2026-05-18T12:20:30.416661Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-361af230e38f"
@@ -128,7 +128,7 @@
       "control_id": "ORG-RELEASE-APPROVAL",
       "control_name": "Formal release approval",
       "criticality": "critical",
-      "evaluated_at": "2026-05-17T17:07:38.842120Z",
+      "evaluated_at": "2026-05-18T12:20:30.416661Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-2cfa2bc287a7"
@@ -144,7 +144,7 @@
       "control_id": "ORG-REL-ROLLBACK",
       "control_name": "Rollback plan exists and was approved",
       "criticality": "critical",
-      "evaluated_at": "2026-05-17T17:07:38.842120Z",
+      "evaluated_at": "2026-05-18T12:20:30.416661Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-790592cda958"
@@ -160,7 +160,7 @@
       "control_id": "SSDF-PS.2",
       "control_name": "Provide a mechanism to verify software release integrity",
       "criticality": "critical",
-      "evaluated_at": "2026-05-17T17:07:38.842120Z",
+      "evaluated_at": "2026-05-18T12:20:30.416661Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-4fdd0c6e65a1",
@@ -177,7 +177,7 @@
       "control_id": "SAMM-DESIGN-TA-1",
       "control_name": "Threat Assessment (Design / Threat Assessment 1)",
       "criticality": "medium",
-      "evaluated_at": "2026-05-17T17:07:38.842120Z",
+      "evaluated_at": "2026-05-18T12:20:30.416661Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-361af230e38f"
@@ -193,7 +193,7 @@
       "control_id": "SAMM-IMPL-SB-2",
       "control_name": "Secure Build (Implementation / Secure Build 2)",
       "criticality": "high",
-      "evaluated_at": "2026-05-17T17:07:38.842120Z",
+      "evaluated_at": "2026-05-18T12:20:30.416661Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "sbom-8f24db8264b4",
@@ -211,18 +211,18 @@
       "control_id": "SAMM-VERIF-ST-1",
       "control_name": "Security Testing (Verification / Security Testing 1)",
       "criticality": "high",
-      "evaluated_at": "2026-05-17T17:07:38.842120Z",
+      "evaluated_at": "2026-05-18T12:20:30.416661Z",
       "evaluation_status": "met",
       "evidence_refs": [
-        "sast-4004d3521dec",
-        "sca-4d1ce4767d91",
-        "dast-08076130f344"
+        "sast-cfcf7a634b32",
+        "sca-54e49b31bec7",
+        "dast-f6a61122d5a3"
       ],
       "exception_refs": [],
       "framework": "OWASP_SAMM",
       "missing_recommended_evidence_types": [],
       "missing_required_evidence_types": [],
-      "rationale": "Control SAMM-VERIF-ST-1 is met by evidence ['sast-4004d3521dec', 'sca-4d1ce4767d91', 'dast-08076130f344']."
+      "rationale": "Control SAMM-VERIF-ST-1 is met by evidence ['sast-cfcf7a634b32', 'sca-54e49b31bec7', 'dast-f6a61122d5a3']."
     }
   ],
   "evidence": [
@@ -232,10 +232,10 @@
         "driver_name": "gitleaks",
         "reason": "driver_match"
       },
-      "collected_at": "2026-05-17T17:07:38.831413Z",
+      "collected_at": "2026-05-18T12:20:30.406332Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "high",
-      "evidence_id": "secrets-e4485cd2e6bb",
+      "evidence_id": "secrets-3bc6ef3a7a0a",
       "evidence_type": "secrets_scan",
       "findings_count": {
         "critical": 0,
@@ -252,8 +252,8 @@
         "artifact_path": "examples\\sample_release\\artifacts\\gitleaks.sarif",
         "artifact_uri": null,
         "content_type": "application/sarif+json",
-        "integrity_hash": "sha256:52bea27587b62a3a58d5de3e70c43b31ae26db98951b7eabf0579a3836be26a3",
-        "size_bytes": 302
+        "integrity_hash": "sha256:3ccb3d37a2b3a6ee3a3146a6bedd8238addb4e138f0492555803a4c4b7fd534b",
+        "size_bytes": 286
       },
       "release_id": "2026.04.10",
       "source": {
@@ -269,7 +269,7 @@
     },
     {
       "classification": null,
-      "collected_at": "2026-05-17T17:07:38.831413Z",
+      "collected_at": "2026-05-18T12:20:30.406332Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "high",
       "evidence_id": "test-3ba115181f49",
@@ -305,7 +305,7 @@
     },
     {
       "classification": null,
-      "collected_at": "2026-05-17T17:07:38.831413Z",
+      "collected_at": "2026-05-18T12:20:30.406332Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "high",
       "evidence_id": "sbom-8f24db8264b4",
@@ -344,10 +344,10 @@
         "driver_name": "semgrep",
         "reason": "driver_match"
       },
-      "collected_at": "2026-05-17T17:07:38.832412Z",
+      "collected_at": "2026-05-18T12:20:30.406332Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "high",
-      "evidence_id": "sast-4004d3521dec",
+      "evidence_id": "sast-cfcf7a634b32",
       "evidence_type": "sast_scan",
       "findings_count": {
         "critical": 0,
@@ -364,8 +364,8 @@
         "artifact_path": "examples\\sample_release\\artifacts\\semgrep.sarif",
         "artifact_uri": null,
         "content_type": "application/sarif+json",
-        "integrity_hash": "sha256:6caa493f968b93d1a8281a1616dd087852484efe16e6d3eb61815b5ac7dc8667",
-        "size_bytes": 1213
+        "integrity_hash": "sha256:7b0a9f4e140945d4bec39ffb4f2340366336e1d74c639bccf2d33dcf74f969ef",
+        "size_bytes": 1170
       },
       "release_id": "2026.04.10",
       "source": {
@@ -385,10 +385,10 @@
         "driver_name": "trivy",
         "reason": "driver_match"
       },
-      "collected_at": "2026-05-17T17:07:38.832412Z",
+      "collected_at": "2026-05-18T12:20:30.406332Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "high",
-      "evidence_id": "sca-4d1ce4767d91",
+      "evidence_id": "sca-54e49b31bec7",
       "evidence_type": "sca_scan",
       "findings_count": {
         "critical": 0,
@@ -405,8 +405,8 @@
         "artifact_path": "examples\\sample_release\\artifacts\\trivy.sarif",
         "artifact_uri": null,
         "content_type": "application/sarif+json",
-        "integrity_hash": "sha256:3d47248a9060d3c95ef1ae59243e337bc05d5451d46a6ca0aa314e48f85c92b7",
-        "size_bytes": 481
+        "integrity_hash": "sha256:acab632c4fa3302c2c6acba37a5c4f36630b7993df1fd14bb94ebe165da25c5d",
+        "size_bytes": 459
       },
       "release_id": "2026.04.10",
       "source": {
@@ -422,10 +422,10 @@
     },
     {
       "classification": null,
-      "collected_at": "2026-05-17T17:07:38.832412Z",
+      "collected_at": "2026-05-18T12:20:30.406332Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "high",
-      "evidence_id": "dast-08076130f344",
+      "evidence_id": "dast-f6a61122d5a3",
       "evidence_type": "dast_scan",
       "findings_count": {
         "critical": 0,
@@ -446,8 +446,8 @@
         "artifact_path": "examples\\sample_release\\artifacts\\zap-baseline.json",
         "artifact_uri": null,
         "content_type": "application/json",
-        "integrity_hash": "sha256:7d1dc2fd3e1134e9d157dba4af945bed053850f7d082831cb50706317b322bf8",
-        "size_bytes": 848
+        "integrity_hash": "sha256:c5bb8ca639728d37dd4fee2a629e39de4e0510b307e560d1b1f77d4c5d9067db",
+        "size_bytes": 819
       },
       "release_id": "2026.04.10",
       "source": {
@@ -463,7 +463,7 @@
     },
     {
       "classification": null,
-      "collected_at": "2026-05-17T17:07:38.833593Z",
+      "collected_at": "2026-05-18T12:20:30.406332Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "medium",
       "evidence_id": "att-eeab3847be8e",
@@ -499,7 +499,7 @@
     },
     {
       "classification": null,
-      "collected_at": "2026-05-17T17:07:38.834593Z",
+      "collected_at": "2026-05-18T12:20:30.406332Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "medium",
       "evidence_id": "att-4fdd0c6e65a1",
@@ -534,7 +534,7 @@
     },
     {
       "classification": null,
-      "collected_at": "2026-05-17T17:07:38.835097Z",
+      "collected_at": "2026-05-18T12:20:30.406332Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "medium",
       "evidence_id": "att-61dda6456f8e",
@@ -573,7 +573,7 @@
     },
     {
       "classification": null,
-      "collected_at": "2026-05-17T17:07:38.836098Z",
+      "collected_at": "2026-05-18T12:20:30.410486Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "medium",
       "evidence_id": "att-b0fcf22e94ec",
@@ -615,7 +615,7 @@
     },
     {
       "classification": null,
-      "collected_at": "2026-05-17T17:07:38.836098Z",
+      "collected_at": "2026-05-18T12:20:30.410486Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "medium",
       "evidence_id": "att-2cfa2bc287a7",
@@ -649,7 +649,7 @@
     },
     {
       "classification": null,
-      "collected_at": "2026-05-17T17:07:38.837098Z",
+      "collected_at": "2026-05-18T12:20:30.410486Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "medium",
       "evidence_id": "att-790592cda958",
@@ -682,7 +682,7 @@
     },
     {
       "classification": null,
-      "collected_at": "2026-05-17T17:07:38.837098Z",
+      "collected_at": "2026-05-18T12:20:30.411654Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "medium",
       "evidence_id": "att-361af230e38f",
@@ -718,7 +718,7 @@
   ],
   "exceptions": [],
   "gaps": [],
-  "generated_at": "2026-05-17T17:07:38.842120Z",
+  "generated_at": "2026-05-18T12:20:30.416661Z",
   "release": {
     "artifact_digest": null,
     "branch": "main",
