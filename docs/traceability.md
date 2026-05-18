@@ -12,6 +12,42 @@ This document maps every public promise the collector makes (documented in
 Last refreshed: **2026-05-05** (maturity/higiene rodada on top of the
 `v1.1.0` release-readiness merge in `main`, commit `17dede2`).
 
+### Refresh notes — 2026-05-17
+
+What was re-run in this rodada (post-publication hardening branch
+`chore/post-publication-hardening-v1-1-1`, evidence captured under
+[`output/publication-2026-05-17/`](../output/publication-2026-05-17/)):
+
+- **All 7 lab scenarios** (`examples/labs/01..07`) — every lab produced
+  the expected `release_status = not_ready` with `--fail-on not_ready`
+  exit `2`. Critical-missing counts: 4 for labs 01, 02, 03, 05, 06, 07
+  and 5 for lab 04 (which lacks an SBOM attestation). The §4 row for
+  `01-core-saas-lab` was updated from the previous "(6 missing
+  critical)" — a stale number inherited from before the catalog
+  consolidated `SAMM-IMPL-SB-2` and `SAMM-VERIF-ST-1` into `partial`.
+- **Sample-release positive** — `ready 13/13`, coverage 100, confidence
+  59 (matches §3, §4).
+- **Sample-release negative** (`--fail-on not_ready`) — `not_ready`,
+  4 missing critical (`ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`,
+  `ORG-REL-ROLLBACK`, `SSDF-PS.2`), exit `2`.
+- **Self-release dogfood** (`make run-self-release`) — `ready 13/13`,
+  coverage 100, confidence 54 (manual attestations). The committed
+  bundle at `examples/self_release/output/bundle.json` was regenerated
+  to match the v1.1.0 schema (now includes the `classification` field
+  introduced in fase 7).
+- **Cross-OS determinism** — the snapshot test now produces digest
+  `a42920b3…` on both Windows and Linux after the 2026-05-17 fix to
+  `normalize_bundle` (POSIX-normalizes `evidence[*].raw.artifact_path`
+  at hash time). See `CHANGELOG.md` *Fixed — 2026-05-17* and
+  `tests/unit/test_integrity.py`.
+
+What was **not** re-run:
+
+- Docker build (daemon not active on the validation host).
+- `trivy` and `cross-os` CI matrix (require external tooling /
+  multi-runner CI). Both still run as required checks in
+  `security-ci-cd.yml` and `github-ci-cd.yml`.
+
 ### Refresh notes — 2026-05-05
 
 What was re-run from this matrix in this rodada:
@@ -112,8 +148,10 @@ expected` correction.
 | Every critical + high has required evidence | `ready` | `examples/sample_release/` (full) | `ready`, 13/13 |
 | Only recommended evidence is missing | `conditional` | `examples/sample_release/` with `artifact_attestation.yaml` removed | `conditional` (reproduced in `tests/integration/test_end_to_end.py::test_conditional_when_only_recommended_missing`) |
 | Only medium-criticality controls lack evidence | `conditional` | drop `threat_model.yaml` | `conditional` |
-| A critical control lacks required evidence | `not_ready` | sample_release without `--attestations-dir` | `not_ready` (4 missing critical) |
-| Vulnerable lab scanned without attestations | `not_ready` | `examples/labs/01-core-saas-lab/` | `not_ready` (6 missing critical) |
+| A critical control lacks required evidence | `not_ready` | sample_release without `--attestations-dir` | `not_ready` (4 missing critical: `ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`, `SSDF-PS.2`) |
+| Vulnerable lab scanned without attestations | `not_ready` | `examples/labs/01-core-saas-lab/` | `not_ready` (4 missing critical: `ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`, `SSDF-PS.2`) — re-validated 2026-05-17 against [`output/publication-2026-05-17/labs/01-core-saas-lab/`](../output/publication-2026-05-17/labs/01-core-saas-lab/) |
+| Vulnerable lab with weaker SBOM coverage | `not_ready` | `examples/labs/04-data-batch-lab/` | `not_ready` (5 missing critical: the same four plus `SSDF-PS.3` because no SBOM attestation is present) |
+| Vulnerable lab where `sca_scan` is present | `not_ready` | `examples/labs/06-industry-regulated-lab/` | `not_ready` (4 missing critical; one extra control met because `pip-audit` evidence raises `SSDF-PW.4` to `met`) |
 
 ## 5 · Determinism & stability promise
 
