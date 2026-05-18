@@ -1,18 +1,18 @@
-               
-               
+
+
 ┌─────────────┐
 │ Scan Status │
 └─────────────┘
   Scanning 56 files tracked by git with 225 Code rules:
-                                                                                                                        
-  Language      Rules   Files          Origin      Rules                                                                
- ─────────────────────────────        ───────────────────                                                               
-  <multilang>       2      56          Community     225                                                                
-  js               20      24                                                                                           
-  json              1       6                                                                                           
-                                                                                                                        
-                
-                
+
+  Language      Rules   Files          Origin      Rules
+ ─────────────────────────────        ───────────────────
+  <multilang>       2      56          Community     225
+  js               20      24
+  json              1       6
+
+
+
 ┌──────────────┐
 │ Scan Summary │
 └──────────────┘
@@ -21,7 +21,7 @@
  • Rules run: 23
  • Targets scanned: 56
  • Parsed lines: ~100.0%
- • Scan skipped: 
+ • Scan skipped:
    ◦ Matching --exclude patterns: 4
    ◦ Files matching .semgrepignore patterns: 1
  • Scan was limited to files tracked by git

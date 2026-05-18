@@ -1,18 +1,18 @@
-               
-               
+
+
 ┌─────────────┐
 │ Scan Status │
 └─────────────┘
   Scanning 23 files tracked by git with 225 Code rules:
-                                                                                                                        
-  Language      Rules   Files          Origin      Rules                                                                
- ─────────────────────────────        ───────────────────                                                               
-  <multilang>       9      12          Community     225                                                                
-  python           77       8                                                                                           
-  json              1       1                                                                                           
-                                                                                                                        
-                
-                
+
+  Language      Rules   Files          Origin      Rules
+ ─────────────────────────────        ───────────────────
+  <multilang>       9      12          Community     225
+  python           77       8
+  json              1       1
+
+
+
 ┌──────────────┐
 │ Scan Summary │
 └──────────────┘
