@@ -2,9 +2,9 @@
 
 Data: 2026-05-05
 Origem: Tarefa 6 do prompt
-`melhorias/prompt-cursor-maturidade-higiene-codex-gpt-5-2026-05-05.md`
+`docs/program/_archive/2026-05-05/prompt-cursor.md`
 e P2-01 do plano
-`melhorias/plano-acao-maturidade-higiene-codex-gpt-5-2026-05-05.md`.
+`docs/program/_archive/2026-05-05/plan-maturity-hygiene.md`.
 
 Comando usado:
 

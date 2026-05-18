@@ -1,0 +1,27 @@
+# Structural SHA-256 of examples/sample_release/bundle.json after stripping
+# volatile fields (bundle_id, generated_at, evidence[*].collected_at,
+# control_evaluations[*].evaluated_at) and POSIX-normalizing
+# evidence[*].raw.artifact_path. See
+# tests/integration/test_bundle_snapshot.py and
+# src/evidence_collector/application/integrity.py.
+#
+# Regeneration workflow (only when an intentional bundle change lands):
+#
+#   1. pytest tests/integration/test_bundle_snapshot.py — the test prints
+#      the new digest in its failure output.
+#   2. Replace the digest line below.
+#   3. Explain in the PR description why the bundle changed and link the
+#      change in CHANGELOG.md.
+#
+# 2026-05-17 (cross-OS fix, intermediate): bumped from 34f3025e… to
+# a42920b3… after fixing cross-OS determinism in normalize_bundle
+# (Windows runs produced a different digest because
+# evidence[*].raw.artifact_path contained '\\' separators).
+#
+# 2026-05-18: bumped from a42920b3… to 5e1498cd… in the same hardening
+# branch. The bundle.json content did not change; the input fixtures
+# under examples/sample_release/artifacts/ were renormalized from CRLF
+# to LF by the mixed-line-ending pre-commit hook on 2026-05-17, which
+# changed their SHA-256 (carried into bundle.json as raw.integrity_hash).
+# Cross-OS stability re-confirmed on Windows and Linux-simulated runs.
+5e1498cdfdca997707c70707b9df558c18383bc064a91a1ced2de962201a5066

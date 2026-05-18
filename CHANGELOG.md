@@ -6,7 +6,59 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+#### 2026-05-17 — cross-OS structural-SHA stability
+
+- **`normalize_bundle` now POSIX-normalizes `evidence[*].raw.artifact_path`
+  before hashing.** Previously the helper trusted whatever separator the
+  host had baked into the bundle, so Windows runs produced a different
+  structural SHA-256 than Linux runs for the same inputs. The fix
+  changes only the hash-time view; the bundle written to disk still
+  records native separators. New unit tests
+  (`tests/unit/test_integrity.py`) lock the cross-OS behaviour directly,
+  and the `test_sample_release_bundle_sha256_snapshot` integration test
+  now passes `artifact_root=repo_root` so paths are recorded relative to
+  the repo (not absolute, which would still be runner-specific).
+- **Snapshot fixture bumped**
+  (`tests/fixtures/sample_release_snapshot.sha256`) from
+  `34f3025e3791…` to `a42920b3b7b5…` (cross-OS fix on 2026-05-17),
+  then to `5e1498cdfdca…` on 2026-05-18 because the
+  `mixed-line-ending` pre-commit hook renormalized four sample-release
+  input fixtures from CRLF to LF, changing their SHA-256 (which is
+  carried into `bundle.json` as `evidence[*].raw.integrity_hash`).
+  The current digest is identical on Windows and Linux.
+
 ### Added
+
+#### 2026-05-10 — post-publication hardening pass
+
+- **`sdlc-evidence verify` command.** Re-normalizes a `bundle.json`
+  and recomputes the structural SHA-256 to validate bundle integrity
+  on the consumer side, returning exit code 0 on match and 2 on
+  drift. Complements `compare` (semantic diff) with a deterministic
+  integrity gate suitable for download-and-verify flows.
+- **`classification.confidence` field on each `Evidence`.** Promotes
+  the implicit confidence signal in `evidence[*].rationale` (high
+  when the SARIF driver name matches the known classification map,
+  low when it falls back to `sast_scan`) to a first-class bundle
+  field so downstream consumers can filter or weight evidence by
+  confidence without parsing free-text rationale.
+- **Deterministic bundle snapshot test**
+  (`tests/integration/test_bundle_snapshot.py`). Locks the structural
+  SHA-256 of the canonical `examples/sample_release` bundle into a
+  versioned fixture; any change to parsers, normalizers, scoring or
+  the canonical JSON encoder breaks the snapshot explicitly and
+  forces an intentional snapshot update.
+- **`step-security/harden-runner` on every workflow job.** All
+  `.github/workflows/*.yml` jobs start by enabling
+  `step-security/harden-runner` in `audit` mode, so runner egress is
+  recorded and a future `block` policy is one diff away.
+- **ADR-0006 — CLI command modularization** documenting the split of
+  `cli/main.py` into `cli/commands/*.py` with the `register(app)`
+  pattern.
+
+#### 2026-05-05 — maturity/higiene rodada
 
 - **Cross-OS determinism gate.** `github-ci-cd.yml` now produces the
   sample bundle on a `windows-latest` runner in addition to
@@ -28,7 +80,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   schema-valid waiver, scoped to a different release context so the
   canonical sample bundle stays `ready 13/13`.
 - **Pre-release runbook**
-  (`melhorias/runbook-publicacao-v1-1-0-2026-05-05.md`) and
+  (`docs/program/release-runbook.md`) and
   **post-release verification script**
   (`scripts/verify-release.sh`) automating cosign verify-blob,
   slsa-verifier, GHCR verify, attestation download and PyPI
@@ -38,6 +90,34 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   OSCAL exporter (Section 2.5).
 
 ### Changed
+
+#### 2026-05-10 — post-publication hardening pass
+
+- **CLI split.** `cli/main.py` (811 LOC, 11 commands and helpers in
+  one file) was split into `cli/commands/{run, collect, evaluate,
+  bundle, controls, compare, oscal, plugins, schema, doctor,
+  exceptions, verify}.py` and shared helpers moved to `cli/_render.py`,
+  `cli/_logging.py`, `cli/_exit_codes.py`. The `sdlc-evidence`
+  entrypoint, flag names, exit codes, output streams and event names
+  are unchanged. Verified by the existing `test_cli.py` and
+  `test_cli_more_commands.py` suites.
+- **Coverage gate raised from `--cov-fail-under=70` to `80`.** The
+  project has been operating at ~86 % since the 2026-05-05 maturity
+  pass; the previous floor only protected against a 16-point
+  regression and did not encode the actual quality bar.
+- **`melhorias/` reorganized into `docs/program/`.** The 13-document
+  scratch pad from the publication push was consolidated into four
+  governance artefacts (publication runbook, dependabot triage log,
+  pinning inventory, validation cross-check) and the planning
+  prompts/cross-validation scratch were dropped. A pointer file
+  `melhorias/README.md` now redirects to the new location to avoid
+  breaking external links.
+- **Reconciled headline numbers.** README badges (`tests-227`,
+  `coverage-87%`), `docs/MATURITY_STATUS.md` headline table and
+  `docs/release-readiness.md` "Last local validation pass" all carry
+  the same baseline: 227 tests, 87.43 % line + branch coverage.
+
+#### 2026-05-05 — maturity/higiene rodada
 
 - **`parsers/junit.py`**: moved the `# nosemgrep:
   python.lang.security.use-defused-xml.use-defused-xml` suppression
@@ -60,7 +140,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   `slsa-framework/slsa-github-generator/.../v2.0.0` (reusable
   workflow contract requires tag pin) and
   `pypa/gh-action-pypi-publish@release/v1` (Trusted-Publisher
-  pattern). Inventory: `melhorias/pinning-actions-2026-05-05.md`.
+  pattern). Inventory: `docs/program/actions-pinning-inventory.md`.
 - **`THREAT_MODEL.md` 2.6 supply-chain row** corrected to acknowledge
   the two structural pin exceptions, with pointer to the dossier.
 - **Dependabot HOLD list resolved**: 2 PRs merged
@@ -74,6 +154,18 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   versions"** with explicit "open ideas, not commitments" framing.
 
 ### Documentation
+
+#### 2026-05-10 — post-publication hardening pass
+
+- **`docs/adr/0006-cli-command-modularization.md`** added documenting
+  the why, the trade-offs (more files in exchange for module-level
+  testability and review locality) and the migration of helpers.
+- Reconciled README badges (`tests-227`, `coverage-87%`),
+  `docs/MATURITY_STATUS.md` headline numbers and
+  `docs/release-readiness.md` "Last local validation pass" to a
+  single source of truth: 227 tests, 87.43 % line + branch coverage.
+
+#### 2026-05-05 — maturity/higiene rodada
 
 - Refreshed `docs/release-readiness.md` "Last local validation pass"
   to record the 2026-05-05 maturity rodada: ruff/format/mypy/pytest
@@ -185,7 +277,7 @@ environment variables remain backwards-compatible with `1.0.x`.
 - `Plano de acao e execucao - Claude.md` — legacy execution-handoff
   document. Its content is captured by `docs/release-readiness.md`,
   `docs/MATURITY_ROADMAP.md`, `docs/MATURITY_STATUS.md` and the
-  `melhorias/` planning dossier.
+  `docs/program/` planning dossier (formerly `melhorias/`).
 
 ### Pending external actions for publication (tracked outside this changelog)
 

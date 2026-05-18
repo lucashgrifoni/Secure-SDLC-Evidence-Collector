@@ -26,6 +26,7 @@ from evidence_collector.domain.enums import (
     SubjectType,
 )
 from evidence_collector.domain.models import (
+    EvidenceClassification,
     EvidenceSource,
     NormalizedEvidence,
     RawEvidenceRef,
@@ -104,8 +105,37 @@ def _raw_ref(artifact: ParsedArtifact, root: str | None = None) -> RawEvidenceRe
 
 
 def _classify_sarif(tool_name: str, override: EvidenceType | None) -> EvidenceType:
+    """Classify a SARIF run by driver name.
+
+    See :func:`_classify_sarif_with_provenance` when the caller also
+    needs the classification provenance (driver match vs fallback vs
+    explicit override).
+    """
+    return _classify_sarif_with_provenance(tool_name, override)[0]
+
+
+def _classify_sarif_with_provenance(
+    tool_name: str, override: EvidenceType | None
+) -> tuple[EvidenceType, EvidenceClassification]:
+    """Classify a SARIF run and report the provenance of the decision.
+
+    Returns ``(evidence_type, classification)`` so callers can populate
+    the first-class ``classification`` field on the resulting
+    ``NormalizedEvidence``. The classification taxonomy is:
+
+    * ``manual_override`` — the caller passed ``evidence_type_override``
+      explicitly, MEDIUM confidence (human intent, not a machine match).
+    * ``driver_match`` — the driver name matched one of the curated
+      tool token sets, HIGH confidence.
+    * ``fallback_sast`` — no token matched and the heuristic defaulted
+      to ``sast_scan``, LOW confidence. See ``docs/limitations.md §2``.
+    """
     if override is not None:
-        return override
+        return override, EvidenceClassification(
+            confidence=ConfidenceLevel.MEDIUM,
+            reason="manual_override",
+            driver_name=tool_name,
+        )
     # Normalize punctuation / whitespace so "Snyk Code", "snyk-code",
     # "snykcode", and "snyk_code" all match the same token. Without
     # this, a SAST driver whose name happens to use a different
@@ -114,7 +144,6 @@ def _classify_sarif(tool_name: str, override: EvidenceType | None) -> EvidenceTy
     lowered = tool_name.lower()
     normalized = lowered.replace("-", " ").replace("_", " ").replace("/", " ")
     compact = normalized.replace(" ", "")
-    haystacks = (normalized, compact, lowered)
 
     def _matches(tokens: frozenset[str]) -> bool:
         for token in tokens:
@@ -128,13 +157,28 @@ def _classify_sarif(tool_name: str, override: EvidenceType | None) -> EvidenceTy
     # where both "snyk" and "snyk-code" can match) are labelled as SAST,
     # which is more specific than SCA.
     if _matches(_SAST_TOOLS):
-        return EvidenceType.SAST_SCAN
+        return EvidenceType.SAST_SCAN, EvidenceClassification(
+            confidence=ConfidenceLevel.HIGH,
+            reason="driver_match",
+            driver_name=tool_name,
+        )
     if _matches(_SECRETS_TOOLS):
-        return EvidenceType.SECRETS_SCAN
+        return EvidenceType.SECRETS_SCAN, EvidenceClassification(
+            confidence=ConfidenceLevel.HIGH,
+            reason="driver_match",
+            driver_name=tool_name,
+        )
     if _matches(_SCA_TOOLS):
-        return EvidenceType.SCA_SCAN
-    _ = haystacks  # kept for future diagnostic rationale if we surface it
-    return EvidenceType.SAST_SCAN
+        return EvidenceType.SCA_SCAN, EvidenceClassification(
+            confidence=ConfidenceLevel.HIGH,
+            reason="driver_match",
+            driver_name=tool_name,
+        )
+    return EvidenceType.SAST_SCAN, EvidenceClassification(
+        confidence=ConfidenceLevel.LOW,
+        reason="fallback_sast",
+        driver_name=tool_name,
+    )
 
 
 def _sarif_status(findings_count: dict[str, int]) -> EvidenceStatus:
@@ -151,13 +195,23 @@ def normalize_sarif(
     evidence_type_override: EvidenceType | None = None,
     artifact_root: str | None = None,
 ) -> NormalizedEvidence:
-    evidence_type = _classify_sarif(parsed.tool_name, evidence_type_override)
+    evidence_type, classification = _classify_sarif_with_provenance(
+        parsed.tool_name, evidence_type_override
+    )
     status = _sarif_status(parsed.findings_count)
     prefix = {
         EvidenceType.SAST_SCAN: "sast",
         EvidenceType.SCA_SCAN: "sca",
         EvidenceType.SECRETS_SCAN: "secrets",
     }.get(evidence_type, "scan")
+    # When the classification fell through to the SAST default we cannot
+    # claim HIGH overall confidence for the record either: the evidence
+    # type itself is a heuristic guess. Reflect that on the existing
+    # ``confidence`` field so consumers that ignore ``classification``
+    # still see the weakened signal.
+    overall_confidence = (
+        ConfidenceLevel.LOW if classification.reason == "fallback_sast" else ConfidenceLevel.HIGH
+    )
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
             prefix, parsed.tool_name, parsed.artifact.integrity_hash, release.commit_sha
@@ -168,7 +222,8 @@ def normalize_sarif(
         subject_type=SubjectType.COMMIT,
         subject_ref=release.commit_sha,
         status=status,
-        confidence=ConfidenceLevel.HIGH,
+        confidence=overall_confidence,
+        classification=classification,
         release_id=release.release_id,
         commit_sha=release.commit_sha,
         generated_at=None,

@@ -18,4 +18,19 @@ paths = [
   '''tests/fixtures/.*''',
   '''tests/unit/fixtures/.*''',
   '''tests/integration/fixtures/.*''',
+  # Local virtual environments and Python caches. These are .gitignored,
+  # so they cannot leak through commits — but `gitleaks --no-git` does
+  # not honor .gitignore, and third-party packages (e.g.
+  # license-expression's bundled SPDX index) ship documentation-style
+  # license keys that match the default rule set. Allowlisting them
+  # keeps the local pre-publication gate honest about real risk.
+  '''\.venv.*/.*''',
+  '''venv/.*''',
+  '''env/.*''',
+  '''ENV/.*''',
+  '''\.mypy_cache/.*''',
+  '''\.pytest_cache/.*''',
+  '''\.ruff_cache/.*''',
+  '''\.hypothesis/.*''',
+  '''__pycache__/.*''',
 ]
