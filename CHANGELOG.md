@@ -6,6 +6,8 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] - TBD (first signed public release; pending Blocks A–H in `docs/program/EXTERNAL-ACTIONS-2026-05-18.md`)
+
 ### Added
 
 #### 2026-05-18 — Tier 5: evidence enrichment + supply-chain alignment

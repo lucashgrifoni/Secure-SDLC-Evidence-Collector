@@ -1,9 +1,16 @@
-# External actions for v1.1.1 release — owner checklist
+# External actions for v1.2.0 release — owner checklist
 
-After PR #24 (`chore: post-publication hardening v1.1.1 …`) merges, the
-project is internally `GO`. The remaining work is **outside the
-repository** — none of it can be done by editing files. This doc lists
-each action with the exact place to do it and the verification command.
+After PR #24 (`chore: post-publication hardening v1.1.1 …`) and PR #25
+(`feat: Tier 5 …`) both merge, the project is internally `GO`. The
+remaining work is **outside the repository** — none of it can be done
+by editing files. This doc lists each action with the exact place to
+do it and the verification command.
+
+**Version note.** Originally this checklist targeted `v1.1.1`. Once
+the Tier 5 features landed (PR #25 — new CLI commands `enrich`, `vex`,
+`statement`, plus the `oscal --kind assessment-results` mode), SemVer
+required a minor bump, so the first signed public release is `v1.2.0`.
+The PR titles still reference `v1.1.1` for historical accuracy.
 
 Last updated: 2026-05-18 (after the post-publication hardening pass
 landed in the PR).
@@ -137,7 +144,7 @@ gh api repos/lucashgrifoni/Secure-SDLC-Evidence-Collector/branches/main/protecti
 ## Block E — PyPI Trusted Publisher + GitHub environment
 
 Required for the `publish-pypi` job in `.github/workflows/release.yml`
-to mint the first signed wheel + sdist for `v1.1.1`.
+to mint the first signed wheel + sdist for `v1.2.0`.
 
 ### Action
 
@@ -187,7 +194,7 @@ Suggested order (lowest risk first):
 | #11 | `mutmut` | Weekly mutation workflow only |
 | #15 | `actions/upload-pages-artifact` | Pages deploy only |
 | #17 | `github/codeql-action` | Verify after Block B (CodeQL is now uploading) |
-| #13 | `attest-build-provenance` | Release pipeline — test on a dry-run before v1.1.1 |
+| #13 | `attest-build-provenance` | Release pipeline — test on a dry-run before v1.2.0 |
 | #12 | `release-please-action` | Release pipeline — same |
 
 ### Verification
@@ -203,7 +210,7 @@ gh pr list --repo lucashgrifoni/Secure-SDLC-Evidence-Collector --state open --la
 
 The Scorecard workflow is already shipped (`.github/workflows/scorecard.yml`)
 and runs weekly + on push to `main`. Trigger it manually once after
-Blocks A–D so the public badge becomes meaningful before the v1.1.1
+Blocks A–D so the public badge becomes meaningful before the v1.2.0
 release announcement.
 
 ### Action
@@ -225,7 +232,7 @@ curl -s https://api.securityscorecards.dev/projects/github.com/lucashgrifoni/Sec
 
 ---
 
-## Block H — Cut v1.1.1 signed release
+## Block H — Cut v1.2.0 signed release
 
 Final step. Only do this after Blocks A–G are green.
 
@@ -254,20 +261,20 @@ the merge of PR #24, opened automatically by the
 
 ```bash
 git checkout main && git pull
-git tag -s v1.1.1 -m "Release v1.1.1 — cross-OS determinism + dogfood refresh"
-git push origin v1.1.1
+git tag -s v1.2.0 -m "Release v1.2.0 — cross-OS determinism + dogfood refresh"
+git push origin v1.2.0
 ```
 
 ### Verification
 
 ```bash
 # GitHub Release
-gh release view v1.1.1 --repo lucashgrifoni/Secure-SDLC-Evidence-Collector
+gh release view v1.2.0 --repo lucashgrifoni/Secure-SDLC-Evidence-Collector
 # expected: release exists with .whl, .tar.gz, SBOM, SHA256SUMS, signatures
 
 # PyPI
-curl -s https://pypi.org/pypi/secure-sdlc-evidence-collector/1.1.1/json | jq -r '.info.version'
-# expected: 1.1.1
+curl -s https://pypi.org/pypi/secure-sdlc-evidence-collector/1.2.0/json | jq -r '.info.version'
+# expected: 1.2.0
 
 # Cosign signature (sample, after install)
 cosign verify-blob \
@@ -277,7 +284,7 @@ cosign verify-blob \
   <artifact-url>
 
 # Container
-cosign verify ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector:v1.1.1 \
+cosign verify ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector:v1.2.0 \
   --certificate-identity-regexp 'https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -286,9 +293,9 @@ cosign verify ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector:v1.1.1 \
 
 ## Block I — Post-release tidy
 
-After v1.1.1 is published and the badges turn green:
+After v1.2.0 is published and the badges turn green:
 
-1. Update `README.md` so the badge URLs point at `v1.1.1` if any are
+1. Update `README.md` so the badge URLs point at `v1.2.0` if any are
    pinned to `v1.1.0`.
 2. Optionally flip `step-security/harden-runner` from `audit` to
    `block` after a week of telemetry — track in a separate PR.
@@ -314,7 +321,7 @@ B (public) ──┴─→ All upload-sarif jobs go green ──→ Merge PR #24
                                               G (Scorecard run)
                                                        │
                                                        ↓
-                                              H (cut v1.1.1 release)
+                                              H (cut v1.2.0 release)
                                                        │
                                                        ↓
                                               I (post-release tidy)
