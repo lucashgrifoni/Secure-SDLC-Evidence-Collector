@@ -119,6 +119,102 @@ class EvidenceClassification(_BaseModel):
     driver_name: str | None = Field(default=None, max_length=120)
 
 
+class TopRiskCve(_BaseModel):
+    """A single CVE selected for top-risk listing in vulnerability intelligence.
+
+    Kept small on purpose: only the fields a maintainer needs to decide
+    whether to patch *this week* vs *batch later*. Full CVE detail lives
+    in the raw scanner artefacts referenced by ``raw.artifact_path``.
+    """
+
+    cve_id: Annotated[str, Field(min_length=1, max_length=30)]
+    epss_score: Annotated[float, Field(ge=0.0, le=1.0)]
+    epss_percentile: Annotated[float, Field(ge=0.0, le=1.0)]
+    in_kev: bool = False
+    known_ransomware: bool = False
+
+
+class VulnerabilityIntelligence(_BaseModel):
+    """EPSS + CISA KEV enrichment aggregated for a single evidence record.
+
+    Computed by the optional ``enrich`` step (CLI flag ``--enrich`` on
+    ``run``, or the standalone ``sdlc-evidence enrich`` command). When the
+    enrichment step is skipped the field stays ``None`` and the bundle
+    behaves exactly like it did pre-enrichment, so consumers that never
+    opt in are unaffected.
+
+    Source feeds:
+
+    * EPSS — https://epss.cyentia.com/ (FIRST.org, public CSV, refreshed
+      daily). ``epss_score`` is the probability of exploitation in the
+      next 30 days; ``epss_percentile`` is the position within the day's
+      distribution.
+    * CISA KEV — https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+      (JSON catalog of vulnerabilities confirmed exploited in the wild).
+    """
+
+    cve_count: int = Field(default=0, ge=0)
+    max_epss_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    max_epss_percentile: float | None = Field(default=None, ge=0.0, le=1.0)
+    cves_in_kev_count: int = Field(default=0, ge=0)
+    cves_known_ransomware_count: int = Field(default=0, ge=0)
+    top_risk_cves: list[TopRiskCve] = Field(
+        default_factory=list,
+        description="Up to N CVEs sorted by EPSS percentile (highest first).",
+    )
+    epss_feed_date: str | None = Field(
+        default=None,
+        max_length=20,
+        description="YYYY-MM-DD date stamped on the EPSS feed used for enrichment.",
+    )
+    kev_feed_date: str | None = Field(
+        default=None,
+        max_length=20,
+        description="YYYY-MM-DD date stamped on the CISA KEV catalog used for enrichment.",
+    )
+    enriched_at: datetime | None = Field(
+        default=None,
+        description="Timestamp at which enrichment ran; volatile, stripped before structural hash.",
+    )
+
+
+class Reachability(_BaseModel):
+    """Optional reachability annotation for an SCA / dependency finding (§3.2).
+
+    Records whether the vulnerable code path is reachable from the
+    application entry points. Source = whichever tool produced the
+    signal (CodeQL reachability, Endor Labs, Semgrep Pro, or a manual
+    review). The collector **does not** re-derive reachability; it
+    only stores the upstream verdict so consumers can filter findings
+    by reachable / not_reachable / unknown.
+    """
+
+    status: Annotated[str, Field(min_length=1, max_length=20)]
+    source: Annotated[str, Field(min_length=1, max_length=60)]
+    method: Annotated[str, Field(min_length=1, max_length=30)] = "manual_review"
+    evidence_ref: str | None = Field(default=None, max_length=500)
+
+    @field_validator("status")
+    @classmethod
+    def _validate_status(cls, value: str) -> str:
+        normalised = value.strip().lower()
+        if normalised not in {"reachable", "not_reachable", "unknown"}:
+            raise ValueError(
+                "Reachability.status must be one of: reachable, not_reachable, unknown"
+            )
+        return normalised
+
+    @field_validator("method")
+    @classmethod
+    def _validate_method(cls, value: str) -> str:
+        normalised = value.strip().lower()
+        if normalised not in {"data_flow", "function_call", "manual_review"}:
+            raise ValueError(
+                "Reachability.method must be one of: data_flow, function_call, manual_review"
+            )
+        return normalised
+
+
 class NormalizedEvidence(_BaseModel):
     """Canonical evidence record after normalization.
 
@@ -156,6 +252,36 @@ class NormalizedEvidence(_BaseModel):
     manual: bool = Field(
         default=False,
         description="True when the evidence was provided via manual attestation.",
+    )
+    cve_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Distinct CVE identifiers extracted from the underlying scanner "
+            "output. Populated by parsers that can correlate findings to CVEs "
+            "(SARIF results with security/cve tags, CycloneDX vulnerabilities "
+            "block). Used by the optional EPSS/KEV enrichment step. Empty when "
+            "the parser cannot derive CVEs or when the evidence type does not "
+            "correspond to vulnerability data (test_result, code_review, etc)."
+        ),
+    )
+    vulnerability_intelligence: VulnerabilityIntelligence | None = Field(
+        default=None,
+        description=(
+            "Optional EPSS/KEV enrichment summary for the CVEs in ``cve_ids``. "
+            "Stays ``None`` unless the user opted into enrichment via the "
+            "``run --enrich`` flag or the standalone ``sdlc-evidence enrich`` "
+            "command. The bundle remains schema-compatible with pre-enrichment "
+            "consumers when this field is absent."
+        ),
+    )
+    reachability: Reachability | None = Field(
+        default=None,
+        description=(
+            "Optional reachability annotation (§3.2). Populated externally "
+            "(CodeQL reachability, Endor Labs, Semgrep Pro, manual review). "
+            "The collector preserves the upstream verdict; it does not "
+            "compute reachability itself."
+        ),
     )
 
     @field_validator("commit_sha")
@@ -221,6 +347,25 @@ class Gap(_BaseModel):
     remediation: str | None = Field(default=None, max_length=1000)
 
 
+class RiskAssessment(_BaseModel):
+    """Risk-weighted verdict rationale (T6.6, opt-in).
+
+    Populated when the run was invoked with ``--risk-mode epss-weighted``.
+    ``None`` when the default presence-based verdict is in effect, which
+    preserves byte-stability for pre-T6.6 bundles.
+    """
+
+    mode: Annotated[str, Field(min_length=1, max_length=40)]
+    epss_percentile_threshold: Annotated[float, Field(ge=0.0, le=1.0)]
+    kev_blocks: bool = True
+    exploitable_cve_count: int = Field(ge=0)
+    kev_cve_count: int = Field(ge=0)
+    kev_ransomware_cve_count: int = Field(ge=0)
+    high_epss_cve_count: int = Field(ge=0)
+    base_release_status: ReleaseStatus
+    rationale: Annotated[str, Field(max_length=400)] = ""
+
+
 class Summary(_BaseModel):
     """Aggregated verdict and scores for the bundle."""
 
@@ -234,6 +379,10 @@ class Summary(_BaseModel):
     controls_missing: int = Field(ge=0)
     controls_waived: int = Field(ge=0)
     controls_not_applicable: int = Field(ge=0)
+    # T6.6 — opt-in risk-weighted verdict rationale. ``None`` keeps the
+    # bundle structurally identical to pre-T6.6 outputs once the
+    # structural-hash normaliser strips the null field.
+    risk_assessment: RiskAssessment | None = None
 
     @model_validator(mode="after")
     def _counters_consistent(self) -> Summary:

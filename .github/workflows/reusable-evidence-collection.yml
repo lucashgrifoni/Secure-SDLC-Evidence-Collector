@@ -1,0 +1,173 @@
+# Reusable GitHub Actions workflow for Secure SDLC Evidence Collector.
+#
+# Drop the collector into any pipeline with one ``uses:`` line:
+#
+# jobs:
+#   evidence:
+#     uses: lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/reusable-evidence-collection.yml@v2
+#     with:
+#       application: my-app
+#       repository: my-org/my-app
+#       release-id: ${{ github.ref_name }}
+#       artifacts-dir: scanner-output
+#
+# The workflow installs the collector from PyPI (pinned to the SHA of
+# this calling commit), collects evidence, and uploads bundle.json +
+# report.md as workflow artifacts so downstream jobs can read them.
+#
+# Adopters who need the AI or FedRAMP catalog pass ``catalog`` with
+# the bundled-catalog name (``catalog-ai.yaml`` /
+# ``catalog-ssdf-1.2.yaml`` / ``catalog-fedramp-20x-ksi.yaml``).
+name: Secure SDLC Evidence Collection (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      application:
+        type: string
+        required: true
+        description: "Logical application name (free-form, used in the bundle)."
+      repository:
+        type: string
+        required: true
+        description: "owner/repo of the project being evaluated."
+      release-id:
+        type: string
+        required: true
+        description: "Release identifier (tag, version, build number)."
+      commit-sha:
+        type: string
+        required: false
+        default: ${{ github.sha }}
+        description: "Commit SHA of the release (default: current github.sha)."
+      branch:
+        type: string
+        required: false
+        default: ${{ github.ref_name }}
+      artifacts-dir:
+        type: string
+        required: false
+        default: "artifacts"
+        description: "Directory containing scanner outputs (SARIF, SBOM, JUnit, etc.)."
+      attestations-dir:
+        type: string
+        required: false
+        default: ""
+        description: "Optional directory with YAML/JSON attestations."
+      exceptions-dir:
+        type: string
+        required: false
+        default: ""
+        description: "Optional directory with YAML/JSON exception (waiver) files."
+      catalog:
+        type: string
+        required: false
+        default: ""
+        description: >-
+          Optional bundled catalog name. Accepted values:
+          'catalog-ai.yaml', 'catalog-ssdf-1.2.yaml',
+          'catalog-fedramp-20x-ksi.yaml'. Leave empty for the default
+          SSDF 1.1 catalog.
+      risk-mode:
+        type: string
+        required: false
+        default: "off"
+        description: "'off' or 'epss-weighted' (T6.6)."
+      profile:
+        type: string
+        required: false
+        default: "none"
+        description: "'none', 'cra-2026', or 'fedramp-20x' (T6.8)."
+      collector-version:
+        type: string
+        required: false
+        default: ""
+        description: >-
+          Pin the collector version (e.g. '2.0.0'). Leave empty to use
+          the most recent release on PyPI. Pinning is strongly
+          recommended for reproducible pipelines.
+      python-version:
+        type: string
+        required: false
+        default: "3.12"
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    name: Collect Secure SDLC evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout caller repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: pip
+
+      - name: Install secure-sdlc-evidence-collector
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          if [ -n "${{ inputs.collector-version }}" ]; then
+            python -m pip install "secure-sdlc-evidence-collector==${{ inputs.collector-version }}"
+          else
+            python -m pip install "secure-sdlc-evidence-collector"
+          fi
+
+      - name: Resolve bundled catalog path (if requested)
+        id: catalog
+        run: |
+          set -euo pipefail
+          if [ -z "${{ inputs.catalog }}" ]; then
+            echo "catalog_path=" >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+          path="$(python -c "from evidence_collector.controls.catalog import bundled_catalog_path; print(bundled_catalog_path('${{ inputs.catalog }}'))")"
+          echo "catalog_path=$path" >>"$GITHUB_OUTPUT"
+
+      - name: Run sdlc-evidence
+        run: |
+          set -euo pipefail
+          args=(
+            --application "${{ inputs.application }}"
+            --repository "${{ inputs.repository }}"
+            --release-id "${{ inputs.release-id }}"
+            --commit-sha "${{ inputs.commit-sha }}"
+            --branch "${{ inputs.branch }}"
+            --output-dir release-evidence
+            --artifacts-dir "${{ inputs.artifacts-dir }}"
+            --risk-mode "${{ inputs.risk-mode }}"
+            --profile "${{ inputs.profile }}"
+            --fail-on not_ready
+          )
+          if [ -n "${{ inputs.attestations-dir }}" ]; then
+            args+=( --attestations-dir "${{ inputs.attestations-dir }}" )
+          fi
+          if [ -n "${{ inputs.exceptions-dir }}" ]; then
+            args+=( --exceptions-dir "${{ inputs.exceptions-dir }}" )
+          fi
+          if [ -n "${{ steps.catalog.outputs.catalog_path }}" ]; then
+            args+=( --catalog "${{ steps.catalog.outputs.catalog_path }}" )
+          fi
+          sdlc-evidence run "${args[@]}"
+
+      - name: Upload bundle and report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: secure-sdlc-evidence
+          path: release-evidence/
+          if-no-files-found: error

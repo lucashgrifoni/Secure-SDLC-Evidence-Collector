@@ -1,0 +1,175 @@
+# NIST SSDF 1.2 (SP 800-218 Rev. 1) catalog — OPT-IN, preview.
+#
+# Status: preview, based on NIST SP 800-218 Rev. 1 draft direction.
+# Default ``catalog.yaml`` still encodes SSDF 1.1 because Rev. 1 is not
+# final at the time this file ships. Pipelines that want to evaluate
+# against the 1.2 expectations select this catalog via:
+#
+#     sdlc-evidence run --catalog <path-to-this-file>
+#
+# Or programmatically:
+#
+#     from importlib.resources import files
+#     path = files("evidence_collector.controls.data") / "catalog-ssdf-1.2.yaml"
+#     sdlc-evidence run --catalog "$path"
+#
+# Diff vs default 1.1 catalog
+# --------------------------
+# * ``SSDF-PS.3`` — promotes ``artifact_attestation`` from
+#   ``recommended_evidence_types`` to ``required_evidence_types``.
+#   Rationale: SSDF 1.2 strengthens the build-provenance expectation so
+#   an SBOM alone is no longer sufficient; the release must also carry
+#   a verifiable build attestation (SLSA, in-toto, Sigstore).
+# * ``SSDF-PW.6`` — NEW control (not present in 1.1 catalog).
+#   Maps to NIST SSDF 1.2 PW.6 "Configure the Compilation, Interpreter,
+#   and Build Processes to Improve Executable Security". Required
+#   evidence: ``artifact_attestation`` (build-process attestation).
+#   Recommended: ``test_result`` (build-hardening tests).
+#
+# Every other control is copied verbatim from the 1.1 catalog so a
+# pipeline switching from 1.1 to 1.2 sees only additive expectations.
+controls:
+  - control_id: "SSDF-PW.7"
+    framework: "NIST_SSDF"
+    name: "Review and/or analyze human-readable code (SAST)"
+    description: >-
+      Static analysis evidence must be produced against the release commit to
+      identify implementation-level vulnerabilities before deployment.
+    criticality: "high"
+    required_evidence_types: ["sast_scan"]
+    recommended_evidence_types: []
+
+  - control_id: "SSDF-PW.4"
+    framework: "NIST_SSDF"
+    name: "Reuse existing, well-secured software (SCA)"
+    description: >-
+      Third-party and open source dependencies must be scanned for known
+      vulnerabilities before release.
+    criticality: "high"
+    required_evidence_types: ["sca_scan"]
+    recommended_evidence_types: []
+
+  - control_id: "ORG-SECRETS-SCAN"
+    framework: "ORG_INTERNAL"
+    name: "Repository-wide secrets scanning"
+    description: >-
+      The release commit must be scanned for accidentally committed secrets
+      and credentials.
+    criticality: "high"
+    required_evidence_types: ["secrets_scan"]
+    recommended_evidence_types: []
+
+  # SSDF 1.2 refinement: artifact_attestation is now required.
+  - control_id: "SSDF-PS.3"
+    framework: "NIST_SSDF"
+    name: "Archive and protect each software release (SBOM + attestation)"
+    description: >-
+      SSDF 1.2 strengthens PS.3: the release must carry both a Software Bill
+      of Materials AND a verifiable build attestation (SLSA / in-toto /
+      Sigstore). An SBOM alone is no longer sufficient.
+    criticality: "critical"
+    required_evidence_types: ["sbom", "artifact_attestation"]
+    recommended_evidence_types: ["artifact_signature"]
+
+  - control_id: "SSDF-PW.8"
+    framework: "NIST_SSDF"
+    name: "Test executable code to identify vulnerabilities"
+    description: >-
+      Automated tests (unit or higher) must be executed against the release
+      commit with their results archived.
+    criticality: "high"
+    required_evidence_types: ["test_result"]
+    recommended_evidence_types: []
+
+  - control_id: "ORG-CODE-REVIEW"
+    framework: "ORG_INTERNAL"
+    name: "Code review by eligible reviewers"
+    description: >-
+      Every change reaching the release branch must be peer-reviewed by at
+      least one eligible reviewer with approval after the last commit.
+    criticality: "critical"
+    required_evidence_types: ["code_review"]
+    recommended_evidence_types: ["pr_metadata"]
+
+  - control_id: "SSDF-PW.1"
+    framework: "NIST_SSDF"
+    name: "Design software to meet security requirements (threat model)"
+    description: >-
+      A threat model (or a justified non-applicability attestation) must exist
+      for the feature scope covered by this release.
+    criticality: "medium"
+    required_evidence_types: ["threat_model"]
+    recommended_evidence_types: []
+
+  # SSDF 1.2 NEW control compared to 1.1 catalog.
+  - control_id: "SSDF-PW.6"
+    framework: "NIST_SSDF"
+    name: "Configure compilation, interpreter, and build processes for security"
+    description: >-
+      SSDF 1.2 PW.6: the build process itself must be configured to improve
+      executable security (hardened compiler flags, reproducible builds,
+      controlled toolchain). The release must carry an attestation of the
+      build process and ideally test evidence that the hardening is in place.
+    criticality: "high"
+    required_evidence_types: ["artifact_attestation"]
+    recommended_evidence_types: ["test_result"]
+
+  - control_id: "ORG-RELEASE-APPROVAL"
+    framework: "ORG_INTERNAL"
+    name: "Formal release approval"
+    description: >-
+      The release must have a documented approval by an authorized approver
+      before promotion to production.
+    criticality: "critical"
+    required_evidence_types: ["release_approval"]
+    recommended_evidence_types: []
+
+  - control_id: "ORG-REL-ROLLBACK"
+    framework: "ORG_INTERNAL"
+    name: "Rollback plan exists and was approved"
+    description: >-
+      A rollback plan must accompany the release so operations can recover
+      quickly from a failed deployment.
+    criticality: "critical"
+    required_evidence_types: ["rollback_plan"]
+    recommended_evidence_types: []
+
+  - control_id: "SSDF-PS.2"
+    framework: "NIST_SSDF"
+    name: "Provide a mechanism to verify software release integrity"
+    description: >-
+      The published artifact must carry a signature, attestation, or
+      equivalent integrity proof.
+    criticality: "critical"
+    required_evidence_types: ["artifact_signature"]
+    recommended_evidence_types: ["artifact_attestation"]
+
+  - control_id: "SAMM-DESIGN-TA-1"
+    framework: "OWASP_SAMM"
+    name: "Threat Assessment (Design / Threat Assessment 1)"
+    description: >-
+      OWASP SAMM secondary mapping: threat modeling activity performed for
+      the release scope. Complements SSDF-PW.1 with a practice-based view.
+    criticality: "medium"
+    required_evidence_types: ["threat_model"]
+    recommended_evidence_types: []
+
+  - control_id: "SAMM-IMPL-SB-2"
+    framework: "OWASP_SAMM"
+    name: "Secure Build (Implementation / Secure Build 2)"
+    description: >-
+      OWASP SAMM mapping: build integrity evidence (SBOM + signature or
+      attestation) must be produced to support verifiable delivery.
+    criticality: "high"
+    required_evidence_types: ["sbom"]
+    recommended_evidence_types: ["artifact_signature", "artifact_attestation"]
+
+  - control_id: "SAMM-VERIF-ST-1"
+    framework: "OWASP_SAMM"
+    name: "Security Testing (Verification / Security Testing 1)"
+    description: >-
+      OWASP SAMM mapping: automated security testing evidence (SAST + SCA)
+      must cover the release commit.
+    criticality: "high"
+    required_evidence_types: ["sast_scan"]
+    recommended_evidence_types: ["sca_scan", "dast_scan"]

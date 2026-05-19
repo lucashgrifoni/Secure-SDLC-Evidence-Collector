@@ -2,12 +2,21 @@
 
 [![CI](https://img.shields.io/badge/ci-github--actions-blue)](./.github/workflows/github-ci-cd.yml)
 [![Security CI](https://img.shields.io/badge/security--ci-semgrep%20%7C%20trivy%20%7C%20pip--audit-blue)](./.github/workflows/security-ci-cd.yml)
-[![Release](https://img.shields.io/badge/release-v1.1.0-blue)](./CHANGELOG.md)
+[![Release](https://img.shields.io/badge/release-v1.2.0--planned-blue)](./CHANGELOG.md)
 ![Python 3.12 & 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)
 ![License Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-green)
-[![Cosign signing configured](https://img.shields.io/badge/release%20signing-cosign%20keyless%20(configured)-9cf)](./.github/workflows/release.yml)
+[![Cosign signing configured](https://img.shields.io/badge/release%20signing-cosign%20keyless%20(configured)-9cf)](./.github/workflows/publish-pypi.yml)
 ![Tests 233](https://img.shields.io/badge/tests-233%20passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen)
+<!--
+  T6.C1 — OpenSSF Best Practices Badge (passing tier). After the
+  maintainer completes the self-assessment at https://www.bestpractices.dev/
+  and the project receives its public project ID (PROJECT_ID), replace
+  the placeholder below with:
+    [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/PROJECT_ID/badge)](https://www.bestpractices.dev/projects/PROJECT_ID)
+  Tracking: docs/MATURITY_STATUS.md row T6.C1.
+-->
+![OpenSSF Best Practices (registration pending)](https://img.shields.io/badge/openssf%20best%20practices-registration%20pending-lightgrey)
 
 **CLI-first AppSec/DevSecOps tool that answers: "Which evidence proves this
 release followed a minimum Secure SDLC process?"**
@@ -53,9 +62,9 @@ This collector reframes the question around **evidence, not findings**:
 | Release verdict | `ready` / `conditional` / `not_ready` driven by gap criticality, never by the score alone |
 | Waivers | Time-bound exceptions with scope (application/release) and expiry — plain YAML/JSON, auditable |
 | Outputs | Deterministic `bundle.json`, Jinja2 `report.md`, and `summary.html` |
-| CLI | `run` · `collect` · `evaluate` · `bundle` · `controls` · `compare` · `oscal` · `plugins` · `schema` · `doctor` · `exceptions list/validate` |
+| CLI | `run` · `collect` · `evaluate` · `bundle` · `controls` · `compare` · `oscal` · `plugins` · `schema` · `doctor` · `verify` · `enrich` · `vex` · `statement` · `exceptions list/validate` |
 | Packaging | Reusable GitHub Action (`action.yml`), non-root Docker image, wheel + sdist build verified locally; PyPI publish wired via OIDC Trusted Publisher and pending external setup. |
-| Release integrity | `release.yml` is configured to perform cosign keyless signing + Sigstore Rekor transparency log + SLSA Build Level 3 provenance on tag push. The first signed public release will be `v1.1.1` (the v1.1.0 cut prepared in code stayed internal while the post-publication hardening pass landed). |
+| Release integrity | `publish-pypi.yml` is configured to perform cosign keyless signing + Sigstore Rekor transparency log + SLSA Build Level 3 provenance on tag push. The first signed public release will be `v1.2.0` (the v1.1.0 cut prepared in code stayed internal; the Tier 5 enrichment work landed on top, so SemVer required a minor bump). |
 | Quality bar | `ruff`, `mypy --strict`, `pytest` with coverage gate, GitHub Actions CI, Dependabot |
 
 ---
@@ -251,7 +260,7 @@ examples/
   workflows/
     github-ci-cd.yml        # lint + types + tests + build + sample bundle
     security-ci-cd.yml      # semgrep + pip-audit + trivy + actionlint
-    release.yml             # quality gates, build, cosign keyless, GitHub Release
+    publish-pypi.yml             # quality gates, build, cosign keyless, GitHub Release
     deploy-github-pages.yml # regenerate the dogfood summary site
 ```
 
@@ -280,7 +289,7 @@ The collector is dogfooded on every push and on every release:
   (Semgrep + Trivy + Gitleaks SARIF, CycloneDX SBOM, JUnit, ZAP baseline,
   YAML attestations). Expected verdict `ready`, 13/13 controls met.
 - **`examples/self_release/`** — the collector's own pipeline evidence,
-  regenerated on `deploy-github-pages.yml` and `release.yml`. This is the
+  regenerated on `deploy-github-pages.yml` and `publish-pypi.yml`. This is the
   dogfood bundle published in each GitHub Release.
 - **`examples/labs/`** — recorded scans produced against the external
   `App vuln - teste` lab suite (SaaS, identity, cloud-native, data/batch,
@@ -317,6 +326,12 @@ before.json after.json` and is used in CI to catch regressions.
 
 ## Security posture
 
+> **Reporting a vulnerability.** Please do **not** open a public GitHub
+> issue. Email [lucas.henriquegrifoni@gmail.com](mailto:lucas.henriquegrifoni@gmail.com)
+> with a subject line starting `[secure-sdlc-evidence-collector]`. Full
+> policy, response SLA, and disclosure timeline live in
+> [`SECURITY.md`](./SECURITY.md).
+
 The tool itself follows the security rules it enforces on others:
 
 - no hardcoded secrets; `GITHUB_TOKEN` read from the environment and never
@@ -352,7 +367,7 @@ The tool itself follows the security rules it enforces on others:
 Tier 1–4 maturity work. **Configured in code or workflow** — every
 externally verifiable signal (signed assets on PyPI / GHCR, public
 Scorecard score, CodeQL alerts on the Security tab) materialises only
-after the first public release (`v1.1.1`, see
+after the first public release (`v1.2.0`, see
 [`docs/program/EXTERNAL-ACTIONS-2026-05-18.md`](./docs/program/EXTERNAL-ACTIONS-2026-05-18.md))
 runs end-to-end against a public repository with the external setup
 listed in
@@ -360,7 +375,7 @@ listed in
 
 - OpenSSF Scorecard, native CodeQL, expanded `pre-commit`,
   structural-determinism gate, `sdlc-evidence doctor` health check.
-- `release.yml` configured with SLSA Build Level 3 provenance via
+- `publish-pypi.yml` configured with SLSA Build Level 3 provenance via
   `slsa-github-generator`, cosign keyless signing of wheel/sdist/bundle/SBOM,
   collector self-SBOM (CycloneDX), multi-arch (amd64+arm64) container
   image to `ghcr.io` signed and SBOM-attested with cosign.

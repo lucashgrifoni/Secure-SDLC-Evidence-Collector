@@ -72,12 +72,12 @@ filtrando pelo SHA. Atualizacao de log:
 
 | Action | Pin novo | Workflow afetado | Status |
 |---|---|---|---|
-| `actions/attest-build-provenance` | `@ef244123eb79f2f7a7e75d99086184180e6d0018 # v1.4.4` | `release.yml` | convertido |
+| `actions/attest-build-provenance` | `@ef244123eb79f2f7a7e75d99086184180e6d0018 # v1.4.4` | `publish-pypi.yml` | convertido |
 | `actions/deploy-pages` | `@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5` | `deploy-github-pages.yml` | convertido |
-| `actions/download-artifact` | `@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0` | `release.yml` (3 ocorrencias) | convertido |
+| `actions/download-artifact` | `@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0` | `publish-pypi.yml` (3 ocorrencias) | convertido |
 | `actions/upload-pages-artifact` | `@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0` | `deploy-github-pages.yml` | convertido |
-| `sigstore/cosign-installer` | `@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1` | `release.yml` (2 ocorrencias) | convertido |
-| `softprops/action-gh-release` | `@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2` | `release.yml` | convertido |
+| `sigstore/cosign-installer` | `@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1` | `publish-pypi.yml` (2 ocorrencias) | convertido |
+| `softprops/action-gh-release` | `@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2` | `publish-pypi.yml` | convertido |
 
 Observacao: o pin `# v1.4.4` em `attest-build-provenance` mantem a
 **major v1**, deliberadamente nao seguindo a Dependabot PR #13 que

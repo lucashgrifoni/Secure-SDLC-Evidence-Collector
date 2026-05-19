@@ -75,6 +75,95 @@ These are the items that move the project from "well engineered" to
 | T4.4 | GitHub Discussions + issue labels + stale-bot| Signals "alive project" — `good first issue`, `help wanted`, abandoned issues auto-closed.      |
 | T4.5 | Conventional-commit-driven release tooling   | `release-please` or `semantic-release` so version bumps and changelog entries are mechanical.   |
 
+## Tier 5 — Evidence enrichment and supply-chain alignment
+
+Added 2026-05-18 after the post-publication market scan. Each item maps
+a 2026 industry signal (EPSS/KEV adoption, EU CRA, FedRAMP 20x, OpenVEX,
+in-toto + Sigstore consolidation) to a specific extension that fits the
+collector's evidence-first nicho without growing the public surface.
+
+| ID   | Item                                                          | Why it matters                                                                                                              |
+|------|---------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| T5.1 | EPSS + CISA KEV enrichment (`sdlc-evidence enrich`)           | Only ~2.3% of CVSS 7+ vulns are exploited. EPSS percentile + KEV flag let release_status reflect real risk, not severity theater. |
+| T5.2 | OpenVEX export (`sdlc-evidence vex`)                          | EU CRA (Sept 2026) requires machine-readable VEX next to the SBOM. Avoids forcing consumers to reverse-engineer the bundle. |
+| T5.3 | OSCAL Assessment Results export (`oscal --kind assessment-results`) | FedRAMP 20x (Sept 2026) mandates machine-readable AR. Bundle evaluations → OSCAL findings + observations.                  |
+| T5.4 | CycloneDX 1.7 parser update (lifecycle phase, TLP, VEX inline)| ECMA-424 standard since 2026; current parser tops out at 1.5.                                                                |
+| T5.5 | in-toto Statement v1 wrapper (`sdlc-evidence statement`)      | Bundle becomes natively consumable by Sigstore cosign, GUAC, Kyverno, OPA Gatekeeper. No bespoke envelope code downstream.  |
+| T5.6 | SSDF 1.2 catalog upgrade (`catalog-v1.2.yaml`)                | NIST SP 800-218r1 is in final review; current catalog tracks 1.1.                                                            |
+| T5.7 | SSDF AI Profile (`catalog-ai.yaml`)                           | SP 800-218A enumerates AI-specific controls (training data lineage, model card, red team). Empty space in the scanner market.|
+| T5.8 | EU CRA mode (`--profile cra-2026`)                            | Filters and packages evidence to meet the 24h vuln reporting + 10y retention windows.                                       |
+| T5.9 | FedRAMP 20x KSI mapping (`catalog-fedramp-20x-ksi.yaml`)      | Translates internal controls to Key Security Indicators FedRAMP 20x will validate automatically.                            |
+| T5.10| GUAC ingestion adapter                                        | Collector becomes a producer of canonical evidence; GUAC remains the graph view across all producers.                       |
+| T5.11| Continuous mode (`sdlc-evidence watch`)                       | Daemon that re-runs on webhook events; persists historical bundles. Aligns with continuous ATO and CRA reporting.            |
+| T5.12| Risk-based release status (EPSS-weighted)                     | Today `ready/conditional/not_ready` only sees evidence presence. Folding EPSS/KEV in resolves "checklist theater" critique.  |
+| T5.13| MCP/agentic evidence types                                    | OWASP MCP Top 10 and Agentic Top 10 (2026) define risks no scanner covers yet. New types: `model_card`, `prompt_injection_test_result`, `mcp_tool_inventory`. |
+| T5.14| Multi-VEX consumer (OpenVEX + CycloneDX VEX + CSAF + SPDX)    | Vendors ship different VEX formats; whoever consolidates wins.                                                              |
+| T5.15| Market-positioning page                                       | Explicit comparison with Chainguard Enforce / Kusari / Scribe so first-touch users understand the nicho.                    |
+
+**Shipped from Tier 5 (this branch, 2026-05-18):** T5.1, T5.2, T5.3, T5.5.
+
+## Tier 6 — OSS-first standards alignment + AI evidence + sustainability (v2.0)
+
+Added 2026-05-18 after a second market scan. Hard constraint: **100 %
+open source**, no proprietary SDKs as required deps, every upstream
+project + standard must be free and Apache-2.0 (or compatible) licensed.
+
+Items target a **single v2.0 release** after v1.2.0 publishes. The
+x.0 jump is positional (signals the OSS-first / standards-aligned
+pivot); all schema changes are additive so a v1.x consumer reading a
+v2.x bundle still parses every field it knew. Full plan in
+[`docs/program/plan-tier-6-v2.0.md`](program/plan-tier-6-v2.0.md)
+(generated from the approved plan at
+`~/.claude/plans/fa-a-uma-pesquisa-detalhada-squishy-lovelace.md`).
+
+### Phase A — Standards alignment (~10 days)
+
+| ID    | Item                                                          | Driver                                                                                              |
+|-------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| T6.1  | CycloneDX 1.7 parser update                                   | ECMA-424 standard since 2026-03-25. Adds `lifecycles`, `tlp`, `distribution`, inline VEX.           |
+| T6.2  | OSV parser + OSV-Scanner SARIF driver row                     | OSV Schema is the OSS-only vulnerability lingua franca; OSV-Scanner v2.3.5 is what teams actually run. |
+| T6.3  | in-toto Witness predicate type                                | SBOMit + Witness expect specific predicate types; today T5.5 emits a generic project predicate.     |
+| T6.4  | SSDF 1.2 catalog (`catalog-ssdf-1.2.yaml`)                    | NIST SP 800-218 Rev. 1 finalizes 2026 with refined PS.3, PW.7, RV.* tasks.                          |
+
+### Phase B — AI track (~9 days)
+
+| ID    | Item                                                          | Driver                                                                                              |
+|-------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| T6.5  | AI catalog + 5 new evidence types + 3 new parsers             | SP 800-218A SSDF AI Profile + OWASP LLM/MCP/Agentic Top 10. Zero OSS scanners ingest these today.   |
+
+### Phase C — Risk-weighted verdict + multi-VEX (~7 days)
+
+| ID    | Item                                                          | Driver                                                                                              |
+|-------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| T6.6  | Risk-based release status (`evaluate --risk-mode epss-weighted`) | Today `release_status` only sees evidence presence. Folding EPSS + KEV in closes "checklist theater". |
+| T6.7  | Multi-VEX consumer (OpenVEX + CycloneDX VEX + CSAF VEX)       | Vendors ship different VEX dialects; whoever consolidates wins. SPDX VEX deferred (low adoption).   |
+
+### Phase D — Regulatory + Graph (~10 days)
+
+| ID    | Item                                                          | Driver                                                                                              |
+|-------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| T6.8  | EU CRA mode (`run --profile cra-2026`) + FedRAMP 20x KSI catalog | EU CRA reporting starts 2026-09-11; FedRAMP 20x mandates OSCAL AR 2026-09-30. Same release.        |
+| T6.9  | GUAC ingestion adapter + watch daemon (`[watch]` extra)       | GUAC OpenSSF Incubating; "continuous ATO" is the operational pattern CRA codifies.                  |
+
+### Phase E — Community / sustainability (~6 days, parallel)
+
+| ID    | Item                                                          | Driver                                                                                              |
+|-------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| T6.C1 | OpenSSF Best Practices Badge — **passing** tier               | Free, OSS, public signal. Silver deferred to v2.1+ once governance docs have a track record.        |
+| T6.C2 | GitHub Secure Open Source Fund application (Apr 2026 cohort)  | Apache-2.0 security tooling qualifies. $10K + Azure credits + mentoring. Backup: Alpha-Omega Tier 2. |
+| T6.C3 | Governance + contributor ladder docs                          | Prereq for Silver badge and for the Secure OSS Fund narrative. `GOVERNANCE.md`, `MAINTAINERS.md`.   |
+| T6.C4 | Reproducible wheel build (`setuptools-reproducible` or `uv --reproducible`) | Bundle output already deterministic; the wheel itself is not. Closes the last reproducibility gap.  |
+| T6.C5 | Rego/Kyverno policy snippets                                  | Admission controllers consuming our bundle work out of the box. Closes "what do I do with this JSON". |
+
+### Tier 6 out of scope (additions to existing OOS list)
+
+- **SPDX VEX consumer** — low real-world adoption; revisit if a major SBOM vendor commits.
+- **Source-track SLSA** — spec deferred upstream; Build track L3 is enough.
+- **Paid scanner parsers** (Snyk, Veracode, Mend.io, JFrog Xray) — forbidden by the 100 %-OSS constraint.
+- **In-house EPSS-like model** — FIRST's feed is free and trusted; rolling our own is rent-seeking.
+- **OpenSSF Best Practices Badge Gold tier** — needs multi-maintainer + bug bounty; not a v2.x goal.
+- **AI agent execution** — we *ingest* AI evidence; we do not *run* prompts. The watch daemon is a webhook receiver, not an agentic loop.
+
 ---
 
 ## How items move forward

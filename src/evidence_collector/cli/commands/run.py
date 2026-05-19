@@ -8,11 +8,17 @@ from typing import Annotated
 import typer
 
 from evidence_collector.application.orchestrator import run_pipeline
+from evidence_collector.application.profiles import ReleaseProfile
 from evidence_collector.cli._builders import build_application, build_release
 from evidence_collector.cli._exit_codes import fail_on_exit_code
 from evidence_collector.cli._render import render_collection_errors, render_summary
 from evidence_collector.collectors.github import GitHubCollector, GitHubCollectorConfig
 from evidence_collector.domain.models import NormalizedEvidence
+from evidence_collector.scoring import (
+    DEFAULT_EPSS_PERCENTILE_THRESHOLD,
+    RiskMode,
+    RiskThresholds,
+)
 
 
 def register(app: typer.Typer) -> None:
@@ -93,8 +99,52 @@ def register(app: typer.Typer) -> None:
                 ),
             ),
         ] = None,
+        risk_mode: Annotated[
+            str,
+            typer.Option(
+                "--risk-mode",
+                help=(
+                    "Verdict mode: 'off' (default; presence-based) or "
+                    "'epss-weighted' (re-derive release_status from EPSS + KEV "
+                    "data already in the bundle). Off preserves byte-stability."
+                ),
+            ),
+        ] = "off",
+        epss_percentile_threshold: Annotated[
+            float,
+            typer.Option(
+                "--epss-percentile-threshold",
+                help=(
+                    "Under --risk-mode epss-weighted, a CVE with EPSS percentile "
+                    ">= this value is treated as exploitable. Default 0.70."
+                ),
+                min=0.0,
+                max=1.0,
+            ),
+        ] = DEFAULT_EPSS_PERCENTILE_THRESHOLD,
+        profile: Annotated[
+            str,
+            typer.Option(
+                "--profile",
+                help=(
+                    "Regulatory profile: 'none' (default), 'cra-2026' (EU CRA "
+                    "24h disclosure annotations), or 'fedramp-20x' (FedRAMP 20x "
+                    "retention metadata). Annotates evidence; does not change "
+                    "the verdict."
+                ),
+            ),
+        ] = "none",
     ) -> None:
         """Run the full pipeline: collect, evaluate, and export the bundle."""
+        if risk_mode not in {"off", "epss-weighted"}:
+            raise typer.BadParameter(
+                f"--risk-mode must be 'off' or 'epss-weighted'; got '{risk_mode}'."
+            )
+        if profile not in {p.value for p in ReleaseProfile}:
+            raise typer.BadParameter(
+                f"--profile must be one of {sorted(p.value for p in ReleaseProfile)}; "
+                f"got '{profile}'."
+            )
         app_ = build_application(application, repository, environment, owner_team)
         release = build_release(
             release_id, commit_sha, branch, pipeline_run_id, build_id, artifact_digest, tag
@@ -119,6 +169,11 @@ def register(app: typer.Typer) -> None:
             output_dir=output_dir,
             catalog_path=catalog_path,
             artifact_root=artifact_root,
+            risk_mode=RiskMode(risk_mode),
+            risk_thresholds=RiskThresholds(
+                epss_percentile_threshold=epss_percentile_threshold
+            ),
+            profile=ReleaseProfile(profile),
         )
         render_summary(result)
         render_collection_errors(result)

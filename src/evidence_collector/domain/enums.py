@@ -31,6 +31,15 @@ class EvidenceType(StrEnum):
     ARTIFACT_SIGNATURE = "artifact_signature"
     ARTIFACT_ATTESTATION = "artifact_attestation"
     GENERIC_ATTESTATION = "generic_attestation"
+    # T6.5 — AI evidence types for SSDF AI Profile (SP 800-218A) +
+    # OWASP LLM Top 10 + OWASP Agentic Top 10. Additive: schema_version
+    # does not change, and pipelines that do not produce these artifacts
+    # are unaffected.
+    MODEL_CARD = "model_card"
+    PROMPT_INJECTION_TEST_RESULT = "prompt_injection_test_result"
+    AI_SAFETY_EVAL = "ai_safety_eval"
+    MCP_TOOL_INVENTORY = "mcp_tool_inventory"
+    AI_TRAINING_DATA_LINEAGE = "ai_training_data_lineage"
 
 
 class EvidenceStatus(StrEnum):
@@ -75,6 +84,12 @@ class SubjectType(StrEnum):
     ARTIFACT = "artifact"
     RELEASE = "release"
     APPLICATION = "application"
+    # T6.5 — AI-aware subject types. Used when evidence describes a
+    # model, an agentic system, or a training dataset rather than the
+    # source application binary.
+    AI_MODEL = "ai_model"
+    AI_AGENT = "ai_agent"
+    AI_DATASET = "ai_dataset"
 
 
 class ControlFramework(StrEnum):

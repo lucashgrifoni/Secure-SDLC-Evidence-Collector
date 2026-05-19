@@ -6,6 +6,246 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-05-19
+
+> Tier 6 cut. First public release of the project. The whole change set is
+> additive against the v1.x evidence schema: pipelines that produced
+> v1.2.x bundles can move to 2.0 without changing their artifacts and
+> see the new fields appear as opt-in extras.
+
+### Added
+
+#### Standards alignment (Sprint 1 / Phase A — T6.1, T6.2, T6.3, T6.4)
+
+- **CycloneDX 1.7 (ECMA-424 2nd Ed.) parser.** `parsers/sbom.py`
+  reads `metadata.lifecycles[]` into
+  `evidence.metadata.lifecycle_phases` and surfaces
+  `vulnerabilities[*].analysis` inline VEX through to the OpenVEX
+  exporter. Backward-compatible with 1.5 and 1.6.
+- **OSV / OSV-Scanner native parser.** New `parsers/osv.py` consumes
+  both the OSV-Scanner `results[]` envelope and a single OSV
+  vulnerability record. Auto-detected by `LocalArtifactCollector`
+  via `_looks_like_osv`. Ecosystem list lands in
+  `evidence.metadata.ecosystems`. OSV-Scanner SARIF was already
+  classified as `sca_scan` by the SARIF driver token map.
+- **in-toto Statement v1 predicate-type variants.**
+  `sdlc-evidence statement --predicate-type witness|evidence-bundle|slsa-provenance`
+  emits the same in-toto envelope under three different
+  `predicateType` URIs. ADR-0007. Round-trip safe through DSSE.
+- **SSDF 1.2 opt-in catalog** (`catalog-ssdf-1.2.yaml`). Refines
+  PS.3 to require both SBOM and `artifact_attestation`; adds the
+  new PW.6 control for build-process hardening. Default catalog
+  stays on SSDF 1.1.
+- **Reproducible wheel gate (T6.C4).** Promoted from Sprint 5 to
+  Sprint 1 so the gate is in place before v2.0 lands.
+  `publish-pypi.yml` pins `SOURCE_DATE_EPOCH` from the tag commit and
+  rebuilds the wheel a second time, failing the workflow if the
+  SHA-256 drifts. sdist is checked as a warning only (gzip-header
+  drift is upstream tooling).
+
+#### AI evidence track (Sprint 2 / Phase B — T6.5)
+
+- **Five new evidence types.** `model_card`,
+  `prompt_injection_test_result`, `ai_safety_eval`,
+  `mcp_tool_inventory`, `ai_training_data_lineage`. Added to
+  `EvidenceType` without bumping `schema_version`.
+- **Three new `SubjectType` values.** `ai_model`, `ai_agent`,
+  `ai_dataset`.
+- **Three new parsers.** `parsers/garak.py` (JSON-Lines garak
+  report with `init`, `digest`, `attempt` records),
+  `parsers/lm_eval.py` (lm-evaluation-harness JSON; model id from
+  `model_args.pretrained` → `model` → `model_name`), and
+  `parsers/model_card.py` (Hugging Face Hub frontmatter +
+  Google Model Card Toolkit).
+- **AI catalog** (`catalog-ai.yaml`). Ten controls mapped to
+  SP 800-218A practices, OWASP LLM Top 10, and OWASP Agentic
+  Top 10. Opt-in via `--catalog`.
+- **Auto-detect in `LocalArtifactCollector`.** Filename + content
+  sniffing routes `*.garak.json[l]`, `*.lm-eval.json`, and
+  `model-card.json` to the right parser.
+- **`docs/ai-evidence.md`** explains how to instrument an AI
+  release and what the bundle records.
+- **ADR-0008** documents the schema-stable, opt-in design and the
+  framework crosswalk.
+
+#### Risk-weighted verdict + multi-VEX + reachability (Sprint 3 / Phase C — T6.6, T6.7, §3.2)
+
+- **`--risk-mode epss-weighted`.** Opt-in flag on
+  `sdlc-evidence run`. Re-derives `release_status` using the
+  EPSS / KEV signal already in the bundle: KEV with
+  `known_ransomware` forces NOT_READY, any exploitable CVE
+  downgrades to at least CONDITIONAL, otherwise the base verdict
+  is preserved. Only downgrades, never upgrades. New
+  `Summary.risk_assessment` block records the rationale; absent
+  when the mode is off. ADR-0009.
+- **Multi-VEX consumer.** `sdlc-evidence vex --consume <file>`
+  ingests OpenVEX, CycloneDX VEX, and CSAF, merges them with the
+  bundle-derived statements under a `--policy first-wins|last-wins|fail`
+  choice. SPDX VEX is intentionally deferred to v2.1 (low industry
+  adoption today).
+- **Optional `Reachability` field on `NormalizedEvidence`.**
+  Records the upstream verdict from CodeQL reachability / Endor
+  Labs / Semgrep Pro / manual review. Status canonicalised to
+  `reachable | not_reachable | unknown`; method canonicalised to
+  `data_flow | function_call | manual_review`. Risk-weighted mode
+  honours `not_reachable` (CVE removed from exploitable count);
+  `unknown` and `reachable` keep the signal so a missing tool
+  cannot silently suppress risk. ADR-0010.
+- **Structural-hash stability preserved.** `application/integrity.py`
+  strips `risk_assessment: null` and `reachability: null` before
+  hashing so pre-T6.6 / pre-§3.2 bundles continue to hash
+  identically when the new features are off.
+
+#### Regulatory + graph (Sprint 4 / Phase D — T6.8, T6.9)
+
+- **Regulatory profiles.** `sdlc-evidence run --profile cra-2026`
+  annotates each evidence with `metadata.cra.exploitation_status`
+  (mapped from KEV / EPSS) and `metadata.cra.disclosure_deadline`
+  (24h from release timestamp), and
+  `--profile fedramp-20x` stamps `metadata.fedramp.retention_years = 10`.
+  ADR-0011.
+- **FedRAMP 20x KSI catalog** (`catalog-fedramp-20x-ksi.yaml`).
+  Ten controls covering the KSI Low + Moderate baselines the
+  collector can satisfy with existing evidence types. Continuous
+  monitoring KSIs that require telemetry the collector does not
+  ingest are deliberately omitted.
+- **GUAC adapter** (`sdlc-evidence guac`). Translates the bundle
+  into a `guac-collect` v1.0 container (`exporters/guac.py`) that
+  `guacone collect files` ingests in one shot. ADR-0012. The
+  watch daemon (continuous webhooks → delta bundles) is deferred
+  to v2.1 — documented in `docs/limitations.md §17`.
+
+#### Community + adoption (Sprint 5 / Phase E)
+
+- **Reusable GitHub Actions workflow.**
+  `.github/workflows/reusable-evidence-collection.yml` accepts
+  application / repo / release-id / catalog / risk-mode / profile
+  inputs and uploads the bundle as an artifact. One `uses:` line
+  drops the collector into any pipeline.
+- **GitLab CI template.**
+  `examples/gitlab-ci/secure-sdlc-evidence.yml` exposes a
+  `.secure-sdlc-evidence` job class with the same inputs.
+- **Devcontainer + Codespaces.**
+  `.devcontainer/devcontainer.json` plus a `postCreate.sh` script
+  that installs the project, cosign, syft, trivy, and conftest in
+  a Python 3.12 base image. `gh codespaces create` is now a
+  zero-config onboarding path.
+- **`docs/comparison.md`.** Honest crosswalk against Chainguard
+  Enforce, Scribe Trust Hub, GUAC, Kusari Trustify, Lineaje,
+  OpenSSF Scorecard, and Snyk / Mend / Sonatype. Calls out
+  "honesty check" cases where another tool is better for a
+  specific job.
+
+#### Public-launch enablement (Sprint 6)
+
+- **`docs/program/PUBLICATION-RUNBOOK.md`.** Seven phases with
+  exact `gh` / `git` / `cosign` commands, rollback table, and
+  done criteria for the v2.0.0 cut.
+- **`docs/program/openssf-bestpractices-answers.md`.** Pre-drafted
+  answers for every non-obvious bestpractices.dev question at the
+  Passing tier so the self-assessment is a copy-paste exercise
+  for the maintainer.
+
+### Changed
+
+- `Summary` gained `risk_assessment: RiskAssessment | None`,
+  `NormalizedEvidence` gained `reachability: Reachability | None`,
+  and `EvidenceType` / `SubjectType` gained the AI values. All
+  additions are additive and default-`None`; consumers that did
+  not opt in see the same JSON shape they saw under v1.2.
+- `application/integrity.py` now drops `reachability: null` and
+  `summary.risk_assessment: null` before hashing, preserving
+  byte-stability for pre-v2.0 bundles.
+- `cli/commands/run.py` learned `--risk-mode`,
+  `--epss-percentile-threshold`, and `--profile` flags.
+- `cli/commands/vex.py` learned `--consume` (repeatable) and
+  `--policy`.
+
+### Fixed
+
+- `.gitignore` now ignores `.venv-*/` so the
+  `.venv-publication-check/` scratch env used by the local
+  pre-publication gate stops appearing as untracked.
+
+### Security
+
+- New CycloneDX 1.7 inline VEX consumption respects existing
+  waiver precedence: explicit `EvidenceException` always wins
+  over any inline analysis (documented in `exporters/vex.py`).
+- Multi-VEX merger does NOT validate the consumed file's
+  signature — `docs/limitations.md §16` makes that explicit so
+  pipelines that need authenticity verify the signature before
+  invoking `vex --consume`.
+- `Reachability.status == "unknown"` is treated as "could be
+  exploitable" by `--risk-mode epss-weighted` so a missing
+  reachability tool cannot silently suppress risk.
+
+### Migration notes (v1.2 → v2.0)
+
+- **Schema version unchanged.** No code change is required for
+  consumers that already accepted v1.2 bundles.
+- **New optional fields appear as `null` when not opted-in.**
+  Strict consumers that key off `Summary.risk_assessment` or
+  `NormalizedEvidence.reachability` should treat `null` as "the
+  feature was not engaged"; the structural hash gate strips the
+  nulls so deterministic verification still works.
+- **CLI surface is additive.** `--risk-mode`, `--profile`, and
+  `vex --consume` / `--policy` are new flags; defaults keep the
+  v1.2 behaviour.
+- **AI catalog is opt-in.** Pipelines that do not ship AI
+  artifacts see no change.
+
+### Sprint 0 / v1.2 preparatory docs (carried over)
+
+- **Governance + contributor ladder (T6.C3).** New `GOVERNANCE.md`
+  documenting the BDFL decision model honestly (single maintainer
+  today; tie-break rule pre-staged for the next maintainer), new
+  `MAINTAINERS.md` with the active roster + security contact + how to
+  reach the maintainer, and a "How to become a maintainer" section
+  added to `CONTRIBUTING.md`. Prerequisite for the OpenSSF Best
+  Practices Badge Silver tier (future) and for the GitHub Secure Open
+  Source Fund application narrative.
+- **Rego + Kyverno policy snippets (T6.C5).** New
+  `policies/rego/release-ready.rego` (with `release-ready_test.rego`
+  cases) and `policies/kyverno/require-evidence.yaml`. New CI gate at
+  `.github/workflows/policy-tests.yml` runs `conftest test` and
+  `kyverno apply --policy` on every push / PR so the snippets stay
+  consumable end-to-end. Closes the "what do I do with this JSON"
+  question for OPA / Kyverno operators consuming the bundle at
+  admission time.
+- **MATURITY_STATUS** refreshed with Tier 5 + Tier 6 progress and a
+  detailed change-log entry for 2026-05-18 and 2026-05-19.
+
+## [1.2.0] - TBD (first signed public release; pending Blocks A–H in `docs/program/EXTERNAL-ACTIONS-2026-05-18.md`)
+
+### Added
+
+#### 2026-05-18 — Tier 5: evidence enrichment + supply-chain alignment
+
+- **EPSS + CISA KEV enrichment** (`sdlc-evidence enrich`). New
+  `evidence_collector.intelligence` package loads the public EPSS feed
+  (FIRST.org, CSV or .csv.gz) and the CISA KEV catalog and attaches a
+  compact `vulnerability_intelligence` summary to every evidence record
+  that carries CVE ids. Air-gap friendly: no network in the CLI; users
+  point at local feed files. SARIF and CycloneDX parsers now extract
+  CVE ids into a new `evidence[*].cve_ids` field.
+- **OpenVEX 0.2.0 export** (`sdlc-evidence vex`). Emits one OpenVEX
+  statement per CVE, mapping bundle exceptions to `not_affected` with
+  justification, KEV-listed CVEs to `affected` with action statement,
+  and the rest to `under_investigation`. Document `@id` is a UUIDv5
+  over (application, repository, release_id, commit_sha) so the file
+  is deterministic across runs.
+- **OSCAL Assessment Results export** (`sdlc-evidence oscal --kind
+  assessment-results`). Renders the bundle's `ControlEvaluation` list
+  as an OSCAL 1.1.2 `assessment-results` document — the FedRAMP 20x
+  machine-readable shape. UUIDs are stable UUIDv5 across runs.
+- **in-toto Statement v1 wrapper** (`sdlc-evidence statement`).
+  Wraps the bundle as an in-toto Statement with a project-specific
+  predicateType, deterministic UUIDv5 subject name, and an optional
+  unsigned DSSE envelope ready for `cosign sign-blob`. Makes the
+  bundle natively consumable by Sigstore, GUAC, Kyverno, and OPA
+  Gatekeeper without bespoke envelope code.
+
 ### Fixed
 
 #### 2026-05-17 — cross-OS structural-SHA stability
@@ -207,7 +447,7 @@ environment variables remain backwards-compatible with `1.0.x`.
   actionlint and hygiene hooks; structural-determinism gate that re-runs
   the sample pipeline and compares normalized SHA-256; `sdlc-evidence
   doctor` health check command (`--json` output for CI).
-- **Tier 2 — supply-chain hardening configured in `release.yml`.** SLSA
+- **Tier 2 — supply-chain hardening configured in `publish-pypi.yml`.** SLSA
   Build Level 3 provenance via `slsa-github-generator`; collector
   self-SBOM (CycloneDX) signed with cosign; multi-arch container
   (amd64 + arm64) pushed to `ghcr.io`, signed keyless with cosign and
@@ -235,7 +475,7 @@ environment variables remain backwards-compatible with `1.0.x`.
 - **Repository identity.** Homepage, Issues, Source, Docker image
   source, GitHub Action install fallback, CONTRIBUTING clone URL,
   CODEOWNERS, Dependabot reviewers, Issue Template links and the
-  release.yml Trusted Publisher comment now all point to
+  publish-pypi.yml Trusted Publisher comment now all point to
   `lucashgrifoni/Secure-SDLC-Evidence-Collector` (the actual remote)
   instead of the legacy mixed-case `LucasGrifoni/secure-sdlc-evidence-collector`.
 - **Modern license metadata in `pyproject.toml`.** Replaced the
@@ -285,10 +525,10 @@ environment variables remain backwards-compatible with `1.0.x`.
   `main`, code scanning, and secret scanning.
 - Create `secure-sdlc-evidence-collector` on PyPI and configure the
   Trusted Publisher (owner `lucashgrifoni`, repo
-  `Secure-SDLC-Evidence-Collector`, workflow `release.yml`,
+  `Secure-SDLC-Evidence-Collector`, workflow `publish-pypi.yml`,
   environment `pypi`).
 - Create the GitHub `pypi` environment.
-- Until those are done, `release.yml` will run quality, build and
+- Until those are done, `publish-pypi.yml` will run quality, build and
   release-bundle but the `publish-pypi` and `publish-container` jobs
   will short-circuit on missing prerequisites. No claim of "published
   on PyPI" or "image signed in GHCR" can be made yet.
@@ -300,7 +540,7 @@ schema, CLI surface, or GitHub Action contract.
 
 ### Added
 
-- **PyPI publishing job** in `release.yml` using OIDC trusted publisher
+- **PyPI publishing job** in `publish-pypi.yml` using OIDC trusted publisher
   (no long-lived `PYPI_API_TOKEN`); gated to `refs/tags/v*` pushes and
   the `pypi` GitHub environment.
 - **Schema dogfood step** in `github-ci-cd.yml`: every CI run now exports
@@ -358,7 +598,7 @@ breaking them requires a major version bump.
 - **Exception subcommands**: `sdlc-evidence exceptions validate FILE`
   and `sdlc-evidence exceptions list DIR` for ops workflows around
   waivers.
-- **Release workflow** (`.github/workflows/release.yml`) that runs all
+- **Release workflow** (`.github/workflows/publish-pypi.yml`) that runs all
   quality gates, builds wheel + sdist, produces the release evidence
   bundle, signs the artifacts and the bundle keyless with
   `cosign`+Sigstore, and publishes a GitHub Release carrying

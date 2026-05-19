@@ -37,7 +37,7 @@ intervalo declarado em `pyproject.toml` no momento da execucao.
 ## PRs novos abertas durante a sessao — pendentes de decisao do owner
 
 Estes PRs surgiram porque o Dependabot reavalia o manifest a cada
-merge. Eles tocam superficies sensiveis (release.yml, scorecard,
+merge. Eles tocam superficies sensiveis (publish-pypi.yml, scorecard,
 release-please) e **nao foram mergeados** porque mudar essas pecas
 antes da primeira release publica assinada cria risco sem ganho
 imediato.
@@ -49,7 +49,7 @@ imediato.
 | #13 | `actions/attest-build-provenance` v1 -> v4 | action (major) | **HOLD**. Critico para SLSA provenance. So mexer apos primeira release publica funcionar com v1, garantindo baseline antes de bumpar. |
 | #14 | `ossf/scorecard-action` 2.4.0 -> 2.4.3 | action (patch) | **MERGED** nesta sessao (commit `b01f062`). |
 | #15 | `actions/upload-pages-artifact` 4 -> 5 | action (major) | **HOLD**. Usado em `deploy-github-pages.yml`. Validar apos pagina ser publicada com v4. |
-| #16 | `docker/login-action` 3.3.0 -> 4.1.0 | action (major) | **HOLD**. Usado em release.yml para GHCR push. Validar apos primeiro push GHCR funcionar com v3. |
+| #16 | `docker/login-action` 3.3.0 -> 4.1.0 | action (major) | **HOLD**. Usado em publish-pypi.yml para GHCR push. Validar apos primeiro push GHCR funcionar com v3. |
 | #17 | `github/codeql-action` 3.35.2 -> 4.35.3 | action (major) | **HOLD**. Usado em multiplos workflows; v4 muda comportamento de upload-sarif e default queries. Aguardar repo virar publico (Fase 6) para que o CodeQL upload SARIF funcione, depois bumpar. |
 
 ## Princpios usados na decisao

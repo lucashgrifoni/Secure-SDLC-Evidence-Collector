@@ -1,0 +1,146 @@
+# Policy tests CI.
+#
+# Validates the OPA/Rego and Kyverno policy snippets shipped under
+# `policies/`. Two surfaces:
+#
+#   * `conftest verify` proves the Rego file itself is well-formed and
+#     that its companion test file passes — this is the truth check
+#     for `policies/rego/release-ready.rego`.
+#   * `conftest test` runs the policy against the canonical sample
+#     bundle (`examples/sample_release/output/bundle.json`) and
+#     asserts that a known-good bundle is admitted with zero denies.
+#   * `kyverno apply --policy` syntactically validates the Kyverno
+#     ClusterPolicy by applying it against a synthetic Namespace and
+#     Deployment resource generated inline. The policy is exclusively
+#     declarative — we are checking parser correctness, not cluster
+#     behaviour, so no kind/k3s is required.
+#
+# Runs on every push that touches `policies/` or this workflow, plus
+# on PRs that change the bundle schema (so a schema change that breaks
+# the canonical policy surface shows up here).
+
+name: policy-tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "policies/**"
+      - ".github/workflows/policy-tests.yml"
+  pull_request:
+    paths:
+      - "policies/**"
+      - ".github/workflows/policy-tests.yml"
+      - "src/evidence_collector/domain/models.py"
+      - "examples/sample_release/output/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: policy-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rego:
+    name: Rego — conftest verify + test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install conftest
+        run: |
+          set -euo pipefail
+          CONFTEST_VERSION=0.56.0
+          curl -fsSL -o conftest.tar.gz \
+            "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz"
+          tar -xzf conftest.tar.gz conftest
+          sudo install -m 0755 conftest /usr/local/bin/conftest
+          conftest --version
+
+      - name: Verify Rego policy + its own tests
+        run: conftest verify --policy policies/rego/
+
+      - name: Run policy against canonical sample bundle
+        run: |
+          conftest test \
+            --policy policies/rego/release-ready.rego \
+            --namespace release_ready \
+            examples/sample_release/output/bundle.json
+
+  kyverno:
+    name: Kyverno — policy syntax + dry-run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Kyverno CLI
+        run: |
+          set -euo pipefail
+          KYVERNO_VERSION=1.13.0
+          curl -fsSL -o kyverno-cli.tar.gz \
+            "https://github.com/kyverno/kyverno/releases/download/v${KYVERNO_VERSION}/kyverno-cli_v${KYVERNO_VERSION}_linux_x86_64.tar.gz"
+          tar -xzf kyverno-cli.tar.gz kyverno
+          sudo install -m 0755 kyverno /usr/local/bin/kyverno
+          kyverno version
+
+      - name: Generate synthetic test resources
+        run: |
+          mkdir -p .policy-tests
+          cat > .policy-tests/namespace-ready.yaml <<'EOF'
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: acme-api
+            annotations:
+              secure-sdlc.io/release-status: ready
+              secure-sdlc.io/bundle-sha256: "7d8b94c781ae46ed1c51a39e528eb2410bf3c51e6477fc1851196863b1989465"
+          EOF
+          cat > .policy-tests/namespace-not-ready.yaml <<'EOF'
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: acme-api-bad
+            annotations:
+              secure-sdlc.io/release-status: not_ready
+              secure-sdlc.io/bundle-sha256: "7d8b94c781ae46ed1c51a39e528eb2410bf3c51e6477fc1851196863b1989465"
+          EOF
+
+      - name: Apply policy against the ready namespace (must pass)
+        run: |
+          kyverno apply policies/kyverno/require-evidence.yaml \
+            --resource .policy-tests/namespace-ready.yaml
+
+      - name: Apply policy against the not-ready namespace (must fail loudly)
+        run: |
+          set +e
+          kyverno apply policies/kyverno/require-evidence.yaml \
+            --resource .policy-tests/namespace-not-ready.yaml \
+            --policy-report
+          rc=$?
+          set -e
+          # kyverno apply exits non-zero when ANY rule reports a violation,
+          # so the not-ready namespace MUST produce a non-zero exit. If it
+          # somehow passes, the policy regressed and CI must fail.
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::Kyverno policy did not block the not_ready namespace"
+            exit 1
+          fi

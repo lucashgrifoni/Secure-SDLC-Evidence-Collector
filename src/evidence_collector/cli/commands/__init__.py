@@ -22,13 +22,17 @@ from . import (
     compare,
     controls,
     doctor,
+    enrich,
     evaluate,
     exceptions,
+    guac,
     oscal,
     plugins,
     run,
     schema,
+    statement,
     verify,
+    vex,
 )
 
 CommandRegister = Callable[[typer.Typer], None]
@@ -48,6 +52,10 @@ COMMAND_MODULES: Final[tuple[CommandRegister, ...]] = (
     schema.register,
     doctor.register,
     verify.register,
+    enrich.register,
+    vex.register,
+    statement.register,
+    guac.register,
     exceptions.register,
 )
 

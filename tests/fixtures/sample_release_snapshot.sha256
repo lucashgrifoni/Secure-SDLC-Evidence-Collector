@@ -24,4 +24,11 @@
 # to LF by the mixed-line-ending pre-commit hook on 2026-05-17, which
 # changed their SHA-256 (carried into bundle.json as raw.integrity_hash).
 # Cross-OS stability re-confirmed on Windows and Linux-simulated runs.
-5e1498cdfdca997707c70707b9df558c18383bc064a91a1ced2de962201a5066
+#
+# 2026-05-18 (Tier 5 — EPSS/KEV enrichment scaffolding): bumped from
+# 5e1498cd… to 7d8b94c7… after the schema gained two new evidence-level
+# fields (``cve_ids``, ``vulnerability_intelligence``). The new fields
+# default to an empty list / null respectively so the change is fully
+# backwards compatible, but their presence alters the canonical JSON
+# representation and therefore the structural hash.
+7d8b94c781ae46ed1c51a39e528eb2410bf3c51e6477fc1851196863b1989465
