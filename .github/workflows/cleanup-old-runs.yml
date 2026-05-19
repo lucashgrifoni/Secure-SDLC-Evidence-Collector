@@ -1,0 +1,210 @@
+# Deletes GitHub Actions workflow runs older than RETENTION_MINUTES.
+#
+# DESTRUCTIVE WORKFLOW. Starts in dry-run mode by default. To actually
+# delete old runs, either:
+#
+#   1. Trigger via the "Run workflow" UI and set ``dry_run`` to ``false``.
+#   2. Or change the ``DRY_RUN`` env below to "false" and merge (this
+#      changes the scheduled behaviour and will delete on every run).
+#
+# Safety invariants enforced by the script:
+#   * Never deletes the currently running cleanup workflow run.
+#   * Never deletes runs created within the retention window.
+#   * Never deletes a run whose timestamp cannot be parsed.
+#   * Per-run delete failures are tolerated (logged + counted as skipped);
+#     a failure on one run does not stop the loop.
+#
+# Permissions are scoped to the minimum needed:
+#   * ``actions: write`` — required to delete workflow runs via the API.
+#   * ``contents: read`` — required by ``gh run list`` to read run metadata.
+#
+# No third-party Actions are used for deletion; the script calls
+# ``gh api -X DELETE`` directly. ``step-security/harden-runner`` is the
+# only third-party Action and it only audits egress.
+name: Cleanup Old Workflow Runs
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run mode (true = log only, false = actually delete)"
+        required: false
+        default: true
+        type: boolean
+      retention_minutes:
+        description: "Keep runs newer than this many minutes (default 10)"
+        required: false
+        default: "10"
+        type: string
+  schedule:
+    # Every 15 minutes. The script still defaults to DRY_RUN=true so
+    # scheduled invocations only log; flip the env below to "false" once
+    # you have validated the dry-run output and want real deletions.
+    - cron: "*/15 * * * *"
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: cleanup-old-workflow-runs
+  cancel-in-progress: false
+
+env:
+  # Default mode for scheduled runs. The workflow_dispatch input
+  # overrides this for manual invocations. Change to "false" to
+  # enable real deletions on the schedule as well.
+  DRY_RUN: "true"
+  RETENTION_MINUTES: "10"
+
+jobs:
+  cleanup:
+    name: Cleanup runs older than the retention window
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - name: Delete (or simulate deleting) old workflow runs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SELF_RUN_ID: ${{ github.run_id }}
+          # ``inputs.*`` are only defined for workflow_dispatch invocations.
+          # For schedule runs these expand to the empty string, and the
+          # script falls back to the env defaults above.
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_RETENTION: ${{ inputs.retention_minutes }}
+        run: |
+          set -euo pipefail
+
+          # ---- resolve effective mode + retention ---------------------------
+          # workflow_dispatch booleans arrive as the strings "true" / "false";
+          # an empty INPUT_DRY_RUN means we were invoked by the schedule.
+          if [ -n "${INPUT_DRY_RUN:-}" ]; then
+            dry_run="${INPUT_DRY_RUN}"
+          else
+            dry_run="${DRY_RUN}"
+          fi
+          case "${dry_run}" in
+            true|false) : ;;
+            *) echo "Unrecognised DRY_RUN value '${dry_run}' — refusing to run." >&2; exit 2 ;;
+          esac
+
+          if [ -n "${INPUT_RETENTION:-}" ]; then
+            retention_min="${INPUT_RETENTION}"
+          else
+            retention_min="${RETENTION_MINUTES}"
+          fi
+          if ! [ "${retention_min}" -ge 0 ] 2>/dev/null; then
+            echo "Invalid retention_minutes '${retention_min}' — refusing to run." >&2
+            exit 2
+          fi
+
+          now_epoch="$(date -u +%s)"
+          cutoff_epoch=$((now_epoch - retention_min * 60))
+          cutoff_iso="$(date -u -d "@${cutoff_epoch}" --iso-8601=seconds)"
+          now_iso="$(date -u --iso-8601=seconds)"
+
+          echo "Repository:        ${REPO}"
+          echo "Current UTC time:  ${now_iso}"
+          echo "Retention minutes: ${retention_min}"
+          echo "Cutoff timestamp:  ${cutoff_iso}"
+          echo "DRY_RUN:           ${dry_run}"
+          echo "Self run id:       ${SELF_RUN_ID}"
+          echo ""
+
+          # ---- fetch every run we can see -----------------------------------
+          # ``gh run list --limit 1000`` is the per-call ceiling. For repos
+          # with >1000 runs this would need pagination; we surface that as
+          # a warning so the operator notices.
+          runs_json="$(gh run list \
+            --repo "${REPO}" \
+            --limit 1000 \
+            --json databaseId,createdAt,displayTitle,name,status,conclusion,headBranch \
+            -q '.')"
+          total_returned="$(printf '%s' "${runs_json}" | jq 'length')"
+          if [ "${total_returned}" -eq 1000 ]; then
+            echo "WARNING: gh run list returned the maximum 1000 rows."
+            echo "         Older runs beyond that page were not evaluated by this run."
+            echo ""
+          fi
+
+          # ---- iterate ------------------------------------------------------
+          evaluated=0
+          kept=0
+          skipped=0
+          deleted=0
+          would_delete=0
+
+          # Use a TSV stream so newlines / commas in display titles do not
+          # break the loop. ``displayTitle`` is escaped to a single token
+          # for log readability; the canonical id is the only field we act on.
+          while IFS=$'\t' read -r run_id created_at status conclusion branch name title; do
+            evaluated=$((evaluated + 1))
+
+            # Safety 1: never touch the cleanup run we are currently executing.
+            if [ "${run_id}" = "${SELF_RUN_ID}" ]; then
+              echo "[SKIP self]  id=${run_id} name='${name}' created=${created_at}"
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            # Safety 2: parse failure -> skip without deletion.
+            if ! created_epoch="$(date -u -d "${created_at}" +%s 2>/dev/null)"; then
+              echo "[SKIP parse] id=${run_id} name='${name}' created=${created_at}"
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            # Safety 3: keep recent runs.
+            if [ "${created_epoch}" -ge "${cutoff_epoch}" ]; then
+              echo "[KEEP]       id=${run_id} name='${name}' status=${status}/${conclusion} created=${created_at}"
+              kept=$((kept + 1))
+              continue
+            fi
+
+            # Eligible for deletion (older than retention window).
+            if [ "${dry_run}" = "true" ]; then
+              echo "[WOULD DELETE] id=${run_id} name='${name}' status=${status}/${conclusion} created=${created_at}"
+              would_delete=$((would_delete + 1))
+              continue
+            fi
+
+            # Actually delete. Tolerate per-run failures so one stuck run
+            # cannot block the rest of the cleanup loop.
+            if gh api -X DELETE "repos/${REPO}/actions/runs/${run_id}" --silent 2>/tmp/delete-err; then
+              echo "[DELETED]    id=${run_id} name='${name}' status=${status}/${conclusion} created=${created_at}"
+              deleted=$((deleted + 1))
+            else
+              err_msg="$(cat /tmp/delete-err 2>/dev/null | tr -d '\n' || true)"
+              echo "[FAIL DELETE] id=${run_id} name='${name}' err='${err_msg}'"
+              skipped=$((skipped + 1))
+            fi
+          done < <(printf '%s' "${runs_json}" | jq -r '.[]
+            | [
+                (.databaseId | tostring),
+                .createdAt,
+                (.status // "unknown"),
+                (.conclusion // "-"),
+                (.headBranch // "-"),
+                (.name // "-"),
+                ((.displayTitle // "-") | gsub("[\t\n]"; " "))
+              ]
+            | @tsv')
+
+          # ---- summary ------------------------------------------------------
+          echo ""
+          echo "=== Summary ==="
+          echo "Mode:          ${dry_run}"
+          echo "Evaluated:     ${evaluated}"
+          echo "Kept:          ${kept}"
+          echo "Skipped:       ${skipped}"
+          if [ "${dry_run}" = "true" ]; then
+            echo "Would delete:  ${would_delete}"
+          else
+            echo "Deleted:       ${deleted}"
+          fi
