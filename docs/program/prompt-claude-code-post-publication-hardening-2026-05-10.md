@@ -48,7 +48,7 @@ manual.
   `v1.1.0`).
 - Nao reescrever historico (`git rebase -i`, `--force`, etc.).
 - Nao tornar o repositorio publico.
-- Nao publicar no PyPI nem disparar `release.yml`.
+- Nao publicar no PyPI nem disparar `publish-pypi.yml`.
 - Nao introduzir dependencias novas alem das ja listadas em
   `pyproject.toml`.
 - Manter retrocompatibilidade total da CLI: nome do entrypoint
@@ -322,7 +322,7 @@ quais workflows ainda nao tem o step. Hoje faltam:
   suporta Windows).
 - `.github/workflows/deploy-github-pages.yml` (2 jobs: `build`,
   `deploy`).
-- `.github/workflows/release.yml` (5 jobs Linux: `quality`, `build`,
+- `.github/workflows/publish-pypi.yml` (5 jobs Linux: `quality`, `build`,
   `release-bundle`, `sign-and-publish`, `publish-pypi`,
   `publish-container`; o job `provenance` chama um reusable workflow
   externo e NAO recebe harden-runner local).
@@ -344,7 +344,7 @@ Acoes:
    comentario.
 
 2. Nao adicionar em jobs Windows.
-3. Nao adicionar no job `provenance` do `release.yml`.
+3. Nao adicionar no job `provenance` do `publish-pypi.yml`.
 
 Criterio de aceite Fase 5:
 

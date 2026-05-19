@@ -33,6 +33,12 @@ VOLATILE_TOP: Final[frozenset[str]] = frozenset({"bundle_id", "generated_at"})
 VOLATILE_EVIDENCE: Final[frozenset[str]] = frozenset({"collected_at"})
 VOLATILE_CONTROL: Final[frozenset[str]] = frozenset({"evaluated_at"})
 
+# Volatile timestamps nested inside the optional vulnerability_intelligence
+# block. ``enriched_at`` records *when* the EPSS/KEV feed was applied, not
+# *which* feed (that detail lives in ``epss_feed_date`` and ``kev_feed_date``
+# which DO contribute to the structural hash so a feed bump is detectable).
+VOLATILE_VULN_INTEL: Final[frozenset[str]] = frozenset({"enriched_at"})
+
 # Keys inside each entry of evidence[*].raw[*] whose value is a filesystem
 # path and must be normalized to POSIX form before hashing.
 PATH_KEYS_IN_RAW: Final[frozenset[str]] = frozenset({"artifact_path"})
@@ -83,6 +89,26 @@ def _strip_keys(entries: object, keys: frozenset[str]) -> list[dict[str, object]
     return dict_entries
 
 
+def _strip_volatile_in_vuln_intel(entry: dict[str, object]) -> None:
+    """Drop ``enriched_at`` from ``vulnerability_intelligence`` if present."""
+    intel = entry.get("vulnerability_intelligence")
+    if isinstance(intel, dict):
+        for key in VOLATILE_VULN_INTEL:
+            intel.pop(key, None)
+
+
+def _strip_null_optional_field(container: object, key: str) -> None:
+    """Remove ``key`` from ``container`` when its value is ``None``.
+
+    Lets the structural hash treat pre-T6.6 bundles (no key at all) and
+    post-T6.6 bundles with the feature disabled (``key: null``) as
+    equivalent — adopting new optional fields therefore does not break
+    byte-stability when the feature is off.
+    """
+    if isinstance(container, dict) and container.get(key) is None and key in container:
+        container.pop(key, None)
+
+
 def normalize_bundle(data: dict[str, object]) -> bytes:
     """Strip volatile fields and return a canonical UTF-8 JSON byte stream.
 
@@ -94,7 +120,16 @@ def normalize_bundle(data: dict[str, object]) -> bytes:
         data.pop(key, None)
     for entry in _strip_keys(data.get("evidence"), VOLATILE_EVIDENCE):
         _normalize_raw_paths(entry)
+        _strip_volatile_in_vuln_intel(entry)
+        # §3.2 — drop ``reachability`` when None so pre-§3.2 bundles
+        # hash identically to post-§3.2 bundles that did not opt in.
+        _strip_null_optional_field(entry, "reachability")
     _strip_keys(data.get("control_evaluations"), VOLATILE_CONTROL)
+    # T6.6 — drop ``risk_assessment`` from the summary when None so the
+    # default ``--risk-mode off`` keeps byte-stability with pre-T6.6
+    # bundles. When risk-mode is explicitly engaged the structural hash
+    # changes by design (the verdict has different inputs).
+    _strip_null_optional_field(data.get("summary"), "risk_assessment")
     return json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
 
 

@@ -49,9 +49,14 @@ jobs:
         run: |
           python -m pip install -e ".[docs]"
 
-      - name: Generate evidence summary
+      - name: Stage landing page (gitpage) at site root
         run: |
           mkdir -p site
+          cp gitpage/index.html site/index.html
+          cp -r gitpage/assets site/assets
+
+      - name: Generate evidence summary
+        run: |
           python -m evidence_collector.cli.main run \
             --application secure-sdlc-evidence-collector \
             --repository "${{ github.repository }}" \
@@ -62,14 +67,14 @@ jobs:
             --attestations-dir examples/self_release/attestations \
             --output-dir site/evidence \
             --fail-on not_ready
-          cp site/evidence/summary.html site/index.html
           cp README.md site/README.md
           cp CHANGELOG.md site/CHANGELOG.md
 
-      # Build the mkdocs technical site into a `docs/` sub-path so the
-      # Pages root continues to host the evidence summary HTML and the
-      # technical docs are reachable at `/docs/`. Both ship from the
-      # same Pages deploy.
+      # Pages layout after this job:
+      #   /            -> gitpage/ landing page (index.html + assets)
+      #   /evidence/   -> CLI-generated evidence summary, bundle, report
+      #   /docs/       -> mkdocs technical site
+      # All three ship from the same Pages deploy.
       - name: Build mkdocs technical site
         run: |
           python -m mkdocs build --strict --site-dir site/docs

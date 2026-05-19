@@ -8,6 +8,7 @@ metadata to build a NormalizedEvidence record.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,10 @@ _SEVERITY_MAP: dict[str, str] = {
     "none": "info",
 }
 
+# CVE identifiers follow CVE-YYYY-NNNN+. We accept years 1999..2099 and
+# 4+-digit sequence numbers because some scanners emit padded values.
+_CVE_PATTERN = re.compile(r"\bCVE-(?:19|20)\d{2}-\d{4,7}\b", re.IGNORECASE)
+
 
 @dataclass
 class ParsedSarif:
@@ -35,6 +40,7 @@ class ParsedSarif:
     tool_version: str | None
     findings_count: dict[str, int] = field(default_factory=dict)
     total_findings: int = 0
+    cve_ids: list[str] = field(default_factory=list)
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -70,6 +76,7 @@ def parse_sarif(path: str | Path) -> ParsedSarif:
         "info": 0,
     }
     total = 0
+    cve_ids: set[str] = set()
     for run in runs:
         if not isinstance(run, dict):
             continue
@@ -85,6 +92,7 @@ def parse_sarif(path: str | Path) -> ParsedSarif:
             if severity_bucket not in findings_count:
                 findings_count[severity_bucket] = 0
             findings_count[severity_bucket] += 1
+            _collect_cves_from_result(result, cve_ids)
 
     artifact = describe(resolved, content_type="application/sarif+json")
     return ParsedSarif(
@@ -93,5 +101,52 @@ def parse_sarif(path: str | Path) -> ParsedSarif:
         tool_version=tool_version,
         findings_count=findings_count,
         total_findings=total,
+        cve_ids=sorted(cve_ids),
         raw=data,
     )
+
+
+def _candidate_strings_from_properties(properties: Any) -> list[str]:
+    """Pull every plausibly CVE-bearing string out of a SARIF properties bag."""
+    if not isinstance(properties, dict):
+        return []
+    out: list[str] = []
+    tags = properties.get("tags")
+    if isinstance(tags, list):
+        out.extend(str(tag) for tag in tags if isinstance(tag, str))
+    for key in ("cve", "cveId", "cveID"):
+        value = properties.get(key)
+        if isinstance(value, str):
+            out.append(value)
+        elif isinstance(value, list):
+            out.extend(str(v) for v in value if isinstance(v, str))
+    return out
+
+
+def _candidate_strings_from_result(result: dict[str, Any]) -> list[str]:
+    """Collect all SARIF-result strings that may contain a CVE identifier."""
+    out: list[str] = []
+    rule_id = result.get("ruleId")
+    if isinstance(rule_id, str):
+        out.append(rule_id)
+    out.extend(_candidate_strings_from_properties(result.get("properties")))
+    message = result.get("message")
+    if isinstance(message, dict):
+        text = message.get("text")
+        if isinstance(text, str):
+            out.append(text)
+    return out
+
+
+def _collect_cves_from_result(result: dict[str, Any], sink: set[str]) -> None:
+    """Mine CVE identifiers from a single SARIF result.
+
+    Scanners encode CVEs in several places: ``ruleId`` (e.g. Trivy uses
+    ``CVE-2023-1234`` as the rule id), ``properties.tags``,
+    ``properties.cve`` / ``cveId``, and free-text in ``message.text``.
+    ``sink`` is a set so duplicates across these sites are de-duped
+    automatically.
+    """
+    for candidate in _candidate_strings_from_result(result):
+        for match in _CVE_PATTERN.findall(candidate):
+            sink.add(match.upper())

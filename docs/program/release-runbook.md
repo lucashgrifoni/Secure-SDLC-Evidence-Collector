@@ -79,7 +79,7 @@ Acao 4.1 (PyPI UI): <https://pypi.org/manage/account/publishing/>
 - PyPI Project Name: `secure-sdlc-evidence-collector`
 - Owner: `lucashgrifoni`
 - Repository name: `Secure-SDLC-Evidence-Collector`
-- Workflow name: `release.yml`
+- Workflow name: `publish-pypi.yml`
 - Environment name: `pypi`
 
 Apos o primeiro upload bem sucedido, o "pending publisher" vira
@@ -117,7 +117,7 @@ So execute apos os passos 1 a 4. Duas opcoes:
 
 Se ja existir um PR aberto chamado `chore(release): release X.Y.Z`
 gerado pelo workflow `release-please.yml`, mergeie. O proprio
-workflow cria o tag e dispara `release.yml`.
+workflow cria o tag e dispara `publish-pypi.yml`.
 
 ```powershell
 gh pr list --search "release-please" --state open
@@ -131,7 +131,7 @@ git -c user.email="120392060+lucashgrifoni@users.noreply.github.com" tag -a v1.1
 git push origin v1.1.0
 ```
 
-Em ambos os casos, acompanhar o run do `release.yml`:
+Em ambos os casos, acompanhar o run do `publish-pypi.yml`:
 
 ```powershell
 gh run watch
@@ -148,7 +148,7 @@ Ate todos os jobs verdes:
 
 ## Passo 7 - Verificacao pos-release
 
-Os comandos abaixo so funcionam **depois** que `release.yml` terminar
+Os comandos abaixo so funcionam **depois** que `publish-pypi.yml` terminar
 sem erro. Eles estao em
 `scripts/verify-release.sh` para reproducao automatica.
 
@@ -205,9 +205,9 @@ Apos Passo 7 retornar verde:
 
 ## Rollback
 
-- Se algum job de `release.yml` falhar antes do publish, ele nao
+- Se algum job de `publish-pypi.yml` falhar antes do publish, ele nao
   publica nada - basta corrigir e re-executar via
-  `gh workflow run release.yml -f tag=v1.1.0`.
+  `gh workflow run publish-pypi.yml -f tag=v1.1.0`.
 - Se a Github Release for criada parcial (assets faltando), apague-a
   via UI ou `gh release delete v1.1.0 --yes` e re-execute.
 - **Nao mover tag publica.** Se um asset ja foi consumido (downloaded
@@ -221,6 +221,6 @@ A primeira release publica esta `GO` quando:
 - [ ] branch protection ativa em `main`
 - [ ] Discussions / code scanning / secret scanning habilitados
 - [ ] PyPI project + Trusted Publisher + ambiente `pypi` configurados
-- [ ] tag `v1.1.0` empurrada e `release.yml` verde end-to-end
+- [ ] tag `v1.1.0` empurrada e `publish-pypi.yml` verde end-to-end
 - [ ] todos os comandos do Passo 7 retornam verde
 - [ ] `docs/` atualizado com evidencia verificada

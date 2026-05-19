@@ -5,7 +5,7 @@
     "owner_team": null,
     "repository": "acme/payments-api"
   },
-  "bundle_id": "bundle-20260518-payments-api-2026.04.10-fb2d5a16",
+  "bundle_id": "bundle-20260518-payments-api-2026.04.10-ccda2d3a",
   "bundle_version": "1.0.0",
   "control_evaluations": [
     {
@@ -13,7 +13,7 @@
       "control_id": "SSDF-PW.7",
       "control_name": "Review and/or analyze human-readable code (SAST)",
       "criticality": "high",
-      "evaluated_at": "2026-05-18T12:20:30.415661Z",
+      "evaluated_at": "2026-05-18T16:52:37.825470Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "sast-cfcf7a634b32"
@@ -29,7 +29,7 @@
       "control_id": "SSDF-PW.4",
       "control_name": "Reuse existing, well-secured software (SCA)",
       "criticality": "high",
-      "evaluated_at": "2026-05-18T12:20:30.415661Z",
+      "evaluated_at": "2026-05-18T16:52:37.825470Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "sca-54e49b31bec7"
@@ -45,7 +45,7 @@
       "control_id": "ORG-SECRETS-SCAN",
       "control_name": "Repository-wide secrets scanning",
       "criticality": "high",
-      "evaluated_at": "2026-05-18T12:20:30.416661Z",
+      "evaluated_at": "2026-05-18T16:52:37.825470Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "secrets-3bc6ef3a7a0a"
@@ -61,7 +61,7 @@
       "control_id": "SSDF-PS.3",
       "control_name": "Archive and protect each software release (SBOM)",
       "criticality": "critical",
-      "evaluated_at": "2026-05-18T12:20:30.416661Z",
+      "evaluated_at": "2026-05-18T16:52:37.825470Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "sbom-8f24db8264b4",
@@ -79,7 +79,7 @@
       "control_id": "SSDF-PW.8",
       "control_name": "Test executable code to identify vulnerabilities",
       "criticality": "high",
-      "evaluated_at": "2026-05-18T12:20:30.416661Z",
+      "evaluated_at": "2026-05-18T16:52:37.825470Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "test-3ba115181f49"
@@ -95,7 +95,7 @@
       "control_id": "ORG-CODE-REVIEW",
       "control_name": "Code review by eligible reviewers",
       "criticality": "critical",
-      "evaluated_at": "2026-05-18T12:20:30.416661Z",
+      "evaluated_at": "2026-05-18T16:52:37.825470Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-61dda6456f8e",
@@ -112,7 +112,7 @@
       "control_id": "SSDF-PW.1",
       "control_name": "Design software to meet security requirements (threat model)",
       "criticality": "medium",
-      "evaluated_at": "2026-05-18T12:20:30.416661Z",
+      "evaluated_at": "2026-05-18T16:52:37.825470Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-361af230e38f"
@@ -128,7 +128,7 @@
       "control_id": "ORG-RELEASE-APPROVAL",
       "control_name": "Formal release approval",
       "criticality": "critical",
-      "evaluated_at": "2026-05-18T12:20:30.416661Z",
+      "evaluated_at": "2026-05-18T16:52:37.825470Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-2cfa2bc287a7"
@@ -144,7 +144,7 @@
       "control_id": "ORG-REL-ROLLBACK",
       "control_name": "Rollback plan exists and was approved",
       "criticality": "critical",
-      "evaluated_at": "2026-05-18T12:20:30.416661Z",
+      "evaluated_at": "2026-05-18T16:52:37.825470Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-790592cda958"
@@ -160,7 +160,7 @@
       "control_id": "SSDF-PS.2",
       "control_name": "Provide a mechanism to verify software release integrity",
       "criticality": "critical",
-      "evaluated_at": "2026-05-18T12:20:30.416661Z",
+      "evaluated_at": "2026-05-18T16:52:37.825470Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-4fdd0c6e65a1",
@@ -177,7 +177,7 @@
       "control_id": "SAMM-DESIGN-TA-1",
       "control_name": "Threat Assessment (Design / Threat Assessment 1)",
       "criticality": "medium",
-      "evaluated_at": "2026-05-18T12:20:30.416661Z",
+      "evaluated_at": "2026-05-18T16:52:37.825470Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-361af230e38f"
@@ -193,7 +193,7 @@
       "control_id": "SAMM-IMPL-SB-2",
       "control_name": "Secure Build (Implementation / Secure Build 2)",
       "criticality": "high",
-      "evaluated_at": "2026-05-18T12:20:30.416661Z",
+      "evaluated_at": "2026-05-18T16:52:37.825470Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "sbom-8f24db8264b4",
@@ -211,7 +211,7 @@
       "control_id": "SAMM-VERIF-ST-1",
       "control_name": "Security Testing (Verification / Security Testing 1)",
       "criticality": "high",
-      "evaluated_at": "2026-05-18T12:20:30.416661Z",
+      "evaluated_at": "2026-05-18T16:52:37.825470Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "sast-cfcf7a634b32",
@@ -232,9 +232,10 @@
         "driver_name": "gitleaks",
         "reason": "driver_match"
       },
-      "collected_at": "2026-05-18T12:20:30.406332Z",
+      "collected_at": "2026-05-18T16:52:37.814257Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "high",
+      "cve_ids": [],
       "evidence_id": "secrets-3bc6ef3a7a0a",
       "evidence_type": "secrets_scan",
       "findings_count": {
@@ -265,13 +266,15 @@
       "status": "passed",
       "subject_ref": "abcdef1234567890",
       "subject_type": "commit",
-      "summary": "gitleaks reported 0 findings (high/critical=0)"
+      "summary": "gitleaks reported 0 findings (high/critical=0)",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:30.406332Z",
+      "collected_at": "2026-05-18T16:52:37.814257Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "high",
+      "cve_ids": [],
       "evidence_id": "test-3ba115181f49",
       "evidence_type": "test_result",
       "findings_count": {
@@ -301,13 +304,15 @@
       "status": "passed",
       "subject_ref": "abcdef1234567890",
       "subject_type": "commit",
-      "summary": "42 tests executed, 0 failures, 0 errors, 1 skipped, duration 8.42s"
+      "summary": "42 tests executed, 0 failures, 0 errors, 1 skipped, duration 8.42s",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:30.406332Z",
+      "collected_at": "2026-05-18T16:52:37.815518Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "high",
+      "cve_ids": [],
       "evidence_id": "sbom-8f24db8264b4",
       "evidence_type": "sbom",
       "findings_count": {
@@ -336,7 +341,8 @@
       "status": "generated",
       "subject_ref": "pkg:generic/acme/payments-api@2026.04.10",
       "subject_type": "artifact",
-      "summary": "CYCLONEDX SBOM with 3 components (spec 1.5)"
+      "summary": "CYCLONEDX SBOM with 3 components (spec 1.5)",
+      "vulnerability_intelligence": null
     },
     {
       "classification": {
@@ -344,9 +350,10 @@
         "driver_name": "semgrep",
         "reason": "driver_match"
       },
-      "collected_at": "2026-05-18T12:20:30.406332Z",
+      "collected_at": "2026-05-18T16:52:37.815518Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "high",
+      "cve_ids": [],
       "evidence_id": "sast-cfcf7a634b32",
       "evidence_type": "sast_scan",
       "findings_count": {
@@ -377,7 +384,8 @@
       "status": "passed",
       "subject_ref": "abcdef1234567890",
       "subject_type": "commit",
-      "summary": "semgrep reported 2 findings (high/critical=0)"
+      "summary": "semgrep reported 2 findings (high/critical=0)",
+      "vulnerability_intelligence": null
     },
     {
       "classification": {
@@ -385,9 +393,12 @@
         "driver_name": "trivy",
         "reason": "driver_match"
       },
-      "collected_at": "2026-05-18T12:20:30.406332Z",
+      "collected_at": "2026-05-18T16:52:37.815518Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "high",
+      "cve_ids": [
+        "CVE-2024-12345"
+      ],
       "evidence_id": "sca-54e49b31bec7",
       "evidence_type": "sca_scan",
       "findings_count": {
@@ -418,13 +429,15 @@
       "status": "passed",
       "subject_ref": "abcdef1234567890",
       "subject_type": "commit",
-      "summary": "trivy reported 1 findings (high/critical=0)"
+      "summary": "trivy reported 1 findings (high/critical=0)",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:30.406332Z",
+      "collected_at": "2026-05-18T16:52:37.815518Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "high",
+      "cve_ids": [],
       "evidence_id": "dast-f6a61122d5a3",
       "evidence_type": "dast_scan",
       "findings_count": {
@@ -459,13 +472,15 @@
       "status": "passed",
       "subject_ref": "http./sample_release",
       "subject_type": "application",
-      "summary": "OWASP ZAP DAST reported 3 findings across 1 target(s); high/critical=0"
+      "summary": "OWASP ZAP DAST reported 3 findings across 1 target(s); high/critical=0",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:30.406332Z",
+      "collected_at": "2026-05-18T16:52:37.816939Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "medium",
+      "cve_ids": [],
       "evidence_id": "att-eeab3847be8e",
       "evidence_type": "artifact_attestation",
       "findings_count": {},
@@ -495,13 +510,15 @@
       "status": "passed",
       "subject_ref": "payments-api:2026.04.10",
       "subject_type": "artifact",
-      "summary": "SLSA build provenance attestation generated for the release artifact"
+      "summary": "SLSA build provenance attestation generated for the release artifact",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:30.406332Z",
+      "collected_at": "2026-05-18T16:52:37.817941Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "medium",
+      "cve_ids": [],
       "evidence_id": "att-4fdd0c6e65a1",
       "evidence_type": "artifact_signature",
       "findings_count": {},
@@ -530,13 +547,15 @@
       "status": "passed",
       "subject_ref": "payments-api:2026.04.10",
       "subject_type": "artifact",
-      "summary": "Artifact signed with cosign using keyless OIDC flow"
+      "summary": "Artifact signed with cosign using keyless OIDC flow",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:30.406332Z",
+      "collected_at": "2026-05-18T16:52:37.818964Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "medium",
+      "cve_ids": [],
       "evidence_id": "att-61dda6456f8e",
       "evidence_type": "code_review",
       "findings_count": {},
@@ -569,13 +588,15 @@
       "status": "passed",
       "subject_ref": "PR-184",
       "subject_type": "pull_request",
-      "summary": "PR-184 approved by 2 reviewers after last commit"
+      "summary": "PR-184 approved by 2 reviewers after last commit",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:30.410486Z",
+      "collected_at": "2026-05-18T16:52:37.818964Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "medium",
+      "cve_ids": [],
       "evidence_id": "att-b0fcf22e94ec",
       "evidence_type": "pr_metadata",
       "findings_count": {},
@@ -611,13 +632,15 @@
       "status": "passed",
       "subject_ref": "PR-184",
       "subject_type": "pull_request",
-      "summary": "Exported PR-184 metadata: 2 approvals after last commit, CI green"
+      "summary": "Exported PR-184 metadata: 2 approvals after last commit, CI green",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:30.410486Z",
+      "collected_at": "2026-05-18T16:52:37.818964Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "medium",
+      "cve_ids": [],
       "evidence_id": "att-2cfa2bc287a7",
       "evidence_type": "release_approval",
       "findings_count": {},
@@ -645,13 +668,15 @@
       "status": "passed",
       "subject_ref": "payments-api:2026.04.10",
       "subject_type": "release",
-      "summary": "Release 2026.04.10 formally approved by CAB"
+      "summary": "Release 2026.04.10 formally approved by CAB",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:30.410486Z",
+      "collected_at": "2026-05-18T16:52:37.820345Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "medium",
+      "cve_ids": [],
       "evidence_id": "att-790592cda958",
       "evidence_type": "rollback_plan",
       "findings_count": {},
@@ -678,13 +703,15 @@
       "status": "passed",
       "subject_ref": "payments-api:2026.04.10",
       "subject_type": "release",
-      "summary": "Documented rollback plan in runbook with 15 min MTTR target"
+      "summary": "Documented rollback plan in runbook with 15 min MTTR target",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:30.411654Z",
+      "collected_at": "2026-05-18T16:52:37.820345Z",
       "commit_sha": "abcdef1234567890",
       "confidence": "medium",
+      "cve_ids": [],
       "evidence_id": "att-361af230e38f",
       "evidence_type": "threat_model",
       "findings_count": {},
@@ -713,12 +740,13 @@
       "status": "completed",
       "subject_ref": "payments-api",
       "subject_type": "application",
-      "summary": "Threat model updated for payments-api refund flow"
+      "summary": "Threat model updated for payments-api refund flow",
+      "vulnerability_intelligence": null
     }
   ],
   "exceptions": [],
   "gaps": [],
-  "generated_at": "2026-05-18T12:20:30.416661Z",
+  "generated_at": "2026-05-18T16:52:37.825470Z",
   "release": {
     "artifact_digest": null,
     "branch": "main",

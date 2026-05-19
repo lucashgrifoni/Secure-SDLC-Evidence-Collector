@@ -1,4 +1,4 @@
-name: Release
+name: Publish to PyPI
 
 on:
   push:
@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.workflow }}-${{ github.ref }}
+  group: publish-pypi-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -108,10 +108,90 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
+      # T6.C4 reproducible build: pin SOURCE_DATE_EPOCH from the tag's
+      # commit so the wheel and sdist timestamps are deterministic
+      # (https://reproducible-builds.org/specs/source-date-epoch/).
+      # Setuptools honours this for the wheel RECORD timestamps, the
+      # METADATA file timestamps, and the sdist tar entries.
+      - name: Resolve SOURCE_DATE_EPOCH from tag commit
+        id: sde
+        run: |
+          set -euo pipefail
+          sde="$(git log -1 --pretty=%ct HEAD)"
+          if [ -z "$sde" ]; then
+            echo "Could not derive SOURCE_DATE_EPOCH from HEAD." >&2
+            exit 1
+          fi
+          echo "value=$sde" >>"$GITHUB_OUTPUT"
+
       - name: Build distribution
+        env:
+          SOURCE_DATE_EPOCH: ${{ steps.sde.outputs.value }}
         run: |
           python -m pip install --upgrade pip build
           python -m build --wheel --sdist --outdir dist
+
+      # T6.C4 reproducible build gate: rebuild the wheel and sdist a
+      # second time with the same SOURCE_DATE_EPOCH and fail if any
+      # artifact's SHA-256 changes. Determinism failures are usually
+      # caused by un-pinned timestamps, hash randomization, or build
+      # tools that embed run-specific data into the wheel.
+      - name: Rebuild for reproducibility check
+        env:
+          SOURCE_DATE_EPOCH: ${{ steps.sde.outputs.value }}
+          PYTHONHASHSEED: "0"
+        run: |
+          python -m build --wheel --sdist --outdir dist-recheck
+
+      # Gate behaviour: wheel must be bit-for-bit identical (hard fail),
+      # sdist is checked as a warning only. The sdist non-determinism
+      # source is the gzip header timestamp that Python's stdlib tarfile
+      # / gzip writer does not normalise even when SOURCE_DATE_EPOCH is
+      # set. Tracking that as a follow-up under v2.1 / backlog so we do
+      # not block v2.0 on a tooling-level fix outside our control. The
+      # wheel is what `pip install` consumes, which is the artifact the
+      # T6.C4 spec actually requires to be reproducible.
+      - name: Compare SHA-256 between back-to-back builds
+        run: |
+          set -euo pipefail
+          wheel_fail=0
+          for artifact in dist/*.whl; do
+            base="$(basename "$artifact")"
+            other="dist-recheck/$base"
+            if [ ! -f "$other" ]; then
+              echo "::error::Missing wheel $other in second build — non-reproducible filenames."
+              wheel_fail=1
+              continue
+            fi
+            a="$(sha256sum "$artifact" | cut -d' ' -f1)"
+            b="$(sha256sum "$other" | cut -d' ' -f1)"
+            if [ "$a" != "$b" ]; then
+              echo "::error::Non-reproducible wheel: $base — $a vs $b"
+              wheel_fail=1
+            else
+              echo "Reproducible wheel: $base ($a)"
+            fi
+          done
+
+          for artifact in dist/*.tar.gz; do
+            base="$(basename "$artifact")"
+            other="dist-recheck/$base"
+            if [ ! -f "$other" ]; then
+              echo "::warning::Missing sdist $other in second build."
+              continue
+            fi
+            a="$(sha256sum "$artifact" | cut -d' ' -f1)"
+            b="$(sha256sum "$other" | cut -d' ' -f1)"
+            if [ "$a" != "$b" ]; then
+              echo "::warning::Non-reproducible sdist: $base — $a vs $b (known gzip-header gap; tracked in backlog)"
+            else
+              echo "Reproducible sdist: $base ($a)"
+            fi
+          done
+
+          if [ "$wheel_fail" -ne 0 ]; then
+            exit 1
+          fi
 
       # Hashes for the SLSA generic-generator reusable workflow.
       # `base64-subjects` expects newline-separated `sha256(file)  name`
@@ -330,11 +410,13 @@ jobs:
   publish-pypi:
     # Publishes the wheel + sdist to PyPI using OIDC (Trusted Publisher).
     # Requires a one-time setup on PyPI:
-    #   1. Create the project `secure-sdlc-evidence-collector` on PyPI.
+    #   1. Create the project `secure-sdlc-evidence-collector` on PyPI
+    #      (or configure a pending publisher; the project will be created
+    #      automatically on the first successful run).
     #   2. Under "Manage > Publishing", add a GitHub trusted publisher with:
     #        Owner:           lucashgrifoni
     #        Repository:      Secure-SDLC-Evidence-Collector
-    #        Workflow:        release.yml
+    #        Workflow:        publish-pypi.yml
     #        Environment:     pypi
     # No PYPI_API_TOKEN is needed: PyPI mints a short-lived token from the
     # OIDC claim issued by GitHub at publish time.

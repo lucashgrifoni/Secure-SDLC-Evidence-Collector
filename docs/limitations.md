@@ -95,7 +95,7 @@ The collector checks **presence**, not correctness.
   exists and declares the signed digest). It does **not** verify the
   signature against a key or an identity.
 - Verification of cosign keyless signatures is expected upstream (for
-  example in the `release.yml` workflow or on the consumer side). The
+  example in the `publish-pypi.yml` workflow or on the consumer side). The
   project's own release workflow signs its artifacts; downstream
   consumers still need to run `cosign verify-blob` themselves.
 
@@ -153,3 +153,68 @@ These are explicitly out of scope for security reports (see
   have existed.
 - DAST coverage on an API release where only UI was scanned — the
   collector sees a `dast_scan`, not its coverage.
+
+## 13 · Enriched bundles are not byte-stable across EPSS / KEV feed refreshes
+
+- `sdlc-evidence enrich` and `sdlc-evidence run --enrich` write
+  EPSS / KEV signal into evidence. The structural-hash gate
+  deliberately captures `epss_feed_date` and `kev_feed_date` so a
+  feed bump surfaces as drift.
+- This means **the same source artifacts produce different bundle
+  hashes on different days when enrichment is on**. That is the
+  intent: drift in the EPSS feed is meaningful, not noise.
+- If a downstream signer needs a single durable hash, sign the
+  **base bundle** (built without `--enrich`) and ship the enriched
+  view as a separate, time-bound delta. The base bundle is
+  byte-stable across runs on identical inputs.
+
+## 14 · Risk-weighted verdict only downgrades (T6.6)
+
+- `sdlc-evidence run --risk-mode epss-weighted` re-derives
+  `release_status` using EPSS + KEV signal already in the bundle.
+- The mode can only make the verdict **worse** (`ready` →
+  `conditional` → `not_ready`). It will **never** promote a
+  `not_ready` base verdict to `ready` just because the present CVEs
+  happen not to be exploitable. Missing required evidence is its own
+  gap and must be addressed at the evidence layer, not waved away.
+- A CVE on evidence marked `reachability.status == "not_reachable"`
+  is removed from the exploitable count. The collector trusts the
+  upstream reachability tool; it does not second-guess the verdict.
+
+## 15 · Reachability is not re-derived by the collector (§3.2)
+
+- The `Reachability` field is populated by external tools
+  (CodeQL reachability, Endor Labs, Semgrep Pro, manual review).
+- The collector records `status` (`reachable` / `not_reachable` /
+  `unknown`), `source`, and `method`. It does NOT compute
+  reachability and will NOT contradict an upstream verdict, even
+  when the data looks wrong.
+- `unknown` is treated as "could be exploitable" in risk weighting
+  so a missing reachability tool cannot silently suppress a real
+  signal.
+
+## 17 · Watch daemon postponed to v2.1 (T6.9)
+
+- The roadmap pairs the GUAC adapter with a ``sdlc-evidence watch``
+  daemon (webhook receiver, durable cursor, delta bundles for
+  continuous ATO). That subcommand is deferred from v2.0 to v2.1
+  because it requires an optional ``[watch]`` extra (FastAPI +
+  uvicorn + watchdog) and durable cursor persistence the
+  file-first collector deliberately avoids.
+- The GUAC adapter and the CRA / FedRAMP profiles cover the
+  immediate regulator-driven use cases for set/2026. The watch
+  daemon is a continuous-ATO accelerator, not a v2.0 blocker.
+
+## 16 · Multi-VEX consumer trusts the upstream verdict (T6.7)
+
+- `sdlc-evidence vex --consume <file>` merges external VEX
+  (OpenVEX, CycloneDX VEX, CSAF) into the bundle-derived statements.
+- The merger **does not validate** that the consumed VEX file was
+  signed or that the source is authentic. Pipelines that need that
+  guarantee must verify signatures before piping the file into
+  `--consume`.
+- Conflict policy (`first-wins`, `last-wins`, `fail`) decides what
+  happens when sources disagree. `fail` is the right choice when an
+  unexpected disagreement is itself a finding.
+- SPDX VEX is deferred (low industry adoption). Tracked in the v2.1
+  backlog.

@@ -63,7 +63,7 @@
 
 - name: area/release
   color: "fef2c0"
-  description: release.yml, signing, SLSA provenance, cosign, PyPI, container
+  description: publish-pypi.yml, signing, SLSA provenance, cosign, PyPI, container
 
 - name: area/ci
   color: "fef2c0"

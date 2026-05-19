@@ -11,11 +11,12 @@ from pathlib import Path
 import pytest
 
 from evidence_collector.controls.catalog import (
+    bundled_catalog_path,
     catalog_from_source,
     default_catalog,
     load_catalog,
 )
-from evidence_collector.domain.enums import ControlFramework
+from evidence_collector.domain.enums import ControlFramework, EvidenceType
 
 _VALID_CONTROL = """\
 controls:
@@ -35,6 +36,47 @@ def test_default_catalog_has_expected_size() -> None:
     ids = {c.control_id for c in controls}
     assert "SSDF-PW.7" in ids  # SAST
     assert "SAMM-VERIF-ST-1" in ids  # SAMM ST
+
+
+def test_default_catalog_does_not_include_ssdf_pw6() -> None:
+    """T6.4 guard: SSDF-PW.6 belongs to the 1.2 catalog only.
+
+    Promoting it into the default would silently raise the bar for
+    every existing user — exactly the regression the opt-in design is
+    meant to prevent.
+    """
+    ids = {c.control_id for c in default_catalog()}
+    assert "SSDF-PW.6" not in ids
+
+
+def test_bundled_ssdf_12_catalog_loads_cleanly() -> None:
+    path = bundled_catalog_path("catalog-ssdf-1.2.yaml")
+    controls = load_catalog(path)
+    # All control_ids unique (mirrors the loader's invariant).
+    ids = [c.control_id for c in controls]
+    assert len(ids) == len(set(ids))
+
+
+def test_ssdf_12_catalog_promotes_attestation_to_required_on_ps3() -> None:
+    """SSDF 1.2 refinement: PS.3 requires SBOM *and* artifact_attestation."""
+    path = bundled_catalog_path("catalog-ssdf-1.2.yaml")
+    controls = {c.control_id: c for c in load_catalog(path)}
+    ps3 = controls["SSDF-PS.3"]
+    assert EvidenceType.SBOM in ps3.required_evidence_types
+    assert EvidenceType.ARTIFACT_ATTESTATION in ps3.required_evidence_types
+
+
+def test_ssdf_12_catalog_adds_pw6_control() -> None:
+    """SSDF 1.2 introduces PW.6 (build-process security)."""
+    path = bundled_catalog_path("catalog-ssdf-1.2.yaml")
+    controls = {c.control_id: c for c in load_catalog(path)}
+    assert "SSDF-PW.6" in controls
+    assert EvidenceType.ARTIFACT_ATTESTATION in controls["SSDF-PW.6"].required_evidence_types
+
+
+def test_bundled_catalog_path_raises_for_missing_file() -> None:
+    with pytest.raises(FileNotFoundError):
+        bundled_catalog_path("catalog-does-not-exist.yaml")
 
 
 def test_default_catalog_frameworks_are_subset_of_enum() -> None:

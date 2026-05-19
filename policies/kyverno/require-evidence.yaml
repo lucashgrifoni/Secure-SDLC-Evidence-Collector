@@ -1,0 +1,112 @@
+# Kyverno ClusterPolicy: require a Secure SDLC Evidence Collector bundle
+# at admission time.
+#
+# Deploys are accepted only if the namespace carries an annotation
+# `secure-sdlc.io/release-status` whose value matches the headline
+# verdict produced by `sdlc-evidence run` (read from `summary.release_status`
+# of the bundle.json). The convention is that a release-tagging step in
+# the CI pipeline writes the annotation onto the target namespace before
+# any workload is applied:
+#
+#   kubectl annotate namespace acme-api \
+#     secure-sdlc.io/release-status=ready \
+#     secure-sdlc.io/bundle-sha256=$(sdlc-evidence verify bundle.json) \
+#     --overwrite
+#
+# This policy only checks the annotation; it does not fetch or validate
+# the bundle itself. Pair it with `policies/rego/release-ready.rego` run
+# in CI for the actual evidence check; this Kyverno policy is the
+# admission-time backstop that prevents an unannotated deploy.
+#
+# Tested with: kyverno apply policies/kyverno/require-evidence.yaml \
+#                            --resource <namespace.yaml>
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-secure-sdlc-evidence
+  annotations:
+    policies.kyverno.io/title: Require Secure SDLC Evidence
+    policies.kyverno.io/category: Secure SDLC
+    policies.kyverno.io/subject: Namespace, Deployment, StatefulSet, DaemonSet
+    policies.kyverno.io/description: >-
+      Workloads in any namespace except the documented exempt list are
+      admitted only when that namespace declares a Secure SDLC Evidence
+      Collector verdict via the secure-sdlc.io/release-status annotation
+      AND that verdict is "ready". The companion
+      secure-sdlc.io/bundle-sha256 annotation must point at the structural
+      SHA-256 produced by `sdlc-evidence verify`, so auditors can trace the
+      admitted workload back to the exact evidence bundle that approved it.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: namespace-must-have-release-status
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                # Reserve the standard kube-* and operator namespaces.
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+      validate:
+        message: >-
+          Namespace must declare a Secure SDLC Evidence Collector verdict
+          via secure-sdlc.io/release-status=ready and
+          secure-sdlc.io/bundle-sha256=<64-hex>. See
+          https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector
+          for how to produce the bundle.
+        pattern:
+          metadata:
+            annotations:
+              secure-sdlc.io/release-status: ready
+              secure-sdlc.io/bundle-sha256: "?(/{64}/)"
+
+    - name: workloads-inherit-namespace-evidence
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - StatefulSet
+                - DaemonSet
+                - Job
+                - CronJob
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+      preconditions:
+        all:
+          - key: "{{ request.operation }}"
+            operator: In
+            value:
+              - CREATE
+              - UPDATE
+      validate:
+        message: >-
+          The workload's namespace must carry a "ready" Secure SDLC verdict.
+          Annotate the namespace before deploying:
+              kubectl annotate namespace <ns> \
+                secure-sdlc.io/release-status=ready \
+                secure-sdlc.io/bundle-sha256=<sha256> --overwrite
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.metadata.namespace || '' }}"
+                operator: Equals
+                value: ""
+              - key: "{{ request.namespace.metadata.annotations.\"secure-sdlc.io/release-status\" || '' }}"
+                operator: NotEquals
+                value: ready

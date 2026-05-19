@@ -5,7 +5,7 @@
     "owner_team": null,
     "repository": "lucashgrifoni/Secure-SDLC-Evidence-Collector"
   },
-  "bundle_id": "bundle-20260518-secure-sdlc-evidence-collector-v1.1.0-955829eb",
+  "bundle_id": "bundle-20260518-secure-sdlc-evidence-collector-v1.1.0-73ee029e",
   "bundle_version": "1.0.0",
   "control_evaluations": [
     {
@@ -13,7 +13,7 @@
       "control_id": "SSDF-PW.7",
       "control_name": "Review and/or analyze human-readable code (SAST)",
       "criticality": "high",
-      "evaluated_at": "2026-05-18T12:20:31.129891Z",
+      "evaluated_at": "2026-05-18T16:52:59.183979Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "sast-55fbbe9168c1"
@@ -29,7 +29,7 @@
       "control_id": "SSDF-PW.4",
       "control_name": "Reuse existing, well-secured software (SCA)",
       "criticality": "high",
-      "evaluated_at": "2026-05-18T12:20:31.129891Z",
+      "evaluated_at": "2026-05-18T16:52:59.183979Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "sca-3a20656ad937"
@@ -45,7 +45,7 @@
       "control_id": "ORG-SECRETS-SCAN",
       "control_name": "Repository-wide secrets scanning",
       "criticality": "high",
-      "evaluated_at": "2026-05-18T12:20:31.129891Z",
+      "evaluated_at": "2026-05-18T16:52:59.183979Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "secrets-ad34de793c52"
@@ -61,7 +61,7 @@
       "control_id": "SSDF-PS.3",
       "control_name": "Archive and protect each software release (SBOM)",
       "criticality": "critical",
-      "evaluated_at": "2026-05-18T12:20:31.129891Z",
+      "evaluated_at": "2026-05-18T16:52:59.183979Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "sbom-355e550ac997",
@@ -79,7 +79,7 @@
       "control_id": "SSDF-PW.8",
       "control_name": "Test executable code to identify vulnerabilities",
       "criticality": "high",
-      "evaluated_at": "2026-05-18T12:20:31.129891Z",
+      "evaluated_at": "2026-05-18T16:52:59.183979Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "test-44328ed657f7"
@@ -95,7 +95,7 @@
       "control_id": "ORG-CODE-REVIEW",
       "control_name": "Code review by eligible reviewers",
       "criticality": "critical",
-      "evaluated_at": "2026-05-18T12:20:31.129891Z",
+      "evaluated_at": "2026-05-18T16:52:59.183979Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-fcee80cf86da",
@@ -112,7 +112,7 @@
       "control_id": "SSDF-PW.1",
       "control_name": "Design software to meet security requirements (threat model)",
       "criticality": "medium",
-      "evaluated_at": "2026-05-18T12:20:31.129891Z",
+      "evaluated_at": "2026-05-18T16:52:59.183979Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-59a2382eb18a"
@@ -128,7 +128,7 @@
       "control_id": "ORG-RELEASE-APPROVAL",
       "control_name": "Formal release approval",
       "criticality": "critical",
-      "evaluated_at": "2026-05-18T12:20:31.129891Z",
+      "evaluated_at": "2026-05-18T16:52:59.183979Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-f3bd336bf424"
@@ -144,7 +144,7 @@
       "control_id": "ORG-REL-ROLLBACK",
       "control_name": "Rollback plan exists and was approved",
       "criticality": "critical",
-      "evaluated_at": "2026-05-18T12:20:31.129891Z",
+      "evaluated_at": "2026-05-18T16:52:59.183979Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-6a5b1ef749bc"
@@ -160,7 +160,7 @@
       "control_id": "SSDF-PS.2",
       "control_name": "Provide a mechanism to verify software release integrity",
       "criticality": "critical",
-      "evaluated_at": "2026-05-18T12:20:31.129891Z",
+      "evaluated_at": "2026-05-18T16:52:59.183979Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-35354bda8818",
@@ -177,7 +177,7 @@
       "control_id": "SAMM-DESIGN-TA-1",
       "control_name": "Threat Assessment (Design / Threat Assessment 1)",
       "criticality": "medium",
-      "evaluated_at": "2026-05-18T12:20:31.129891Z",
+      "evaluated_at": "2026-05-18T16:52:59.183979Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "att-59a2382eb18a"
@@ -193,7 +193,7 @@
       "control_id": "SAMM-IMPL-SB-2",
       "control_name": "Secure Build (Implementation / Secure Build 2)",
       "criticality": "high",
-      "evaluated_at": "2026-05-18T12:20:31.129891Z",
+      "evaluated_at": "2026-05-18T16:52:59.183979Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "sbom-355e550ac997",
@@ -211,7 +211,7 @@
       "control_id": "SAMM-VERIF-ST-1",
       "control_name": "Security Testing (Verification / Security Testing 1)",
       "criticality": "high",
-      "evaluated_at": "2026-05-18T12:20:31.129891Z",
+      "evaluated_at": "2026-05-18T16:52:59.183979Z",
       "evaluation_status": "met",
       "evidence_refs": [
         "sast-55fbbe9168c1",
@@ -232,9 +232,10 @@
         "driver_name": "Bandit",
         "reason": "driver_match"
       },
-      "collected_at": "2026-05-18T12:20:31.117731Z",
+      "collected_at": "2026-05-18T16:52:59.171065Z",
       "commit_sha": "17dede200000000000000000000000000000000a",
       "confidence": "high",
+      "cve_ids": [],
       "evidence_id": "sast-55fbbe9168c1",
       "evidence_type": "sast_scan",
       "findings_count": {
@@ -265,7 +266,8 @@
       "status": "passed",
       "subject_ref": "17dede200000000000000000000000000000000a",
       "subject_type": "commit",
-      "summary": "Bandit reported 0 findings (high/critical=0)"
+      "summary": "Bandit reported 0 findings (high/critical=0)",
+      "vulnerability_intelligence": null
     },
     {
       "classification": {
@@ -273,9 +275,10 @@
         "driver_name": "gitleaks",
         "reason": "driver_match"
       },
-      "collected_at": "2026-05-18T12:20:31.117731Z",
+      "collected_at": "2026-05-18T16:52:59.172057Z",
       "commit_sha": "17dede200000000000000000000000000000000a",
       "confidence": "high",
+      "cve_ids": [],
       "evidence_id": "secrets-ad34de793c52",
       "evidence_type": "secrets_scan",
       "findings_count": {
@@ -306,13 +309,15 @@
       "status": "passed",
       "subject_ref": "17dede200000000000000000000000000000000a",
       "subject_type": "commit",
-      "summary": "gitleaks reported 0 findings (high/critical=0)"
+      "summary": "gitleaks reported 0 findings (high/critical=0)",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:31.117731Z",
+      "collected_at": "2026-05-18T16:52:59.172057Z",
       "commit_sha": "17dede200000000000000000000000000000000a",
       "confidence": "high",
+      "cve_ids": [],
       "evidence_id": "test-44328ed657f7",
       "evidence_type": "test_result",
       "findings_count": {
@@ -342,7 +347,8 @@
       "status": "passed",
       "subject_ref": "17dede200000000000000000000000000000000a",
       "subject_type": "commit",
-      "summary": "45 tests executed, 0 failures, 0 errors, 0 skipped, duration 0.31s"
+      "summary": "45 tests executed, 0 failures, 0 errors, 0 skipped, duration 0.31s",
+      "vulnerability_intelligence": null
     },
     {
       "classification": {
@@ -350,9 +356,12 @@
         "driver_name": "pip-audit",
         "reason": "driver_match"
       },
-      "collected_at": "2026-05-18T12:20:31.117731Z",
+      "collected_at": "2026-05-18T16:52:59.172057Z",
       "commit_sha": "17dede200000000000000000000000000000000a",
       "confidence": "high",
+      "cve_ids": [
+        "CVE-2025-71176"
+      ],
       "evidence_id": "sca-3a20656ad937",
       "evidence_type": "sca_scan",
       "findings_count": {
@@ -383,13 +392,15 @@
       "status": "passed",
       "subject_ref": "17dede200000000000000000000000000000000a",
       "subject_type": "commit",
-      "summary": "pip-audit reported 1 findings (high/critical=0)"
+      "summary": "pip-audit reported 1 findings (high/critical=0)",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:31.121747Z",
+      "collected_at": "2026-05-18T16:52:59.174308Z",
       "commit_sha": "17dede200000000000000000000000000000000a",
       "confidence": "high",
+      "cve_ids": [],
       "evidence_id": "sbom-355e550ac997",
       "evidence_type": "sbom",
       "findings_count": {
@@ -418,13 +429,15 @@
       "status": "generated",
       "subject_ref": "secure-sdlc-evidence-collector@0.1.0",
       "subject_type": "artifact",
-      "summary": "CYCLONEDX SBOM with 260 components (spec 1.6)"
+      "summary": "CYCLONEDX SBOM with 260 components (spec 1.6)",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:31.121747Z",
+      "collected_at": "2026-05-18T16:52:59.175780Z",
       "commit_sha": "17dede200000000000000000000000000000000a",
       "confidence": "medium",
+      "cve_ids": [],
       "evidence_id": "att-cc948cb8a6a4",
       "evidence_type": "artifact_attestation",
       "findings_count": {},
@@ -454,13 +467,15 @@
       "status": "passed",
       "subject_ref": "secure-sdlc-evidence-collector:v0.1.0",
       "subject_type": "artifact",
-      "summary": "Build provenance recorded: release built from master at commit SHA recorded in release_context, tests and linters passed locally and in CI. SLSA provenance v1 will be produced automatically by GitHub Actions for v0.2.0."
+      "summary": "Build provenance recorded: release built from master at commit SHA recorded in release_context, tests and linters passed locally and in CI. SLSA provenance v1 will be produced automatically by GitHub Actions for v0.2.0.",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:31.121747Z",
+      "collected_at": "2026-05-18T16:52:59.175780Z",
       "commit_sha": "17dede200000000000000000000000000000000a",
       "confidence": "medium",
+      "cve_ids": [],
       "evidence_id": "att-35354bda8818",
       "evidence_type": "artifact_signature",
       "findings_count": {},
@@ -489,13 +504,15 @@
       "status": "passed",
       "subject_ref": "secure-sdlc-evidence-collector:v0.1.0",
       "subject_type": "artifact",
-      "summary": "Release integrity anchored by git tag v0.1.0 over commit SHA. A future release (>=0.2.0) will add cosign keyless signing via GitHub Actions OIDC once the public repository and release workflow are in place."
+      "summary": "Release integrity anchored by git tag v0.1.0 over commit SHA. A future release (>=0.2.0) will add cosign keyless signing via GitHub Actions OIDC once the public repository and release workflow are in place.",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:31.125760Z",
+      "collected_at": "2026-05-18T16:52:59.176919Z",
       "commit_sha": "17dede200000000000000000000000000000000a",
       "confidence": "medium",
+      "cve_ids": [],
       "evidence_id": "att-fcee80cf86da",
       "evidence_type": "code_review",
       "findings_count": {},
@@ -525,13 +542,15 @@
       "status": "passed",
       "subject_ref": "PR-0-initial-mvp",
       "subject_type": "pull_request",
-      "summary": "Initial MVP self-reviewed against the project plan and the repository CLAUDE.md quality rules. All quality gates (ruff, mypy --strict, pytest 45/45, 81% coverage) passed before tagging."
+      "summary": "Initial MVP self-reviewed against the project plan and the repository CLAUDE.md quality rules. All quality gates (ruff, mypy --strict, pytest 45/45, 81% coverage) passed before tagging.",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:31.125760Z",
+      "collected_at": "2026-05-18T16:52:59.178239Z",
       "commit_sha": "17dede200000000000000000000000000000000a",
       "confidence": "low",
+      "cve_ids": [],
       "evidence_id": "att-db21182f1d7e",
       "evidence_type": "dast_scan",
       "findings_count": {},
@@ -561,13 +580,15 @@
       "status": "passed",
       "subject_ref": "secure-sdlc-evidence-collector",
       "subject_type": "application",
-      "summary": "Dynamic application security testing is not applicable: the product is a Python CLI and library, it does not expose an HTTP, RPC, or any other networked surface that a DAST scanner could exercise. This attestation documents the non-applicability so SAMM-VERIF-ST-1's recommended DAST evidence is not a silent gap."
+      "summary": "Dynamic application security testing is not applicable: the product is a Python CLI and library, it does not expose an HTTP, RPC, or any other networked surface that a DAST scanner could exercise. This attestation documents the non-applicability so SAMM-VERIF-ST-1's recommended DAST evidence is not a silent gap.",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:31.125760Z",
+      "collected_at": "2026-05-18T16:52:59.178239Z",
       "commit_sha": "17dede200000000000000000000000000000000a",
       "confidence": "medium",
+      "cve_ids": [],
       "evidence_id": "att-eb11de699a36",
       "evidence_type": "pr_metadata",
       "findings_count": {},
@@ -600,13 +621,15 @@
       "status": "passed",
       "subject_ref": "PR-0-initial-mvp",
       "subject_type": "pull_request",
-      "summary": "Initial MVP landed on master via fast-forward after local review"
+      "summary": "Initial MVP landed on master via fast-forward after local review",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:31.125760Z",
+      "collected_at": "2026-05-18T16:52:59.178239Z",
       "commit_sha": "17dede200000000000000000000000000000000a",
       "confidence": "medium",
+      "cve_ids": [],
       "evidence_id": "att-f3bd336bf424",
       "evidence_type": "release_approval",
       "findings_count": {},
@@ -635,13 +658,15 @@
       "status": "passed",
       "subject_ref": "secure-sdlc-evidence-collector:v0.1.0",
       "subject_type": "release",
-      "summary": "v0.1.0 approved for tag and public release after meeting the Definition of Done: bundle, report, summary generated end-to-end, CI pipeline green, README complete, sample fixture reproducible."
+      "summary": "v0.1.0 approved for tag and public release after meeting the Definition of Done: bundle, report, summary generated end-to-end, CI pipeline green, README complete, sample fixture reproducible.",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:31.125760Z",
+      "collected_at": "2026-05-18T16:52:59.179459Z",
       "commit_sha": "17dede200000000000000000000000000000000a",
       "confidence": "medium",
+      "cve_ids": [],
       "evidence_id": "att-6a5b1ef749bc",
       "evidence_type": "rollback_plan",
       "findings_count": {},
@@ -669,13 +694,15 @@
       "status": "passed",
       "subject_ref": "secure-sdlc-evidence-collector:v0.1.0",
       "subject_type": "release",
-      "summary": "Rollback plan: revert the v0.1.0 tag and yank the version from PyPI (if published). Downstream consumers can pin the previous commit SHA; no migrations or persistent state are involved in this CLI tool."
+      "summary": "Rollback plan: revert the v0.1.0 tag and yank the version from PyPI (if published). Downstream consumers can pin the previous commit SHA; no migrations or persistent state are involved in this CLI tool.",
+      "vulnerability_intelligence": null
     },
     {
       "classification": null,
-      "collected_at": "2026-05-18T12:20:31.125760Z",
+      "collected_at": "2026-05-18T16:52:59.180461Z",
       "commit_sha": "17dede200000000000000000000000000000000a",
       "confidence": "medium",
+      "cve_ids": [],
       "evidence_id": "att-59a2382eb18a",
       "evidence_type": "threat_model",
       "findings_count": {},
@@ -704,12 +731,13 @@
       "status": "completed",
       "subject_ref": "secure-sdlc-evidence-collector",
       "subject_type": "application",
-      "summary": "Threat model documented in plan doc (sections 15, 19 and 21): assets are the bundle integrity and audit lineage; actors include CI pipelines and downstream auditors; trust boundaries are file ingestion and GitHub API. Mitigations applied: 25MB ingest cap, SHA-256 integrity hashes, strict Pydantic schemas, no secret logging, defusedxml for XML parsing."
+      "summary": "Threat model documented in plan doc (sections 15, 19 and 21): assets are the bundle integrity and audit lineage; actors include CI pipelines and downstream auditors; trust boundaries are file ingestion and GitHub API. Mitigations applied: 25MB ingest cap, SHA-256 integrity hashes, strict Pydantic schemas, no secret logging, defusedxml for XML parsing.",
+      "vulnerability_intelligence": null
     }
   ],
   "exceptions": [],
   "gaps": [],
-  "generated_at": "2026-05-18T12:20:31.129891Z",
+  "generated_at": "2026-05-18T16:52:59.184980Z",
   "release": {
     "artifact_digest": null,
     "branch": "main",

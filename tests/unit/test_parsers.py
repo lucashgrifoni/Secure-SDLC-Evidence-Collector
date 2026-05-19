@@ -9,6 +9,7 @@ import pytest
 from evidence_collector.parsers import (
     parse_attestation,
     parse_junit,
+    parse_osv,
     parse_sarif,
     parse_sbom,
 )
@@ -38,6 +39,199 @@ def test_parse_sbom_cyclonedx(sample_release_root: Path) -> None:
     assert parsed.component_count == 3
     assert parsed.subject_ref == "pkg:generic/acme/payments-api@2026.04.10"
     assert parsed.spec_version == "1.5"
+    # T6.1 backward-compat: a CycloneDX 1.5 SBOM has neither lifecycles
+    # nor inline analyses, so the new fields must be empty.
+    assert parsed.lifecycle_phases == []
+    assert parsed.vulnerability_analyses == []
+
+
+def test_parse_sbom_cyclonedx_17_lifecycles(tmp_path: Path) -> None:
+    sbom_path = tmp_path / "sbom-1.7-lifecycles.cdx.json"
+    sbom_path.write_text(
+        """
+        {
+          "bomFormat": "CycloneDX",
+          "specVersion": "1.7",
+          "serialNumber": "urn:uuid:0aaaaaa0-1111-2222-3333-444444444444",
+          "version": 1,
+          "metadata": {
+            "timestamp": "2026-05-19T08:00:00Z",
+            "component": {
+              "type": "application",
+              "name": "payments-api",
+              "version": "2026.05.19",
+              "purl": "pkg:generic/acme/payments-api@2026.05.19"
+            },
+            "lifecycles": [
+              {"phase": "build"},
+              {"phase": "post-build"},
+              {"name": "internal-staging-soak"}
+            ]
+          },
+          "components": []
+        }
+        """,
+        encoding="utf-8",
+    )
+    parsed = parse_sbom(sbom_path)
+    assert parsed.format == "cyclonedx"
+    assert parsed.spec_version == "1.7"
+    assert parsed.lifecycle_phases == ["build", "post-build", "internal-staging-soak"]
+    assert parsed.vulnerability_analyses == []
+
+
+def test_parse_sbom_cyclonedx_17_inline_vex(tmp_path: Path) -> None:
+    sbom_path = tmp_path / "sbom-1.7-vex.cdx.json"
+    sbom_path.write_text(
+        """
+        {
+          "bomFormat": "CycloneDX",
+          "specVersion": "1.7",
+          "version": 1,
+          "metadata": {
+            "component": {
+              "type": "application",
+              "name": "payments-api",
+              "purl": "pkg:generic/acme/payments-api@1"
+            }
+          },
+          "components": [],
+          "vulnerabilities": [
+            {
+              "id": "CVE-2026-0001",
+              "analysis": {
+                "state": "not_affected",
+                "justification": "code_not_reachable",
+                "response": ["will_not_fix"],
+                "detail": "Vulnerable function never called from any entrypoint."
+              }
+            },
+            {
+              "id": "CVE-2026-0002",
+              "analysis": {
+                "state": "exploitable",
+                "detail": "Triggered by anonymous POST."
+              }
+            },
+            {
+              "id": "GHSA-xxxx-yyyy-zzzz",
+              "analysis": {"state": "in_triage"}
+            }
+          ]
+        }
+        """,
+        encoding="utf-8",
+    )
+    parsed = parse_sbom(sbom_path)
+    # GHSA-only entry without a CVE id must be skipped.
+    assert len(parsed.vulnerability_analyses) == 2
+    by_cve = {a.cve_id: a for a in parsed.vulnerability_analyses}
+    assert by_cve["CVE-2026-0001"].state == "not_affected"
+    assert by_cve["CVE-2026-0001"].justification == "code_not_reachable"
+    assert by_cve["CVE-2026-0001"].responses == ["will_not_fix"]
+    assert by_cve["CVE-2026-0002"].state == "exploitable"
+    assert by_cve["CVE-2026-0002"].justification is None
+
+
+def test_parse_osv_scanner_envelope(tmp_path: Path) -> None:
+    osv_path = tmp_path / "osv-scanner.json"
+    osv_path.write_text(
+        """
+        {
+          "results": [
+            {
+              "source": {"path": "package-lock.json", "type": "lockfile"},
+              "packages": [
+                {
+                  "package": {"name": "lodash", "version": "4.17.20", "ecosystem": "npm"},
+                  "vulnerabilities": [
+                    {
+                      "id": "GHSA-p6mc-m468-83gw",
+                      "aliases": ["CVE-2020-8203"],
+                      "severity": [{"type": "CVSS_V3", "score": "7.4"}]
+                    }
+                  ],
+                  "groups": [{"ids": ["GHSA-p6mc-m468-83gw"], "max_severity": "7.4"}]
+                },
+                {
+                  "package": {"name": "django", "version": "3.0", "ecosystem": "PyPI"},
+                  "vulnerabilities": [
+                    {
+                      "id": "PYSEC-2020-3",
+                      "aliases": ["CVE-2020-9402"],
+                      "severity": [{"type": "CVSS_V3", "score": "9.1"}]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """,
+        encoding="utf-8",
+    )
+    parsed = parse_osv(osv_path)
+    assert parsed.tool_name == "osv-scanner"
+    assert parsed.total_findings == 2
+    assert parsed.findings_count["high"] == 1
+    assert parsed.findings_count["critical"] == 1
+    assert parsed.cve_ids == ["CVE-2020-8203", "CVE-2020-9402"]
+    assert parsed.ecosystems == ["npm", "PyPI"]
+    assert parsed.package_count == 2
+
+
+def test_parse_osv_single_record(tmp_path: Path) -> None:
+    osv_path = tmp_path / "ghsa.json"
+    osv_path.write_text(
+        """
+        {
+          "id": "GHSA-xxxx-yyyy-zzzz",
+          "aliases": ["CVE-2026-1234"],
+          "summary": "Example.",
+          "affected": [
+            {"package": {"name": "foo", "ecosystem": "Go"}}
+          ],
+          "severity": [{"type": "CVSS_V3", "score": "3.7"}]
+        }
+        """,
+        encoding="utf-8",
+    )
+    parsed = parse_osv(osv_path)
+    assert parsed.tool_name == "osv"
+    assert parsed.total_findings == 1
+    assert parsed.findings_count["low"] == 1
+    assert parsed.cve_ids == ["CVE-2026-1234"]
+    assert parsed.ecosystems == ["Go"]
+
+
+def test_parse_osv_rejects_unknown_shape(tmp_path: Path) -> None:
+    bad_path = tmp_path / "not-osv.json"
+    bad_path.write_text('{"foo": "bar"}', encoding="utf-8")
+    with pytest.raises(ParseError):
+        parse_osv(bad_path)
+
+
+def test_parse_osv_defaults_to_medium_when_severity_missing(tmp_path: Path) -> None:
+    osv_path = tmp_path / "no-severity.json"
+    osv_path.write_text(
+        """
+        {
+          "results": [
+            {
+              "packages": [
+                {
+                  "package": {"name": "leftpad", "version": "1.0.0", "ecosystem": "npm"},
+                  "vulnerabilities": [{"id": "GHSA-no-severity"}]
+                }
+              ]
+            }
+          ]
+        }
+        """,
+        encoding="utf-8",
+    )
+    parsed = parse_osv(osv_path)
+    assert parsed.findings_count["medium"] == 1
 
 
 def test_parse_sbom_spdx(tmp_path: Path) -> None:
