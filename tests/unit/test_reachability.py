@@ -67,8 +67,9 @@ def test_evidence_without_reachability_hashes_like_pre_section_3_2() -> None:
     assert evidence_dict["reachability"] is None
 
     # Simulate a full bundle JSON: just feed the evidence list through
-    # normalize_bundle by wrapping it in a minimal dict.
-    payload = {"evidence": [dict(evidence_dict)]}
+    # normalize_bundle by wrapping it in a minimal dict. Annotated as
+    # ``dict[str, object]`` so dict invariance does not trip mypy.
+    payload: dict[str, object] = {"evidence": [dict(evidence_dict)]}
     normalised = normalize_bundle(payload)
     assert b'"reachability"' not in normalised
 
@@ -76,6 +77,6 @@ def test_evidence_without_reachability_hashes_like_pre_section_3_2() -> None:
 def test_reachability_present_survives_normalisation() -> None:
     reach = Reachability(status="not_reachable", source="codeql", method="data_flow")
     evidence_dict = _evidence(reach).model_dump(mode="json")
-    payload = {"evidence": [dict(evidence_dict)]}
+    payload: dict[str, object] = {"evidence": [dict(evidence_dict)]}
     normalised = normalize_bundle(payload)
     assert b'"not_reachable"' in normalised

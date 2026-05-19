@@ -76,6 +76,8 @@ nav:
   - GitHub Action: github_action.md
   - Release readiness: release-readiness.md
   - Public repository readiness: publication-readiness.md
+  - AI evidence: ai-evidence.md
+  - Comparison vs alternatives: comparison.md
   - Plugins: plugins.md
   - Limitations: limitations.md
   - Traceability: traceability.md
@@ -89,6 +91,21 @@ nav:
       - ADR-0003 Typer CLI: adr/0003-typer-cli.md
       - ADR-0004 Evidence-first: adr/0004-evidence-first.md
       - ADR-0005 Catalog override: adr/0005-control-catalog-override.md
+      - ADR-0006 CLI command modularization: adr/0006-cli-command-modularization.md
+      - ADR-0007 in-toto predicate type variants: adr/0007-intoto-predicate-type-variants.md
+      - ADR-0008 AI evidence types and provenance: adr/0008-ai-evidence-types-and-provenance.md
+      - ADR-0009 Risk-weighted release verdict: adr/0009-risk-weighted-release-verdict.md
+      - ADR-0010 Reachability as optional SCA evidence field: adr/0010-reachability-as-optional-sca-evidence-field.md
+      - ADR-0011 CRA + FedRAMP 20x profiles: adr/0011-cra-and-fedramp-20x-profiles.md
+      - ADR-0012 GUAC graph integration: adr/0012-guac-graph-integration.md
+
+# Program / runbook content is published on the Pages docs site as
+# excluded reference material (linked from doc bodies, not nav). The
+# ``exclude_docs`` block keeps mkdocs --strict happy by making it
+# clear we own the omission.
+exclude_docs: |
+  program/
+  output/
 
 plugins:
   - search

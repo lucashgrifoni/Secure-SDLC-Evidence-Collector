@@ -137,9 +137,7 @@ def parse_lm_eval(path: str | Path) -> ParsedLmEval:
     data = load_json(resolved)
 
     if not isinstance(data.get("results"), dict):
-        raise ParseError(
-            f"lm-eval report {resolved} has no top-level ``results`` mapping"
-        )
+        raise ParseError(f"lm-eval report {resolved} has no top-level ``results`` mapping")
 
     tool_version = None
     versions = data.get("versions")

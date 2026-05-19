@@ -148,9 +148,7 @@ class LocalArtifactCollector:
             if _looks_like_garak(file_path):
                 parsed_garak = parse_garak(file_path)
                 report.evidence.append(
-                    normalize_garak(
-                        parsed_garak, self._release, artifact_root=self._artifact_root
-                    )
+                    normalize_garak(parsed_garak, self._release, artifact_root=self._artifact_root)
                 )
                 return
             if _looks_like_lm_eval(file_path):
@@ -260,10 +258,7 @@ def _looks_like_model_card(path: Path) -> bool:
     data = _peek_json(path)
     if not isinstance(data, dict):
         return False
-    return (
-        isinstance(data.get("model_details"), dict)
-        or isinstance(data.get("model-index"), list)
-    )
+    return isinstance(data.get("model_details"), dict) or isinstance(data.get("model-index"), list)
 
 
 def _looks_like_osv(path: Path) -> bool:

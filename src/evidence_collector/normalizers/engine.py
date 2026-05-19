@@ -402,9 +402,7 @@ def normalize_lm_eval(
 ) -> NormalizedEvidence:
     """Build an ``ai_safety_eval`` evidence from an lm-eval-harness report."""
     metadata: dict[str, Any] = {
-        "tasks": [
-            {"task": t.task, "metrics": dict(t.metrics)} for t in parsed.tasks
-        ],
+        "tasks": [{"task": t.task, "metrics": dict(t.metrics)} for t in parsed.tasks],
         "total_tasks": parsed.total_tasks,
     }
     if parsed.model_id:
@@ -469,10 +467,7 @@ def normalize_model_card(
         generated_at=None,
         raw=_raw_ref(parsed.artifact, artifact_root),
         findings_count={},
-        summary=(
-            f"Model card ({parsed.shape}) for "
-            f"{parsed.model_id or 'unknown model'}"
-        ),
+        summary=(f"Model card ({parsed.shape}) for {parsed.model_id or 'unknown model'}"),
         metadata=metadata,
     )
 

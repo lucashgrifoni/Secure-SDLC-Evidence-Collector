@@ -204,9 +204,7 @@ def parse_vex_inline_openvex(cve_id: str, status: str):
     yield VexStatement(
         cve_id=cve_id,
         status=status,
-        justification=(
-            "vulnerable_code_not_present" if status == "not_affected" else None
-        ),
+        justification=("vulnerable_code_not_present" if status == "not_affected" else None),
         source_shape="openvex",
         source_path="<test>",
     )

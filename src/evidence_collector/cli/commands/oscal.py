@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
@@ -13,7 +13,7 @@ from pydantic import ValidationError
 from evidence_collector.cli._state import console
 
 
-class OscalKind(str, Enum):
+class OscalKind(StrEnum):
     """Which OSCAL model to emit."""
 
     catalog = "catalog"
