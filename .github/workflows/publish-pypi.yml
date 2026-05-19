@@ -547,12 +547,23 @@ jobs:
       - name: Install syft
         uses: anchore/sbom-action/download-syft@e11c554f704a0b820cbf8c51673f6945e0731532 # v0.20.0
 
+      # Force registry mode so syft does not try the local containerd
+      # socket (unavailable on GitHub-hosted runners; previous runs
+      # failed with "containerd not available... permission denied").
+      # ``SYFT_REGISTRY_AUTH_*`` env vars give syft the GHCR
+      # credentials directly, independent of ~/.docker/config.json
+      # (which docker/login-action may or may not have populated for
+      # the runner user that runs syft).
       - name: Generate SBOM for image
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
+          SYFT_REGISTRY_AUTH_AUTHORITY: ${{ env.REGISTRY }}
+          SYFT_REGISTRY_AUTH_USERNAME: ${{ github.actor }}
+          SYFT_REGISTRY_AUTH_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          syft "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${DIGEST}" \
+          syft scan \
+            "registry:${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${DIGEST}" \
             -o cyclonedx-json=image-sbom.cdx.json
 
       - name: Attach SBOM as cosign attestation

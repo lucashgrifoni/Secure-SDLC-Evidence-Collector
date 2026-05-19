@@ -1,13 +1,13 @@
 /* Secure SDLC Evidence Collector - hero 3D scene
    Three.js UMD global: THREE
-   Conceito:
-   - "Evidence Core" central (icosaedro wireframe) representa o bundle canonico.
-   - Nodes orbitais representam fontes de evidencia (SAST, SCA, SBOM, PR, Release...).
-   - Particulas com linhas = lineage / data packets.
-   - Camera parallax via mouse + rotacao suave.
-   - Pausa quando aba esta inativa.
-   - Respeita prefers-reduced-motion.
-   - Fallback se WebGL nao disponivel. */
+   Concept:
+   - Central "Evidence Core" (wireframe icosahedron) represents the canonical bundle.
+   - Orbital nodes represent evidence sources (SAST, SCA, SBOM, PR, Release...).
+   - Particles with lines = lineage / data packets.
+   - Camera parallax via mouse + smooth rotation.
+   - Pauses when the tab is inactive.
+   - Respects prefers-reduced-motion.
+   - Fallback when WebGL is not available. */
 
 (function () {
   "use strict";
