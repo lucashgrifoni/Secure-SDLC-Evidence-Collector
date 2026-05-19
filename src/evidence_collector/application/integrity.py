@@ -97,6 +97,18 @@ def _strip_volatile_in_vuln_intel(entry: dict[str, object]) -> None:
             intel.pop(key, None)
 
 
+def _strip_null_optional_field(container: object, key: str) -> None:
+    """Remove ``key`` from ``container`` when its value is ``None``.
+
+    Lets the structural hash treat pre-T6.6 bundles (no key at all) and
+    post-T6.6 bundles with the feature disabled (``key: null``) as
+    equivalent — adopting new optional fields therefore does not break
+    byte-stability when the feature is off.
+    """
+    if isinstance(container, dict) and container.get(key) is None and key in container:
+        container.pop(key, None)
+
+
 def normalize_bundle(data: dict[str, object]) -> bytes:
     """Strip volatile fields and return a canonical UTF-8 JSON byte stream.
 
@@ -109,7 +121,15 @@ def normalize_bundle(data: dict[str, object]) -> bytes:
     for entry in _strip_keys(data.get("evidence"), VOLATILE_EVIDENCE):
         _normalize_raw_paths(entry)
         _strip_volatile_in_vuln_intel(entry)
+        # §3.2 — drop ``reachability`` when None so pre-§3.2 bundles
+        # hash identically to post-§3.2 bundles that did not opt in.
+        _strip_null_optional_field(entry, "reachability")
     _strip_keys(data.get("control_evaluations"), VOLATILE_CONTROL)
+    # T6.6 — drop ``risk_assessment`` from the summary when None so the
+    # default ``--risk-mode off`` keeps byte-stability with pre-T6.6
+    # bundles. When risk-mode is explicitly engaged the structural hash
+    # changes by design (the verdict has different inputs).
+    _strip_null_optional_field(data.get("summary"), "risk_assessment")
     return json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
 
 

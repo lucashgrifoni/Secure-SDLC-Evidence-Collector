@@ -25,6 +25,8 @@ from evidence_collector.domain.models import (
 from evidence_collector.exporters.intoto import (
     IN_TOTO_TYPE,
     PREDICATE_TYPE,
+    PREDICATE_TYPE_SLSA_PROVENANCE,
+    PREDICATE_TYPE_WITNESS,
     build_dsse_envelope,
     build_statement,
 )
@@ -111,3 +113,29 @@ def test_statement_predicate_preserves_full_bundle() -> None:
     assert stmt["predicate"]["application"]["name"] == "acme-api"
     assert stmt["predicate"]["evidence"][0]["evidence_id"] == "sca-1"
     assert stmt["predicate"]["evidence"][0]["cve_ids"] == ["CVE-2024-1111"]
+
+
+def test_build_statement_default_is_evidence_bundle_predicate() -> None:
+    """Default behaviour must match the pre-T6.3 contract for backward-compat."""
+    stmt = build_statement(_bundle())
+    assert stmt["predicateType"] == PREDICATE_TYPE
+
+
+def test_build_statement_witness_predicate_advertises_witness_uri() -> None:
+    stmt = build_statement(_bundle(), predicate_type="witness")
+    assert stmt["predicateType"] == PREDICATE_TYPE_WITNESS
+    # Same subject digest as default: the bundle bytes did not change.
+    assert stmt["subject"] == build_statement(_bundle())["subject"]
+
+
+def test_build_statement_slsa_provenance_predicate_uses_slsa_uri() -> None:
+    stmt = build_statement(_bundle(), predicate_type="slsa-provenance")
+    assert stmt["predicateType"] == PREDICATE_TYPE_SLSA_PROVENANCE
+
+
+def test_build_statement_round_trip_through_dsse_preserves_predicate_type() -> None:
+    """A Witness Statement must survive DSSE base64 round-trip."""
+    stmt = build_statement(_bundle(), predicate_type="witness")
+    envelope = build_dsse_envelope(stmt)
+    decoded = json.loads(base64.standard_b64decode(envelope["payload"]).decode("utf-8"))
+    assert decoded["predicateType"] == PREDICATE_TYPE_WITNESS

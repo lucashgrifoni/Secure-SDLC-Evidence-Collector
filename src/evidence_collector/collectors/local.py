@@ -20,7 +20,11 @@ from evidence_collector.domain.models import (
 )
 from evidence_collector.normalizers import (
     normalize_attestation,
+    normalize_garak,
     normalize_junit,
+    normalize_lm_eval,
+    normalize_model_card,
+    normalize_osv,
     normalize_sarif,
     normalize_sbom,
     normalize_zap,
@@ -28,7 +32,11 @@ from evidence_collector.normalizers import (
 from evidence_collector.parsers import (
     parse_attestation,
     parse_exception,
+    parse_garak,
     parse_junit,
+    parse_lm_eval,
+    parse_model_card,
+    parse_osv,
     parse_sarif,
     parse_sbom,
     parse_zap,
@@ -125,6 +133,40 @@ class LocalArtifactCollector:
                     normalize_sbom(parsed_sbom, self._release, artifact_root=self._artifact_root)
                 )
                 return
+            # OSV detection must come after SBOM detection so we do not
+            # mis-classify a CycloneDX with an embedded ``vulnerabilities``
+            # block as an OSV report.
+            if _looks_like_osv(file_path):
+                parsed_osv = parse_osv(file_path)
+                report.evidence.append(
+                    normalize_osv(parsed_osv, self._release, artifact_root=self._artifact_root)
+                )
+                return
+            # T6.5 AI evidence detection. Filename-based first because
+            # garak / lm-eval / model-card payloads are JSON shapes we
+            # do not want to confuse with generic JSON artifacts.
+            if _looks_like_garak(file_path):
+                parsed_garak = parse_garak(file_path)
+                report.evidence.append(
+                    normalize_garak(
+                        parsed_garak, self._release, artifact_root=self._artifact_root
+                    )
+                )
+                return
+            if _looks_like_lm_eval(file_path):
+                parsed_lm = parse_lm_eval(file_path)
+                report.evidence.append(
+                    normalize_lm_eval(parsed_lm, self._release, artifact_root=self._artifact_root)
+                )
+                return
+            if _looks_like_model_card(file_path):
+                parsed_mc = parse_model_card(file_path)
+                report.evidence.append(
+                    normalize_model_card(
+                        parsed_mc, self._release, artifact_root=self._artifact_root
+                    )
+                )
+                return
             if _looks_like_zap(file_path):
                 parsed_zap = parse_zap(file_path)
                 report.evidence.append(
@@ -170,6 +212,77 @@ def _looks_like_sbom(path: Path) -> bool:
     if not isinstance(data, dict):
         return False
     return data.get("bomFormat") == "CycloneDX" or "components" in data or "spdxVersion" in data
+
+
+def _looks_like_garak(path: Path) -> bool:
+    """Detect a garak report by filename.
+
+    garak emits ``*.report.jsonl`` or ``*.garak.json``; the JSONL
+    inside is line-delimited and we cannot peek with ``json.load``,
+    so the filename heuristic is the cleanest detector. We also
+    accept ``garak.json`` as a default name.
+    """
+    name = path.name.lower()
+    suffix = path.suffix.lower()
+    if suffix not in {".json", ".jsonl"}:
+        return False
+    return (
+        name.endswith(".garak.json")
+        or name.endswith(".garak.jsonl")
+        or name == "garak.json"
+        or name == "garak.jsonl"
+        or name.endswith(".report.jsonl")
+    )
+
+
+def _looks_like_lm_eval(path: Path) -> bool:
+    """Detect an lm-evaluation-harness JSON result by filename + shape."""
+    if path.suffix.lower() != ".json":
+        return False
+    name = path.name.lower()
+    if name.endswith(".lm-eval.json") or name.endswith(".lm_eval.json") or name == "lm-eval.json":
+        return True
+    data = _peek_json(path)
+    if not isinstance(data, dict):
+        return False
+    # Top-level ``results`` mapping + ``versions`` is lm-eval's
+    # standard shape across versions.
+    return isinstance(data.get("results"), dict) and isinstance(data.get("versions"), dict)
+
+
+def _looks_like_model_card(path: Path) -> bool:
+    """Detect a model card JSON by filename + discriminating keys."""
+    if path.suffix.lower() != ".json":
+        return False
+    name = path.name.lower()
+    if name in {"model-card.json", "model_card.json"} or name.endswith(".modelcard.json"):
+        return True
+    data = _peek_json(path)
+    if not isinstance(data, dict):
+        return False
+    return (
+        isinstance(data.get("model_details"), dict)
+        or isinstance(data.get("model-index"), list)
+    )
+
+
+def _looks_like_osv(path: Path) -> bool:
+    """Detect OSV-Scanner native output or a single OSV record.
+
+    OSV-Scanner emits ``{"results": [...]}`` and a single OSV record
+    carries ``{"id": "...", "affected": [...]}`` at the top level. We
+    avoid matching on filename only because OSV-Scanner is often run
+    with ``--format json --output osv.json`` but other tools also use
+    that filename.
+    """
+    if path.suffix.lower() != ".json":
+        return False
+    data = _peek_json(path)
+    if not isinstance(data, dict):
+        return False
+    if isinstance(data.get("results"), list):
+        return True
+    return isinstance(data.get("id"), str) and isinstance(data.get("affected"), list)
 
 
 def _looks_like_zap(path: Path) -> bool:

@@ -67,6 +67,33 @@ def _evidence(
     )
 
 
+def _sbom_evidence_with_inline_analyses(
+    inline_analyses: list[dict[str, object]],
+    *,
+    cve_ids: list[str],
+    evidence_id: str = "sbom-1",
+) -> NormalizedEvidence:
+    """Build an SBOM evidence that carries CycloneDX inline VEX analyses.
+
+    Mirrors what ``normalize_sbom`` produces when the parser extracts
+    ``vulnerabilities[*].analysis`` from a CycloneDX 1.4+ SBOM.
+    """
+    return NormalizedEvidence(
+        evidence_id=evidence_id,
+        evidence_type=EvidenceType.SBOM,
+        source=EvidenceSource(name="cyclonedx", kind="sbom", version="1.7"),
+        producer="cyclonedx",
+        subject_type=SubjectType.ARTIFACT,
+        subject_ref="pkg:generic/acme/api@2026.05.18",
+        status=EvidenceStatus.GENERATED,
+        confidence=ConfidenceLevel.HIGH,
+        release_id="2026.05.18",
+        commit_sha="abcdef1234567890",
+        cve_ids=cve_ids,
+        metadata={"sbom_vex_analyses": inline_analyses},
+    )
+
+
 def _bundle(
     evidence: list[NormalizedEvidence],
     exceptions: list[EvidenceException] | None = None,
@@ -199,3 +226,94 @@ def test_build_openvex_normalises_cve_casing_and_deduplicates(
     doc = build_openvex(bundle, now=datetime(2026, 5, 18, tzinfo=UTC))
     names = [s["vulnerability"]["name"] for s in doc["statements"]]
     assert names == [expected]
+
+
+def test_build_openvex_honours_inline_cyclonedx_not_affected() -> None:
+    """CycloneDX inline ``not_affected`` overrides the default ``under_investigation``.
+
+    Justification translates from CycloneDX vocabulary to OpenVEX
+    (``code_not_reachable`` → ``vulnerable_code_not_in_execute_path``).
+    """
+    sbom = _sbom_evidence_with_inline_analyses(
+        [
+            {
+                "cve_id": "CVE-2024-8000",
+                "state": "not_affected",
+                "justification": "code_not_reachable",
+                "responses": ["will_not_fix"],
+                "detail": "Vulnerable code path is dead.",
+            }
+        ],
+        cve_ids=["CVE-2024-8000"],
+    )
+    bundle = _bundle([sbom])
+    doc = build_openvex(bundle, now=datetime(2026, 5, 18, tzinfo=UTC))
+    statement = doc["statements"][0]
+    assert statement["status"] == STATUS_NOT_AFFECTED
+    assert statement["justification"] == "vulnerable_code_not_in_execute_path"
+    assert "state=not_affected" in statement["status_notes"]
+    assert "Vulnerable code path is dead." in statement["status_notes"]
+
+
+def test_build_openvex_inline_exploitable_beats_kev_default() -> None:
+    """Inline ``exploitable`` is honoured even when the CVE is also in KEV."""
+    sbom = _sbom_evidence_with_inline_analyses(
+        [{"cve_id": "CVE-2024-8001", "state": "exploitable", "detail": "Triggered."}],
+        cve_ids=["CVE-2024-8001"],
+        evidence_id="sbom-2",
+    )
+    sca = _evidence(
+        ["CVE-2024-8001"],
+        evidence_id="sca-1",
+        top_risk=[
+            TopRiskCve(
+                cve_id="CVE-2024-8001",
+                epss_score=0.9,
+                epss_percentile=0.95,
+                in_kev=True,
+                known_ransomware=True,
+            )
+        ],
+    )
+    bundle = _bundle([sbom, sca])
+    doc = build_openvex(bundle, now=datetime(2026, 5, 18, tzinfo=UTC))
+    statement = doc["statements"][0]
+    assert statement["status"] == STATUS_AFFECTED
+    # Inline ``exploitable`` uses our action_statement, not the KEV one.
+    assert "CycloneDX inline analysis" in statement["action_statement"]
+
+
+def test_build_openvex_waiver_still_wins_over_inline_analysis() -> None:
+    """Explicit waiver must beat even an inline ``exploitable`` analysis."""
+    now = datetime(2026, 5, 18, tzinfo=UTC)
+    sbom = _sbom_evidence_with_inline_analyses(
+        [{"cve_id": "CVE-2024-8002", "state": "exploitable"}],
+        cve_ids=["CVE-2024-8002"],
+    )
+    waiver = EvidenceException(
+        exception_id="EX-INLINE",
+        control_id="SSDF-PW.4",
+        approver="appsec-team",
+        approved_at=now - timedelta(days=1),
+        expires_at=now + timedelta(days=30),
+        justification="Risk accepted for the next 30 days while we patch.",
+        reference="JIRA-9999",
+    )
+    bundle = _bundle([sbom], exceptions=[waiver])
+    doc = build_openvex(bundle, now=now)
+    statement = doc["statements"][0]
+    assert statement["status"] == STATUS_NOT_AFFECTED
+    assert "EX-INLINE" in statement["status_notes"]
+
+
+def test_build_openvex_inline_unknown_state_falls_back_to_default() -> None:
+    """An inline state we cannot map to OpenVEX must not poison the statement."""
+    sbom = _sbom_evidence_with_inline_analyses(
+        [{"cve_id": "CVE-2024-8003", "state": "no_such_state"}],
+        cve_ids=["CVE-2024-8003"],
+    )
+    bundle = _bundle([sbom])
+    doc = build_openvex(bundle, now=datetime(2026, 5, 18, tzinfo=UTC))
+    statement = doc["statements"][0]
+    # Fall back to under_investigation, exactly as if the analysis were absent.
+    assert statement["status"] == STATUS_UNDER_INVESTIGATION

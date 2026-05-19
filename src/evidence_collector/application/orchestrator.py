@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
+from evidence_collector.application.profiles import ReleaseProfile, apply_profile
 from evidence_collector.collectors.local import (
     LocalArtifactCollector,
     LocalCollectionReport,
@@ -31,7 +32,12 @@ from evidence_collector.domain.models import (
     ReleaseContext,
 )
 from evidence_collector.exporters import export_html, export_json, export_markdown
-from evidence_collector.scoring import build_summary
+from evidence_collector.scoring import (
+    RiskMode,
+    RiskThresholds,
+    apply_risk_mode,
+    build_summary,
+)
 
 
 @dataclass
@@ -57,6 +63,8 @@ def build_bundle(
     *,
     catalog_path: str | Path | None = None,
     exceptions: list[EvidenceException] | None = None,
+    risk_mode: RiskMode = RiskMode.OFF,
+    risk_thresholds: RiskThresholds | None = None,
 ) -> tuple[EvidenceBundle, list[ControlDefinition]]:
     """Build an EvidenceBundle from an already-normalized evidence set."""
     controls = load_catalog(catalog_path) if catalog_path else list(default_catalog())
@@ -69,6 +77,9 @@ def build_bundle(
         release=release,
     )
     summary = build_summary(controls, evaluations, gaps)
+    summary = apply_risk_mode(
+        summary, evidence, mode=risk_mode, thresholds=risk_thresholds
+    )
     bundle = EvidenceBundle(
         bundle_id=_default_bundle_id(application, release),
         application=application,
@@ -94,6 +105,9 @@ def run_pipeline(
     output_dir: Path,
     catalog_path: str | Path | None = None,
     artifact_root: Path | None = None,
+    risk_mode: RiskMode = RiskMode.OFF,
+    risk_thresholds: RiskThresholds | None = None,
+    profile: ReleaseProfile = ReleaseProfile.NONE,
 ) -> BundleBuildResult:
     """Collect, evaluate, and export a bundle end-to-end."""
     collector = LocalArtifactCollector(
@@ -117,7 +131,10 @@ def run_pipeline(
         evidence_records,
         catalog_path=catalog_path,
         exceptions=exception_records,
+        risk_mode=risk_mode,
+        risk_thresholds=risk_thresholds,
     )
+    bundle = apply_profile(bundle, profile)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = export_json(bundle, output_dir / "bundle.json")

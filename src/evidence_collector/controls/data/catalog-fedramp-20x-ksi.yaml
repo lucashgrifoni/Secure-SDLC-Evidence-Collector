@@ -1,0 +1,114 @@
+# FedRAMP 20x Key Security Indicators (KSI) catalog — OPT-IN, preview.
+#
+# Status: preview, based on FedRAMP 20x RFC-0024 direction (OSCAL
+# machine-readable assessment results required by 2026-09-30 for
+# Moderate, with revalidation every 3 days). The full KSI list (56
+# Low + 61 Moderate) is condensed here into the controls the
+# Evidence Collector can actually evaluate with evidence types it
+# already understands. KSIs that require runtime telemetry the
+# collector does not ingest are deliberately omitted; consumers that
+# need them should overlay this catalog with their own.
+#
+# Selection rule
+# --------------
+# Include a KSI only when at least one canonical evidence type
+# (sbom, sast_scan, sca_scan, secrets_scan, code_review,
+# artifact_attestation, artifact_signature, release_approval,
+# rollback_plan, test_result, threat_model) satisfies it. Anything
+# that needs continuous monitoring telemetry is out of scope for
+# this MVP catalog.
+controls:
+  - control_id: "KSI-LOW-SBOM"
+    framework: "NIST_SSDF"
+    name: "FedRAMP 20x KSI: SBOM published per release (Low + Moderate)"
+    description: >-
+      FedRAMP 20x requires a machine-readable SBOM per release. Maps to
+      KSI Low + Moderate baselines.
+    criticality: "critical"
+    required_evidence_types: ["sbom"]
+    recommended_evidence_types: ["artifact_attestation"]
+
+  - control_id: "KSI-LOW-INTEGRITY"
+    framework: "NIST_SSDF"
+    name: "FedRAMP 20x KSI: release integrity (signature + attestation)"
+    description: >-
+      Release artifacts must carry a signature and a build attestation
+      verifiable by a standards-based verifier (Sigstore / SLSA).
+    criticality: "critical"
+    required_evidence_types: ["artifact_signature"]
+    recommended_evidence_types: ["artifact_attestation"]
+
+  - control_id: "KSI-LOW-SCA"
+    framework: "NIST_SSDF"
+    name: "FedRAMP 20x KSI: dependency vulnerability scanning"
+    description: >-
+      Dependencies must be scanned for known vulnerabilities at release
+      time. Maps to KSI Low + Moderate.
+    criticality: "high"
+    required_evidence_types: ["sca_scan"]
+    recommended_evidence_types: []
+
+  - control_id: "KSI-LOW-SAST"
+    framework: "NIST_SSDF"
+    name: "FedRAMP 20x KSI: static analysis"
+    description: >-
+      Source code must be statically analysed before release.
+    criticality: "high"
+    required_evidence_types: ["sast_scan"]
+    recommended_evidence_types: []
+
+  - control_id: "KSI-LOW-SECRETS"
+    framework: "NIST_SSDF"
+    name: "FedRAMP 20x KSI: secrets scanning"
+    description: >-
+      Source must be scanned for inadvertently committed secrets.
+    criticality: "high"
+    required_evidence_types: ["secrets_scan"]
+    recommended_evidence_types: []
+
+  - control_id: "KSI-LOW-CODEREVIEW"
+    framework: "NIST_SSDF"
+    name: "FedRAMP 20x KSI: peer code review"
+    description: >-
+      Every change reaching the release branch must be peer-reviewed
+      by an eligible reviewer.
+    criticality: "critical"
+    required_evidence_types: ["code_review"]
+    recommended_evidence_types: ["pr_metadata"]
+
+  - control_id: "KSI-LOW-APPROVAL"
+    framework: "ORG_INTERNAL"
+    name: "FedRAMP 20x KSI: documented release approval"
+    description: >-
+      Release approval must be documented and traceable.
+    criticality: "critical"
+    required_evidence_types: ["release_approval"]
+    recommended_evidence_types: []
+
+  - control_id: "KSI-LOW-ROLLBACK"
+    framework: "ORG_INTERNAL"
+    name: "FedRAMP 20x KSI: rollback plan present"
+    description: >-
+      A rollback plan must accompany the release.
+    criticality: "critical"
+    required_evidence_types: ["rollback_plan"]
+    recommended_evidence_types: []
+
+  - control_id: "KSI-MOD-DAST"
+    framework: "NIST_SSDF"
+    name: "FedRAMP 20x KSI Moderate: dynamic security testing"
+    description: >-
+      Moderate baseline adds dynamic application testing coverage.
+    criticality: "high"
+    required_evidence_types: ["dast_scan"]
+    recommended_evidence_types: []
+
+  - control_id: "KSI-MOD-THREATMODEL"
+    framework: "NIST_SSDF"
+    name: "FedRAMP 20x KSI Moderate: threat model on file"
+    description: >-
+      Moderate baseline requires a maintained threat model for the
+      release scope.
+    criticality: "medium"
+    required_evidence_types: ["threat_model"]
+    recommended_evidence_types: []

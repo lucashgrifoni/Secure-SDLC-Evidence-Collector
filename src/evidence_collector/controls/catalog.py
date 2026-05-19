@@ -76,3 +76,21 @@ def catalog_from_source(
     if path is None:
         return cast("list[ControlDefinition]", list(default_catalog()))
     return load_catalog(path)
+
+
+def bundled_catalog_path(name: str) -> Path:
+    """Return the filesystem path of a YAML catalog shipped with the package.
+
+    Lets callers pick a named catalog (``catalog-ssdf-1.2.yaml``) without
+    hard-coding ``importlib.resources`` plumbing at every call site.
+    Raises ``FileNotFoundError`` when the catalog is not bundled, which
+    keeps the CLI failure mode aligned with ``load_catalog``.
+    """
+    resource = files("evidence_collector.controls.data").joinpath(name)
+    with as_file(resource) as path:
+        candidate = Path(path)
+        if not candidate.is_file():
+            raise FileNotFoundError(
+                f"Bundled catalog '{name}' not found in evidence_collector.controls.data"
+            )
+        return candidate

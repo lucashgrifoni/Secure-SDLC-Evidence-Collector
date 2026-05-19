@@ -37,15 +37,51 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-from typing import Any
+from typing import Any, Literal
 
 from evidence_collector.application.integrity import normalize_bundle
 from evidence_collector.domain.models import EvidenceBundle
 
 IN_TOTO_TYPE = "https://in-toto.io/Statement/v1"
+
+# Project-native predicate type (default). Used when the consumer treats
+# the bundle as self-describing evidence and does not need to plug into
+# an external attestation ecosystem.
 PREDICATE_TYPE = (
     "https://github.com/lucashgrifoni/secure-sdlc-evidence-collector/predicate/sdlc-evidence/v1"
 )
+PREDICATE_TYPE_EVIDENCE_BUNDLE = PREDICATE_TYPE
+
+# Witness-compatible variant. Witness (https://witness.dev) uses in-toto
+# Statement v1 envelopes with per-attestor predicate types under the
+# witness.dev namespace. The collector emits a single product-shaped
+# attestation that carries the bundle as a custom payload so Witness
+# verifiers ingest it without bespoke parsers.
+PREDICATE_TYPE_WITNESS = "https://witness.dev/attestations/custom/sdlc-evidence/v0.1"
+
+# SLSA Provenance v1 variant. Useful when the bundle should travel
+# alongside or in place of a SLSA provenance attestation (GUAC,
+# slsa-verifier, Kyverno). We keep the bundle as the predicate payload
+# and let the consumer derive build metadata from it.
+PREDICATE_TYPE_SLSA_PROVENANCE = "https://slsa.dev/provenance/v1"
+
+PredicateType = Literal["evidence-bundle", "witness", "slsa-provenance"]
+
+_PREDICATE_TYPE_BY_NAME: dict[PredicateType, str] = {
+    "evidence-bundle": PREDICATE_TYPE_EVIDENCE_BUNDLE,
+    "witness": PREDICATE_TYPE_WITNESS,
+    "slsa-provenance": PREDICATE_TYPE_SLSA_PROVENANCE,
+}
+
+
+def predicate_type_url(name: PredicateType) -> str:
+    """Return the canonical URL for a registered predicate-type name.
+
+    Centralising this mapping keeps the CLI and exporter in agreement
+    on the wire format and lets future predicate-type variants be added
+    without touching every caller.
+    """
+    return _PREDICATE_TYPE_BY_NAME[name]
 
 
 def _bundle_payload(bundle: EvidenceBundle) -> dict[str, Any]:
@@ -81,8 +117,26 @@ def _subject_for_bundle(bundle: EvidenceBundle) -> list[dict[str, Any]]:
     ]
 
 
-def build_statement(bundle: EvidenceBundle) -> dict[str, Any]:
+def build_statement(
+    bundle: EvidenceBundle,
+    *,
+    predicate_type: PredicateType = "evidence-bundle",
+) -> dict[str, Any]:
     """Return an in-toto Statement v1 dict that wraps ``bundle``.
+
+    The ``predicate_type`` parameter selects which predicateType URI is
+    advertised:
+
+    * ``evidence-bundle`` (default) — project-native predicate type
+      (``…/predicate/sdlc-evidence/v1``). Use when the consumer expects
+      raw Secure SDLC evidence semantics.
+    * ``witness`` — Witness-compatible custom attestation. The bundle
+      payload travels as the predicate body so Witness verifiers can
+      consume it without bespoke parsers.
+    * ``slsa-provenance`` — advertised as ``https://slsa.dev/provenance/v1``
+      for tooling that gates on the SLSA predicate type (GUAC,
+      slsa-verifier, policy-controller). Consumers should still rely on
+      the bundle's own ``release`` block for build metadata.
 
     The output is plain JSON-serialisable types so callers can write
     it to disk with ``json.dumps`` and feed it directly to ``cosign
@@ -90,7 +144,7 @@ def build_statement(bundle: EvidenceBundle) -> dict[str, Any]:
     """
     return {
         "_type": IN_TOTO_TYPE,
-        "predicateType": PREDICATE_TYPE,
+        "predicateType": predicate_type_url(predicate_type),
         "subject": _subject_for_bundle(bundle),
         "predicate": _bundle_payload(bundle),
     }

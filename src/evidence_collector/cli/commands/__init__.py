@@ -25,6 +25,7 @@ from . import (
     enrich,
     evaluate,
     exceptions,
+    guac,
     oscal,
     plugins,
     run,
@@ -54,6 +55,7 @@ COMMAND_MODULES: Final[tuple[CommandRegister, ...]] = (
     enrich.register,
     vex.register,
     statement.register,
+    guac.register,
     exceptions.register,
 )
 

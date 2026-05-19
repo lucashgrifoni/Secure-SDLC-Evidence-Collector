@@ -19,7 +19,13 @@ from pydantic import ValidationError
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
-from evidence_collector.exporters.vex import build_openvex
+from evidence_collector.exporters.vex import (
+    MergeConflictPolicy,
+    VexMergeConflictError,
+    build_openvex,
+    merge_consumed_vex,
+)
+from evidence_collector.parsers.vex import parse_vex
 
 
 def register(app: typer.Typer) -> None:
@@ -45,8 +51,32 @@ def register(app: typer.Typer) -> None:
                 help="Where to write the OpenVEX JSON document.",
             ),
         ] = Path("openvex.json"),
+        consume: Annotated[
+            list[Path] | None,
+            typer.Option(
+                "--consume",
+                help=(
+                    "Path to an external VEX document (OpenVEX / CycloneDX VEX / CSAF) "
+                    "to merge into the bundle-derived statements. Repeatable."
+                ),
+            ),
+        ] = None,
+        policy: Annotated[
+            str,
+            typer.Option(
+                "--policy",
+                help=(
+                    "Conflict policy when --consume sources disagree with the bundle: "
+                    "first-wins | last-wins | fail. Default: last-wins."
+                ),
+            ),
+        ] = "last-wins",
     ) -> None:
         """Emit an OpenVEX 0.2.0 document derived from BUNDLE_PATH."""
+        if policy not in {p.value for p in MergeConflictPolicy}:
+            raise typer.BadParameter(
+                f"--policy must be one of first-wins, last-wins, fail; got '{policy}'."
+            )
         try:
             raw = json.loads(bundle_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
@@ -65,6 +95,29 @@ def register(app: typer.Typer) -> None:
             raise typer.Exit(code=2) from exc
 
         document = build_openvex(bundle)
+
+        consumed_count = 0
+        if consume:
+            consumed_statements = []
+            for path in consume:
+                consumed_statements.extend(parse_vex(path))
+            consumed_count = len(consumed_statements)
+            try:
+                document = merge_consumed_vex(
+                    document,
+                    bundle,
+                    consumed_statements,
+                    policy=MergeConflictPolicy(policy),
+                )
+            except VexMergeConflictError as exc:
+                if is_json_logs():
+                    emit_event(
+                        "vex_failed", bundle=str(bundle_path), reason=str(exc), policy=policy
+                    )
+                else:
+                    console.print(f"[red]VEX merge conflict:[/red] {exc}")
+                raise typer.Exit(code=3) from exc
+
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(document, indent=2, sort_keys=False), encoding="utf-8")
 
@@ -75,6 +128,16 @@ def register(app: typer.Typer) -> None:
                 bundle=str(bundle_path),
                 output=str(output),
                 statements=len(statements),
+                consumed=consumed_count,
+                policy=policy,
             )
         else:
-            console.print(f"[green]OpenVEX[/green] · {len(statements)} statement(s) → {output}")
+            console.print(
+                f"[green]OpenVEX[/green] · {len(statements)} statement(s)"
+                + (
+                    f" (merged {consumed_count} consumed, policy={policy})"
+                    if consumed_count
+                    else ""
+                )
+                + f" → {output}"
+            )

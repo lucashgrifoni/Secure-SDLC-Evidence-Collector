@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, cast
 
 import typer
 from pydantic import ValidationError
@@ -22,9 +22,10 @@ from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
 from evidence_collector.exporters.intoto import (
-    PREDICATE_TYPE,
+    PredicateType,
     build_dsse_envelope,
     build_statement,
+    predicate_type_url,
 )
 
 
@@ -62,8 +63,30 @@ def register(app: typer.Typer) -> None:
                 ),
             ),
         ] = False,
+        predicate_type: Annotated[
+            str,
+            typer.Option(
+                "--predicate-type",
+                help=(
+                    "predicateType variant: 'evidence-bundle' (default, "
+                    "project-native), 'witness' (Witness-compatible custom "
+                    "attestation), or 'slsa-provenance' "
+                    "(SLSA Provenance v1 URI)."
+                ),
+            ),
+        ] = "evidence-bundle",
     ) -> None:
         """Wrap BUNDLE_PATH as an in-toto Statement v1 JSON document."""
+        if predicate_type not in {"evidence-bundle", "witness", "slsa-provenance"}:
+            message = (
+                f"Unknown --predicate-type '{predicate_type}'. Valid values: "
+                "evidence-bundle, witness, slsa-provenance."
+            )
+            if is_json_logs():
+                emit_event("statement_failed", bundle=str(bundle_path), reason=message)
+            else:
+                console.print(f"[red]{message}[/red]")
+            raise typer.Exit(code=2)
         try:
             raw = json.loads(bundle_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
@@ -81,7 +104,10 @@ def register(app: typer.Typer) -> None:
                 console.print(f"[red]Bundle does not match the current schema:[/red] {exc}")
             raise typer.Exit(code=2) from exc
 
-        statement = build_statement(bundle)
+        # Safe cast: predicate_type was validated against the literal
+        # set above; mypy needs the explicit narrowing.
+        predicate_type_literal = cast(PredicateType, predicate_type)
+        statement = build_statement(bundle, predicate_type=predicate_type_literal)
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(statement, indent=2, sort_keys=False), encoding="utf-8")
 
@@ -93,17 +119,20 @@ def register(app: typer.Typer) -> None:
                 json.dumps(envelope, indent=2, sort_keys=False), encoding="utf-8"
             )
 
+        emitted_predicate_url = predicate_type_url(predicate_type_literal)
         if is_json_logs():
             emit_event(
                 "statement_emitted",
                 bundle=str(bundle_path),
                 statement=str(output),
                 envelope=str(envelope_path) if envelope_path else None,
-                predicate_type=PREDICATE_TYPE,
+                predicate_type=emitted_predicate_url,
+                predicate_type_name=predicate_type,
             )
         else:
             console.print(
-                f"[green]in-toto Statement[/green] · predicateType={PREDICATE_TYPE} → {output}"
+                f"[green]in-toto Statement[/green] · "
+                f"predicateType={emitted_predicate_url} → {output}"
             )
             if envelope_path is not None:
                 console.print(f"[green]DSSE envelope (unsigned)[/green] → {envelope_path}")

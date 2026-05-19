@@ -9,25 +9,35 @@ Live snapshot of progress against [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md)
 > `Owner` column so we don't double-up. The `Last touched` column is in
 > ISO 8601 (UTC) so a stale row is obvious by inspection.
 
-**Last updated:** 2026-05-17 (post-publication hardening pass v1.1.1:
-cross-OS structural-SHA fix in `normalize_bundle`, snapshot fixture
-regenerated, self-release dogfood revalidated to `ready 13/13`,
-`docs/traceability.md` lab counts corrected to current behaviour,
-`.gitleaks.toml` + `.semgrepignore` + pre-commit hooks fixed so the
-local gate is reproducible end-to-end). All 16 pre-commit hooks pass
-for the first time end-to-end. Evidence pack under
-[`output/publication-2026-05-17/`](../output/publication-2026-05-17/).
-Previous updates: 2026-05-10 (post-publication hardening pass: docs
-reconciled, coverage gate raised, CLI modularized, harden-runner,
-classification confidence, `verify` command, snapshot test);
-2026-05-05 (release-readiness for v1.1.0 merged into `main`;
-maturity/higiene rodada validated baseline).
+**Last updated:** 2026-05-19 (Tier 6 / v2.0 preparatory docs landed on
+`chore/v2.0-preparatory-docs`: GOVERNANCE.md + MAINTAINERS.md +
+contributor ladder in `CONTRIBUTING.md` (T6.C3), Rego/Kyverno policy
+snippets + `policy-tests.yml` CI gate (T6.C5), Tier 6 / v2.0 plan
+recorded in-repo at `docs/program/plan-tier-6-v2.0.md`, and the
+v2.0.0 release-notes draft staged at
+`docs/program/RELEASE-NOTES-v2.0.0-draft.md`. Tier 5 work
+(T5.1 EPSS+KEV, T5.2 OpenVEX, T5.3 OSCAL AR, T5.5 in-toto Statement v1)
+is on this branch alongside the v1.2.0 release bump but has not yet
+landed on `main` — PR #25 is open and gated on GitHub Actions billing
+and repo visibility. Previous updates: 2026-05-17 (post-publication
+hardening pass v1.1.1 — cross-OS structural-SHA fix in
+`normalize_bundle`, snapshot fixture regenerated, self-release dogfood
+revalidated to `ready 13/13`, `docs/traceability.md` lab counts
+corrected, `.gitleaks.toml` + `.semgrepignore` + pre-commit hooks
+fixed; all 16 pre-commit hooks green end-to-end; evidence pack under
+[`output/publication-2026-05-17/`](../output/publication-2026-05-17/));
+2026-05-10 (post-publication hardening pass: docs reconciled, coverage
+gate raised, CLI modularized, harden-runner, classification confidence,
+`verify` command, snapshot test); 2026-05-05 (release-readiness for
+v1.1.0 merged into `main`; maturity/higiene rodada validated baseline).
 
 **Released versions:** v1.0.0 (2026-04-23) · v1.0.1 (2026-05-04,
 maturity polish) · v1.1.0 prepared in code on `main` (commit
-`17dede2`); the **first signed public release** is still gated on the
-external actions table below — no GitHub Release, no PyPI artifact,
-no GHCR image has been published yet.
+`17dede2`) · v1.2.0 prepared in code on `feat/tier-5-evidence-enrichment`
+(open PR #25, version bump committed at `b6646a7`); the **first signed
+public release** is still gated on the external actions table below —
+no GitHub Release, no PyPI artifact, no GHCR image has been published
+yet.
 
 ---
 
@@ -91,6 +101,79 @@ no GHCR image has been published yet.
 | T4.3 | OSCAL exporter                                | done    | LHG   | 2026-05-04   | `sdlc-evidence oscal` command; OSCAL 1.1.x Catalog model; 4 unit tests including UUID stability    |
 | T4.4 | Issue labels + stale-bot                      | partial | LHG   | 2026-05-04   | `.github/labels.yml` synced via `labels.yml` workflow; `stale.yml` daily cleanup; **Discussions enable still requires GitHub UI action** |
 | T4.5 | Conventional-commit-driven release tooling    | done    | LHG   | 2026-05-04   | release-please workflow + config + manifest seeded at v1.0.1; merging the PR auto-tags and triggers `release.yml` |
+
+## Tier 5 — Evidence enrichment and supply-chain alignment
+
+Status reflects work staged on `feat/tier-5-evidence-enrichment` (PR
+#25) and carried forward into `chore/v2.0-preparatory-docs`. The four
+shipped items are gated on the v1.2.0 public release (Blocks A–H in
+[`docs/program/EXTERNAL-ACTIONS-2026-05-18.md`](program/EXTERNAL-ACTIONS-2026-05-18.md)).
+
+| ID    | Item                                                  | Status   | Owner | Last touched | Notes                                                                                              |
+|-------|-------------------------------------------------------|----------|-------|--------------|----------------------------------------------------------------------------------------------------|
+| T5.1  | EPSS + CISA KEV enrichment (`sdlc-evidence enrich`)   | shipped (PR #25) | LHG | 2026-05-18 | `evidence_collector.intelligence` package; SARIF + CycloneDX parsers populate `evidence[*].cve_ids`; air-gap friendly (local feed files) |
+| T5.2  | OpenVEX 0.2.0 export (`sdlc-evidence vex`)            | shipped (PR #25) | LHG | 2026-05-18 | One statement per CVE; exceptions → `not_affected`, KEV → `affected`, rest → `under_investigation`; UUIDv5 `@id` for determinism |
+| T5.3  | OSCAL Assessment Results (`oscal --kind assessment-results`) | shipped (PR #25) | LHG | 2026-05-18 | OSCAL 1.1.2 AR shape; UUIDv5 stable across runs                                                |
+| T5.4  | CycloneDX 1.7 parser update                           | deferred → T6.1 | LHG | 2026-05-18 | Re-scoped into Tier 6 Phase A; documented in `docs/program/plan-tier-6-v2.0.md`                |
+| T5.5  | in-toto Statement v1 wrapper (`sdlc-evidence statement`) | shipped (PR #25) | LHG | 2026-05-18 | Project-predicateType today; Witness predicate variant added in T6.3                          |
+| T5.6  | SSDF 1.2 catalog                                      | deferred → T6.4 | LHG | 2026-05-18 | Tier 6 Phase A item                                                                              |
+| T5.7  | SSDF AI Profile (`catalog-ai.yaml`)                   | deferred → T6.5 | LHG | 2026-05-18 | Folded into Tier 6 Phase B AI track                                                              |
+| T5.8  | EU CRA mode (`--profile cra-2026`)                    | deferred → T6.8 | LHG | 2026-05-18 | Tier 6 Phase D                                                                                   |
+| T5.9  | FedRAMP 20x KSI mapping                               | deferred → T6.8 | LHG | 2026-05-18 | Tier 6 Phase D                                                                                   |
+| T5.10 | GUAC ingestion adapter                                | deferred → T6.9 | LHG | 2026-05-18 | Tier 6 Phase D                                                                                   |
+| T5.11 | Continuous mode (`sdlc-evidence watch`)               | deferred → T6.9 | LHG | 2026-05-18 | Tier 6 Phase D                                                                                   |
+| T5.12 | Risk-based release status (EPSS-weighted)             | deferred → T6.6 | LHG | 2026-05-18 | Tier 6 Phase C                                                                                   |
+| T5.13 | MCP/agentic evidence types                            | deferred → T6.5 | LHG | 2026-05-18 | Folded into Tier 6 Phase B                                                                       |
+| T5.14 | Multi-VEX consumer                                    | deferred → T6.7 | LHG | 2026-05-18 | Tier 6 Phase C; SPDX VEX explicitly deferred (low adoption)                                      |
+| T5.15 | Market-positioning page                               | deferred | LHG  | 2026-05-18   | Will live in `docs/program/community.md` once the OSS Fund / Best Practices Badge motion lands  |
+
+## Tier 6 — OSS-first standards alignment + AI evidence + sustainability (v2.0)
+
+Plan: [`docs/program/plan-tier-6-v2.0.md`](program/plan-tier-6-v2.0.md).
+Release notes draft: [`docs/program/RELEASE-NOTES-v2.0.0-draft.md`](program/RELEASE-NOTES-v2.0.0-draft.md).
+Implementation phases A–D need their own `feat/tier-6-v2.0` branch off
+`main` **after** v1.2.0 publishes. Phase E community items are
+independent of v1.2.0 and can land on `chore/v2.0-preparatory-docs`
+incrementally — that is the branch currently active.
+
+### Phase A — Standards alignment
+
+| ID    | Item                                              | Status  | Owner | Last touched | Notes                                                                                 |
+|-------|---------------------------------------------------|---------|-------|--------------|---------------------------------------------------------------------------------------|
+| T6.1  | CycloneDX 1.7 parser update                       | pending | —     | 2026-05-18   | Extends `parsers/sbom.py`; backwards-compatible with 1.5/1.6                          |
+| T6.2  | OSV parser + OSV-Scanner SARIF driver row         | pending | —     | 2026-05-18   | New `parsers/osv.py`; SARIF parser driver row for OSV-Scanner                          |
+| T6.3  | in-toto Witness predicate type                    | pending | —     | 2026-05-18   | `statement --predicate-type witness|evidence-bundle|slsa-provenance`; ADR-0007 to add  |
+| T6.4  | SSDF 1.2 catalog (`catalog-ssdf-1.2.yaml`)        | pending | —     | 2026-05-18   | Default catalog stays 1.1; 1.2 opt-in via `--catalog`                                  |
+
+### Phase B — AI track
+
+| ID    | Item                                              | Status  | Owner | Last touched | Notes                                                                                 |
+|-------|---------------------------------------------------|---------|-------|--------------|---------------------------------------------------------------------------------------|
+| T6.5  | AI catalog + 5 evidence types + 3 parsers         | pending | —     | 2026-05-18   | `MODEL_CARD`, `PROMPT_INJECTION_TEST_RESULT`, `AI_SAFETY_EVAL`, `MCP_TOOL_INVENTORY`, `AI_TRAINING_DATA_LINEAGE`; garak + lm-eval + model-card parsers |
+
+### Phase C — Risk-weighted verdict + multi-VEX
+
+| ID    | Item                                              | Status  | Owner | Last touched | Notes                                                                                 |
+|-------|---------------------------------------------------|---------|-------|--------------|---------------------------------------------------------------------------------------|
+| T6.6  | Risk-based release status (`--risk-mode epss-weighted`) | pending | — | 2026-05-18 | Default off; thresholds live in catalog YAML; default mode preserves byte-identical bundles |
+| T6.7  | Multi-VEX consumer (OpenVEX + CycloneDX VEX + CSAF) | pending | —    | 2026-05-18   | `vex --consume`; conflict policy `first-wins|last-wins|fail`; SPDX VEX deferred         |
+
+### Phase D — Regulatory + Graph
+
+| ID    | Item                                              | Status  | Owner | Last touched | Notes                                                                                 |
+|-------|---------------------------------------------------|---------|-------|--------------|---------------------------------------------------------------------------------------|
+| T6.8  | EU CRA mode + FedRAMP 20x KSI catalog             | pending | —     | 2026-05-18   | `run --profile cra-2026`; `catalog-fedramp-20x-ksi.yaml`; 10y retention metadata       |
+| T6.9  | GUAC adapter + `sdlc-evidence watch` daemon       | pending | —     | 2026-05-18   | `[watch]` extra (`watchdog`, `uvicorn`); webhook receivers + durable cursor + `/healthz` |
+
+### Phase E — Community / sustainability
+
+| ID     | Item                                              | Status   | Owner | Last touched | Notes                                                                                 |
+|--------|---------------------------------------------------|----------|-------|--------------|---------------------------------------------------------------------------------------|
+| T6.C1  | OpenSSF Best Practices Badge — passing tier        | pending  | LHG   | 2026-05-19   | Self-assessment at <https://www.bestpractices.dev/> remains; README slot + explicit "report vulnerabilities" link prep in flight on this branch |
+| T6.C2  | GitHub Secure Open Source Fund application         | pending  | LHG   | 2026-05-18   | April 2026 cohort window; backup is Alpha-Omega Tier 2 after 6 months of public adoption |
+| T6.C3  | Governance + contributor ladder docs               | done     | LHG   | 2026-05-19   | `GOVERNANCE.md` (BDFL model), `MAINTAINERS.md`, `CONTRIBUTING.md#becoming-a-maintainer`; commit `99c7fdf` |
+| T6.C4  | Reproducible wheel build                           | pending  | —     | 2026-05-18   | `setuptools-reproducible` or `uv --reproducible`; gate in `release.yml`               |
+| T6.C5  | Rego/Kyverno policy snippets                       | done     | LHG   | 2026-05-19   | `policies/rego/release-ready.rego` + `policies/kyverno/require-evidence.yaml` + `.github/workflows/policy-tests.yml` CI gate; commit `5710177` |
 
 ---
 
@@ -228,3 +311,41 @@ first signed public release.
   surface). Evidence pack:
   [`output/publication-2026-05-17/`](../output/publication-2026-05-17/);
   session handoff: [`docs/program/HANDOFF-2026-05-17.md`](program/HANDOFF-2026-05-17.md).
+- **2026-05-18** — Tier 5 evidence enrichment + v1.2.0 prep landed on
+  `feat/tier-5-evidence-enrichment` (open as PR #25, base
+  `chore/post-publication-hardening-v1-1-1` which is PR #24): T5.1
+  EPSS + CISA KEV enrichment via the new `evidence_collector.intelligence`
+  package and `sdlc-evidence enrich` command; T5.2 OpenVEX 0.2.0 export
+  (`sdlc-evidence vex`) with deterministic UUIDv5 document `@id`; T5.3
+  OSCAL Assessment Results export (`sdlc-evidence oscal --kind
+  assessment-results`) shaped for FedRAMP 20x; T5.5 in-toto Statement v1
+  wrapper (`sdlc-evidence statement`) with unsigned DSSE envelope; new
+  optional schema fields `evidence[*].cve_ids` and
+  `evidence[*].vulnerability_intelligence`; version bumped to 1.2.0
+  (`pyproject.toml`, `__init__.py`, release-please manifest);
+  CHANGELOG + README + `MATURITY_ROADMAP.md` updated to record Tier 5.
+  Session handoff: [`docs/program/HANDOFF-2026-05-18.md`](program/HANDOFF-2026-05-18.md);
+  external-action checklist: [`docs/program/EXTERNAL-ACTIONS-2026-05-18.md`](program/EXTERNAL-ACTIONS-2026-05-18.md).
+  Tests 233 → **261**, coverage 87.68 % → **83.39 %** (over the larger
+  surface, still well above the 80 % floor), mypy strict files 89 → **66
+  source files cleanly** (re-measured against the new package layout).
+  Tier 5 work is **in code only** — public release blocked on Blocks A–H
+  (GitHub Actions billing, repo visibility, PyPI Trusted Publisher,
+  branch protection, Discussions, Dependabot triage, Scorecard, tag cut).
+- **2026-05-19** — Tier 6 / v2.0 preparatory docs landed on
+  `chore/v2.0-preparatory-docs`: T6.C3 governance + contributor ladder
+  (`GOVERNANCE.md` BDFL model, `MAINTAINERS.md`, `CONTRIBUTING.md` "How
+  to become a maintainer" section; commit `99c7fdf`); T6.C5 Rego +
+  Kyverno policy snippets (`policies/rego/release-ready.rego`,
+  `policies/kyverno/require-evidence.yaml`) plus a new
+  `.github/workflows/policy-tests.yml` CI gate running `conftest test`
+  and `kyverno apply` (commit `5710177`); Tier 6 plan recorded in-repo
+  at [`docs/program/plan-tier-6-v2.0.md`](program/plan-tier-6-v2.0.md);
+  v2.0.0 release-notes draft staged at
+  [`docs/program/RELEASE-NOTES-v2.0.0-draft.md`](program/RELEASE-NOTES-v2.0.0-draft.md);
+  `MATURITY_ROADMAP.md` expanded with the Tier 6 section. This branch
+  is intentionally narrow: implementation phases A–D for v2.0 (T6.1–T6.9)
+  will land on a fresh `feat/tier-6-v2.0` branch off `main` **after**
+  v1.2.0 publishes. Phase E (community) items continue here. Side fix:
+  `.gitignore` now ignores `.venv-*/` so the `.venv-publication-check/`
+  scratch env used by the local gate stops appearing as untracked.

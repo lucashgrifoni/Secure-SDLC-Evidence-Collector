@@ -8,6 +8,15 @@
 [![Cosign signing configured](https://img.shields.io/badge/release%20signing-cosign%20keyless%20(configured)-9cf)](./.github/workflows/release.yml)
 ![Tests 233](https://img.shields.io/badge/tests-233%20passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen)
+<!--
+  T6.C1 — OpenSSF Best Practices Badge (passing tier). After the
+  maintainer completes the self-assessment at https://www.bestpractices.dev/
+  and the project receives its public project ID (PROJECT_ID), replace
+  the placeholder below with:
+    [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/PROJECT_ID/badge)](https://www.bestpractices.dev/projects/PROJECT_ID)
+  Tracking: docs/MATURITY_STATUS.md row T6.C1.
+-->
+![OpenSSF Best Practices (registration pending)](https://img.shields.io/badge/openssf%20best%20practices-registration%20pending-lightgrey)
 
 **CLI-first AppSec/DevSecOps tool that answers: "Which evidence proves this
 release followed a minimum Secure SDLC process?"**
@@ -316,6 +325,12 @@ before.json after.json` and is used in CI to catch regressions.
 ---
 
 ## Security posture
+
+> **Reporting a vulnerability.** Please do **not** open a public GitHub
+> issue. Email [lucas.henriquegrifoni@gmail.com](mailto:lucas.henriquegrifoni@gmail.com)
+> with a subject line starting `[secure-sdlc-evidence-collector]`. Full
+> policy, response SLA, and disclosure timeline live in
+> [`SECURITY.md`](./SECURITY.md).
 
 The tool itself follows the security rules it enforces on others:
 

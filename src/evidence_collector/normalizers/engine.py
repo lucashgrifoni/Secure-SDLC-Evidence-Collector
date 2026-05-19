@@ -34,7 +34,11 @@ from evidence_collector.domain.models import (
 )
 from evidence_collector.parsers._common import ParsedArtifact
 from evidence_collector.parsers.attestation import ParsedAttestation
+from evidence_collector.parsers.garak import ParsedGarak
 from evidence_collector.parsers.junit import ParsedJUnit
+from evidence_collector.parsers.lm_eval import ParsedLmEval
+from evidence_collector.parsers.model_card import ParsedModelCard
+from evidence_collector.parsers.osv import ParsedOsv
 from evidence_collector.parsers.sarif import ParsedSarif
 from evidence_collector.parsers.sbom import ParsedSbom
 from evidence_collector.parsers.zap import ParsedZap
@@ -244,6 +248,26 @@ def normalize_sbom(
     artifact_root: str | None = None,
 ) -> NormalizedEvidence:
     subject_ref = parsed.subject_ref or release.artifact_digest or release.release_id
+    metadata: dict[str, Any] = {}
+    if parsed.serial_number:
+        metadata["serial_number"] = parsed.serial_number
+    if parsed.lifecycle_phases:
+        metadata["lifecycle_phases"] = list(parsed.lifecycle_phases)
+    if parsed.vulnerability_analyses:
+        # Carry the CycloneDX inline analyses through as plain dicts so the
+        # bundle stays JSON-serialisable and the VEX exporter can consume
+        # them without re-parsing the SBOM. Ordered by CVE id for byte
+        # stability across runs on the same input.
+        metadata["sbom_vex_analyses"] = [
+            {
+                "cve_id": a.cve_id,
+                "state": a.state,
+                "justification": a.justification,
+                "responses": list(a.responses),
+                "detail": a.detail,
+            }
+            for a in sorted(parsed.vulnerability_analyses, key=lambda x: x.cve_id)
+        ]
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
             "sbom", parsed.artifact.integrity_hash, subject_ref, release.release_id
@@ -265,7 +289,191 @@ def normalize_sbom(
             f"{parsed.format.upper()} SBOM with {parsed.component_count} components "
             f"(spec {parsed.spec_version})"
         ),
-        metadata={"serial_number": parsed.serial_number} if parsed.serial_number else {},
+        metadata=metadata,
+    )
+
+
+def normalize_osv(
+    parsed: ParsedOsv,
+    release: ReleaseContext,
+    *,
+    artifact_root: str | None = None,
+) -> NormalizedEvidence:
+    """Build an ``sca_scan`` evidence from an OSV / OSV-Scanner report.
+
+    OSV is the canonical OSS dependency-vulnerability format. We map it
+    to the existing ``sca_scan`` evidence type so it flows through the
+    same EPSS/KEV enrichment lane as Trivy/Grype/Snyk findings. The
+    ecosystem list is preserved in ``metadata.ecosystems`` so consumers
+    can group dependency findings per package manager without re-reading
+    the raw report.
+    """
+    blocking = parsed.findings_count.get("critical", 0) + parsed.findings_count.get("high", 0)
+    status = EvidenceStatus.FAILED if blocking > 0 else EvidenceStatus.PASSED
+    metadata: dict[str, Any] = {}
+    if parsed.ecosystems:
+        metadata["ecosystems"] = list(parsed.ecosystems)
+    if parsed.package_count:
+        metadata["affected_package_count"] = parsed.package_count
+    return NormalizedEvidence(
+        evidence_id=_new_evidence_id(
+            "osv", parsed.tool_name, parsed.artifact.integrity_hash, release.release_id
+        ),
+        evidence_type=EvidenceType.SCA_SCAN,
+        source=EvidenceSource(name=parsed.tool_name, kind="sca", version=parsed.tool_version),
+        producer=parsed.tool_name,
+        subject_type=SubjectType.ARTIFACT,
+        subject_ref=release.artifact_digest or release.release_id,
+        status=status,
+        confidence=ConfidenceLevel.HIGH,
+        classification=EvidenceClassification(
+            confidence=ConfidenceLevel.HIGH,
+            reason="driver_match",
+            driver_name=parsed.tool_name,
+        ),
+        release_id=release.release_id,
+        commit_sha=release.commit_sha,
+        generated_at=None,
+        raw=_raw_ref(parsed.artifact, artifact_root),
+        findings_count=dict(parsed.findings_count),
+        cve_ids=list(parsed.cve_ids),
+        summary=(
+            f"{parsed.tool_name} reported {parsed.total_findings} OSV "
+            f"vulnerabilities across {len(parsed.ecosystems)} ecosystem(s)"
+        ),
+        metadata=metadata,
+    )
+
+
+def normalize_garak(
+    parsed: ParsedGarak,
+    release: ReleaseContext,
+    *,
+    artifact_root: str | None = None,
+) -> NormalizedEvidence:
+    """Build a ``prompt_injection_test_result`` evidence from a garak report.
+
+    Any non-zero hit count fails the gate; a clean run passes. The
+    per-probe rollup travels in ``metadata.probes`` so consumers can
+    decide whether a single failing probe should block the release.
+    """
+    status = EvidenceStatus.FAILED if parsed.total_hits > 0 else EvidenceStatus.PASSED
+    metadata: dict[str, Any] = {
+        "probes": [
+            {"probe": p.probe, "attempts": p.attempts, "hits": p.hits} for p in parsed.probes
+        ],
+        "total_attempts": parsed.total_attempts,
+        "total_hits": parsed.total_hits,
+    }
+    if parsed.model_id:
+        metadata["ai_model_id"] = parsed.model_id
+    if parsed.model_provider:
+        metadata["ai_model_provider"] = parsed.model_provider
+    subject_ref = parsed.model_id or release.release_id
+    return NormalizedEvidence(
+        evidence_id=_new_evidence_id(
+            "garak", parsed.artifact.integrity_hash, subject_ref, release.release_id
+        ),
+        evidence_type=EvidenceType.PROMPT_INJECTION_TEST_RESULT,
+        source=EvidenceSource(name="garak", kind="ai-eval", version=parsed.tool_version),
+        producer="garak",
+        subject_type=SubjectType.AI_MODEL,
+        subject_ref=subject_ref,
+        status=status,
+        confidence=ConfidenceLevel.HIGH,
+        release_id=release.release_id,
+        commit_sha=release.commit_sha,
+        generated_at=None,
+        raw=_raw_ref(parsed.artifact, artifact_root),
+        findings_count=dict(parsed.findings_count),
+        summary=(
+            f"garak ran {parsed.total_attempts} prompt-injection attempts across "
+            f"{len(parsed.probes)} probe(s); {parsed.total_hits} hit(s)"
+        ),
+        metadata=metadata,
+    )
+
+
+def normalize_lm_eval(
+    parsed: ParsedLmEval,
+    release: ReleaseContext,
+    *,
+    artifact_root: str | None = None,
+) -> NormalizedEvidence:
+    """Build an ``ai_safety_eval`` evidence from an lm-eval-harness report."""
+    metadata: dict[str, Any] = {
+        "tasks": [
+            {"task": t.task, "metrics": dict(t.metrics)} for t in parsed.tasks
+        ],
+        "total_tasks": parsed.total_tasks,
+    }
+    if parsed.model_id:
+        metadata["ai_model_id"] = parsed.model_id
+    subject_ref = parsed.model_id or release.release_id
+    return NormalizedEvidence(
+        evidence_id=_new_evidence_id(
+            "lmeval", parsed.artifact.integrity_hash, subject_ref, release.release_id
+        ),
+        evidence_type=EvidenceType.AI_SAFETY_EVAL,
+        source=EvidenceSource(name="lm-eval-harness", kind="ai-eval", version=parsed.tool_version),
+        producer="lm-eval-harness",
+        subject_type=SubjectType.AI_MODEL,
+        subject_ref=subject_ref,
+        status=EvidenceStatus.GENERATED,
+        confidence=ConfidenceLevel.HIGH,
+        release_id=release.release_id,
+        commit_sha=release.commit_sha,
+        generated_at=None,
+        raw=_raw_ref(parsed.artifact, artifact_root),
+        findings_count=dict(parsed.findings_count),
+        summary=(
+            f"lm-eval-harness covered {parsed.total_tasks} task(s) on "
+            f"{parsed.model_id or 'unknown model'}"
+        ),
+        metadata=metadata,
+    )
+
+
+def normalize_model_card(
+    parsed: ParsedModelCard,
+    release: ReleaseContext,
+    *,
+    artifact_root: str | None = None,
+) -> NormalizedEvidence:
+    """Build a ``model_card`` evidence from an HF / Google MCT model card."""
+    metadata: dict[str, Any] = {"shape": parsed.shape}
+    if parsed.model_id:
+        metadata["ai_model_id"] = parsed.model_id
+    if parsed.license:
+        metadata["license"] = parsed.license
+    if parsed.datasets:
+        metadata["datasets"] = list(parsed.datasets)
+    if parsed.metrics:
+        metadata["metrics"] = dict(parsed.metrics)
+    if parsed.intended_use:
+        metadata["intended_use"] = parsed.intended_use
+    subject_ref = parsed.model_id or release.release_id
+    return NormalizedEvidence(
+        evidence_id=_new_evidence_id(
+            "modelcard", parsed.artifact.integrity_hash, subject_ref, release.release_id
+        ),
+        evidence_type=EvidenceType.MODEL_CARD,
+        source=EvidenceSource(name=parsed.shape, kind="model-card"),
+        producer=parsed.shape,
+        subject_type=SubjectType.AI_MODEL,
+        subject_ref=subject_ref,
+        status=EvidenceStatus.GENERATED,
+        confidence=ConfidenceLevel.HIGH,
+        release_id=release.release_id,
+        commit_sha=release.commit_sha,
+        generated_at=None,
+        raw=_raw_ref(parsed.artifact, artifact_root),
+        findings_count={},
+        summary=(
+            f"Model card ({parsed.shape}) for "
+            f"{parsed.model_id or 'unknown model'}"
+        ),
+        metadata=metadata,
     )
 
 
