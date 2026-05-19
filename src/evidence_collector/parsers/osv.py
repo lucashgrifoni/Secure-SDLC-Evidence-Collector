@@ -145,9 +145,9 @@ def _is_single_osv_record(data: dict[str, Any]) -> bool:
     return isinstance(data.get("id"), str) and isinstance(data.get("affected"), list)
 
 
-def _parse_osv_scanner_envelope(data: dict[str, Any]) -> tuple[
-    dict[str, int], int, list[str], list[str], int
-]:
+def _parse_osv_scanner_envelope(
+    data: dict[str, Any],
+) -> tuple[dict[str, int], int, list[str], list[str], int]:
     findings: dict[str, int] = _empty_findings()
     total = 0
     cve_ids: set[str] = set()
@@ -185,9 +185,9 @@ def _parse_osv_scanner_envelope(data: dict[str, Any]) -> tuple[
     return findings, total, sorted(cve_ids), ecosystems, package_count
 
 
-def _parse_single_osv_record(data: dict[str, Any]) -> tuple[
-    dict[str, int], int, list[str], list[str], int
-]:
+def _parse_single_osv_record(
+    data: dict[str, Any],
+) -> tuple[dict[str, int], int, list[str], list[str], int]:
     findings: dict[str, int] = _empty_findings()
     bucket = _bucket_for_vulnerability(data)
     findings[bucket] += 1

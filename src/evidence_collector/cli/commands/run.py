@@ -170,9 +170,7 @@ def register(app: typer.Typer) -> None:
             catalog_path=catalog_path,
             artifact_root=artifact_root,
             risk_mode=RiskMode(risk_mode),
-            risk_thresholds=RiskThresholds(
-                epss_percentile_threshold=epss_percentile_threshold
-            ),
+            risk_thresholds=RiskThresholds(epss_percentile_threshold=epss_percentile_threshold),
             profile=ReleaseProfile(profile),
         )
         render_summary(result)

@@ -31,7 +31,7 @@ from evidence_collector.parsers.model_card import parse_model_card
 def test_parse_garak_aggregates_digest_lines(tmp_path: Path) -> None:
     report = tmp_path / "run.garak.jsonl"
     report.write_text(
-        '\n'.join(
+        "\n".join(
             [
                 '{"entry_type":"init","garak_version":"0.10.0",'
                 '"model_name":"hf://google/flan-t5-small","model_type":"huggingface"}',
@@ -63,7 +63,7 @@ def test_parse_garak_falls_back_to_attempt_lines(tmp_path: Path) -> None:
     """When no ``digest`` line is present, attempt-level data is rolled up."""
     report = tmp_path / "partial.garak.jsonl"
     report.write_text(
-        '\n'.join(
+        "\n".join(
             [
                 '{"entry_type":"init","garak_version":"0.10.0","model_name":"x"}',
                 '{"entry_type":"attempt","probe_classname":"injection.Test","passed":true}',
@@ -196,7 +196,10 @@ def test_parse_model_card_google_mct_shape(tmp_path: Path) -> None:
     assert parsed.shape == "google-mct"
     assert parsed.model_id == "internal/fraud-detector-v3"
     assert parsed.license == "proprietary"
-    assert parsed.metrics == {"auc": pytest.approx(0.94), "false_positive_rate": pytest.approx(0.02)}
+    assert parsed.metrics == {
+        "auc": pytest.approx(0.94),
+        "false_positive_rate": pytest.approx(0.02),
+    }
     assert parsed.intended_use == "Detect card-not-present fraud."
 
 

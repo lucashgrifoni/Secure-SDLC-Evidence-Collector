@@ -77,9 +77,7 @@ def build_bundle(
         release=release,
     )
     summary = build_summary(controls, evaluations, gaps)
-    summary = apply_risk_mode(
-        summary, evidence, mode=risk_mode, thresholds=risk_thresholds
-    )
+    summary = apply_risk_mode(summary, evidence, mode=risk_mode, thresholds=risk_thresholds)
     bundle = EvidenceBundle(
         bundle_id=_default_bundle_id(application, release),
         application=application,

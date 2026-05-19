@@ -184,6 +184,4 @@ def apply_risk_mode(
         base_release_status=summary.release_status,
         rationale=rationale,
     )
-    return summary.model_copy(
-        update={"release_status": new_status, "risk_assessment": assessment}
-    )
+    return summary.model_copy(update={"release_status": new_status, "risk_assessment": assessment})

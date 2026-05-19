@@ -52,6 +52,7 @@ class MergeConflictPolicy(StrEnum):
 class VexMergeConflictError(ValueError):
     """Raised under ``MergeConflictPolicy.FAIL`` when two VEX sources disagree."""
 
+
 OPENVEX_CONTEXT = "https://openvex.dev/ns/v0.2.0"
 OPENVEX_AUTHOR = "secure-sdlc-evidence-collector"
 
@@ -241,9 +242,7 @@ def _statement_from_inline_analysis(
             if isinstance(justification_raw, str)
             else None
         )
-        statement["justification"] = (
-            openvex_justification or DEFAULT_NOT_AFFECTED_JUSTIFICATION
-        )
+        statement["justification"] = openvex_justification or DEFAULT_NOT_AFFECTED_JUSTIFICATION
         if isinstance(justification_raw, str) and openvex_justification is None:
             notes_parts.append(f"cyclonedx_justification={justification_raw}")
     elif openvex_status == STATUS_AFFECTED:
@@ -339,9 +338,7 @@ def build_openvex(bundle: EvidenceBundle, *, now: datetime | None = None) -> dic
     }
 
 
-def _statement_from_consumed(
-    cve_id: str, product_id: str, stmt: VexStatement
-) -> dict[str, Any]:
+def _statement_from_consumed(cve_id: str, product_id: str, stmt: VexStatement) -> dict[str, Any]:
     """Translate a consumed VEX statement into an OpenVEX statement dict."""
     out: dict[str, Any] = {
         "vulnerability": {"name": cve_id},

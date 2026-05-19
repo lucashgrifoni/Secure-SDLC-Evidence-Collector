@@ -27,7 +27,7 @@ def _release() -> ReleaseContext:
     return ReleaseContext(release_id="2026.05.19", commit_sha="abcdef1234567890")
 
 
-_GARAK_REPORT = '\n'.join(
+_GARAK_REPORT = "\n".join(
     [
         '{"entry_type":"init","garak_version":"0.10.0","model_name":"hf://x"}',
         '{"entry_type":"digest","probe":"promptinject.A","attempts":10,"hits":2}',
@@ -68,7 +68,7 @@ def test_normalize_garak_fails_when_hits_present(tmp_path: Path) -> None:
 def test_normalize_garak_passes_when_no_hits(tmp_path: Path) -> None:
     report = tmp_path / "clean.garak.jsonl"
     report.write_text(
-        '\n'.join(
+        "\n".join(
             [
                 '{"entry_type":"init","garak_version":"0.10.0","model_name":"y"}',
                 '{"entry_type":"digest","probe":"promptinject.Z","attempts":10,"hits":0}',

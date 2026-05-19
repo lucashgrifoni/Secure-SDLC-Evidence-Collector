@@ -188,9 +188,7 @@ def _parse_cyclonedx_vex(data: dict[str, Any]) -> list[VexStatement]:
                 cve_id=cve_id,
                 status=status,
                 justification=(
-                    str(justification_raw)
-                    if isinstance(justification_raw, str)
-                    else None
+                    str(justification_raw) if isinstance(justification_raw, str) else None
                 ),
                 detail=str(detail_raw) if isinstance(detail_raw, str) else None,
             )

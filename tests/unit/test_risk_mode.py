@@ -102,9 +102,7 @@ def test_kev_with_ransomware_forces_not_ready() -> None:
         in_kev=True,
         known_ransomware=True,
     )
-    out = apply_risk_mode(
-        summary, [_evidence([top])], mode=RiskMode.EPSS_WEIGHTED
-    )
+    out = apply_risk_mode(summary, [_evidence([top])], mode=RiskMode.EPSS_WEIGHTED)
     assert out.release_status == ReleaseStatus.NOT_READY
     assert out.risk_assessment is not None
     assert out.risk_assessment.kev_ransomware_cve_count == 1
@@ -120,9 +118,7 @@ def test_high_epss_downgrades_to_conditional() -> None:
         in_kev=False,
         known_ransomware=False,
     )
-    out = apply_risk_mode(
-        summary, [_evidence([top])], mode=RiskMode.EPSS_WEIGHTED
-    )
+    out = apply_risk_mode(summary, [_evidence([top])], mode=RiskMode.EPSS_WEIGHTED)
     assert out.release_status == ReleaseStatus.CONDITIONAL
     assert out.risk_assessment is not None
     assert out.risk_assessment.high_epss_cve_count == 1
