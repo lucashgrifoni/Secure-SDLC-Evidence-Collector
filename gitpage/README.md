@@ -1,18 +1,18 @@
 # Secure SDLC Evidence Collector - GitPage
 
-Portfolio/GitHub Pages estatica para o **Secure SDLC Evidence Collector**.
+Static portfolio / GitHub Pages site for the **Secure SDLC Evidence Collector**.
 
-Todo o conteudo vive dentro desta pasta (`gitpage/`). Nenhum arquivo fora dela e necessario ou modificado.
+All content lives inside this folder (`gitpage/`). No file outside it is required or modified.
 
 ## Stack
 
-- HTML semantico + CSS moderno (variaveis para a paleta)
-- JavaScript vanilla, modular, sem bundler
-- [Three.js 0.158](https://unpkg.com/three) via CDN para a cena 3D do hero
-- [GSAP 3.12](https://unpkg.com/gsap) via CDN (ScrollTrigger incluido para futura evolucao)
-- Sem backend, sem build obrigatorio, sem dados sensiveis
+- Semantic HTML + modern CSS (CSS variables for the palette)
+- Vanilla, modular JavaScript with no bundler
+- [Three.js 0.158](https://unpkg.com/three) via CDN for the hero's 3D scene
+- [GSAP 3.12](https://unpkg.com/gsap) via CDN (ScrollTrigger included for future evolution)
+- No backend, no required build step, no sensitive data
 
-## Estrutura
+## Structure
 
 ```text
 gitpage/
@@ -23,96 +23,96 @@ gitpage/
       styles.css
     js/
       main.js         # reveal, counters, meters, tilt, motion toggle, active nav
-      scene.js        # cena 3D do hero (Evidence Core + particulas + streams)
+      scene.js        # hero 3D scene (Evidence Core + particles + streams)
     data/
       evidence-demo.json
 ```
 
-## Como abrir localmente
+## Local preview
 
-Basta abrir `gitpage/index.html` no navegador. A pagina funciona no protocolo `file://` porque todas as dependencias vem por CDN e nao usam `fetch` para arquivos locais.
+Open `gitpage/index.html` directly in a browser. The page works under the `file://` protocol because every dependency loads via CDN and there are no `fetch` calls for local files.
 
-Se preferir um servidor local:
+If you prefer a local server:
 
 ```bash
 # Python 3
 cd gitpage
 python -m http.server 8080
-# depois acesse http://localhost:8080
+# then open http://localhost:8080
 ```
 
-Ou via `npx`:
+Or via `npx`:
 
 ```bash
 npx --yes serve gitpage -l 8080
 ```
 
-## Como publicar no GitHub Pages
+## Publishing on GitHub Pages
 
-Duas opcoes:
+Two options:
 
-### Opcao A - Pages a partir de `/docs`
+### Option A &mdash; Pages from `/docs`
 
-1. Copie o conteudo de `gitpage/` para uma pasta `docs/` na raiz do repositorio, ou configure a GitPage a partir desta pasta.
-2. No repositorio, va em **Settings -> Pages**, escolha a branch e a pasta `/docs`.
+1. Copy the contents of `gitpage/` into a `docs/` folder at the repository root, or configure GitPage from this folder.
+2. In the repository, go to **Settings -> Pages**, pick the branch, and select the `/docs` folder.
 
-### Opcao B - Branch `gh-pages`
+### Option B &mdash; `gh-pages` branch
 
-1. Publique o conteudo da pasta `gitpage/` como raiz de uma branch `gh-pages`.
-2. No repositorio, va em **Settings -> Pages** e selecione a branch `gh-pages`.
+1. Publish the contents of `gitpage/` as the root of a `gh-pages` branch.
+2. In the repository, go to **Settings -> Pages** and select the `gh-pages` branch.
 
-Nenhum build step e necessario - os assets ja sao estaticos.
+No build step is needed &mdash; the assets are already static.
 
-## Paleta
+## Palette
 
-Definida em variaveis CSS em `assets/css/styles.css`:
+Defined as CSS variables in `assets/css/styles.css`:
 
-- `#0c124c` - fundo principal
-- `#d5d8dd` - texto principal
-- `#08b98b` - acento positivo
-- `#5a6876` - texto secundario
-- `#7c8394` - neutros / grid tecnico
+- `#0c124c` &mdash; primary background
+- `#d5d8dd` &mdash; primary text
+- `#08b98b` &mdash; positive accent
+- `#5a6876` &mdash; secondary text
+- `#7c8394` &mdash; neutral / technical grid
 
-## Efeitos 3D/4D implementados
+## 3D / 4D effects implemented
 
-- **Evidence Core** no hero: icosaedro central com wireframe + halo + pulso, cercado por tres aneis orbitais com 11 nodes representando fontes de evidencia.
-- **Particle field** com ~240 particulas drifting em uma esfera, com **linhas dinamicas** conectando particulas proximas (lineage visual).
-- **Streams de lineage**: 14 "packets" fluindo do core ate os nodes orbitais, reforcando a metafora de raw -> normalized -> assertion ao longo do tempo.
-- **Camera parallax** via `pointermove`, com easing.
-- **Reveal scroll** por secao (IntersectionObserver).
-- **Meters e counters** animados no hero e na secao de scoring.
-- **Tilt 3D** em cards de valor.
-- **Pipe animado** em SVG na secao de modelo, com packets verdes atravessando Raw -> Normalized -> Assertion.
-- **Toggle de motion** no nav, alem de respeito automatico a `prefers-reduced-motion`.
-- **Pausa** da cena quando a aba esta inativa (via `visibilitychange`).
-- **Fallback**: se WebGL nao estiver disponivel, o canvas do hero e ocultado e o restante da pagina continua funcional.
+- **Evidence Core** in the hero: central icosahedron with wireframe + halo + pulse, surrounded by three orbital rings holding 11 nodes that represent evidence sources.
+- **Particle field** with ~240 particles drifting on a sphere, with **dynamic lines** connecting nearby particles (visual lineage).
+- **Lineage streams**: 14 "packets" flowing from the core to the orbital nodes, reinforcing the raw -> normalized -> assertion metaphor over time.
+- **Camera parallax** via `pointermove`, with easing.
+- **Reveal on scroll** per section (IntersectionObserver).
+- **Meters and counters** animated in the hero and in the scoring section.
+- **3D tilt** on the value cards.
+- **Animated SVG pipe** in the model section, with green packets traversing Raw -> Normalized -> Assertion.
+- **Motion toggle** in the nav, plus automatic respect for `prefers-reduced-motion`.
+- **Scene pause** when the tab is inactive (via `visibilitychange`).
+- **Fallback**: if WebGL is not available, the hero canvas is hidden and the rest of the page keeps working.
 
-## Acessibilidade e UX
+## Accessibility and UX
 
-- Navegacao com `aria-current` por secao visivel.
-- Skip-link para pular direto ao conteudo.
-- Foco visivel em todos os controles.
-- Contraste elevado para texto sobre o fundo `#0c124c`.
-- Sem overflow horizontal em mobile (testado em viewports de 320px+).
-- Nenhum texto sobreposto ao canvas: o hero usa `z-index: -1` no palco 3D e o conteudo e desenhado acima.
+- Navigation with `aria-current` based on the visible section.
+- Skip-link to jump directly to the content.
+- Visible focus on every control.
+- High contrast for text over the `#0c124c` background.
+- No horizontal overflow on mobile (tested on viewports starting at 320px).
+- No text overlapping the canvas: the hero uses `z-index: -1` on the 3D stage and content sits above it.
 
-## Postura editorial
+## Editorial stance
 
-A pagina **nunca** afirma que o produto garante release segura ou entrega compliance automatico. O discurso consistente e:
+The page **never** claims that the product guarantees a secure release or delivers automatic compliance. The consistent narrative is:
 
-- quais praticas minimas foram comprovadas
-- quais controles possuem evidencias suficientes
-- quais controles estao parcialmente atendidos
-- quais evidencias estao faltando
-- quais excecoes foram aprovadas
-- qual nivel de confianca existe sobre a avaliacao
+- which minimum practices were proven
+- which controls have enough evidence
+- which controls are only partially satisfied
+- which evidence is missing
+- which exceptions were approved
+- how confident the evaluation is
 
-## Dados demo
+## Demo data
 
-`assets/data/evidence-demo.json` contem um bundle de exemplo aderente ao modelo descrito em `Ideia do projeto.md`. Ele nao e carregado via `fetch` para manter a pagina 100% funcional em `file://`; serve como referencia editorial e ponto de expansao futura.
+`assets/data/evidence-demo.json` contains a sample bundle that follows the model documented in the project. It is **not** loaded via `fetch` so the page stays 100% functional under `file://`; it serves as editorial reference and future expansion point.
 
-## Limitacoes conhecidas / proximos passos
+## Known limitations / next steps
 
-- O bundle demo nao e renderizado dinamicamente (evita `fetch` em `file://`). Se a pagina for servida via HTTP, e trivial adicionar um `fetch` para renderizar evidencias reais.
-- GSAP esta carregado mas so uma fracao dos efeitos avancados (scroll-timelines cinematicas) foi ativada. A base esta pronta para expandir.
-- Nao ha build step. Se desejar minificacao, qualquer minifier estatico resolve sem quebrar referencias.
+- The demo bundle is not rendered dynamically (to avoid `fetch` under `file://`). If the page is served over HTTP it is trivial to add a `fetch` that renders real evidence.
+- GSAP is loaded but only a fraction of the advanced effects (cinematic scroll timelines) are wired up. The foundation is ready to expand.
+- There is no build step. If you want minification, any static minifier handles it without breaking references.

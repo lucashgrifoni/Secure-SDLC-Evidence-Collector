@@ -1,10 +1,10 @@
 /* Secure SDLC Evidence Collector - main UI script
    - Reveal on scroll (IntersectionObserver)
    - Animated counters
-   - Tilt 3D em cards importantes
-   - Meters animados
-   - Toggle de motion
-   - Navigation state (active link por secao)
+   - 3D tilt on key cards
+   - Animated meters
+   - Motion toggle
+   - Navigation state (active link per section)
 */
 (function () {
   "use strict";
