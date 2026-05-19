@@ -548,12 +548,14 @@ jobs:
         uses: anchore/sbom-action/download-syft@e11c554f704a0b820cbf8c51673f6945e0731532 # v0.20.0
 
       # Force registry mode so syft does not try the local containerd
-      # socket (unavailable on GitHub-hosted runners; previous runs
+      # socket (unavailable on GitHub-hosted runners; an earlier run
       # failed with "containerd not available... permission denied").
       # ``SYFT_REGISTRY_AUTH_*`` env vars give syft the GHCR
-      # credentials directly, independent of ~/.docker/config.json
-      # (which docker/login-action may or may not have populated for
-      # the runner user that runs syft).
+      # credentials directly, independent of ~/.docker/config.json.
+      # The reference is lowercased because GHCR (and the OCI
+      # distribution spec) require lowercase repository paths, while
+      # ``github.repository`` preserves the original case
+      # ("Secure-SDLC-Evidence-Collector") which syft rejects.
       - name: Generate SBOM for image
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
@@ -562,8 +564,10 @@ jobs:
           SYFT_REGISTRY_AUTH_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          image_ref="$(printf '%s/%s' '${{ env.REGISTRY }}' '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')"
+          echo "Scanning ${image_ref}@${DIGEST}"
           syft scan \
-            "registry:${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${DIGEST}" \
+            "registry:${image_ref}@${DIGEST}" \
             -o cyclonedx-json=image-sbom.cdx.json
 
       - name: Attach SBOM as cosign attestation
