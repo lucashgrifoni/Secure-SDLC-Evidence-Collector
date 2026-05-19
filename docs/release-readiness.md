@@ -132,7 +132,7 @@ session handoff:
 
 ## Release integrity gates
 
-- [ ] `release.yml` signs wheel + sdist + `bundle.json` keyless with
+- [ ] `publish-pypi.yml` signs wheel + sdist + `bundle.json` keyless with
       cosign.
 - [ ] `sigstore` transparency-log entries are reachable for the latest
       release (verified with `cosign verify-blob --certificate-identity

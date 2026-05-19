@@ -10,7 +10,7 @@
 #        - regenerated CHANGELOG.md entry
 #   3. Merging that PR triggers release-please again, which then
 #      tags the commit and creates a GitHub Release stub.
-#   4. The existing `release.yml` workflow fires on the new tag and
+#   4. The existing `publish-pypi.yml` workflow fires on the new tag and
 #      runs the rest of the supply-chain pipeline (build, sign, SLSA
 #      provenance, PyPI publish, container build).
 #

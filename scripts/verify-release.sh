@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Verify a published release end-to-end.
 #
-# Runs after `release.yml` succeeds and the GitHub Release / PyPI /
+# Runs after `publish-pypi.yml` succeeds and the GitHub Release / PyPI /
 # GHCR assets are all populated. Each step is independently
 # verifiable; the script exits 0 only when every check passes.
 #

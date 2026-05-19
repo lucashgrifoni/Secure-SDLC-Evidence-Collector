@@ -38,7 +38,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   stays on SSDF 1.1.
 - **Reproducible wheel gate (T6.C4).** Promoted from Sprint 5 to
   Sprint 1 so the gate is in place before v2.0 lands.
-  `release.yml` pins `SOURCE_DATE_EPOCH` from the tag commit and
+  `publish-pypi.yml` pins `SOURCE_DATE_EPOCH` from the tag commit and
   rebuilds the wheel a second time, failing the workflow if the
   SHA-256 drifts. sdist is checked as a warning only (gzip-header
   drift is upstream tooling).
@@ -447,7 +447,7 @@ environment variables remain backwards-compatible with `1.0.x`.
   actionlint and hygiene hooks; structural-determinism gate that re-runs
   the sample pipeline and compares normalized SHA-256; `sdlc-evidence
   doctor` health check command (`--json` output for CI).
-- **Tier 2 — supply-chain hardening configured in `release.yml`.** SLSA
+- **Tier 2 — supply-chain hardening configured in `publish-pypi.yml`.** SLSA
   Build Level 3 provenance via `slsa-github-generator`; collector
   self-SBOM (CycloneDX) signed with cosign; multi-arch container
   (amd64 + arm64) pushed to `ghcr.io`, signed keyless with cosign and
@@ -475,7 +475,7 @@ environment variables remain backwards-compatible with `1.0.x`.
 - **Repository identity.** Homepage, Issues, Source, Docker image
   source, GitHub Action install fallback, CONTRIBUTING clone URL,
   CODEOWNERS, Dependabot reviewers, Issue Template links and the
-  release.yml Trusted Publisher comment now all point to
+  publish-pypi.yml Trusted Publisher comment now all point to
   `lucashgrifoni/Secure-SDLC-Evidence-Collector` (the actual remote)
   instead of the legacy mixed-case `LucasGrifoni/secure-sdlc-evidence-collector`.
 - **Modern license metadata in `pyproject.toml`.** Replaced the
@@ -525,10 +525,10 @@ environment variables remain backwards-compatible with `1.0.x`.
   `main`, code scanning, and secret scanning.
 - Create `secure-sdlc-evidence-collector` on PyPI and configure the
   Trusted Publisher (owner `lucashgrifoni`, repo
-  `Secure-SDLC-Evidence-Collector`, workflow `release.yml`,
+  `Secure-SDLC-Evidence-Collector`, workflow `publish-pypi.yml`,
   environment `pypi`).
 - Create the GitHub `pypi` environment.
-- Until those are done, `release.yml` will run quality, build and
+- Until those are done, `publish-pypi.yml` will run quality, build and
   release-bundle but the `publish-pypi` and `publish-container` jobs
   will short-circuit on missing prerequisites. No claim of "published
   on PyPI" or "image signed in GHCR" can be made yet.
@@ -540,7 +540,7 @@ schema, CLI surface, or GitHub Action contract.
 
 ### Added
 
-- **PyPI publishing job** in `release.yml` using OIDC trusted publisher
+- **PyPI publishing job** in `publish-pypi.yml` using OIDC trusted publisher
   (no long-lived `PYPI_API_TOKEN`); gated to `refs/tags/v*` pushes and
   the `pypi` GitHub environment.
 - **Schema dogfood step** in `github-ci-cd.yml`: every CI run now exports
@@ -598,7 +598,7 @@ breaking them requires a major version bump.
 - **Exception subcommands**: `sdlc-evidence exceptions validate FILE`
   and `sdlc-evidence exceptions list DIR` for ops workflows around
   waivers.
-- **Release workflow** (`.github/workflows/release.yml`) that runs all
+- **Release workflow** (`.github/workflows/publish-pypi.yml`) that runs all
   quality gates, builds wheel + sdist, produces the release evidence
   bundle, signs the artifacts and the bundle keyless with
   `cosign`+Sigstore, and publishes a GitHub Release carrying

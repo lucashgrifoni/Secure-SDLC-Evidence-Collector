@@ -55,7 +55,7 @@ yet.
 | `gitleaks` findings             | 0       | 0      | `.gitleaks.toml` extended to allowlist `.venv*` and other gitignored caches so `--no-git` does not report 200 false positives from third-party SPDX license indexes |
 | `pre-commit run --all-files`    | all green | all green | mypy hook now passes the required additional_dependencies (typer/rich/fastapi/httpx/jinja2/defusedxml/types-defusedxml) and the explicit `src` target; `check-json` excludes intentionally malformed lab SBOMs |
 | Workflows pinned (third-party)  | full SHA except 2 structural exceptions | same | All 26 third-party action references pin a full SHA + version comment, except 2 documented structural exceptions (`slsa-framework/slsa-github-generator/.../v2.0.0` reusable-workflow contract, `pypa/gh-action-pypi-publish@release/v1` Trusted-Publisher pattern). The 6 candidates that previously sat on tag (`attest-build-provenance`, `deploy-pages`, `download-artifact`, `upload-pages-artifact`, `cosign-installer`, `action-gh-release`) were converted to SHA on 2026-05-05. Inventory: `docs/program/actions-pinning-inventory.md`. |
-| Release artifacts signed        | configured | yes | cosign keyless + Sigstore Rekor wired in `release.yml`; first signed public release will be `v1.1.0`. No signed asset has been published yet. |
+| Release artifacts signed        | configured | yes | cosign keyless + Sigstore Rekor wired in `publish-pypi.yml`; first signed public release will be `v1.1.0`. No signed asset has been published yet. |
 | Determinism gate                | yes     | yes    | structural SHA-256 compare in CI; volatile fields documented         |
 | Native CodeQL coverage          | yes     | yes    | `python` and `actions` languages on push, PR, and weekly schedule; SARIF upload blocked while repo is private (see external actions) |
 | OpenSSF Scorecard score         | pending | ≥ 7    | workflow shipped; first run requires the repository to be public     |
@@ -77,7 +77,7 @@ yet.
 | ID   | Item                                                | Status | Owner | Last touched | Notes                                                                                    |
 |------|-----------------------------------------------------|--------|-------|--------------|------------------------------------------------------------------------------------------|
 | T2.1 | SLSA Build Level 3 provenance                       | done   | LHG   | 2026-05-04   | `slsa-github-generator/generator_generic_slsa3.yml@v2.0.0` next to `attest-build-prov.`  |
-| T2.2 | Self-SBOM, signed                                   | done   | LHG   | 2026-05-04   | `cyclonedx-bom` in release.yml; signed with cosign sign-blob; attached to GH Release     |
+| T2.2 | Self-SBOM, signed                                   | done   | LHG   | 2026-05-04   | `cyclonedx-bom` in publish-pypi.yml; signed with cosign sign-blob; attached to GH Release     |
 | T2.3 | Multi-arch Docker image, signed, with SBOM          | done   | LHG   | 2026-05-04   | `publish-container` job: amd64+arm64 to ghcr.io, cosign sign + syft + cosign attest      |
 | T2.4 | Mutation testing                                    | done   | LHG   | 2026-05-04   | `.github/workflows/mutation.yml` weekly + dispatch; mutmut config focused on parsers     |
 | T2.5 | Structured logs with `--json-logs`                  | done   | LHG   | 2026-05-04   | global flag + `SDLC_JSON_LOGS=1` env var; emits NDJSON; 2 unit tests                     |
@@ -100,7 +100,7 @@ yet.
 | T4.2 | Optional FastAPI REST surface                 | done    | LHG   | 2026-05-04   | `[api]` extra; read-only surface (`/healthz`, `/version`, `/schema`, `/catalog`, `/plugins`); 5 unit tests |
 | T4.3 | OSCAL exporter                                | done    | LHG   | 2026-05-04   | `sdlc-evidence oscal` command; OSCAL 1.1.x Catalog model; 4 unit tests including UUID stability    |
 | T4.4 | Issue labels + stale-bot                      | partial | LHG   | 2026-05-04   | `.github/labels.yml` synced via `labels.yml` workflow; `stale.yml` daily cleanup; **Discussions enable still requires GitHub UI action** |
-| T4.5 | Conventional-commit-driven release tooling    | done    | LHG   | 2026-05-04   | release-please workflow + config + manifest seeded at v1.0.1; merging the PR auto-tags and triggers `release.yml` |
+| T4.5 | Conventional-commit-driven release tooling    | done    | LHG   | 2026-05-04   | release-please workflow + config + manifest seeded at v1.0.1; merging the PR auto-tags and triggers `publish-pypi.yml` |
 
 ## Tier 5 — Evidence enrichment and supply-chain alignment
 
@@ -172,7 +172,7 @@ incrementally — that is the branch currently active.
 | T6.C1  | OpenSSF Best Practices Badge — passing tier        | pending  | LHG   | 2026-05-19   | Self-assessment at <https://www.bestpractices.dev/> remains; README slot + explicit "report vulnerabilities" link prep in flight on this branch |
 | T6.C2  | GitHub Secure Open Source Fund application         | pending  | LHG   | 2026-05-18   | April 2026 cohort window; backup is Alpha-Omega Tier 2 after 6 months of public adoption |
 | T6.C3  | Governance + contributor ladder docs               | done     | LHG   | 2026-05-19   | `GOVERNANCE.md` (BDFL model), `MAINTAINERS.md`, `CONTRIBUTING.md#becoming-a-maintainer`; commit `99c7fdf` |
-| T6.C4  | Reproducible wheel build                           | pending  | —     | 2026-05-18   | `setuptools-reproducible` or `uv --reproducible`; gate in `release.yml`               |
+| T6.C4  | Reproducible wheel build                           | pending  | —     | 2026-05-18   | `setuptools-reproducible` or `uv --reproducible`; gate in `publish-pypi.yml`               |
 | T6.C5  | Rego/Kyverno policy snippets                       | done     | LHG   | 2026-05-19   | `policies/rego/release-ready.rego` + `policies/kyverno/require-evidence.yaml` + `.github/workflows/policy-tests.yml` CI gate; commit `5710177` |
 
 ---
@@ -186,8 +186,8 @@ checked on 2026-05-05.
 | Action                                            | Owner | Done? | Status / how it was checked                                                                        |
 |---------------------------------------------------|-------|-------|----------------------------------------------------------------------------------------------------|
 | Make the GitHub repository public                 | LHG   | no    | `gh api repos/lucashgrifoni/Secure-SDLC-Evidence-Collector` returns `"visibility":"private"`. Until this changes, the Security CI/CD upload-sarif jobs (CodeQL/Trivy/Semgrep), Dependency Review, and Scorecard cannot publish results. Documented in `docs/program/_archive/2026-05-05/security-ci-failure-analysis.md`. |
-| Create the project on PyPI                        | LHG   | no    | Required before the `publish-pypi` job in `release.yml` can succeed. `pypi.org/pypi/secure-sdlc-evidence-collector/json` returns 404. |
-| Add GitHub Trusted Publisher on PyPI              | LHG   | no    | Owner `lucashgrifoni`, repo `Secure-SDLC-Evidence-Collector`, workflow `release.yml`, env `pypi`.  |
+| Create the project on PyPI                        | LHG   | no    | Required before the `publish-pypi` job in `publish-pypi.yml` can succeed. `pypi.org/pypi/secure-sdlc-evidence-collector/json` returns 404. |
+| Add GitHub Trusted Publisher on PyPI              | LHG   | no    | Owner `lucashgrifoni`, repo `Secure-SDLC-Evidence-Collector`, workflow `publish-pypi.yml`, env `pypi`.  |
 | Create the GitHub `pypi` environment              | LHG   | no    | Needed for the OIDC token exchange against PyPI Trusted Publisher.                                  |
 | Configure branch protection on `main`             | LHG   | no    | Required for OpenSSF Scorecard "Branch-Protection" check to score above zero. `gh api repos/.../branches/main/protection` returns 404. |
 | Enable GitHub Discussions                         | LHG   | no    | Tier 4 prerequisite. `gh repo view` shows `hasDiscussionsEnabled=false`.                            |
@@ -238,7 +238,7 @@ checked on 2026-05-05.
   `stale.yml` daily cleanup with conservative thresholds; enabling
   GitHub Discussions still needs a UI action. T4.5 release-please
   workflow + config + manifest seeded at v1.0.1 — merging the
-  release-please PR will auto-tag and trigger `release.yml`. The
+  release-please PR will auto-tag and trigger `publish-pypi.yml`. The
   hypothesis test surfaced a real parser bug (`_parse_float` accepted
   `-inf`/`nan`); fixed by clamping to default. Tests 134 → 143,
   mypy strict files 55 → 61.
@@ -255,7 +255,7 @@ first signed public release.
   Apache-2.0 LICENSE + PEP 639 metadata, version bump 1.0.1→1.1.0,
   CI installs `.[dev,api]` so `mypy --strict` resolves the FastAPI
   surface, scripts/ under ruff, public claims downgraded to
-  "configured in `release.yml`" until the first signed release.
+  "configured in `publish-pypi.yml`" until the first signed release.
   Validated with `python -m build` (no license warning) and the same
   local-gate set documented in
   `docs/release-readiness.md`. Eight Dependabot PRs (#1, #2, #3, #4,

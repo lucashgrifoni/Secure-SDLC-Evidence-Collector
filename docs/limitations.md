@@ -95,7 +95,7 @@ The collector checks **presence**, not correctness.
   exists and declares the signed digest). It does **not** verify the
   signature against a key or an identity.
 - Verification of cosign keyless signatures is expected upstream (for
-  example in the `release.yml` workflow or on the consumer side). The
+  example in the `publish-pypi.yml` workflow or on the consumer side). The
   project's own release workflow signs its artifacts; downstream
   consumers still need to run `cosign verify-blob` themselves.
 

@@ -35,13 +35,13 @@ operate it in a real pipeline**.
 |--------------------------------------|-------------------------------------------------------------------------------------------|
 | CLI (`sdlc-evidence`)                | `src/evidence_collector/cli/main.py`                                                      |
 | GitHub Action                        | [`action.yml`](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/action.yml) |
-| Container image                      | `release.yml` builds and signs `ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector` (multi-arch, cosign keyless + SBOM attestation) on tag push. The first publicly verifiable image will be `:v1.1.0`. |
-| Wheel + sdist                        | Built and signed by `release.yml`; PyPI publishing is configured but still depends on the external Trusted Publisher setup tracked in `MATURITY_STATUS.md`. |
+| Container image                      | `publish-pypi.yml` builds and signs `ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector` (multi-arch, cosign keyless + SBOM attestation) on tag push. The first publicly verifiable image will be `:v1.1.0`. |
+| Wheel + sdist                        | Built and signed by `publish-pypi.yml`; PyPI publishing is configured but still depends on the external Trusted Publisher setup tracked in `MATURITY_STATUS.md`. |
 | Bundle JSON Schema                   | Exported by `sdlc-evidence schema`; validated in CI on every run.                         |
 
 ## Verifying signatures
 
-`release.yml` is configured to sign every release artifact with
+`publish-pypi.yml` is configured to sign every release artifact with
 **cosign keyless** and to record each signature on the **Sigstore
 Rekor** transparency log. Once the first signed `v1.1.0` release is
 published, you can verify the wheel with:

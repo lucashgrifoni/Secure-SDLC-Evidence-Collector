@@ -143,7 +143,7 @@ gh api repos/lucashgrifoni/Secure-SDLC-Evidence-Collector/branches/main/protecti
 
 ## Block E — PyPI Trusted Publisher + GitHub environment
 
-Required for the `publish-pypi` job in `.github/workflows/release.yml`
+Required for the `publish-pypi` job in `.github/workflows/publish-pypi.yml`
 to mint the first signed wheel + sdist for `v1.2.0`.
 
 ### Action
@@ -155,7 +155,7 @@ to mint the first signed wheel + sdist for `v1.2.0`.
    - PyPI project name: `secure-sdlc-evidence-collector`
    - Owner: `lucashgrifoni`
    - Repository: `Secure-SDLC-Evidence-Collector`
-   - Workflow filename: `release.yml`
+   - Workflow filename: `publish-pypi.yml`
    - Environment name: `pypi`
 
 2. **Create the GitHub `pypi` environment:**
@@ -245,7 +245,7 @@ Two options, pick one:
 The branch `release-please--branches--main` should already exist after
 the merge of PR #24, opened automatically by the
 `release-please-action` workflow on push to `main`. Merge that PR; the
-`release.yml` workflow will then:
+`publish-pypi.yml` workflow will then:
 
 1. Build wheel + sdist
 2. Sign each artifact with cosign keyless (Sigstore Rekor)
@@ -278,7 +278,7 @@ curl -s https://pypi.org/pypi/secure-sdlc-evidence-collector/1.2.0/json | jq -r 
 
 # Cosign signature (sample, after install)
 cosign verify-blob \
-  --certificate-identity-regexp 'https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/release.yml@.*' \
+  --certificate-identity-regexp 'https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/publish-pypi.yml@.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --signature <sig-url> \
   <artifact-url>

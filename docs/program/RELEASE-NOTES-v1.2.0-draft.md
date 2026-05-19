@@ -19,7 +19,7 @@ becomes the first signed public release without a confusing gap.
 **When to publish.** After all Blocks in
 [`EXTERNAL-ACTIONS-2026-05-18.md`](EXTERNAL-ACTIONS-2026-05-18.md) are
 green, merge the `release-please--branches--main` PR (which
-`release.yml` will then trigger).
+`publish-pypi.yml` will then trigger).
 
 > Suggestion: set `"draft": true` in `.github/release-please-config.json`
 > for this first signed public release so you can review the auto-built
@@ -183,7 +183,7 @@ pip download secure-sdlc-evidence-collector==1.2.0
 
 # Cosign signature (keyless, Sigstore Rekor)
 cosign verify-blob \
-  --certificate-identity-regexp 'https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/release.yml@.*' \
+  --certificate-identity-regexp 'https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/publish-pypi.yml@.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --signature secure_sdlc_evidence_collector-1.2.0-py3-none-any.whl.sig \
   secure_sdlc_evidence_collector-1.2.0-py3-none-any.whl
@@ -196,7 +196,7 @@ cosign verify ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector:v1.2.0 \
 
 # SBOM (CycloneDX, signed)
 cosign verify-blob \
-  --certificate-identity-regexp 'https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/release.yml@.*' \
+  --certificate-identity-regexp 'https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/publish-pypi.yml@.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --signature sbom.cdx.json.sig \
   sbom.cdx.json

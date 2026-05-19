@@ -110,7 +110,7 @@ field it knew. No flag removal, no rename.
   section.
 - **Reproducible wheel build.** `make build` produces a wheel whose
   SHA-256 matches across Linux/Windows/macOS. New gate in
-  `release.yml`.
+  `publish-pypi.yml`.
 - **Rego/Kyverno policy snippets** shipped under `policies/`. CI gate
   in new `.github/workflows/policy-tests.yml` validates them with
   `conftest test` + `kyverno apply --policy`.
@@ -143,7 +143,7 @@ shasum -a 256 secure_sdlc_evidence_collector-2.0.0-py3-none-any.whl
 
 # Cosign signature (keyless, Sigstore Rekor)
 cosign verify-blob \
-  --certificate-identity-regexp 'https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/release.yml@.*' \
+  --certificate-identity-regexp 'https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/publish-pypi.yml@.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --signature secure_sdlc_evidence_collector-2.0.0-py3-none-any.whl.sig \
   secure_sdlc_evidence_collector-2.0.0-py3-none-any.whl

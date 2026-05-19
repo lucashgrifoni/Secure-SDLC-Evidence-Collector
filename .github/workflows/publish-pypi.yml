@@ -1,4 +1,4 @@
-name: Release
+name: Publish to PyPI
 
 on:
   push:
@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.workflow }}-${{ github.ref }}
+  group: publish-pypi-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -410,11 +410,13 @@ jobs:
   publish-pypi:
     # Publishes the wheel + sdist to PyPI using OIDC (Trusted Publisher).
     # Requires a one-time setup on PyPI:
-    #   1. Create the project `secure-sdlc-evidence-collector` on PyPI.
+    #   1. Create the project `secure-sdlc-evidence-collector` on PyPI
+    #      (or configure a pending publisher; the project will be created
+    #      automatically on the first successful run).
     #   2. Under "Manage > Publishing", add a GitHub trusted publisher with:
     #        Owner:           lucashgrifoni
     #        Repository:      Secure-SDLC-Evidence-Collector
-    #        Workflow:        release.yml
+    #        Workflow:        publish-pypi.yml
     #        Environment:     pypi
     # No PYPI_API_TOKEN is needed: PyPI mints a short-lived token from the
     # OIDC claim issued by GitHub at publish time.

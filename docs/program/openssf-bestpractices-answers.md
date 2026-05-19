@@ -67,7 +67,7 @@ publication runbook.
 | `know_secure_design` | "Yes" | `THREAT_MODEL.md` + `docs/adr/` |
 | `know_common_errors` | "Yes" | `docs/limitations.md` |
 | `crypto_published` | "N/A — the collector does not implement cryptography" | n/a (we use Sigstore/cosign for signing) |
-| `crypto_call` | "Yes — uses Sigstore cosign for keyless signing, no custom crypto" | `release.yml` |
+| `crypto_call` | "Yes — uses Sigstore cosign for keyless signing, no custom crypto" | `publish-pypi.yml` |
 | `crypto_floss` | "Yes" | Sigstore / cosign are OSS Apache-2.0 |
 | `crypto_keylength` | "Yes" | Sigstore defaults |
 | `crypto_working` | "Yes" | cosign verified in CI |
@@ -76,7 +76,7 @@ publication runbook.
 | `crypto_password_storage` | "N/A — no passwords stored" | n/a |
 | `crypto_random` | "Yes — uses Python `secrets` / OS RNG only" | code review |
 | `delivery_mitm` | "Yes" | PyPI HTTPS + cosign signatures |
-| `delivery_unsigned` | "Yes — all releases signed via cosign keyless" | `release.yml` |
+| `delivery_unsigned` | "Yes — all releases signed via cosign keyless" | `publish-pypi.yml` |
 | `vulnerabilities_fixed_60_days` | "Yes" | `SECURITY.md` |
 | `vulnerabilities_critical_fixed` | "Yes" | `SECURITY.md` |
 | `static_analysis` | "Yes" | CodeQL + ruff + mypy in CI |

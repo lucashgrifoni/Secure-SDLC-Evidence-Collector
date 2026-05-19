@@ -299,7 +299,7 @@ breaking.
   output is already deterministic; the wheel itself is not.
 - **Acceptance:** `make build` produces a wheel whose SHA-256 matches
   across Linux/Windows/macOS runners. New gate in
-  `.github/workflows/release.yml`.
+  `.github/workflows/publish-pypi.yml`.
 
 #### T6.C5 — Rego/Kyverno policy snippets (S, ~1 day)
 
@@ -358,5 +358,5 @@ Suggested commit/branch layout, all on `feat/tier-6-v2.0`:
 
 After merge, the `release-please` workflow recognises the `feat:` and
 `fix:` commits and opens the version PR; merging that triggers the
-existing `release.yml` (cosign keyless, SLSA L3, multi-arch GHCR,
+existing `publish-pypi.yml` (cosign keyless, SLSA L3, multi-arch GHCR,
 signed SBOM, PyPI Trusted Publisher).

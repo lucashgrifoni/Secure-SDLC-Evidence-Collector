@@ -99,7 +99,7 @@ gh api -X PUT repos/lucashgrifoni/Secure-SDLC-Evidence-Collector/environments/py
       <https://pypi.org/manage/account/publishing/>:
       - **Owner**: `lucashgrifoni`
       - **Repository**: `Secure-SDLC-Evidence-Collector`
-      - **Workflow filename**: `release.yml`
+      - **Workflow filename**: `publish-pypi.yml`
       - **Environment**: `pypi`
 - [ ] Verify: `pip index versions secure-sdlc-evidence-collector`
       returns the project page (no versions yet).
@@ -110,11 +110,11 @@ Re-run `dependabot-triage.md`: pull the actual open PR list with
 `gh pr list --state open --label dependencies` and triage each
 against the rules in `docs/program/dependabot-triage.md`. The
 v2.0.0 release must not block on a Dependabot bump that touches
-release.yml or scorecard.yml.
+publish-pypi.yml or scorecard.yml.
 
 ## Phase 4 — Cut v2.0.0 (5 min, owner triggers; CI does the rest)
 
-> ⚠️ **Once a tag pushes, release.yml runs and Trusted Publisher
+> ⚠️ **Once a tag pushes, publish-pypi.yml runs and Trusted Publisher
 > publishes to PyPI. Make sure Phase 2 is complete before pushing
 > the tag.**
 
@@ -126,7 +126,7 @@ git push origin v2.0.0
 gh run watch
 ```
 
-### Expected artifacts after `release.yml` is green
+### Expected artifacts after `publish-pypi.yml` is green
 
 - [ ] GitHub Release `v2.0.0` with:
       - `secure_sdlc_evidence_collector-2.0.0-py3-none-any.whl`
@@ -189,7 +189,7 @@ git push
 
 ## Rollback plan (T6.C4 carry-over)
 
-If `release.yml` fails partially:
+If `publish-pypi.yml` fails partially:
 
 | Failure | Action |
 |---|---|
@@ -215,7 +215,7 @@ maintained log.
 ## Done criteria
 
 - [ ] Repository public.
-- [ ] v2.0.0 tag pushed and release.yml green.
+- [ ] v2.0.0 tag pushed and publish-pypi.yml green.
 - [ ] PyPI publication, `pip install` works.
 - [ ] GHCR multi-arch image pullable and cosign-verifies.
 - [ ] Scorecard ≥ 7.0.
