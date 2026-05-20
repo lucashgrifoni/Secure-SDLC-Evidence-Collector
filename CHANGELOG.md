@@ -248,7 +248,10 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 - **MATURITY_STATUS** refreshed with Tier 5 + Tier 6 progress and a
   detailed change-log entry for 2026-05-18 and 2026-05-19.
 
-## [1.2.0] - TBD (first signed public release; pending Blocks A–H in `docs/program/EXTERNAL-ACTIONS-2026-05-18.md`)
+## [1.2.0] - Unreleased (superseded by 2.0.0)
+
+> This version was prepared in code but never tagged; the work below shipped
+> as part of the `2.0.0` public release.
 
 ### Added
 
