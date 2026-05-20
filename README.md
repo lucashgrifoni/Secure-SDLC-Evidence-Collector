@@ -380,10 +380,9 @@ listed in
   collector self-SBOM (CycloneDX), multi-arch (amd64+arm64) container
   image to `ghcr.io` signed and SBOM-attested with cosign.
 - Property-based testing (Hypothesis), 5 ADRs, public threat model,
-  mkdocs-material site at `/docs/`, CI matrix Python 3.12 + 3.13,
-  weekly mutation testing.
+  mkdocs-material site at `/docs/`, CI matrix Python 3.12 + 3.13.
 - Plugin entry-point system, optional FastAPI read-only surface,
-  OSCAL exporter, `release-please` workflow, issue labels + stale-bot.
+  OSCAL exporter, `release-please` workflow.
 
 ### Considered for future versions
 
