@@ -83,7 +83,6 @@ def parse_zap(path: str | Path) -> ParsedZap:
         for alert in alerts:
             if not isinstance(alert, dict):
                 continue
-            instance_count = 1
             try:
                 instance_count = max(1, int(alert.get("count", 1)))
             except (TypeError, ValueError):

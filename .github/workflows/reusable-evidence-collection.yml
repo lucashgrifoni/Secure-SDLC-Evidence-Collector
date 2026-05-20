@@ -118,50 +118,70 @@ jobs:
           python-version: ${{ inputs.python-version }}
           cache: pip
 
+      # Inputs and step outputs are passed via `env:` and referenced as quoted
+      # shell variables, never interpolated directly into run scripts — the
+      # GitHub-recommended defense against script injection
+      # (CodeQL actions/code-injection) for untrusted-derived inputs.
       - name: Install secure-sdlc-evidence-collector
+        env:
+          COLLECTOR_VERSION: ${{ inputs.collector-version }}
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
-          if [ -n "${{ inputs.collector-version }}" ]; then
-            python -m pip install "secure-sdlc-evidence-collector==${{ inputs.collector-version }}"
+          if [ -n "$COLLECTOR_VERSION" ]; then
+            python -m pip install "secure-sdlc-evidence-collector==${COLLECTOR_VERSION}"
           else
             python -m pip install "secure-sdlc-evidence-collector"
           fi
 
       - name: Resolve bundled catalog path (if requested)
         id: catalog
+        env:
+          CATALOG: ${{ inputs.catalog }}
         run: |
           set -euo pipefail
-          if [ -z "${{ inputs.catalog }}" ]; then
+          if [ -z "$CATALOG" ]; then
             echo "catalog_path=" >>"$GITHUB_OUTPUT"
             exit 0
           fi
-          path="$(python -c "from evidence_collector.controls.catalog import bundled_catalog_path; print(bundled_catalog_path('${{ inputs.catalog }}'))")"
+          path="$(python -c "import os; from evidence_collector.controls.catalog import bundled_catalog_path; print(bundled_catalog_path(os.environ['CATALOG']))")"
           echo "catalog_path=$path" >>"$GITHUB_OUTPUT"
 
       - name: Run sdlc-evidence
+        env:
+          APPLICATION: ${{ inputs.application }}
+          REPOSITORY: ${{ inputs.repository }}
+          RELEASE_ID: ${{ inputs.release-id }}
+          COMMIT_SHA: ${{ inputs.commit-sha }}
+          BRANCH: ${{ inputs.branch }}
+          ARTIFACTS_DIR: ${{ inputs.artifacts-dir }}
+          RISK_MODE: ${{ inputs.risk-mode }}
+          PROFILE: ${{ inputs.profile }}
+          ATTESTATIONS_DIR: ${{ inputs.attestations-dir }}
+          EXCEPTIONS_DIR: ${{ inputs.exceptions-dir }}
+          CATALOG_PATH: ${{ steps.catalog.outputs.catalog_path }}
         run: |
           set -euo pipefail
           args=(
-            --application "${{ inputs.application }}"
-            --repository "${{ inputs.repository }}"
-            --release-id "${{ inputs.release-id }}"
-            --commit-sha "${{ inputs.commit-sha }}"
-            --branch "${{ inputs.branch }}"
+            --application "$APPLICATION"
+            --repository "$REPOSITORY"
+            --release-id "$RELEASE_ID"
+            --commit-sha "$COMMIT_SHA"
+            --branch "$BRANCH"
             --output-dir release-evidence
-            --artifacts-dir "${{ inputs.artifacts-dir }}"
-            --risk-mode "${{ inputs.risk-mode }}"
-            --profile "${{ inputs.profile }}"
+            --artifacts-dir "$ARTIFACTS_DIR"
+            --risk-mode "$RISK_MODE"
+            --profile "$PROFILE"
             --fail-on not_ready
           )
-          if [ -n "${{ inputs.attestations-dir }}" ]; then
-            args+=( --attestations-dir "${{ inputs.attestations-dir }}" )
+          if [ -n "$ATTESTATIONS_DIR" ]; then
+            args+=( --attestations-dir "$ATTESTATIONS_DIR" )
           fi
-          if [ -n "${{ inputs.exceptions-dir }}" ]; then
-            args+=( --exceptions-dir "${{ inputs.exceptions-dir }}" )
+          if [ -n "$EXCEPTIONS_DIR" ]; then
+            args+=( --exceptions-dir "$EXCEPTIONS_DIR" )
           fi
-          if [ -n "${{ steps.catalog.outputs.catalog_path }}" ]; then
-            args+=( --catalog "${{ steps.catalog.outputs.catalog_path }}" )
+          if [ -n "$CATALOG_PATH" ]; then
+            args+=( --catalog "$CATALOG_PATH" )
           fi
           sdlc-evidence run "${args[@]}"
 
