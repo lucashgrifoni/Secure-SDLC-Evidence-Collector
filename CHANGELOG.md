@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.3](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.2...v2.0.3) (2026-05-20)
+
+
+### Fixed
+
+* **ci:** repair policy-tests (Rego rego.v1 + Kyverno pattern) and skip Snyk on dependabot ([#40](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/40)) ([1373b63](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/1373b630a60f8ad518a6a307465aac3aa404fd0b))
+
 ## [2.0.2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.1...v2.0.2) (2026-05-20)
 
 
