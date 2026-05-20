@@ -4,7 +4,9 @@
 
 ARG PYTHON_VERSION=3.12
 
-FROM python:${PYTHON_VERSION}-slim-bookworm AS builder
+# Base image pinned by multi-arch manifest digest (OpenSSF Scorecard
+# Pinned-Dependencies). Dependabot (docker ecosystem) refreshes the digest.
+FROM python:${PYTHON_VERSION}-slim-bookworm@sha256:93ab4b7fa528b25124c97bcc755415e60eb671a86b4dbe0328df2fe2d1c1193d AS builder
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -19,7 +21,7 @@ RUN python -m pip install --upgrade pip && \
     python -m pip wheel --wheel-dir /wheels .
 
 
-FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
+FROM python:${PYTHON_VERSION}-slim-bookworm@sha256:93ab4b7fa528b25124c97bcc755415e60eb671a86b4dbe0328df2fe2d1c1193d AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
