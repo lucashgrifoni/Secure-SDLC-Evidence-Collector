@@ -25,10 +25,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Least-privilege: top-level is read-only (OpenSSF Token-Permissions); the
+# job below elevates only the write scopes release-please actually needs.
 permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+  contents: read
 
 concurrency:
   group: release-please-${{ github.workflow }}-${{ github.ref }}
@@ -39,6 +39,10 @@ jobs:
     name: Open or update release PR
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write        # create release commits and tags
+      pull-requests: write   # open/update the release PR
+      issues: write          # manage release labels
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2

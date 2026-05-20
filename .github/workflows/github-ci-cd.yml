@@ -1,3 +1,26 @@
+# GitHub CI/CD — quality, packaging, and determinism gates (Python).
+#
+# Jobs:
+#   - quality            : ruff lint + format, mypy --strict, pytest + coverage
+#                          across the Python 3.12 / 3.13 matrix.
+#   - package            : build wheel + sdist.
+#   - sample-bundle      : generate a sample evidence bundle, validate it against
+#                          its exported JSON Schema, and enforce a structural
+#                          determinism gate (re-run, normalize, compare SHA-256).
+#   - sample-bundle-windows / cross-os-determinism : prove the bundle is
+#                          byte-stable across Linux and Windows.
+#
+# Triggers: pull_request + push (main/master/develop), merge_group, manual.
+#
+# Supply-chain hardening:
+#   - All actions are pinned to immutable commit SHAs (trailing comment = tag).
+#   - Keep .github/dependabot.yml enabled for github-actions to refresh pins.
+#
+# Harden-Runner egress: starts at `audit`; switch to `block` with an
+# allowed-endpoints allowlist once the audited traffic is stable.
+#
+# Secrets: none.
+
 name: GitHub CI/CD
 
 on:
@@ -9,7 +32,9 @@ on:
     branches:
       - main
       - master
+      - develop
   workflow_dispatch:
+  merge_group:
 
 permissions:
   contents: read

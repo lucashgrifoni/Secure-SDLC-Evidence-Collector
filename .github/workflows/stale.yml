@@ -12,10 +12,10 @@ on:
     - cron: "0 8 * * *"  # daily, 08:00 UTC
   workflow_dispatch:
 
+# Least-privilege: top-level is read-only (OpenSSF Token-Permissions); the
+# stale job elevates the write scopes actions/stale needs.
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
 
 concurrency:
   group: stale-${{ github.workflow }}-${{ github.ref }}
@@ -26,6 +26,10 @@ jobs:
     name: Mark and close stale items
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write          # mark and close stale issues
+      pull-requests: write   # mark and close stale pull requests
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
