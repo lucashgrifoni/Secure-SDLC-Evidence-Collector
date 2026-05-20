@@ -87,14 +87,22 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
+    # All workflow inputs and ${{ github.* }} context are passed through `env:`
+    # and referenced as quoted shell variables, never interpolated directly
+    # into the run script. This is the GitHub-recommended defense against
+    # script injection (CodeQL actions/code-injection) when a caller wires an
+    # input from untrusted data (issue titles, branch names, etc.).
     - name: Install collector
       shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         set -euo pipefail
-        if [ -n "${{ inputs.version }}" ]; then
-          python -m pip install --upgrade "git+https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector@${{ inputs.version }}"
-        elif [ -f "${{ github.action_path }}/pyproject.toml" ]; then
-          python -m pip install "${{ github.action_path }}"
+        if [ -n "$VERSION" ]; then
+          python -m pip install --upgrade "git+https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector@${VERSION}"
+        elif [ -f "${ACTION_PATH}/pyproject.toml" ]; then
+          python -m pip install "${ACTION_PATH}"
         else
           python -m pip install --upgrade "git+https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector"
         fi
@@ -104,43 +112,57 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        APPLICATION: ${{ inputs.application }}
+        REPOSITORY: ${{ inputs.repository }}
+        RELEASE_ID: ${{ inputs.release-id }}
+        COMMIT_SHA: ${{ inputs.commit-sha }}
+        BRANCH: ${{ inputs.branch }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        PULL_REQUEST: ${{ inputs.pull-request }}
+        WORKFLOW_RUN: ${{ inputs.workflow-run }}
+        CATALOG: ${{ inputs.catalog }}
+        ARTIFACTS_DIR: ${{ inputs.artifacts-dir }}
+        ATTESTATIONS_DIR: ${{ inputs.attestations-dir }}
       run: |
         set -euo pipefail
         extra_args=()
-        if [ -n "${{ inputs.pull-request }}" ]; then
-          extra_args+=(--pull-request "${{ inputs.pull-request }}")
+        if [ -n "$PULL_REQUEST" ]; then
+          extra_args+=(--pull-request "$PULL_REQUEST")
         fi
-        if [ -n "${{ inputs.workflow-run }}" ]; then
-          extra_args+=(--workflow-run "${{ inputs.workflow-run }}")
+        if [ -n "$WORKFLOW_RUN" ]; then
+          extra_args+=(--workflow-run "$WORKFLOW_RUN")
         fi
-        if [ -n "${{ inputs.catalog }}" ]; then
-          extra_args+=(--catalog "${{ inputs.catalog }}")
+        if [ -n "$CATALOG" ]; then
+          extra_args+=(--catalog "$CATALOG")
         fi
-        if [ -d "${{ inputs.artifacts-dir }}" ]; then
-          extra_args+=(--artifacts-dir "${{ inputs.artifacts-dir }}")
+        if [ -d "$ARTIFACTS_DIR" ]; then
+          extra_args+=(--artifacts-dir "$ARTIFACTS_DIR")
         fi
-        if [ -d "${{ inputs.attestations-dir }}" ]; then
-          extra_args+=(--attestations-dir "${{ inputs.attestations-dir }}")
+        if [ -d "$ATTESTATIONS_DIR" ]; then
+          extra_args+=(--attestations-dir "$ATTESTATIONS_DIR")
         fi
 
         python -m evidence_collector.cli.main run \
-          --application "${{ inputs.application }}" \
-          --repository "${{ inputs.repository }}" \
-          --release-id "${{ inputs.release-id }}" \
-          --commit-sha "${{ inputs.commit-sha }}" \
-          --branch "${{ inputs.branch }}" \
-          --environment "${{ inputs.environment }}" \
-          --output-dir "${{ inputs.output-dir }}" \
-          --fail-on "${{ inputs.fail-on }}" \
+          --application "$APPLICATION" \
+          --repository "$REPOSITORY" \
+          --release-id "$RELEASE_ID" \
+          --commit-sha "$COMMIT_SHA" \
+          --branch "$BRANCH" \
+          --environment "$ENVIRONMENT" \
+          --output-dir "$OUTPUT_DIR" \
+          --fail-on "$FAIL_ON" \
           "${extra_args[@]}" || exit_code=$?
 
-        bundle="${{ inputs.output-dir }}/bundle.json"
+        bundle="${OUTPUT_DIR}/bundle.json"
         if [ -f "$bundle" ]; then
-          python - <<PY >>"$GITHUB_OUTPUT"
+          BUNDLE_FILE="$bundle" python - <<'PY' >>"$GITHUB_OUTPUT"
         import json, os
-        with open("$bundle", encoding="utf-8") as fh:
+        bundle = os.environ["BUNDLE_FILE"]
+        with open(bundle, encoding="utf-8") as fh:
             data = json.load(fh)
-        print(f"bundle-path={os.path.abspath('$bundle')}")
+        print(f"bundle-path={os.path.abspath(bundle)}")
         print(f"release-status={data['summary']['release_status']}")
         print(f"coverage-score={data['summary']['evidence_coverage_score']}")
         PY

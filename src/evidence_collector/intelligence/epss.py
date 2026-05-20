@@ -20,6 +20,7 @@ from __future__ import annotations
 import csv
 import gzip
 import io
+import math
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -61,7 +62,7 @@ def _parse_float(value: str) -> float | None:
         result = float(value)
     except (TypeError, ValueError):
         return None
-    if result != result:  # NaN
+    if math.isnan(result):
         return None
     if result < 0.0 or result > 1.0:
         return None
