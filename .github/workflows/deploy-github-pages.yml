@@ -1,3 +1,22 @@
+# Deploy GitHub Pages — publishes the project site (Python / mkdocs).
+#
+# The build job stages three surfaces into a single Pages deploy:
+#   /          -> gitpage/ landing page (index.html + assets)
+#   /evidence/ -> CLI-generated evidence summary, bundle, and report
+#   /docs/     -> mkdocs --strict technical site
+#
+# Repository prerequisite:
+#   - Settings > Pages > Build and deployment > Source: "GitHub Actions".
+#
+# Concurrency: serialized with cancel-in-progress=false so an in-flight
+# production deploy is allowed to finish, per GitHub Pages guidance.
+#
+# Supply-chain hardening:
+#   - All actions are pinned to immutable commit SHAs (trailing comment = tag).
+#   - Keep .github/dependabot.yml enabled for github-actions to refresh pins.
+#
+# Secrets: none (uses the short-lived GITHUB_TOKEN via id-token: write).
+
 name: Deploy GitHub Pages
 
 on:
