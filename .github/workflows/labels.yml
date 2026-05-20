@@ -18,10 +18,10 @@ on:
     - cron: "0 7 * * 1"  # weekly, Monday 07:00 UTC
   workflow_dispatch:
 
+# Least-privilege: top-level is read-only (OpenSSF Token-Permissions); the
+# sync job elevates the label-write scopes it needs.
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
 
 concurrency:
   group: labels-${{ github.workflow }}-${{ github.ref }}
@@ -32,6 +32,10 @@ jobs:
     name: Sync issue and PR labels
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write          # create/update/delete repository labels
+      pull-requests: write   # labels are shared with pull requests
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
@@ -39,7 +43,7 @@ jobs:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 

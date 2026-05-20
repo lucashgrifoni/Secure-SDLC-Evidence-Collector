@@ -1,7 +1,7 @@
 # Security CI/CD
 #
 # Standard security pipeline covering:
-#   - SAST          : Semgrep, Snyk Code, CodeQL
+#   - SAST          : Semgrep, Snyk Code (native CodeQL runs in codeql.yml)
 #   - SCA           : Snyk Open Source, Trivy (filesystem vuln), Dependency Review (PR)
 #   - IaC / Pipeline: Trivy (misconfig)
 #   - Secrets       : Trivy (secret), Gitleaks (git history)
@@ -33,8 +33,8 @@
 #                           gitleaks-action license
 #
 # GITHUB_TOKEN is supplied automatically by GitHub Actions.
-# SARIF uploads require `security-events: write`. This permission is set at
-# the workflow level and, when applicable, tightened at job level. On private
+# SARIF uploads require `security-events: write`. The workflow-level token is
+# read-only; each job grants its own write scope (least privilege). On private
 # repositories, SARIF upload and Dependency Review require GitHub Advanced
 # Security; on public repositories both are free.
 
@@ -55,10 +55,11 @@ on:
     - cron: "0 3 * * 1"
   merge_group:
 
+# Least-privilege: top-level is read-only (OpenSSF Token-Permissions). Each
+# job below elevates only what it needs (security-events: write for SARIF
+# uploads, pull-requests: write for the dependency-review PR comment).
 permissions:
   contents: read
-  security-events: write
-  actions: read
 
 concurrency:
   group: security-${{ github.workflow }}-${{ github.ref }}
@@ -86,12 +87,12 @@ jobs:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - name: Setup Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -130,7 +131,7 @@ jobs:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
@@ -162,43 +163,6 @@ jobs:
           sarif_file: snyk-code.sarif
           category: snyk-code
 
-  sast-codeql:
-    name: SAST - CodeQL
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    permissions:
-      contents: read
-      security-events: write
-    strategy:
-      fail-fast: false
-      matrix:
-        language:
-          - javascript-typescript
-          - python
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
-        with:
-          egress-policy: audit
-
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          persist-credentials: false
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
-        with:
-          languages: ${{ matrix.language }}
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
-        with:
-          category: "/language:${{ matrix.language }}"
-
   sca-snyk:
     name: SCA - Snyk Open Source
     runs-on: ubuntu-latest
@@ -213,7 +177,7 @@ jobs:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
@@ -221,6 +185,25 @@ jobs:
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # Snyk's pip plugin needs a requirements-style manifest. This project
+      # ships PEP 621 metadata in pyproject.toml with no requirements.txt, which
+      # `snyk test --all-projects` cannot detect (SNYK-CLI-0008). Resolve the
+      # full runtime dependency tree into a pinned manifest and scan that.
+      # `--exclude-editable` drops the editable self-package line so Snyk only
+      # sees real third-party dependencies and their transitive closure.
+      - name: Resolve Python dependency manifest
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip freeze --exclude-editable > requirements-snyk.txt
+          echo "Resolved dependencies:"
+          cat requirements-snyk.txt
 
       - name: Install Snyk CLI
         run: npm install -g snyk
@@ -235,7 +218,8 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: >
           snyk test
-          --all-projects
+          --file=requirements-snyk.txt
+          --package-manager=pip
           --severity-threshold=${{ env.SNYK_SEVERITY_THRESHOLD }}
           --sarif-file-output=snyk-oss.sarif
 
@@ -260,7 +244,7 @@ jobs:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
@@ -298,7 +282,7 @@ jobs:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
@@ -335,7 +319,7 @@ jobs:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
@@ -371,7 +355,7 @@ jobs:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -400,7 +384,7 @@ jobs:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
@@ -423,7 +407,7 @@ jobs:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
