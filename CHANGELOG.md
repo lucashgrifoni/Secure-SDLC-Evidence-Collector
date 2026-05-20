@@ -4,45 +4,6 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
-## [1.3.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v1.2.0...v1.3.0) (2026-05-20)
-
-
-### Added
-
-* **cli:** Typer entrypoint with run/collect/evaluate/bundle/controls ([eab0c84](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/eab0c845e0dab5d3979f9d223bfc0a97a578a6ac))
-* **collectors:** local filesystem and GitHub Actions adapters ([2f988bf](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/2f988bf0ce2a8c2937e14eff2961fcb60a4d1194))
-* **controls:** 10-control Secure SDLC catalog and explainable engine ([c2ac2ab](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/c2ac2abc93759ee471ef8ea2824be04851dd9d3c))
-* **domain:** canonical Secure SDLC evidence bundle schema ([605f977](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/605f977008700b341ff62b810f4f581e06f32182))
-* **examples:** sample_release and self_release dogfood fixtures ([5e7d955](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/5e7d9552d646e86b5e4cc689da4a680a7453fd82))
-* **exporters:** deterministic JSON + Markdown + HTML bundle outputs ([a58262a](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/a58262a0cedd47a20b7619383bdade9153840496))
-* **packaging:** reusable GitHub Action and non-root Docker image ([cf6ca87](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/cf6ca8722fc81351f1c29cbd0b228049f8d10d75))
-* **parsers:** SARIF, SBOM, JUnit, ZAP, attestation and exception readers ([65571d4](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/65571d4c67988652446bc26f568441b38db834c2))
-* **v2.0:** Tier 6 completo (Sprints 1-6) + Pages landing + policy-as-code gate ([#27](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/27)) ([a524140](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/a5241406da699cc2a429253586ab35c091be06f1))
-
-
-### Fixed
-
-* **ci:** lowercase image ref for syft SBOM (GHCR requires lowercase) ([12d8484](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/12d84843f6a5084c82ce7955738e1f5b281e1300))
-* **ci:** satisfy publish-pypi.yml quality gates for v2.0.0 ([6e7f672](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/6e7f67276a13eb5a2724ee2e3f2961e0af848114))
-
-
-### Documentation
-
-* keep the project ideation and execution plan for portfolio ([2107bdc](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/2107bdc73e03ce0a2349b5ba8cfe8e00b9218083))
-* maturity roadmap + status, ship Tier 1 ([040a153](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/040a153c4167a8a4070303d1d7b497dadac136e9))
-* **melhorias:** security CI/CD failure analysis and Dependabot triage ([297b87b](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/297b87b901445a12b243a1a46d4c86a57b697cb4))
-* README, CHANGELOG, and bundle schema reference ([9cd3b67](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/9cd3b6737fccc4496a4894f41ec7aa359560248f))
-* **release:** add v2.0.0 release notes source file ([174ca8b](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/174ca8b0cdba547fe334b48548f18d0451f04272))
-* **self-release:** commit v0.1.0 self-dogfood bundle output ([3545b67](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/3545b6778fc6c13efd5add1798d7ba57857f74cd))
-
-
-### CI
-
-* GitHub Actions pipeline with lint, types, tests, sample bundle ([239b925](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/239b9257aa32d6444f625fdc06c4434f9082f9a1))
-* **release-please:** authenticate with a GitHub App token ([#32](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/32)) ([c010845](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/c010845e8da1e1f9d0257a2e23f8f0d2b443bb83))
-* standardize and harden GitHub Actions workflows ([#30](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/30)) ([86e635e](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/86e635e0d956f998b36b1db876b741eff13cd466))
-* standardize github workflows ([019e32b](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/019e32b4126e6f3241c1349c0c492d5a1c60e2df))
-
 ## [Unreleased]
 
 ## [2.0.0] - 2026-05-19
