@@ -3,11 +3,10 @@
 # Run with: conftest verify --policy policies/rego/
 package release_ready
 
-# Rego imports are per-file: this test file needs the same future keywords
-# (`if`, `some ... in`) that release-ready.rego declares, or conftest's OPA
-# rejects it with a parse error.
-import future.keywords.if
-import future.keywords.in
+# Rego imports are per-file: this test file needs the same modern-Rego
+# import that release-ready.rego declares, or conftest's OPA rejects it
+# with a parse/type error on the `if` / `some ... in` / `contains` syntax.
+import rego.v1
 
 test_allows_ready_bundle if {
     count(deny) == 0 with input as {
