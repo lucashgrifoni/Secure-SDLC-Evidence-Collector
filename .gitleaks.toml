@@ -1,20 +1,19 @@
 # Gitleaks configuration for the Secure SDLC Evidence Collector repo.
 #
-# We ship recorded scanner SARIFs under examples/ and tests/fixtures/.
+# We ship a small recorded scanner fixture set under examples/sample_release/
+# and tests/fixtures/.
 # Some of those upstream advisories embed example tokens (e.g.,
 # `sk-live-secret123`) inside prose. Those are documentation, not
-# secrets, so we allowlist the directories that hold recorded scanner
-# output — but keep full-strength scanning on the collector's own
-# source code.
+# secrets, so we allowlist the intentionally retained fixture directories —
+# but keep full-strength scanning on the collector's own source code and on
+# large generated lab/self-release outputs.
 [extend]
 useDefault = true
 
 [allowlist]
 description = "Recorded third-party scanner output is prose, not secrets"
 paths = [
-  '''examples/labs/[^/]+/artifacts/.*''',
   '''examples/sample_release/artifacts/.*''',
-  '''examples/self_release/artifacts/.*''',
   '''tests/fixtures/.*''',
   '''tests/unit/fixtures/.*''',
   '''tests/integration/fixtures/.*''',

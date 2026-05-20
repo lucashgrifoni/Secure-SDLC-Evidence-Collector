@@ -1,13 +1,13 @@
 # External lab evidence
 
-This directory ships recorded evidence bundles produced by the collector
-against the sibling **App vuln - teste** repository
+This directory documents lab evidence bundles produced by the collector
+against the sibling vulnerable-app repository
 (`01-core-saas-lab` … `07-oss-policy-fixtures-lab`), which is a set of
 intentionally vulnerable sample applications covering SaaS, identity /
 admin, cloud-native, data batch, AI/LLM, regulated-industry, and OSS
 policy fixtures.
 
-Goal: prove, by recorded verdict, that the collector behaves consistently
+Goal: prove, by reproducible verdict, that the collector behaves consistently
 when fed a **real-world, untreated** evidence set — no planted results,
 no curated attestations, only what scanners actually produced.
 
@@ -16,16 +16,16 @@ no curated attestations, only what scanners actually produced.
 ```
 examples/labs/
   01-core-saas-lab/
-    artifacts/
+    artifacts/             # generated locally or in CI, ignored by Git
       semgrep.sarif        # Semgrep p/security-audit
       trivy.sarif          # Trivy fs vuln+secret+misconfig
       gitleaks.sarif       # Gitleaks --no-git --redact
       sbom.cdx.json        # Syft CycloneDX
-    output/
+    output/                # generated locally or in CI, ignored by Git
       bundle.json          # deterministic bundle
       report.md            # human-readable rollup
       summary.html         # stakeholder summary
-    logs/                  # scanner logs, for forensic review
+    logs/                  # generated scanner logs, ignored by Git
     README.md              # expected vs. obtained verdict
   02-identity-admin-lab/  … (same shape)
   …
@@ -55,8 +55,8 @@ the dependency graph; `SSDF-PW.8 (test_result)`, `ORG-CODE-REVIEW
 (code_review)`, `ORG-RELEASE-APPROVAL (release_approval)`,
 `ORG-REL-ROLLBACK (rollback_plan)`, `SSDF-PS.2 (artifact_signature)`.
 
-All seven results match the expected verdicts documented in
-`docs/traceability.md §3–§4`.
+All seven results from the last validation pass matched the expected
+verdicts documented in `docs/traceability.md §3-§4`.
 
 ## Regenerating
 

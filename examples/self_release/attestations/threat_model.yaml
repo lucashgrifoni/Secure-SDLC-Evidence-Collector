@@ -11,7 +11,7 @@ summary: >-
   downstream auditors; trust boundaries are file ingestion and GitHub API.
   Mitigations applied: 25MB ingest cap, SHA-256 integrity hashes, strict
   Pydantic schemas, no secret logging, defusedxml for XML parsing.
-link: "Ideia do projeto.md"
+link: "THREAT_MODEL.md"
 metadata:
   scope: "v0.1.0 MVP - ingestion, evaluation, export, CLI"
   review_date: "2026-04-23"

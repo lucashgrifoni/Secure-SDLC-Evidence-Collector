@@ -14,7 +14,7 @@
   and the project receives its public project ID (PROJECT_ID), replace
   the placeholder below with:
     [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/PROJECT_ID/badge)](https://www.bestpractices.dev/projects/PROJECT_ID)
-  Tracking: docs/MATURITY_STATUS.md row T6.C1.
+  Tracking for the public project ID lives in the maintainer issue queue.
 -->
 ![OpenSSF Best Practices (registration pending)](https://img.shields.io/badge/openssf%20best%20practices-registration%20pending-lightgrey)
 
@@ -288,13 +288,12 @@ The collector is dogfooded on every push and on every release:
 - **`examples/sample_release/`** — synthetic but realistic positive fixture
   (Semgrep + Trivy + Gitleaks SARIF, CycloneDX SBOM, JUnit, ZAP baseline,
   YAML attestations). Expected verdict `ready`, 13/13 controls met.
-- **`examples/self_release/`** — the collector's own pipeline evidence,
-  regenerated on `deploy-github-pages.yml` and `publish-pypi.yml`. This is the
-  dogfood bundle published in each GitHub Release.
-- **`examples/labs/`** — recorded scans produced against the external
-  `App vuln - teste` lab suite (SaaS, identity, cloud-native, data/batch,
-  AI/LLM, industry, OSS-policy) and mapped to expected verdicts in
-  [`docs/traceability.md`](./docs/traceability.md).
+- **`examples/self_release/`** — dogfood attestation templates and commands
+  for the collector's own pipeline evidence. Generated scanner outputs and
+  release bundles are intentionally ignored instead of committed.
+- **`examples/labs/`** — lab scenario documentation and regeneration scripts
+  for the external vulnerable-app suite. Raw scanner dumps, logs, SBOMs, and
+  bundles are generated locally or in CI and intentionally not committed.
 - **Release readiness checklist** — go/no-go criteria for public releases
   live in [`docs/release-readiness.md`](./docs/release-readiness.md).
 - **Known limitations** — parser scope, heuristics, and classification
@@ -364,14 +363,11 @@ The tool itself follows the security rules it enforces on others:
 
 ### Shipped in `1.1.0`
 
-Tier 1–4 maturity work. **Configured in code or workflow** — every
+Tier 1-4 maturity work. **Configured in code or workflow** — every
 externally verifiable signal (signed assets on PyPI / GHCR, public
 Scorecard score, CodeQL alerts on the Security tab) materialises only
-after the first public release (`v1.2.0`, see
-[`docs/program/EXTERNAL-ACTIONS-2026-05-18.md`](./docs/program/EXTERNAL-ACTIONS-2026-05-18.md))
-runs end-to-end against a public repository with the external setup
-listed in
-[`docs/MATURITY_STATUS.md §External actions`](./docs/MATURITY_STATUS.md).
+after a public release runs end-to-end against the configured GitHub,
+PyPI, GHCR, and OpenSSF project surfaces.
 
 - OpenSSF Scorecard, native CodeQL, expanded `pre-commit`,
   structural-determinism gate, `sdlc-evidence doctor` health check.

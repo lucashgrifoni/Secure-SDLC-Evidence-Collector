@@ -80,13 +80,13 @@ jobs:
       - name: Generate evidence summary
         run: |
           python -m evidence_collector.cli.main run \
-            --application secure-sdlc-evidence-collector \
-            --repository "${{ github.repository }}" \
-            --release-id "${{ github.sha }}" \
+            --application payments-api \
+            --repository acme/payments-api \
+            --release-id "pages-demo-${{ github.sha }}" \
             --commit-sha "${{ github.sha }}" \
             --branch "${{ github.ref_name }}" \
-            --artifacts-dir examples/self_release/artifacts \
-            --attestations-dir examples/self_release/attestations \
+            --artifacts-dir examples/sample_release/artifacts \
+            --attestations-dir examples/sample_release/attestations \
             --output-dir site/evidence \
             --fail-on not_ready
           cp README.md site/README.md

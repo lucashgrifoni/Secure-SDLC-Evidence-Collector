@@ -47,7 +47,7 @@ run-self-release:
 		--artifacts-dir examples/self_release/artifacts \
 		--attestations-dir examples/self_release/attestations \
 		--artifact-root . \
-		--output-dir examples/self_release/output
+		--output-dir output/self_release
 
 clean:
 	rm -rf build/ dist/ *.egg-info src/*.egg-info

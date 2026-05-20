@@ -75,7 +75,6 @@ nav:
   - Bundle schema reference: bundle_schema.md
   - GitHub Action: github_action.md
   - Release readiness: release-readiness.md
-  - Public repository readiness: publication-readiness.md
   - AI evidence: ai-evidence.md
   - Comparison vs alternatives: comparison.md
   - Plugins: plugins.md
@@ -83,7 +82,6 @@ nav:
   - Traceability: traceability.md
   - Maturity:
       - Roadmap: MATURITY_ROADMAP.md
-      - Status: MATURITY_STATUS.md
   - Architecture decisions:
       - Index: adr/README.md
       - ADR-0001 Pydantic v2: adr/0001-pydantic-v2.md

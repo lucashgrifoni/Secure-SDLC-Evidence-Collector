@@ -36,9 +36,7 @@ In order of preference:
 1. **Bug, feature, or evidence-model question:** open a GitHub Issue.
 2. **Security report:** the channel listed in
    [`SECURITY.md`](./SECURITY.md). Do not file a public Issue first.
-3. **Anything else:** GitHub Discussions, once enabled (see
-   [`docs/program/EXTERNAL-ACTIONS-2026-05-18.md`](docs/program/EXTERNAL-ACTIONS-2026-05-18.md)
-   Block C).
+3. **Anything else:** GitHub Discussions, once enabled.
 
 The maintainer does not handle support requests over email, DMs, or
 private chats. The visible audit trail is part of the OSS contract.

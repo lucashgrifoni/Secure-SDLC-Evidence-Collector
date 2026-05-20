@@ -31,10 +31,10 @@ What was re-run in this rodada (post-publication hardening branch
   4 missing critical (`ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`,
   `ORG-REL-ROLLBACK`, `SSDF-PS.2`), exit `2`.
 - **Self-release dogfood** (`make run-self-release`) — `ready 13/13`,
-  coverage 100, confidence 54 (manual attestations). The committed
-  bundle at `examples/self_release/output/bundle.json` was regenerated
-  to match the v1.1.0 schema (now includes the `classification` field
-  introduced in fase 7).
+  coverage 100, confidence 54 (manual attestations). The generated
+  bundle under `output/self_release/` was regenerated locally to match
+  the v1.1.0 schema (now includes the `classification` field introduced
+  in fase 7).
 - **Cross-OS determinism** — the snapshot test now produces digest
   `a42920b3…` on both Windows and Linux after the 2026-05-17 fix to
   `normalize_bundle` (POSIX-normalizes `evidence[*].raw.artifact_path`
@@ -64,8 +64,8 @@ What was re-run from this matrix in this rodada:
   Missing critical controls observed: `ORG-CODE-REVIEW`,
   `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`, `SSDF-PS.2`. This
   matches §4 row "A critical control lacks required evidence".
-- **`compare` against the canonical sample** —
-  `examples/sample_release/output/bundle.json` vs. the new
+- **`compare` against the generated sample** —
+  `output/sample_release/bundle.json` vs. the new
   `output/cursor-validation-run/bundle.json` reported
   `coverage_delta=0`, `confidence_delta=0`, all 13 controls
   `unchanged`. The `ready -> ready` headline is preserved across the

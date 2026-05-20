@@ -1,10 +1,8 @@
 # Inventario de pinning de GitHub Actions
 
 Data: 2026-05-05
-Origem: Tarefa 6 do prompt
-`docs/program/_archive/2026-05-05/prompt-cursor.md`
-e P2-01 do plano
-`docs/program/_archive/2026-05-05/plan-maturity-hygiene.md`.
+Origem: rodada de hardening de 2026-05-05. Os prompts e planos de execucao
+originais foram removidos da arvore publica.
 
 Comando usado:
 
@@ -93,10 +91,7 @@ notes validadas.
 ## Acoes nesta rodada
 
 - Inventario produzido neste documento.
-- `docs/MATURITY_STATUS.md` atualizado:
-  linha "Workflows pinned by SHA" virou
-  "Workflows pinned (third-party): mostly SHA / target full SHA",
-  com pointer para este arquivo via texto da nota.
+- Inventario publico atualizado neste arquivo.
 - `docs/release-readiness.md` ja inclui o item
   "All GitHub workflows use ... SHA-pinned third-party actions
   (or explicit tag pins where SHA is not available)" no bloco de

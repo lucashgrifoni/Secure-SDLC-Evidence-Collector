@@ -1,0 +1,11 @@
+{
+  "summary": {
+    "release_status": "ready",
+    "missing_critical_evidence": [],
+    "evidence_coverage_score": 100,
+    "controls_missing": 0,
+    "controls_partial": 0,
+    "controls_waived": 0,
+    "confidence_score": 75
+  }
+}
