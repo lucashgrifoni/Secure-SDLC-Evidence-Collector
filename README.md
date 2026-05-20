@@ -61,7 +61,7 @@ This collector reframes the question around **evidence, not findings**:
 | Waivers | Time-bound exceptions with scope (application/release) and expiry — plain YAML/JSON, auditable |
 | Outputs | Deterministic `bundle.json`, Jinja2 `report.md`, and `summary.html` |
 | CLI | `run` · `collect` · `evaluate` · `bundle` · `controls` · `compare` · `oscal` · `plugins` · `schema` · `doctor` · `verify` · `enrich` · `vex` · `statement` · `exceptions list/validate` |
-| Packaging | Reusable GitHub Action (`action.yml`), non-root Docker image, wheel + sdist build verified locally; PyPI publish wired via OIDC Trusted Publisher and pending external setup. |
+| Packaging | Reusable GitHub Action (`action.yml`), non-root Docker image, wheel + sdist build verified locally; published to PyPI as [`secure-sdlc-evidence-collector`](https://pypi.org/project/secure-sdlc-evidence-collector/) via OIDC Trusted Publisher. |
 | Release integrity | `publish-pypi.yml` is configured to perform cosign keyless signing + Sigstore Rekor transparency log + SLSA Build Level 3 provenance on tag push. `2.0.0` was the first public release; the current release is `2.0.3` (the v1.1.0 cut prepared in code stayed internal, and the Tier 5/Tier 6 work landed on top, so SemVer required the 2.0 line). |
 | Quality bar | `ruff`, `mypy --strict`, `pytest` with coverage gate, GitHub Actions CI, Dependabot |
 
@@ -377,6 +377,31 @@ PyPI, GHCR, and OpenSSF project surfaces.
   mkdocs-material site at `/docs/`, CI matrix Python 3.12 + 3.13.
 - Plugin entry-point system, optional FastAPI read-only surface,
   OSCAL exporter, `release-please` workflow.
+
+### Shipped in `2.0.0`
+
+Tier 6 — standards-alignment cut, and the first public release line.
+
+- CycloneDX 1.7 parser; OSV / OSV-Scanner parser; in-toto Statement v1
+  predicate-type variants (witness / evidence-bundle / slsa-provenance);
+  SSDF 1.2 opt-in catalog.
+- AI evidence track: 5 evidence types, 3 parsers (garak / lm-eval /
+  model-card), AI catalog mapped to NIST SP 800-218A + OWASP LLM /
+  Agentic Top 10.
+- Risk-weighted verdict (`--risk-mode epss-weighted`); multi-VEX
+  consumer; optional reachability field.
+- EU CRA + FedRAMP 20x profiles + FedRAMP 20x KSI catalog; GUAC adapter.
+- Reproducible wheel gate, reusable GitHub Actions workflow, GitLab CI
+  template, devcontainer + Codespaces, comparison page, ADRs 0007–0012.
+
+### Deferred to `2.1`
+
+- `sdlc-evidence watch` daemon (see `docs/limitations.md`).
+- SPDX VEX consumer (low industry adoption today).
+- IaC scan as its own `evidence_type`.
+- `compare --policy` (Rego for acceptable regression).
+- Sigstore policy-controller recipe.
+- OpenTelemetry tracing via the `[otel]` extra.
 
 ### Considered for future versions
 
