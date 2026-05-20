@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.1](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.0...v2.0.1) (2026-05-20)
+
+
+### Documentation
+
+* **release:** add v2.0.0 release notes source file ([174ca8b](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/174ca8b0cdba547fe334b48548f18d0451f04272))
+
+
+### CI
+
+* **release-please:** authenticate with a GitHub App token ([#32](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/32)) ([c010845](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/c010845e8da1e1f9d0257a2e23f8f0d2b443bb83))
+* standardize and harden GitHub Actions workflows ([#30](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/30)) ([86e635e](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/86e635e0d956f998b36b1db876b741eff13cd466))
+
 ## [Unreleased]
 
 ## [2.0.0] - 2026-05-19
