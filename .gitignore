@@ -66,10 +66,36 @@ output/
 /artifacts/
 .bundles/
 *.bundle.json
-# Keep committed dogfood bundle outputs so the repo ships with reproducible
-# self-audit evidence. Users' own outputs remain ignored.
-!examples/*/output/
-!examples/*/output/**
+examples/*/output/
+examples/labs/*/artifacts/*.sarif
+examples/labs/*/artifacts/sbom.cdx.json
+examples/labs/*/logs/*.log
+examples/self_release/artifacts/*.sarif
+examples/self_release/artifacts/sbom.cdx.json
+examples/self_release/artifacts/junit.xml
+examples/self_release/attestations/release_approval.yaml
+
+# Internal planning, handoff, and agent prompt material
+Ideia do projeto.md
+docs/MATURITY_STATUS.md
+docs/publication-readiness.md
+docs/program/_archive/
+docs/program/HANDOFF-*.md
+docs/program/EXTERNAL-ACTIONS-*.md
+docs/program/PUBLICATION-RUNBOOK.md
+docs/program/release-runbook.md
+docs/program/cross-validation-*.md
+docs/program/plan-*.md
+docs/program/*prompt*.md
+docs/program/*PROMPT*.md
+docs/program/RELEASE-NOTES-*-draft.md
+melhorias/*prompt*.md
+melhorias/*PROMPT*.md
+melhorias/*validacao*.md
+melhorias/*VALIDACAO*.md
+melhorias/*HANDOFF*.md
+melhorias/*workspace*/
+melhorias/*shipped*/
 
 # Env files
 .env

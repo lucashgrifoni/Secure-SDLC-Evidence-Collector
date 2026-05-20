@@ -264,17 +264,17 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .
 
-      - name: Generate release bundle
+      - name: Generate release evidence bundle
         run: |
           python -m evidence_collector.cli.main run \
-            --application secure-sdlc-evidence-collector \
-            --repository "${{ github.repository }}" \
+            --application payments-api \
+            --repository acme/payments-api \
             --release-id "${{ needs.build.outputs.tag }}" \
             --commit-sha "${{ github.sha }}" \
             --branch "${{ github.ref_name }}" \
             --tag "${{ needs.build.outputs.tag }}" \
-            --artifacts-dir examples/self_release/artifacts \
-            --attestations-dir examples/self_release/attestations \
+            --artifacts-dir examples/sample_release/artifacts \
+            --attestations-dir examples/sample_release/attestations \
             --output-dir release-evidence \
             --fail-on conditional
 

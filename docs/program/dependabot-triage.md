@@ -1,7 +1,7 @@
 # Triagem Dependabot — Fase 8 do plano de publicacao v1.1.0
 
 Data: 2026-05-05
-Plano de origem: `docs/program/_archive/2026-05-05/plan-publication.md`
+Plano de origem: rodada privada de publicacao de 2026-05-05.
 PR base mergeada: #10 (release-readiness para v1.1.0) em `main` (`17dede2`).
 
 ## Resumo executivo
@@ -76,8 +76,7 @@ imediato.
 - Quando o repositorio virar publico (Fase 6 do plano), os checks
   vermelhos do Security CI/CD viram verdes automaticamente
   (`Resource not accessible by integration` desaparece). Validar isso
-  reabrindo um PR sintetico ou rerodando o ultimo workflow, como
-  registrado em `docs/program/_archive/2026-05-05/security-ci-failure-analysis.md`.
+  reabrindo um PR sintetico ou rerodando o ultimo workflow.
 
 ## Conformidade com o plano
 

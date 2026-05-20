@@ -4,10 +4,8 @@ Formal go/no-go criteria for tagging a new public release of the Secure
 SDLC Evidence Collector. The project does **not** ship until every
 criterion is ticked and the evidence linked below is current.
 
-For turning the private repository public, use the stricter
-[public repository readiness gate](./publication-readiness.md), currently
-targeted at **2026-06-05**. That gate supersedes the older 2026-05-01
-publication target.
+Public repository readiness is handled through the maintainer issue queue
+and release approvals, not through committed private runbooks.
 
 **Last local validation pass: 2026-05-17 (post-publication hardening
 pass v1.1.1) — 233 tests passing, coverage 87.68 %, `ruff check src tests
@@ -59,18 +57,16 @@ changed their `raw.integrity_hash` in the bundle). Both digests were
 re-confirmed identical on Windows and Linux-simulated runs. The change is locked
 by 6 new unit tests in `tests/unit/test_integrity.py` so a regression
 in the helper fails a granular test before the snapshot. The pass
-also: (a) regenerated `examples/sample_release/output/*` and
-`examples/self_release/output/*` so the committed canonical bundles
-match the v1.1.0 schema (now includes the `classification` field
-introduced in fase 7); (b) corrected `docs/traceability.md §4` lab
+also: (a) regenerated local ignored sample and self-release outputs so
+the canonical bundles matched the v1.1.0 schema (now includes the
+`classification` field introduced in fase 7); (b) corrected
+`docs/traceability.md §4` lab
 critical counts from a stale "6 missing critical" to the actual 4
 missing critical (5 for `04-data-batch-lab`); (c) made the local
 gates reproducible by fixing `.gitleaks.toml`, `.semgrepignore`,
 `.pre-commit-config.yaml`, and adding `make run-self-release`.
-Evidence pack:
-[`output/publication-2026-05-17/`](../output/publication-2026-05-17/);
-session handoff:
-[`docs/program/HANDOFF-2026-05-17.md`](program/HANDOFF-2026-05-17.md).
+Evidence packs and session handoffs are generated locally and are not
+committed to the public repository.
 
 ---
 
@@ -99,8 +95,8 @@ session handoff:
 
 ## External-lab evidence
 
-- [ ] Every lab in `examples/labs/` has a recorded `artifacts/` directory
-      and an `output/bundle.json`.
+- [ ] Every lab in `examples/labs/` can regenerate its ignored
+      `artifacts/`, `logs/`, and `output/bundle.json` locally or in CI.
 - [ ] Each lab's obtained verdict matches the expected verdict in
       `docs/traceability.md §3–§4`.
 - [ ] Any drift (expected ≠ obtained) is triaged — either code change,
@@ -122,9 +118,8 @@ session handoff:
 - [ ] `security-ci-cd.yml` (Semgrep + pip-audit + Trivy + actionlint)
       passes on the release commit.
 - [ ] No hardcoded secrets (`gitleaks` clean, `trivy secret` clean).
-- [ ] No local file paths in any tracked file (grep for
-      `C:\\Users`, `/home/`, `/Users/` returns zero hits outside
-      fixtures explicitly marked as scrubbed).
+- [ ] No local home-directory paths in any tracked file outside fixtures
+      explicitly marked as scrubbed.
 - [ ] All GitHub workflows use `persist-credentials: false`, least
       privilege `permissions:` blocks, and SHA-pinned third-party
       actions (or explicit tag pins where SHA is not available).
@@ -173,7 +168,7 @@ python -m evidence_collector.cli.main run \
 
 python -m evidence_collector.cli.main compare \
   output/ready-check/bundle.json \
-  examples/sample_release/output/bundle.json
+  output/sample_release/bundle.json
 
 # External-lab evidence
 bash scripts/scan_all_labs.sh

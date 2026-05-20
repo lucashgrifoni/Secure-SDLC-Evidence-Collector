@@ -16,15 +16,12 @@ operate it in a real pipeline**.
 - **[Release readiness model](./release-readiness.md)** — how
   `ready` / `conditional` / `not_ready` is decided, and how to wire
   the verdict into pipeline gates.
-- **[Public repository readiness gate](./publication-readiness.md)** —
-  mandatory acceptance criteria before making the repository public.
 - **[Limitations](./limitations.md)** — what the collector explicitly
   does not do, so adopters do not assume coverage that is not there.
 - **[Traceability matrix](./traceability.md)** — control-to-evidence
   mapping with NIST SSDF and OWASP SAMM coordinates.
-- **[Maturity roadmap](./MATURITY_ROADMAP.md)** and
-  **[live status](./MATURITY_STATUS.md)** — the four-tier plan and
-  the current snapshot of progress against it.
+- **[Maturity roadmap](./MATURITY_ROADMAP.md)** — the public roadmap for
+  future hardening and adoption work.
 - **[Architecture decision records](./adr/README.md)** — the
   non-obvious decisions that shape this project and the reasoning
   behind them.
@@ -36,7 +33,7 @@ operate it in a real pipeline**.
 | CLI (`sdlc-evidence`)                | `src/evidence_collector/cli/main.py`                                                      |
 | GitHub Action                        | [`action.yml`](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/action.yml) |
 | Container image                      | `publish-pypi.yml` builds and signs `ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector` (multi-arch, cosign keyless + SBOM attestation) on tag push. The first publicly verifiable image will be `:v1.1.0`. |
-| Wheel + sdist                        | Built and signed by `publish-pypi.yml`; PyPI publishing is configured but still depends on the external Trusted Publisher setup tracked in `MATURITY_STATUS.md`. |
+| Wheel + sdist                        | Built and signed by `publish-pypi.yml`; PyPI publishing depends on the repository's Trusted Publisher configuration in PyPI. |
 | Bundle JSON Schema                   | Exported by `sdlc-evidence schema`; validated in CI on every run.                         |
 
 ## Verifying signatures

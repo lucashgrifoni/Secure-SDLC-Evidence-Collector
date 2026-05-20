@@ -6,8 +6,8 @@
 #   * `conftest verify` proves the Rego file itself is well-formed and
 #     that its companion test file passes — this is the truth check
 #     for `policies/rego/release-ready.rego`.
-#   * `conftest test` runs the policy against the canonical sample
-#     bundle (`examples/sample_release/output/bundle.json`) and
+#   * `conftest test` runs the policy against a minimal checked-in
+#     policy fixture (`tests/fixtures/policy-ready-bundle.json`) and
 #     asserts that a known-good bundle is admitted with zero denies.
 #   * `kyverno apply --policy` syntactically validates the Kyverno
 #     ClusterPolicy by applying it against a synthetic Namespace and
@@ -32,7 +32,7 @@ on:
       - "policies/**"
       - ".github/workflows/policy-tests.yml"
       - "src/evidence_collector/domain/models.py"
-      - "examples/sample_release/output/**"
+      - "tests/fixtures/policy-ready-bundle.json"
 
 permissions:
   contents: read
@@ -75,7 +75,7 @@ jobs:
           conftest test \
             --policy policies/rego/release-ready.rego \
             --namespace release_ready \
-            examples/sample_release/output/bundle.json
+            tests/fixtures/policy-ready-bundle.json
 
   kyverno:
     name: Kyverno — policy syntax + dry-run

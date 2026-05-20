@@ -94,7 +94,7 @@ publication runbook.
 | `documentation_security` | "Yes" | `SECURITY.md` + `docs/limitations.md` + `THREAT_MODEL.md` |
 | `documentation_quick_start` | "Yes" | `README.md` + `docs/ai-evidence.md` |
 | `documentation_current` | "Yes" | Owner reviews on each release |
-| `documentation_achievements` | "Yes" | `docs/MATURITY_STATUS.md` |
+| `documentation_achievements` | "Yes" | `CHANGELOG.md` and GitHub Releases |
 | `accessibility_best_practices` | "N/A — CLI-first, no UI" | n/a |
 | `internationalization` | "N/A for the Passing tier" | n/a |
 
@@ -109,8 +109,8 @@ publication runbook.
 ## After submission
 
 1. Replace the placeholder badge in `README.md` with the assigned
-   PROJECT_ID (see Phase 5 of `PUBLICATION-RUNBOOK.md`).
-2. Update `docs/MATURITY_STATUS.md` to mark T6.C1 as done.
+   PROJECT_ID.
+2. Open a public issue or release-note entry marking T6.C1 as done.
 3. Open a Discussions thread "OpenSSF Best Practices — Passing"
    linking to the badge page so contributors can find it.
 

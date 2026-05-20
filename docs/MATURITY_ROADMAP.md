@@ -10,7 +10,8 @@ trust signal for the least engineering time; Tier 4 is community and
 ecosystem polish that only matters once the lower tiers are already in
 place.
 
-Live progress against this plan lives in [`MATURITY_STATUS.md`](./MATURITY_STATUS.md).
+Live progress against this plan is tracked through public issues,
+release notes, and the maintainer project board.
 
 ---
 
@@ -111,10 +112,8 @@ project + standard must be free and Apache-2.0 (or compatible) licensed.
 Items target a **single v2.0 release** after v1.2.0 publishes. The
 x.0 jump is positional (signals the OSS-first / standards-aligned
 pivot); all schema changes are additive so a v1.x consumer reading a
-v2.x bundle still parses every field it knew. Full plan in
-[`docs/program/plan-tier-6-v2.0.md`](program/plan-tier-6-v2.0.md)
-(generated from the approved plan at
-`~/.claude/plans/fa-a-uma-pesquisa-detalhada-squishy-lovelace.md`).
+v2.x bundle still parses every field it knew. Detailed private planning
+notes are not part of the public repository.
 
 ### Phase A — Standards alignment (~10 days)
 
@@ -171,8 +170,8 @@ v2.x bundle still parses every field it knew. Full plan in
 1. Pick the smallest unfinished tier item.
 2. Open a branch, ship the change, validate locally with the same gates
    that CI runs (`ruff`, `mypy`, `pytest`, `actionlint`).
-3. Update [`MATURITY_STATUS.md`](./MATURITY_STATUS.md) in the same commit
-   so the status doc and the actual repo state never drift.
+3. Update the relevant public issue, release note, or project-board item in
+   the same change so the roadmap and the actual repo state never drift.
 4. If the item is bigger than expected, split it. The roadmap is allowed
    to grow IDs (e.g. `T2.3a`, `T2.3b`).
 
