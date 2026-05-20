@@ -222,6 +222,25 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # Snyk's pip plugin needs a requirements-style manifest. This project
+      # ships PEP 621 metadata in pyproject.toml with no requirements.txt, which
+      # `snyk test --all-projects` cannot detect (SNYK-CLI-0008). Resolve the
+      # full runtime dependency tree into a pinned manifest and scan that.
+      # `--exclude-editable` drops the editable self-package line so Snyk only
+      # sees real third-party dependencies and their transitive closure.
+      - name: Resolve Python dependency manifest
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip freeze --exclude-editable > requirements-snyk.txt
+          echo "Resolved dependencies:"
+          cat requirements-snyk.txt
+
       - name: Install Snyk CLI
         run: npm install -g snyk
 
@@ -235,7 +254,8 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: >
           snyk test
-          --all-projects
+          --file=requirements-snyk.txt
+          --package-manager=pip
           --severity-threshold=${{ env.SNYK_SEVERITY_THRESHOLD }}
           --sarif-file-output=snyk-oss.sarif
 
