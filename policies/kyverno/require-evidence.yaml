@@ -67,7 +67,11 @@ spec:
           metadata:
             annotations:
               secure-sdlc.io/release-status: ready
-              secure-sdlc.io/bundle-sha256: "?(/{64}/)"
+              # Kyverno `pattern` supports `*`/`?` wildcards, not regex, so we
+              # require the annotation to be present and non-empty (`?*`).
+              # Strict 64-hex-format validation belongs in a CEL/precondition
+              # rule; this admission backstop only asserts a verdict exists.
+              secure-sdlc.io/bundle-sha256: "?*"
 
     - name: workloads-inherit-namespace-evidence
       match:

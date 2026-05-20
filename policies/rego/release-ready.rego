@@ -16,8 +16,7 @@
 
 package release_ready
 
-import future.keywords.if
-import future.keywords.in
+import rego.v1
 
 # ---------------------------------------------------------------------------
 # Defaults — override via data.release_ready.thresholds.{coverage,confidence}
@@ -39,7 +38,7 @@ confidence_floor := value if {
 # Hard denies — block the release.
 # ---------------------------------------------------------------------------
 
-deny[msg] if {
+deny contains msg if {
     input.summary.release_status != "ready"
     msg := sprintf(
         "release_status is %q; expected \"ready\" for production release",
@@ -47,7 +46,7 @@ deny[msg] if {
     )
 }
 
-deny[msg] if {
+deny contains msg if {
     count(input.summary.missing_critical_evidence) > 0
     msg := sprintf(
         "missing critical evidence: %v",
@@ -55,7 +54,7 @@ deny[msg] if {
     )
 }
 
-deny[msg] if {
+deny contains msg if {
     input.summary.evidence_coverage_score < coverage_floor
     msg := sprintf(
         "evidence_coverage_score=%d below floor=%d",
@@ -63,7 +62,7 @@ deny[msg] if {
     )
 }
 
-deny[msg] if {
+deny contains msg if {
     input.summary.controls_missing > 0
     msg := sprintf(
         "%d control(s) report status=missing",
@@ -75,7 +74,7 @@ deny[msg] if {
 # Soft warnings — do not block, but surface in CI logs.
 # ---------------------------------------------------------------------------
 
-warn[msg] if {
+warn contains msg if {
     input.summary.controls_partial > 0
     msg := sprintf(
         "%d control(s) report status=partial; review before tagging",
@@ -83,7 +82,7 @@ warn[msg] if {
     )
 }
 
-warn[msg] if {
+warn contains msg if {
     input.summary.confidence_score < confidence_floor
     msg := sprintf(
         "confidence_score=%d below recommended floor=%d",
@@ -91,7 +90,7 @@ warn[msg] if {
     )
 }
 
-warn[msg] if {
+warn contains msg if {
     input.summary.controls_waived > 0
     msg := sprintf(
         "%d control(s) are satisfied via waiver; ensure exception expiry is reviewed",

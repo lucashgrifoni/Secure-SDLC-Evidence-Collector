@@ -121,6 +121,10 @@ jobs:
     name: SAST - Snyk Code
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # Dependabot (and fork) PRs do not receive the SNYK_TOKEN secret, so the
+    # Snyk jobs would always fail there. Skip Snyk for the dependabot actor;
+    # Semgrep, CodeQL, and Trivy still cover those PRs.
+    if: github.actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: write
@@ -167,6 +171,8 @@ jobs:
     name: SCA - Snyk Open Source
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # See sast-snyk-code: skip for dependabot, which lacks the SNYK_TOKEN secret.
+    if: github.actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: write
