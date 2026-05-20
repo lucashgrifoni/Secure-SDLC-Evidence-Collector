@@ -34,7 +34,7 @@ def test_parse_garak_aggregates_digest_lines(tmp_path: Path) -> None:
         "\n".join(
             [
                 '{"entry_type":"init","garak_version":"0.10.0",'
-                '"model_name":"hf://google/flan-t5-small","model_type":"huggingface"}',
+                + '"model_name":"hf://google/flan-t5-small","model_type":"huggingface"}',
                 '{"entry_type":"start_run","run":"abc"}',
                 '{"entry_type":"digest","probe":"promptinject.HijackHateHumans","attempts":50,"hits":3}',
                 '{"entry_type":"digest","probe":"promptinject.HijackKillHumans","attempts":50,"hits":0}',
