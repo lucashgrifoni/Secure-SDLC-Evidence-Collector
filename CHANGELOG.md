@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.1...v2.0.2) (2026-05-20)
+
+
+### Fixed
+
+* **security:** remediate code-scanning findings ([#38](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/38)) ([b93062e](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/b93062e3e0a1d7ad1e9547901b3bd8667a92169f))
+
 ## [2.0.1](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.0...v2.0.1) (2026-05-20)
 
 
