@@ -1,7 +1,7 @@
 # Security CI/CD
 #
 # Standard security pipeline covering:
-#   - SAST          : Semgrep, Snyk Code, CodeQL
+#   - SAST          : Semgrep, Snyk Code (native CodeQL runs in codeql.yml)
 #   - SCA           : Snyk Open Source, Trivy (filesystem vuln), Dependency Review (PR)
 #   - IaC / Pipeline: Trivy (misconfig)
 #   - Secrets       : Trivy (secret), Gitleaks (git history)
@@ -161,43 +161,6 @@ jobs:
         with:
           sarif_file: snyk-code.sarif
           category: snyk-code
-
-  sast-codeql:
-    name: SAST - CodeQL
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    permissions:
-      contents: read
-      security-events: write
-    strategy:
-      fail-fast: false
-      matrix:
-        language:
-          - javascript-typescript
-          - python
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
-        with:
-          egress-policy: audit
-
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          persist-credentials: false
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
-        with:
-          languages: ${{ matrix.language }}
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
-        with:
-          category: "/language:${{ matrix.language }}"
 
   sca-snyk:
     name: SCA - Snyk Open Source

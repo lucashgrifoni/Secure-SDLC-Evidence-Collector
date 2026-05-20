@@ -46,7 +46,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ["python", "actions"]
+        # `javascript-typescript` covers the landing-page assets under
+        # gitpage/. This is the single CodeQL home for the repo; the security
+        # pipeline (security-ci-cd.yml) intentionally does not re-run CodeQL.
+        language: ["python", "javascript-typescript", "actions"]
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
