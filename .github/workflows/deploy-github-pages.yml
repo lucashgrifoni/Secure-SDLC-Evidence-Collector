@@ -10,8 +10,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Serialize Pages deployments. cancel-in-progress is false so an in-flight
+  # production deployment is allowed to finish instead of being aborted by a
+  # newer run, per GitHub Pages guidance.
+  group: pages-${{ github.workflow }}
+  cancel-in-progress: false
 
 env:
   PYTHON_VERSION: "3.12"
@@ -103,4 +106,4 @@ jobs:
 
       - name: Deploy artifact
         id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5

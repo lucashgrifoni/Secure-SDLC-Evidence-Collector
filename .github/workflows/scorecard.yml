@@ -43,6 +43,7 @@ jobs:
       security-events: write   # upload SARIF
       id-token: write          # publish to OpenSSF transparency log
       contents: read           # read repo metadata
+      actions: read            # read workflow run metadata (Token-Permissions check)
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2

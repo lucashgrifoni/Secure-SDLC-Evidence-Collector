@@ -1,3 +1,12 @@
+# Dependabot configuration for the Secure SDLC Evidence Collector (Python).
+#
+# Conventions applied across every ecosystem:
+#   - groups   : batch minor/patch bumps into fewer reviewable PRs.
+#   - cooldown : delay adopting a new release for a few days so that
+#                compromised-release supply-chain attacks (usually detected
+#                within a week) are caught before auto-update.
+#   - ignore   : block automatic major-version jumps; majors are surfaced
+#                manually rather than auto-opened.
 version: 2
 updates:
   - package-ecosystem: "pip"
@@ -15,6 +24,21 @@ updates:
       - "lucashgrifoni"
     commit-message:
       prefix: "chore(deps)"
+    cooldown:
+      default-days: 7
+      semver-minor-days: 7
+      semver-patch-days: 3
+    groups:
+      pip:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -31,6 +55,19 @@ updates:
       - "lucashgrifoni"
     commit-message:
       prefix: "chore(ci)"
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "docker"
     directory: "/"
@@ -47,3 +84,16 @@ updates:
       - "lucashgrifoni"
     commit-message:
       prefix: "chore(docker)"
+    cooldown:
+      default-days: 7
+    groups:
+      docker:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
