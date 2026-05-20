@@ -1,13 +1,11 @@
 # Secure SDLC Evidence Collector
 
-[![CI](https://img.shields.io/badge/ci-github--actions-blue)](./.github/workflows/github-ci-cd.yml)
-[![Security CI](https://img.shields.io/badge/security--ci-semgrep%20%7C%20trivy%20%7C%20pip--audit-blue)](./.github/workflows/security-ci-cd.yml)
-[![Release](https://img.shields.io/badge/release-v1.2.0--planned-blue)](./CHANGELOG.md)
+[![CI](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/actions/workflows/github-ci-cd.yml/badge.svg)](./.github/workflows/github-ci-cd.yml)
+[![Security CI](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/actions/workflows/security-ci-cd.yml/badge.svg)](./.github/workflows/security-ci-cd.yml)
+[![PyPI](https://img.shields.io/pypi/v/secure-sdlc-evidence-collector)](https://pypi.org/project/secure-sdlc-evidence-collector/)
 ![Python 3.12 & 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)
 ![License Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-green)
 [![Cosign signing configured](https://img.shields.io/badge/release%20signing-cosign%20keyless%20(configured)-9cf)](./.github/workflows/publish-pypi.yml)
-![Tests 233](https://img.shields.io/badge/tests-233%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen)
 <!--
   T6.C1 — OpenSSF Best Practices Badge (passing tier). After the
   maintainer completes the self-assessment at https://www.bestpractices.dev/
@@ -64,7 +62,7 @@ This collector reframes the question around **evidence, not findings**:
 | Outputs | Deterministic `bundle.json`, Jinja2 `report.md`, and `summary.html` |
 | CLI | `run` · `collect` · `evaluate` · `bundle` · `controls` · `compare` · `oscal` · `plugins` · `schema` · `doctor` · `verify` · `enrich` · `vex` · `statement` · `exceptions list/validate` |
 | Packaging | Reusable GitHub Action (`action.yml`), non-root Docker image, wheel + sdist build verified locally; PyPI publish wired via OIDC Trusted Publisher and pending external setup. |
-| Release integrity | `publish-pypi.yml` is configured to perform cosign keyless signing + Sigstore Rekor transparency log + SLSA Build Level 3 provenance on tag push. The first signed public release will be `v1.2.0` (the v1.1.0 cut prepared in code stayed internal; the Tier 5 enrichment work landed on top, so SemVer required a minor bump). |
+| Release integrity | `publish-pypi.yml` is configured to perform cosign keyless signing + Sigstore Rekor transparency log + SLSA Build Level 3 provenance on tag push. `2.0.0` was the first public release; the current release is `2.0.3` (the v1.1.0 cut prepared in code stayed internal, and the Tier 5/Tier 6 work landed on top, so SemVer required the 2.0 line). |
 | Quality bar | `ruff`, `mypy --strict`, `pytest` with coverage gate, GitHub Actions CI, Dependabot |
 
 ---
