@@ -6,6 +6,13 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.5](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.4...v2.0.5) (2026-05-25)
+
+
+### Fixed
+
+* **release:** stop publishing releases with placeholder notes ([#52](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/52)) ([6b1b8b6](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/6b1b8b6781baab41cb3f6b48da2bd93e61180109))
+
 ## [2.0.4](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.3...v2.0.4) (2026-05-25)
 
 
