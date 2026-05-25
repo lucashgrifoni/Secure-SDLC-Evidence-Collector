@@ -64,6 +64,10 @@ Thumbs.db
 # Project outputs
 output/
 /artifacts/
+
+# mkdocs build output (site_dir in mkdocs.yml)
+site/
+site-docs/
 .bundles/
 *.bundle.json
 examples/*/output/
@@ -89,13 +93,10 @@ docs/program/plan-*.md
 docs/program/*prompt*.md
 docs/program/*PROMPT*.md
 docs/program/RELEASE-NOTES-*-draft.md
-melhorias/*prompt*.md
-melhorias/*PROMPT*.md
-melhorias/*validacao*.md
-melhorias/*VALIDACAO*.md
-melhorias/*HANDOFF*.md
-melhorias/*workspace*/
-melhorias/*shipped*/
+# The entire melhorias/ tree is internal-only and must never be committed.
+# (Previous glob patterns missed files like INDEX.md, _INDEX.md, and
+# 09_RECOMENDACAO_PRS.md, leaving them committable by accident.)
+melhorias/
 
 # Env files
 .env
