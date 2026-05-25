@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
 ## [2.0.4](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.3...v2.0.4) (2026-05-25)
 
 
@@ -21,8 +23,6 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 ### CI
 
 * **scorecard:** use SCORECARD_READ_TOKEN for the Branch-Protection check ([#48](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/48)) ([9d744d6](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/9d744d632633aede25ab4ffa81382ba1f47f8753))
-
-## [Unreleased]
 
 ## [2.0.3](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.2...v2.0.3) (2026-05-20)
 
