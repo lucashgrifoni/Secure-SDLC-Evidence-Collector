@@ -100,12 +100,8 @@ def test_statement_dsse_envelope_is_written_alongside(
 
 
 @pytest.mark.integration
-def test_statement_rejects_unknown_predicate_type(
-    runner: CliRunner, sample_bundle: Path
-) -> None:
-    result = runner.invoke(
-        app, ["statement", str(sample_bundle), "--predicate-type", "bogus"]
-    )
+def test_statement_rejects_unknown_predicate_type(runner: CliRunner, sample_bundle: Path) -> None:
+    result = runner.invoke(app, ["statement", str(sample_bundle), "--predicate-type", "bogus"])
     assert result.exit_code == 2
     assert "predicate-type" in result.output.lower() or "bogus" in result.output
 
@@ -131,9 +127,7 @@ def test_vex_writes_openvex_document(
 
 @pytest.mark.integration
 def test_vex_rejects_invalid_policy(runner: CliRunner, sample_bundle: Path) -> None:
-    result = runner.invoke(
-        app, ["vex", str(sample_bundle), "--policy", "not-a-policy"]
-    )
+    result = runner.invoke(app, ["vex", str(sample_bundle), "--policy", "not-a-policy"])
     assert result.exit_code != 0
     assert "policy" in result.output.lower()
 
@@ -144,9 +138,7 @@ def test_vex_rejects_invalid_policy(runner: CliRunner, sample_bundle: Path) -> N
 
 
 @pytest.mark.integration
-def test_guac_writes_collection(
-    runner: CliRunner, sample_bundle: Path, tmp_path: Path
-) -> None:
+def test_guac_writes_collection(runner: CliRunner, sample_bundle: Path, tmp_path: Path) -> None:
     target = tmp_path / "guac.json"
     result = runner.invoke(app, ["guac", str(sample_bundle), "-o", str(target)])
     assert result.exit_code == 0, result.output
