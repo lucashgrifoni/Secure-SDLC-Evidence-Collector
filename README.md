@@ -60,7 +60,7 @@ This collector reframes the question around **evidence, not findings**:
 | Release verdict | `ready` / `conditional` / `not_ready` driven by gap criticality, never by the score alone |
 | Waivers | Time-bound exceptions with scope (application/release) and expiry — plain YAML/JSON, auditable |
 | Outputs | Deterministic `bundle.json`, Jinja2 `report.md`, and `summary.html` |
-| CLI | `run` · `collect` · `evaluate` · `bundle` · `controls` · `compare` · `oscal` · `plugins` · `schema` · `doctor` · `verify` · `enrich` · `vex` · `statement` · `exceptions list/validate` |
+| CLI | `run` · `collect` · `evaluate` · `bundle` · `controls` · `compare` · `oscal` · `plugins` · `schema` · `doctor` · `verify` · `enrich` · `vex` · `statement` · `guac` · `exceptions list/validate` |
 | Packaging | Reusable GitHub Action (`action.yml`), non-root Docker image, wheel + sdist build verified locally; published to PyPI as [`secure-sdlc-evidence-collector`](https://pypi.org/project/secure-sdlc-evidence-collector/) via OIDC Trusted Publisher. |
 | Release integrity | `publish-pypi.yml` is configured to perform cosign keyless signing + Sigstore Rekor transparency log + SLSA Build Level 3 provenance on tag push. `2.0.0` was the first public release; the current published version is shown by the PyPI badge above (the v1.1.0 cut prepared in code stayed internal, and the Tier 5/Tier 6 work landed on top, so SemVer required the 2.0 line). |
 | Quality bar | `ruff`, `mypy --strict`, `pytest` with coverage gate, GitHub Actions CI, Dependabot |
@@ -144,6 +144,11 @@ sdlc-evidence oscal [--output PATH]  # render the control catalog as OSCAL Catal
 sdlc-evidence plugins                # list parser and collector entry-point plugins
 sdlc-evidence schema [--output PATH] # emit JSON Schema for EvidenceBundle
 sdlc-evidence doctor [--json]        # run local environment health checks
+sdlc-evidence verify BUNDLE          # recompute (and optionally verify) a bundle's structural SHA-256
+sdlc-evidence enrich BUNDLE          # attach EPSS + CISA KEV intelligence to a bundle
+sdlc-evidence vex BUNDLE             # emit an OpenVEX document from a bundle
+sdlc-evidence statement BUNDLE       # wrap a bundle as an in-toto Statement v1
+sdlc-evidence guac BUNDLE [-o PATH]  # emit a GUAC-collector container from a bundle
 sdlc-evidence exceptions validate F  # validate a single waiver file
 sdlc-evidence exceptions list DIR    # list every valid waiver in a directory
 sdlc-evidence --version
