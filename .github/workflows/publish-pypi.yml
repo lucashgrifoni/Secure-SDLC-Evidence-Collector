@@ -388,43 +388,18 @@ jobs:
             release-evidence/bundle.json
             sbom/*.json
 
-      # The release is created as a DRAFT with a fixed editorial template so a
-      # maintainer fills in the narrative (Highlights / Improvements / Notes)
-      # before publishing. PyPI and the container image publish independently
-      # of the release's draft state (they key off the pushed tag), so the
-      # package ships even while the release notes are still being written.
-      - name: Publish GitHub Release
+      # release-please already created the GitHub Release for this tag as
+      # non-draft, with the generated CHANGELOG as its body. (release-please
+      # runs non-draft on purpose — see #45 — otherwise the tag that triggers
+      # this workflow is never created.) This step ONLY attaches the signed
+      # build artifacts to that existing release: it deliberately does not set
+      # `body` or `draft`, so the release-please notes are preserved and the
+      # release is never published with placeholder text. To add an editorial
+      # narrative, edit the release body by hand after publishing.
+      - name: Attach signed artifacts to the GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ needs.build.outputs.tag }}
-          name: Secure SDLC Evidence Collector ${{ needs.build.outputs.tag }}
-          draft: true
-          body: |
-            # Secure SDLC Evidence Collector ${{ needs.build.outputs.tag }}
-
-            This release is XXXXXXX
-
-            ---
-
-            ## Highlights
-
-            - XXX
-
-            ---
-
-            ## Improvements
-
-            - XXX
-
-            ---
-
-            ## Notes
-
-            - XXXX
-
-            ---
-
-            **License:** Apache-2.0
           fail_on_unmatched_files: true
           files: |
             dist/*.whl
