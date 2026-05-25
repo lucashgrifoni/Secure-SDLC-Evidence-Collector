@@ -6,6 +6,24 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.4](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.3...v2.0.4) (2026-05-25)
+
+
+### Fixed
+
+* **release:** release-please must create non-draft releases (so the tag is created) ([#45](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/45)) ([77e3a06](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/77e3a062fc2c7292299e6c57039f29a91b2443fa))
+
+
+### Documentation
+
+* consistency pass for v2.0.x (5 cosmetic fixes) ([#49](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/49)) ([af2b27f](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/af2b27fd3cb65b75f5d3af575e1db227e8c431e3))
+* **guac:** publish GUAC integration guide + tighten internal ignores ([#51](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/51)) ([45b42a3](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/45b42a345692257c5d2b709e15dee032b0c8c844))
+
+
+### CI
+
+* **scorecard:** use SCORECARD_READ_TOKEN for the Branch-Protection check ([#48](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/48)) ([9d744d6](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/9d744d632633aede25ab4ffa81382ba1f47f8753))
+
 ## [2.0.3](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.2...v2.0.3) (2026-05-20)
 
 
