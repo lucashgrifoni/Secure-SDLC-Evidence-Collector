@@ -1,7 +1,6 @@
 # ADR 0013 — Release versioning process (release-please + a version gate)
 
-- Status: proposed (owner to ratify — flip to `accepted`, or choose the
-  manual-tag alternative below)
+- Status: accepted
 - Date: 2026-05-25
 - Deciders: Lucas Henrique Grifoni
 
