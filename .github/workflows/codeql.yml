@@ -43,6 +43,7 @@ jobs:
       contents: read
       security-events: write
       packages: read
+      actions: read  # read workflow run status (required on private repos)
     strategy:
       fail-fast: false
       matrix:

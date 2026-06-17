@@ -80,6 +80,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read  # read workflow run status for SARIF upload (required on private repos)
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@9ca718d3bf646d6534007c269a635b3e54cadf99 # v2
@@ -128,6 +129,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read  # read workflow run status for SARIF upload (required on private repos)
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@9ca718d3bf646d6534007c269a635b3e54cadf99 # v2
@@ -176,6 +178,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read  # read workflow run status for SARIF upload (required on private repos)
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@9ca718d3bf646d6534007c269a635b3e54cadf99 # v2
@@ -243,6 +246,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read  # read workflow run status for SARIF upload (required on private repos)
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@9ca718d3bf646d6534007c269a635b3e54cadf99 # v2
@@ -281,6 +285,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read  # read workflow run status for SARIF upload (required on private repos)
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@9ca718d3bf646d6534007c269a635b3e54cadf99 # v2
@@ -318,6 +323,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read  # read workflow run status for SARIF upload (required on private repos)
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@9ca718d3bf646d6534007c269a635b3e54cadf99 # v2
@@ -354,6 +360,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+      pull-requests: read  # gitleaks-action reads PR commits on pull_request events
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@9ca718d3bf646d6534007c269a635b3e54cadf99 # v2
