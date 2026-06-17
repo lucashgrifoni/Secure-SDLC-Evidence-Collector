@@ -7,66 +7,20 @@ criterion is ticked and the evidence linked below is current.
 Public repository readiness is handled through the maintainer issue queue
 and release approvals, not through committed private runbooks.
 
-**Last local validation pass: 2026-05-17 (post-publication hardening
-pass v1.1.1) — 233 tests passing, coverage 87.68 %, `ruff check src tests
-scripts` clean, `ruff format --check` clean, `mypy --strict src tests`
-clean (89 source files — full visibility into `tests/` and the `[api]`
-extra), `actionlint` clean across all workflows, `gitleaks detect
---source . --no-git --redact --exit-code 1` clean (`.gitleaks.toml`
-extended to allowlist `.venv*` and cache directories so the local
-gate is not poisoned by third-party SPDX indexes), `python -m
-pip_audit .` clean (project scope), `python -m bandit -r src` clean
-(0 issues across 4148 LOC), `semgrep scan --config p/security-audit
---config p/secrets` clean (148 rules across 263 files;
-`.semgrepignore` added so semgrep-core does not exhaust its stack on
-Windows), `pre-commit run --all-files` clean (all 16 hooks green for
-the first time end-to-end after fixing the `mypy` hook's missing
-`additional_dependencies` and adding an explicit `src` target).
-Sample release `ready` (coverage 100, confidence 59, 13/13 controls
-met). Sample release without `--attestations-dir` `not_ready` with
-the four expected missing critical controls (`ORG-CODE-REVIEW`,
-`ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`, `SSDF-PS.2`) and exit
-code 2 by design. Self-release dogfood (`make run-self-release`)
-`ready` (coverage 100, confidence 54, 13/13 met). All 7 labs under
-`examples/labs/` produce the expected `not_ready` with exit 2.
-Determinism back-to-back: identical SHA. Docker daemon not active in
-this pass — Docker build remains a release-time dependency
-(unchanged from 2026-05-10). Trivy not installed on the validation
-host — still covered as a required check in `security-ci-cd.yml`.**
-
-**Re-validation completed on 2026-05-17 (cross-OS hardening pass,
-branch `chore/post-publication-hardening-v1-1-1`).** The headline
-change is the **cross-OS structural-SHA fix** in
-`src/evidence_collector/application/integrity.py`:
-`normalize_bundle()` now POSIX-normalizes
-`evidence[*].raw.artifact_path` at hash time so Windows and Linux
-runs of the same inputs produce the same digest. The snapshot test
-in `tests/integration/test_bundle_snapshot.py` was also updated to
-pass `artifact_root=repo_root` to `run_pipeline()`, which rebases
-absolute paths to repo-relative form (without this, even with POSIX
-normalization the digest would still embed the runner's home
-directory). The fixture
-`tests/fixtures/sample_release_snapshot.sha256` was bumped from
-`34f3025e3791616b4490784cad12b61f3cf208a9f665ae73bfa6bdfa6e16ae93`
-to `a42920b3b7b5fcaf676fa7b4a3ec66ed94de82d37f6b0add7584b4ef508c60b2`
-(2026-05-17) and again to
-`5e1498cdfdca997707c70707b9df558c18383bc064a91a1ced2de962201a5066`
-(2026-05-18) after the `mixed-line-ending` pre-commit hook
-renormalized the sample-release input fixtures from CRLF to LF (which
-changed their `raw.integrity_hash` in the bundle). Both digests were
-re-confirmed identical on Windows and Linux-simulated runs. The change is locked
-by 6 new unit tests in `tests/unit/test_integrity.py` so a regression
-in the helper fails a granular test before the snapshot. The pass
-also: (a) regenerated local ignored sample and self-release outputs so
-the canonical bundles matched the v1.1.0 schema (now includes the
-`classification` field introduced in fase 7); (b) corrected
-`docs/traceability.md §4` lab
-critical counts from a stale "6 missing critical" to the actual 4
-missing critical (5 for `04-data-batch-lab`); (c) made the local
-gates reproducible by fixing `.gitleaks.toml`, `.semgrepignore`,
-`.pre-commit-config.yaml`, and adding `make run-self-release`.
-Evidence packs and session handoffs are generated locally and are not
-committed to the public repository.
+**Validation is re-run on every release; the checklist below is the
+authoritative gate.** Current published line: `2.x` (the live version is
+shown by the PyPI badge in the README). Latest verified pass: the full
+test suite is green (**349 tests**) with coverage above the
+`pyproject.toml` gate; the sample release returns `ready` (coverage 100,
+13/13 controls met), and the sample release without `--attestations-dir`
+returns `not_ready` with the four expected missing critical controls
+(`ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`,
+`SSDF-PS.2`) and exit code 2; back-to-back runs produce an identical
+structural SHA. Lint, type, secret, SAST, and SCA gates (`ruff`,
+`mypy --strict`, `gitleaks`, `bandit`, `semgrep`, `pip-audit`,
+`actionlint`) run in `security-ci-cd.yml` and the local pre-publication
+gate. Per-release evidence packs and session handoffs are generated
+locally and are not committed to the public repository.
 
 ---
 
@@ -75,7 +29,8 @@ committed to the public repository.
 - [ ] `ruff check src tests scripts` → clean.
 - [ ] `ruff format --check src tests scripts` → clean.
 - [ ] `mypy --strict src tests` → zero errors.
-- [ ] `pytest` → all tests pass and `--cov-fail-under=80` is met.
+- [ ] `pytest` → all tests pass and the coverage gate in `pyproject.toml`
+      is met.
 - [ ] `sdlc-evidence` console script installs from a clean venv
       (`python -m pip install -e ".[dev]"`) on Linux **and** Windows.
 - [ ] Docker image builds from `Dockerfile` and runs the sample bundle as a
