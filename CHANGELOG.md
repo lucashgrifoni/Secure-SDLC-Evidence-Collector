@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.6](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.5...v2.0.6) (2026-06-17)
+
+
+### Fixed
+
+* pre-public hardening — CI scan permissions, Action refs, doc accuracy ([#64](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/64)) ([64abe48](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/64abe48cdbe515cab04db2d44abc3b2c7e361471))
+
+
+### Documentation
+
+* **readme:** accuracy pass for v2.0.5 (version-agnostic note + complete CLI inventory) ([#55](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/55)) ([e2a81c8](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/e2a81c814801ed5385e2ba3a21c276fde92ba552))
+
+
+### CI
+
+* **release:** version-consistency gate + ADR-0013 (release versioning) ([#59](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/59)) ([307e48d](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/307e48d6f4a5eb7fae5507ae7d2114bf9f8a676e))
+
 ## [Unreleased]
 
 ## [2.0.5](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.4...v2.0.5) (2026-05-25)
