@@ -21,8 +21,8 @@ vulnerabilities.
 
 | Version line | Status |
 |--------------|--------|
-| `1.x` | actively supported |
-| `0.x` | best-effort only; please upgrade |
+| `2.x` | actively supported |
+| `< 2.0` | end of life; please upgrade to `2.x` |
 
 ## Disclosure policy
 
@@ -48,11 +48,11 @@ The tool is designed with the same rules it enforces on others:
 - XML parsing via `defusedxml` (no external entity resolution),
 - no PR body, reviewer email, or token ever written to logs,
 - deterministic bundle JSON so audit integrity hashes are stable,
-- `publish-pypi.yml` is configured to sign releases keyless with cosign
-  (Sigstore Rekor transparency log) and to attach SLSA Build Level 3
-  provenance. The first signed public release will be `v1.1.0`; until
-  that release ships, no public artefact in this project carries a
-  cosign signature.
+- `publish-pypi.yml` signs releases keyless with cosign (Sigstore Rekor
+  transparency log) and attaches SLSA Build Level 3 provenance. Every
+  public release since `v2.0.0` (the first public release line) is signed
+  and carries provenance; verify with `cosign verify-blob` against the
+  `https://token.actions.githubusercontent.com` OIDC issuer.
 
 ## Scope
 

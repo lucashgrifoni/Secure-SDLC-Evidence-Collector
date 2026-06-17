@@ -4,7 +4,7 @@
 #
 # jobs:
 #   evidence:
-#     uses: lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/reusable-evidence-collection.yml@v2
+#     uses: lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/reusable-evidence-collection.yml@v2.0.5
 #     with:
 #       application: my-app
 #       repository: my-org/my-app

@@ -1,11 +1,11 @@
 # Secure SDLC Evidence Collector
 
-[![CI](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/actions/workflows/github-ci-cd.yml/badge.svg)](./.github/workflows/github-ci-cd.yml)
-[![Security CI](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/actions/workflows/security-ci-cd.yml/badge.svg)](./.github/workflows/security-ci-cd.yml)
+[![CI](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/actions/workflows/github-ci-cd.yml/badge.svg)](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/actions/workflows/github-ci-cd.yml)
+[![Security CI](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/actions/workflows/security-ci-cd.yml/badge.svg)](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/actions/workflows/security-ci-cd.yml)
 [![PyPI](https://img.shields.io/pypi/v/secure-sdlc-evidence-collector)](https://pypi.org/project/secure-sdlc-evidence-collector/)
 ![Python 3.12 & 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)
 ![License Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-green)
-[![Cosign signing configured](https://img.shields.io/badge/release%20signing-cosign%20keyless%20(configured)-9cf)](./.github/workflows/publish-pypi.yml)
+[![Cosign signing configured](https://img.shields.io/badge/release%20signing-cosign%20keyless%20(configured)-9cf)](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/actions/workflows/publish-pypi.yml)
 <!--
   T6.C1 — OpenSSF Best Practices Badge (passing tier). After the
   maintainer completes the self-assessment at https://www.bestpractices.dev/
@@ -101,15 +101,34 @@ This collector reframes the question around **evidence, not findings**:
 
 ## Install
 
+Install the published package from PyPI (recommended for most users):
+
 ```bash
+python -m pip install secure-sdlc-evidence-collector
+```
+
+Or install from a clone for development:
+
+```bash
+git clone https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector.git
+cd Secure-SDLC-Evidence-Collector
 python -m pip install -e ".[dev]"
 ```
 
-Requires Python 3.12+.
+Requires Python 3.12+. The console-script `sdlc-evidence` is installed
+automatically.
 
-The console-script `sdlc-evidence` is installed automatically.
+📖 **Documentation:** the full docs site is published at
+<https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/>.
+To run the collector inside a pipeline, see
+[Using the GitHub Action](./docs/github_action.md).
 
 ### Smoke test (one command)
+
+This smoke test uses the bundled `examples/sample_release/` fixtures, so run
+it from a clone of the repository. If you installed from PyPI, the
+`sdlc-evidence` console script is equivalent to
+`python -m evidence_collector.cli.main`.
 
 ```bash
 python -m evidence_collector.cli.main run \
