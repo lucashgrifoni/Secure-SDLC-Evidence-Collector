@@ -14,6 +14,11 @@ useDefault = true
 description = "Recorded third-party scanner output is prose, not secrets"
 paths = [
   '''examples/sample_release/artifacts/.*''',
+  # Recorded scanner output for the external vulnerable-app labs. These
+  # SARIF/JSON dumps embed example tokens from upstream advisories (prose,
+  # not live secrets); the raw outputs are now .gitignored but remain in
+  # history, so the allowlist keeps a full-history scan honest.
+  '''examples/labs/.*''',
   '''tests/fixtures/.*''',
   '''tests/unit/fixtures/.*''',
   '''tests/integration/fixtures/.*''',
