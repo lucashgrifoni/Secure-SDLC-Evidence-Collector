@@ -168,7 +168,7 @@ addopts = [
     "--strict-config",
     "--cov=evidence_collector",
     "--cov-report=term-missing",
-    "--cov-fail-under=83",
+    "--cov-fail-under=85",
 ]
 markers = [
     "unit: unit tests",
