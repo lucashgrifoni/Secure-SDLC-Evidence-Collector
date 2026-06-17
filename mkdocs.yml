@@ -97,6 +97,7 @@ nav:
       - ADR-0010 Reachability as optional SCA evidence field: adr/0010-reachability-as-optional-sca-evidence-field.md
       - ADR-0011 CRA + FedRAMP 20x profiles: adr/0011-cra-and-fedramp-20x-profiles.md
       - ADR-0012 GUAC graph integration: adr/0012-guac-graph-integration.md
+      - ADR-0013 Release versioning process: adr/0013-release-versioning-process.md
 
 # Program / runbook content is published on the Pages docs site as
 # excluded reference material (linked from doc bodies, not nav). The
