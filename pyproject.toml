@@ -62,7 +62,7 @@ api = [
     "uvicorn[standard]>=0.30,<1.0",
 ]
 logs = [
-    "structlog>=24.1,<26.0",
+    "structlog>=24.1,<27.0",
 ]
 docs = [
     "mkdocs>=1.6,<2.0",
@@ -168,7 +168,7 @@ addopts = [
     "--strict-config",
     "--cov=evidence_collector",
     "--cov-report=term-missing",
-    "--cov-fail-under=83",
+    "--cov-fail-under=85",
 ]
 markers = [
     "unit: unit tests",
