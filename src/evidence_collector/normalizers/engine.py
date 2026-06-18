@@ -35,6 +35,7 @@ from evidence_collector.domain.models import (
 from evidence_collector.parsers._common import ParsedArtifact
 from evidence_collector.parsers.attestation import ParsedAttestation
 from evidence_collector.parsers.garak import ParsedGarak
+from evidence_collector.parsers.intoto_vsa import ParsedVsa
 from evidence_collector.parsers.junit import ParsedJUnit
 from evidence_collector.parsers.lm_eval import ParsedLmEval
 from evidence_collector.parsers.model_card import ParsedModelCard
@@ -340,6 +341,71 @@ def normalize_osv(
         summary=(
             f"{parsed.tool_name} reported {parsed.total_findings} OSV "
             f"vulnerabilities across {len(parsed.ecosystems)} ecosystem(s)"
+        ),
+        metadata=metadata,
+    )
+
+
+def normalize_vsa(
+    parsed: ParsedVsa,
+    release: ReleaseContext,
+    *,
+    artifact_root: str | None = None,
+) -> NormalizedEvidence:
+    """Build an ``artifact_attestation`` evidence from a SLSA VSA.
+
+    A Verification Summary Attestation records that a verifier evaluated an
+    artifact against a policy and the SLSA levels it met. We map the stated
+    ``verificationResult`` to the evidence status (PASSED/FAILED) and carry
+    the verifier, levels, and policy reference in ``metadata`` so reviewers
+    can see *who* verified *what* without re-reading the raw attestation.
+    The collector records the stated result; it does not verify the VSA's
+    signature (see ``docs/limitations.md``).
+    """
+    if parsed.verification_result == "PASSED":
+        status = EvidenceStatus.PASSED
+    elif parsed.verification_result == "FAILED":
+        status = EvidenceStatus.FAILED
+    else:
+        status = EvidenceStatus.UNKNOWN
+    subject_ref = (
+        parsed.subject_name or parsed.resource_uri or release.artifact_digest or release.release_id
+    )[:500]
+    producer = (parsed.verifier_id or "slsa-vsa")[:100]
+    metadata: dict[str, Any] = {"verification_result": parsed.verification_result}
+    if parsed.verifier_id:
+        metadata["verifier_id"] = parsed.verifier_id
+    if parsed.verified_levels:
+        metadata["verified_levels"] = list(parsed.verified_levels)
+    if parsed.slsa_version:
+        metadata["slsa_version"] = parsed.slsa_version
+    if parsed.policy_uri:
+        metadata["policy_uri"] = parsed.policy_uri
+    if parsed.time_verified:
+        metadata["time_verified"] = parsed.time_verified
+    if parsed.resource_uri:
+        metadata["resource_uri"] = parsed.resource_uri
+    if parsed.input_attestation_count:
+        metadata["input_attestation_count"] = parsed.input_attestation_count
+    return NormalizedEvidence(
+        evidence_id=_new_evidence_id(
+            "vsa", parsed.artifact.integrity_hash, subject_ref, release.release_id
+        ),
+        evidence_type=EvidenceType.ARTIFACT_ATTESTATION,
+        source=EvidenceSource(name=producer, kind="slsa-vsa", version=parsed.slsa_version),
+        producer=producer,
+        subject_type=SubjectType.ARTIFACT,
+        subject_ref=subject_ref,
+        status=status,
+        confidence=ConfidenceLevel.HIGH,
+        release_id=release.release_id,
+        commit_sha=release.commit_sha,
+        generated_at=None,
+        raw=_raw_ref(parsed.artifact, artifact_root),
+        findings_count={},
+        summary=(
+            f"SLSA VSA from {producer}: {parsed.verification_result}"
+            + (f"; levels={', '.join(parsed.verified_levels)}" if parsed.verified_levels else "")
         ),
         metadata=metadata,
     )

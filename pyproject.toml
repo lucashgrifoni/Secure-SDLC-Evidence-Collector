@@ -86,6 +86,7 @@ junit = "evidence_collector.parsers:parse_junit"
 zap = "evidence_collector.parsers:parse_zap"
 attestation = "evidence_collector.parsers:parse_attestation"
 exception = "evidence_collector.parsers:parse_exception"
+vsa = "evidence_collector.parsers:parse_vsa"
 
 [project.entry-points."evidence_collector.collectors"]
 local = "evidence_collector.collectors.local:LocalArtifactCollector"
