@@ -368,23 +368,21 @@ def normalize_vsa(
         status = EvidenceStatus.FAILED
     else:
         status = EvidenceStatus.UNKNOWN
-    subject_ref = (
-        parsed.subject_name or parsed.resource_uri or release.artifact_digest or release.release_id
-    )[:500]
-    producer = (parsed.verifier_id or "slsa-vsa")[:100]
-    metadata: dict[str, Any] = {"verification_result": parsed.verification_result}
-    if parsed.verifier_id:
-        metadata["verifier_id"] = parsed.verifier_id
-    if parsed.verified_levels:
-        metadata["verified_levels"] = list(parsed.verified_levels)
+    # verifier_id and resource_uri are guaranteed present by parse_vsa, which
+    # rejects VSAs missing required fields before they ever reach normalize.
+    subject_ref = (parsed.subject_name or parsed.resource_uri)[:500]
+    producer = parsed.verifier_id[:100]
+    metadata: dict[str, Any] = {
+        "verification_result": parsed.verification_result,
+        "verifier_id": parsed.verifier_id,
+        "verified_levels": list(parsed.verified_levels),
+        "time_verified": parsed.time_verified,
+        "resource_uri": parsed.resource_uri,
+    }
     if parsed.slsa_version:
         metadata["slsa_version"] = parsed.slsa_version
     if parsed.policy_uri:
         metadata["policy_uri"] = parsed.policy_uri
-    if parsed.time_verified:
-        metadata["time_verified"] = parsed.time_verified
-    if parsed.resource_uri:
-        metadata["resource_uri"] = parsed.resource_uri
     if parsed.input_attestation_count:
         metadata["input_attestation_count"] = parsed.input_attestation_count
     return NormalizedEvidence(
@@ -404,8 +402,8 @@ def normalize_vsa(
         raw=_raw_ref(parsed.artifact, artifact_root),
         findings_count={},
         summary=(
-            f"SLSA VSA from {producer}: {parsed.verification_result}"
-            + (f"; levels={', '.join(parsed.verified_levels)}" if parsed.verified_levels else "")
+            f"SLSA VSA from {producer}: {parsed.verification_result}; "
+            f"levels={', '.join(parsed.verified_levels)}"
         ),
         metadata=metadata,
     )
