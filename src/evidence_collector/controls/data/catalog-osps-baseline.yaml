@@ -1,0 +1,105 @@
+# OpenSSF OSPS Baseline catalog — OPT-IN, preview.
+#
+# Status: preview. Maps the *evidence-attestable subset* of the OpenSSF
+# Open Source Project Security (OSPS) Baseline (v2025-02-25,
+# https://baseline.openssf.org/) to the collector's canonical evidence
+# types. The Baseline's full control set also covers repository
+# configuration, governance, and documentation that automated release
+# evidence cannot attest (e.g. MFA, branch-protection settings, LICENSE
+# presence); those criteria are deliberately omitted here — overlay your
+# own catalog if you need them. OSPS criteria map onward to NIST SSDF,
+# NIST CSF, and the EU CRA; the ``control_id`` carries the OSPS identity
+# while the ``framework`` field uses NIST_SSDF to match the other bundled
+# catalogs (the framework enum has no OSPS member).
+#
+# Selection rule
+# --------------
+# Include an OSPS criterion only when at least one canonical evidence
+# type (test_result, workflow_run, code_review/pr_metadata, sast_scan,
+# sca_scan, sbom, artifact_signature/artifact_attestation) satisfies it.
+#
+# Use:
+#     sdlc-evidence run --catalog <path-to-this-file>
+# or:
+#     from evidence_collector.controls.catalog import bundled_catalog_path
+#     bundled_catalog_path("catalog-osps-baseline.yaml")
+controls:
+  - control_id: "OSPS-QA-02.02"
+    framework: "NIST_SSDF"
+    name: "OSPS Baseline QA-02.02: release ships a software bill of materials"
+    description: >-
+      OSPS Baseline QA-02.02 — compiled released software assets must be
+      delivered with a software bill of materials. Satisfied by an ingested
+      SBOM (CycloneDX or SPDX). Maps onward to NIST SSDF PS.3.
+    criticality: "critical"
+    required_evidence_types: ["sbom"]
+    recommended_evidence_types: ["artifact_attestation"]
+
+  - control_id: "OSPS-BR-06.01"
+    framework: "NIST_SSDF"
+    name: "OSPS Baseline BR-06.01: release signed or in a signed manifest"
+    description: >-
+      OSPS Baseline BR-06.01 — each release must be signed, or accounted for
+      in a signed manifest that includes each asset's cryptographic hashes.
+      Satisfied by a recorded artifact signature (a build attestation is
+      recommended). Maps onward to NIST SSDF PS.2.
+    criticality: "critical"
+    required_evidence_types: ["artifact_signature"]
+    recommended_evidence_types: ["artifact_attestation"]
+
+  - control_id: "OSPS-VM-05.03"
+    framework: "NIST_SSDF"
+    name: "OSPS Baseline VM-05.03: changes evaluated for vulnerable/malicious dependencies"
+    description: >-
+      OSPS Baseline VM-05.03 — all changes to the codebase must be
+      automatically evaluated against a documented policy for malicious
+      dependencies and known vulnerabilities. Satisfied by an SCA scan.
+      Maps onward to NIST SSDF PW.4.
+    criticality: "high"
+    required_evidence_types: ["sca_scan"]
+    recommended_evidence_types: ["sbom"]
+
+  - control_id: "OSPS-VM-06.02"
+    framework: "NIST_SSDF"
+    name: "OSPS Baseline VM-06.02: changes evaluated for security weaknesses"
+    description: >-
+      OSPS Baseline VM-06.02 — all changes to the codebase must be
+      automatically evaluated against a documented policy for security
+      weaknesses (static analysis). Satisfied by a SAST scan. Maps onward
+      to NIST SSDF PW.7/PW.8.
+    criticality: "high"
+    required_evidence_types: ["sast_scan"]
+    recommended_evidence_types: []
+
+  - control_id: "OSPS-QA-06.01"
+    framework: "NIST_SSDF"
+    name: "OSPS Baseline QA-06.01: CI runs an automated test suite"
+    description: >-
+      OSPS Baseline QA-06.01 — CI/CD pipelines must run at least one
+      automated test suite to ensure changes meet expectations. Satisfied by
+      recorded test results. Maps onward to NIST SSDF PW.8.
+    criticality: "high"
+    required_evidence_types: ["test_result"]
+    recommended_evidence_types: ["workflow_run"]
+
+  - control_id: "OSPS-QA-07.01"
+    framework: "NIST_SSDF"
+    name: "OSPS Baseline QA-07.01: non-author review before merge"
+    description: >-
+      OSPS Baseline QA-07.01 — the version control system must require at
+      least one non-author approval of changes before merging. Satisfied by
+      code-review / PR-approval evidence. Maps onward to NIST SSDF PW.7.
+    criticality: "high"
+    required_evidence_types: ["code_review"]
+    recommended_evidence_types: ["pr_metadata"]
+
+  - control_id: "OSPS-QA-03.01"
+    framework: "NIST_SSDF"
+    name: "OSPS Baseline QA-03.01: automated status checks pass"
+    description: >-
+      OSPS Baseline QA-03.01 — automated status checks for commits must pass
+      (or be manually bypassed). Satisfied by a successful CI workflow run.
+      Maps onward to NIST SSDF PW.8/RV.1.
+    criticality: "medium"
+    required_evidence_types: ["workflow_run"]
+    recommended_evidence_types: []
