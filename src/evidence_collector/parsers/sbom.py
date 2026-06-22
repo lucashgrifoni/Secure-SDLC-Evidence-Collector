@@ -8,6 +8,7 @@ attempting to fully model each specification.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -55,6 +56,7 @@ class ParsedSbom:
     cve_ids: list[str] = field(default_factory=list)
     lifecycle_phases: list[str] = field(default_factory=list)
     vulnerability_analyses: list[CycloneDxVulnerabilityAnalysis] = field(default_factory=list)
+    cisa_minimum_elements: dict[str, bool] = field(default_factory=dict)
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -219,6 +221,118 @@ def _cyclonedx_vulnerability_analyses(
     return out
 
 
+# CISA "2025 Minimum Elements for a Software Bill of Materials"
+# (https://www.cisa.gov/resources-tools/resources/2025-minimum-elements-software-bill-materials-sbom)
+# consolidates the 2021 NTIA baseline (author, timestamp, supplier,
+# component name, version, unique identifier, dependency relationships) with
+# the 2025 additions (component hash, license, tool name, generation context).
+# The collector checks *presence* per the project's evidence-quality stance
+# (docs/limitations.md §3): a component-level element is reported present only
+# when every component carries it; a document-level element when the document
+# carries it. This turns "an SBOM exists" into "the SBOM is shaped like a
+# conformant one" — it does not validate the correctness of the values.
+_CISA_2025_ELEMENT_KEYS: tuple[str, ...] = (
+    "author",
+    "timestamp",
+    "supplier",
+    "component_name",
+    "version",
+    "unique_identifier",
+    "dependency_relationships",
+    "hash",
+    "license",
+    "tool",
+    "generation_context",
+)
+
+
+def _as_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _as_list(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []
+
+
+def _all_components_have(
+    components: list[Any], predicate: Callable[[dict[str, Any]], bool]
+) -> bool:
+    real = [c for c in components if isinstance(c, dict)]
+    return bool(real) and all(predicate(c) for c in real)
+
+
+def _cyclonedx_cisa_elements(data: dict[str, Any]) -> dict[str, bool]:
+    metadata = _as_dict(data.get("metadata"))
+    components = _as_list(data.get("components"))
+    tools = metadata.get("tools")
+    has_tool = (
+        bool(tools)
+        if isinstance(tools, list)
+        else isinstance(tools, dict) and bool(tools.get("components") or tools.get("services"))
+    )
+    authors = metadata.get("authors")
+    has_author = (isinstance(authors, list) and bool(authors)) or has_tool
+    lifecycles = metadata.get("lifecycles")
+    return {
+        "author": bool(has_author),
+        "timestamp": bool(metadata.get("timestamp")),
+        "supplier": _all_components_have(
+            components, lambda c: bool(c.get("supplier") or c.get("publisher") or c.get("author"))
+        ),
+        "component_name": _all_components_have(components, lambda c: bool(c.get("name"))),
+        "version": _all_components_have(components, lambda c: bool(c.get("version"))),
+        "unique_identifier": _all_components_have(
+            components, lambda c: bool(c.get("purl") or c.get("cpe") or c.get("bom-ref"))
+        ),
+        "dependency_relationships": bool(
+            isinstance(data.get("dependencies"), list) and data.get("dependencies")
+        ),
+        "hash": _all_components_have(components, lambda c: bool(c.get("hashes"))),
+        "license": _all_components_have(components, lambda c: bool(c.get("licenses"))),
+        "tool": bool(has_tool),
+        "generation_context": bool(isinstance(lifecycles, list) and lifecycles),
+    }
+
+
+def _spdx_cisa_elements(data: dict[str, Any]) -> dict[str, bool]:
+    creation = _as_dict(data.get("creationInfo"))
+    creators_list = _as_list(creation.get("creators"))
+    has_tool = any(isinstance(c, str) and c.startswith("Tool:") for c in creators_list)
+    has_author = (
+        any(
+            isinstance(c, str) and (c.startswith("Person:") or c.startswith("Organization:"))
+            for c in creators_list
+        )
+        or has_tool
+    )
+    packages = _as_list(data.get("packages"))
+    comment = creation.get("creatorComment")
+    gen_context = isinstance(comment, str) and any(
+        stage in comment.lower() for stage in ("source", "build", "binary")
+    )
+    return {
+        "author": bool(has_author),
+        "timestamp": bool(creation.get("created")),
+        "supplier": _all_components_have(
+            packages, lambda p: bool(p.get("supplier") or p.get("originator"))
+        ),
+        "component_name": _all_components_have(packages, lambda p: bool(p.get("name"))),
+        "version": _all_components_have(packages, lambda p: bool(p.get("versionInfo"))),
+        "unique_identifier": _all_components_have(
+            packages, lambda p: bool(p.get("SPDXID") or p.get("externalRefs"))
+        ),
+        "dependency_relationships": bool(
+            isinstance(data.get("relationships"), list) and data.get("relationships")
+        ),
+        "hash": _all_components_have(packages, lambda p: bool(p.get("checksums"))),
+        "license": _all_components_have(
+            packages, lambda p: bool(p.get("licenseConcluded") or p.get("licenseDeclared"))
+        ),
+        "tool": bool(has_tool),
+        "generation_context": bool(gen_context),
+    }
+
+
 def parse_sbom(path: str | Path) -> ParsedSbom:
     resolved = ensure_file(path)
     data = load_json(resolved)
@@ -227,6 +341,7 @@ def parse_sbom(path: str | Path) -> ParsedSbom:
     cve_ids: list[str] = []
     lifecycle_phases: list[str] = []
     vulnerability_analyses: list[CycloneDxVulnerabilityAnalysis] = []
+    cisa_elements: dict[str, bool] = {}
     if sbom_format == "cyclonedx":
         spec_version = data.get("specVersion")
         serial_number = data.get("serialNumber")
@@ -236,12 +351,14 @@ def parse_sbom(path: str | Path) -> ParsedSbom:
         cve_ids = _cyclonedx_cve_ids(data)
         lifecycle_phases = _cyclonedx_lifecycle_phases(data)
         vulnerability_analyses = _cyclonedx_vulnerability_analyses(data)
+        cisa_elements = _cyclonedx_cisa_elements(data)
     else:
         spec_version = data.get("spdxVersion")
         serial_number = data.get("documentNamespace")
         component_count = _spdx_component_count(data)
         subject_ref = _spdx_subject(data)
         content_type = "application/spdx+json"
+        cisa_elements = _spdx_cisa_elements(data)
 
     artifact = describe(resolved, content_type=content_type)
     return ParsedSbom(
@@ -254,5 +371,6 @@ def parse_sbom(path: str | Path) -> ParsedSbom:
         cve_ids=cve_ids,
         lifecycle_phases=lifecycle_phases,
         vulnerability_analyses=vulnerability_analyses,
+        cisa_minimum_elements=cisa_elements,
         raw=data,
     )
