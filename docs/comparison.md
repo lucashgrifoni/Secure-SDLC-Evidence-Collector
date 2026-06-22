@@ -12,8 +12,8 @@ The Secure SDLC Evidence Collector is the **release-readiness
 evidence layer**: it ingests the output of every scanner and
 attestation tool, normalises it into a single canonical
 `EvidenceBundle`, evaluates it against a control catalog (NIST SSDF
-1.1 / 1.2 / AI Profile / FedRAMP 20x KSI), and emits an audit-ready
-JSON + report. It does **not** scan, sign, or enforce; it makes the
+1.1 / 1.2 / AI Profile / FedRAMP 20x KSI / OSPS Baseline), and emits
+an audit-ready JSON + report. It does **not** scan, sign, or enforce; it makes the
 "did this release meet our Secure SDLC bar?" question answerable
 from one document.
 
@@ -69,9 +69,9 @@ from one document.
   Statement v1 + DSSE, SLSA Provenance v1, OSV Schema, GUAC
   collector container.
 - The control catalog is YAML; teams override or extend it without
-  forking the project. Three catalogs ship today: NIST SSDF 1.1
-  (default), SSDF 1.2 preview, FedRAMP 20x KSI, and the AI
-  Profile.
+  forking the project. Five catalogs ship today: NIST SSDF 1.1
+  (default), SSDF 1.2 preview, FedRAMP 20x KSI, OSPS Baseline, and
+  the AI Profile.
 
 ## When to combine
 
