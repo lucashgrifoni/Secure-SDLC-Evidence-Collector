@@ -53,7 +53,7 @@ This collector reframes the question around **evidence, not findings**:
 
 | Capability | Implementation |
 |-----------|----------------|
-| Evidence ingestion | SARIF (Semgrep, CodeQL, SonarQube, Snyk Code, Trivy, Grype, Gitleaks, Bandit, pip-audit, …), CycloneDX & SPDX SBOMs, JUnit XML, OWASP ZAP JSON (DAST), YAML/JSON attestations and exceptions |
+| Evidence ingestion | SARIF (Semgrep, CodeQL, SonarQube, Snyk Code, Trivy, Grype, Gitleaks, Bandit, pip-audit, …), CycloneDX & SPDX SBOMs, OSV / OSV-Scanner, JUnit XML, OWASP ZAP JSON (DAST), in-toto SLSA VSA (Verification Summary Attestation), YAML/JSON attestations and exceptions |
 | SCM integrations | GitHub (PR approvals with "last approval after last commit" verification, Actions runs) and GitLab (MR approvals, pipeline runs) |
 | Controls catalog | 13 controls mapped to NIST SSDF, OWASP SAMM and org-internal IDs; override via `--catalog` |
 | Scoring | Deterministic coverage + confidence scores with per-control rationale |
