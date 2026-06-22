@@ -12,6 +12,7 @@ from evidence_collector.normalizers.engine import (
     normalize_pr_metadata,
     normalize_sarif,
     normalize_sbom,
+    normalize_vsa,
     normalize_workflow_run,
     normalize_zap,
 )
@@ -26,6 +27,7 @@ __all__ = [
     "normalize_pr_metadata",
     "normalize_sarif",
     "normalize_sbom",
+    "normalize_vsa",
     "normalize_workflow_run",
     "normalize_zap",
 ]

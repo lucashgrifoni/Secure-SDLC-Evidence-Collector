@@ -27,6 +27,7 @@ from evidence_collector.normalizers import (
     normalize_osv,
     normalize_sarif,
     normalize_sbom,
+    normalize_vsa,
     normalize_zap,
 )
 from evidence_collector.parsers import (
@@ -39,9 +40,11 @@ from evidence_collector.parsers import (
     parse_osv,
     parse_sarif,
     parse_sbom,
+    parse_vsa,
     parse_zap,
 )
 from evidence_collector.parsers._common import ParseError
+from evidence_collector.parsers.intoto_vsa import VSA_PREDICATE_TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +130,16 @@ class LocalArtifactCollector:
                 evidence = normalize_sarif(parsed, self._release, artifact_root=self._artifact_root)
                 report.evidence.append(evidence)
                 return
+            # in-toto SLSA VSA detection runs before SBOM/OSV: a VSA is a
+            # JSON Statement keyed by its ``predicateType``, with none of the
+            # SBOM/OSV discriminators, so the explicit predicate check is the
+            # safe, unambiguous detector.
+            if _looks_like_vsa(file_path):
+                parsed_vsa = parse_vsa(file_path)
+                report.evidence.append(
+                    normalize_vsa(parsed_vsa, self._release, artifact_root=self._artifact_root)
+                )
+                return
             if _looks_like_sbom(file_path):
                 parsed_sbom = parse_sbom(file_path)
                 report.evidence.append(
@@ -210,6 +223,21 @@ def _looks_like_sbom(path: Path) -> bool:
     if not isinstance(data, dict):
         return False
     return data.get("bomFormat") == "CycloneDX" or "components" in data or "spdxVersion" in data
+
+
+def _looks_like_vsa(path: Path) -> bool:
+    """Detect a raw in-toto Statement carrying the SLSA VSA predicate.
+
+    The ``predicateType`` is the unambiguous marker; DSSE-wrapped /
+    signed envelopes are out of scope for this detector (the payload is
+    base64-encoded) and should be decoded upstream.
+    """
+    if path.suffix.lower() != ".json":
+        return False
+    data = _peek_json(path)
+    if not isinstance(data, dict):
+        return False
+    return data.get("predicateType") == VSA_PREDICATE_TYPE
 
 
 def _looks_like_garak(path: Path) -> bool:
