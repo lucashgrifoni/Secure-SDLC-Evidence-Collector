@@ -25,6 +25,7 @@ from evidence_collector.normalizers import (
     normalize_lm_eval,
     normalize_model_card,
     normalize_osv,
+    normalize_provenance,
     normalize_sarif,
     normalize_sbom,
     normalize_vsa,
@@ -38,12 +39,14 @@ from evidence_collector.parsers import (
     parse_lm_eval,
     parse_model_card,
     parse_osv,
+    parse_provenance,
     parse_sarif,
     parse_sbom,
     parse_vsa,
     parse_zap,
 )
 from evidence_collector.parsers._common import ParseError
+from evidence_collector.parsers.intoto_provenance import is_provenance_payload
 from evidence_collector.parsers.intoto_vsa import VSA_PREDICATE_TYPE
 
 logger = logging.getLogger(__name__)
@@ -138,6 +141,17 @@ class LocalArtifactCollector:
                 parsed_vsa = parse_vsa(file_path)
                 report.evidence.append(
                     normalize_vsa(parsed_vsa, self._release, artifact_root=self._artifact_root)
+                )
+                return
+            # SLSA build provenance (incl. GitHub Artifact Attestations): a raw
+            # in-toto Statement, a DSSE envelope, or a Sigstore bundle. Detected
+            # by the unwrapped provenance predicateType.
+            if _looks_like_provenance(file_path):
+                parsed_prov = parse_provenance(file_path)
+                report.evidence.append(
+                    normalize_provenance(
+                        parsed_prov, self._release, artifact_root=self._artifact_root
+                    )
                 )
                 return
             if _looks_like_sbom(file_path):
@@ -238,6 +252,36 @@ def _looks_like_vsa(path: Path) -> bool:
     if not isinstance(data, dict):
         return False
     return data.get("predicateType") == VSA_PREDICATE_TYPE
+
+
+def _looks_like_provenance(path: Path) -> bool:
+    """Detect SLSA build provenance in a raw in-toto Statement, a DSSE
+    envelope, or a Sigstore bundle (single JSON object, or the first record of
+    a ``.jsonl`` such as ``gh attestation download`` writes)."""
+    if path.suffix.lower() not in {".json", ".jsonl"}:
+        return False
+    data = _peek_json(path)
+    if not isinstance(data, dict):
+        data = _peek_jsonl_first(path)
+    if not isinstance(data, dict):
+        return False
+    return is_provenance_payload(data)
+
+
+def _peek_jsonl_first(path: Path) -> Any:
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                try:
+                    return json.loads(stripped)
+                except json.JSONDecodeError:
+                    return None
+    except OSError:
+        return None
+    return None
 
 
 def _looks_like_garak(path: Path) -> bool:
