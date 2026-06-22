@@ -124,6 +124,29 @@ def test_parse_jsonl_first_record(tmp_path: Path) -> None:
     assert parsed.envelope == "sigstore-bundle"
 
 
+def test_parse_jsonl_finds_provenance_after_non_provenance_record(tmp_path: Path) -> None:
+    # A `gh attestation download` JSONL can carry several bundles; the SLSA
+    # provenance must be found even when another predicate appears first.
+    target = tmp_path / "multi.jsonl"
+    non_provenance = {"foo": "bar"}
+    target.write_text(
+        json.dumps(non_provenance) + "\n" + json.dumps(_bundle(_statement_v1())) + "\n",
+        encoding="utf-8",
+    )
+    parsed = parse_provenance(target)
+    assert parsed.builder_id == _BUILDER
+
+
+def test_parse_jsonl_rejects_when_no_record_is_provenance(tmp_path: Path) -> None:
+    target = tmp_path / "none.jsonl"
+    target.write_text(
+        json.dumps({"foo": "bar"}) + "\n" + json.dumps({"baz": "qux"}) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ParseError):
+        parse_provenance(target)
+
+
 def test_parse_rejects_non_provenance_predicate(tmp_path: Path) -> None:
     statement = _statement_v1()
     statement["predicateType"] = "https://slsa.dev/verification_summary/v1"
