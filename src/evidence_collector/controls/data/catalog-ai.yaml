@@ -1,10 +1,11 @@
 # Secure SDLC for AI / LLM systems — OPT-IN catalog.
 #
 # Status: preview. Maps to NIST SP 800-218A "SSDF Community Profile
-# for Generative AI" (published 2024-07) practices and OWASP LLM
-# Top 10 + OWASP Agentic AI Top 10. The default ``catalog.yaml``
-# still encodes generic NIST SSDF 1.1 because most projects do not
-# ship AI artifacts; pipelines that DO ship AI artifacts opt in via:
+# for Generative AI" (published 2024-07) practices, the OWASP Top 10
+# for LLM Applications (2025), and the OWASP Top 10 for Agentic
+# Applications (2026). The default ``catalog.yaml`` still encodes
+# generic NIST SSDF 1.1 because most projects do not ship AI
+# artifacts; pipelines that DO ship AI artifacts opt in via:
 #
 #     sdlc-evidence run --catalog <path-to-this-file>
 #
@@ -12,6 +13,14 @@
 #
 #     from evidence_collector.controls.catalog import bundled_catalog_path
 #     path = bundled_catalog_path("catalog-ai.yaml")
+#
+# OWASP LLM references use the 2025 numbering
+# (https://genai.owasp.org/llm-top-10/): LLM01 Prompt Injection,
+# LLM02 Sensitive Information Disclosure, LLM03 Supply Chain,
+# LLM04 Data and Model Poisoning, LLM05 Improper Output Handling,
+# LLM06 Excessive Agency, LLM07 System Prompt Leakage, LLM08 Vector
+# and Embedding Weaknesses, LLM09 Misinformation, LLM10 Unbounded
+# Consumption.
 #
 # Evidence types referenced
 # -------------------------
@@ -24,13 +33,14 @@
 #   covering safety / bias / refusal metrics.
 # * ``mcp_tool_inventory`` — declarative inventory of the MCP /
 #   tool-use surface the agent can reach. Required for Agentic
-#   systems (OWASP Agentic Top 10 #1: excessive tool reach).
+#   systems (OWASP Top 10 for Agentic Applications 2026: tool misuse
+#   / excessive tool reach).
 # * ``ai_training_data_lineage`` — manifest describing the datasets
 #   used to train / fine-tune the model, with their provenance and
 #   licensing.
 # * ``threat_model`` — Secure-SDLC threat model with an explicit
-#   AI section (LLM01 prompt injection, LLM06 sensitive disclosure,
-#   Agentic top risks).
+#   AI section (LLM01:2025 prompt injection, LLM02:2025 sensitive
+#   disclosure, Agentic top risks).
 #
 # Framework mapping is captured in the ``description`` of each
 # control. ADR-0008 carries the full crosswalk.
@@ -40,7 +50,7 @@ controls:
     name: "Model card present and machine-readable"
     description: >-
       Maps to SSDF AI Profile PS.AI.1 (document the model) and
-      OWASP LLM06 (sensitive information disclosure). The shipped
+      OWASP LLM02:2025 (sensitive information disclosure). The shipped
       model must carry a machine-readable model card with intended
       use, evaluation metrics, and known limitations.
     criticality: "high"
@@ -51,7 +61,7 @@ controls:
     framework: "NIST_SSDF"
     name: "Prompt-injection test coverage"
     description: >-
-      Maps to SSDF AI Profile PW.4.AI and OWASP LLM01 (prompt
+      Maps to SSDF AI Profile PW.4.AI and OWASP LLM01:2025 (prompt
       injection). The release must carry test results from a
       prompt-injection harness (garak or equivalent) executed
       against the shipped model + system prompt.
@@ -75,8 +85,8 @@ controls:
     name: "Training data lineage manifest"
     description: >-
       Maps to SSDF AI Profile PS.AI.2 (track provenance of training
-      data) and OWASP LLM03 (training-data poisoning). The release
-      must carry a manifest describing training datasets, with
+      data) and OWASP LLM04:2025 (data and model poisoning). The
+      release must carry a manifest describing training datasets, with
       provenance and licensing.
     criticality: "medium"
     required_evidence_types: ["ai_training_data_lineage"]
@@ -86,10 +96,12 @@ controls:
     framework: "NIST_SSDF"
     name: "MCP / agent tool inventory"
     description: >-
-      Maps to OWASP Agentic AI Top 10 #1 (excessive tool reach) and
-      SSDF AI Profile PW.4.AI. Agentic systems must declare the full
-      MCP / tool surface (allow-list of tools, scopes, network
-      reach) so reviewers can bound blast radius.
+      Maps to the OWASP Top 10 for Agentic Applications (2026)
+      (excessive tool reach / tool misuse), OWASP LLM06:2025
+      (excessive agency), and SSDF AI Profile PW.4.AI. Agentic
+      systems must declare the full MCP / tool surface (allow-list of
+      tools, scopes, network reach) so reviewers can bound blast
+      radius.
     criticality: "high"
     required_evidence_types: ["mcp_tool_inventory"]
     recommended_evidence_types: []
@@ -113,7 +125,7 @@ controls:
       Maps to SSDF PS.3. AI systems still ship code; the SBOM must
       cover both the runtime (inference engine, retrieval stack,
       tool-use libraries) and any pinned model weights described as
-      components. Defended against OWASP LLM05 (supply chain).
+      components. Defended against OWASP LLM03:2025 (supply chain).
     criticality: "critical"
     required_evidence_types: ["sbom"]
     recommended_evidence_types: ["artifact_attestation"]
@@ -122,9 +134,10 @@ controls:
     framework: "NIST_SSDF"
     name: "SCA over AI runtime dependencies"
     description: >-
-      Maps to SSDF PW.4 + OWASP LLM05. Dependency scanning must
-      cover AI runtime packages (transformers, langchain, etc.)
-      whose CVE surface changes faster than typical app stacks.
+      Maps to SSDF PW.4 + OWASP LLM03:2025 (supply chain). Dependency
+      scanning must cover AI runtime packages (transformers,
+      langchain, etc.) whose CVE surface changes faster than typical
+      app stacks.
     criticality: "high"
     required_evidence_types: ["sca_scan"]
     recommended_evidence_types: []
@@ -133,10 +146,11 @@ controls:
     framework: "NIST_SSDF"
     name: "SAST over agent / orchestration code"
     description: >-
-      Maps to SSDF PW.7 + OWASP LLM02 (insecure output handling) +
-      OWASP Agentic Top 10. SAST must cover the code that wires the
-      model into prompts, tools, and user inputs — most LLM02 bugs
-      live in this orchestration layer, not in the model itself.
+      Maps to SSDF PW.7 + OWASP LLM05:2025 (improper output handling)
+      + OWASP Top 10 for Agentic Applications (2026). SAST must cover
+      the code that wires the model into prompts, tools, and user
+      inputs — most improper-output-handling bugs live in this
+      orchestration layer, not in the model itself.
     criticality: "high"
     required_evidence_types: ["sast_scan"]
     recommended_evidence_types: []
@@ -146,8 +160,9 @@ controls:
     name: "Formal release approval for AI release"
     description: >-
       Generic SSDF release-approval gate scoped to AI. Approver must
-      acknowledge the AI-specific risk surface (LLM Top 10 + Agentic
-      Top 10) before promotion to production.
+      acknowledge the AI-specific risk surface (OWASP Top 10 for LLM
+      Applications 2025 + OWASP Top 10 for Agentic Applications 2026)
+      before promotion to production.
     criticality: "critical"
     required_evidence_types: ["release_approval"]
     recommended_evidence_types: []

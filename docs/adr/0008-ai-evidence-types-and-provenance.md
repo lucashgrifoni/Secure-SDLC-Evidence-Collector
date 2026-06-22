@@ -26,8 +26,9 @@ The market direction in 2026 makes this gap costly:
 - NIST published **SP 800-218A "SSDF Community Profile for Generative
   AI"** in 2024-07. PW.4.AI, PS.AI.1, PS.AI.2 expect evidence the
   collector did not previously model.
-- OWASP **LLM Top 10** (LLM01 prompt injection through LLM10 model
-  theft) and OWASP **Agentic AI Top 10** describe risks that require
+- OWASP **Top 10 for LLM Applications** (2025 edition: LLM01 prompt
+  injection through LLM10 unbounded consumption) and the OWASP **Top
+  10 for Agentic Applications (2026)** describe risks that require
   AI-specific evidence to mitigate.
 - The CRA window (2026-09-11) and FedRAMP 20x window (2026-09-30) do
   not currently mandate AI-specific evidence, but customers shipping
@@ -52,8 +53,9 @@ Add an **AI evidence track** to the existing schema, additively:
    `NormalizedEvidence` with `subject_type = ai_model` and the
    parser-specific metadata under `evidence.metadata`.
 5. **A new opt-in catalog** — `catalog-ai.yaml` — that exposes ten
-   AI-aware controls mapped to SSDF AI Profile + OWASP LLM Top 10 +
-   OWASP Agentic Top 10. The default catalog is unchanged.
+   AI-aware controls mapped to SSDF AI Profile + OWASP Top 10 for LLM
+   Applications (2025) + OWASP Top 10 for Agentic Applications (2026).
+   The default catalog is unchanged.
 6. **Auto-detection** in `LocalArtifactCollector` for the three new
    shapes, gated by both filename heuristics and content sniffing so
    generic JSON files are not mis-classified.
@@ -65,17 +67,21 @@ new artifact files into their existing `artifacts/` directory.
 
 ### Crosswalk: SSDF AI Profile + OWASP LLM + OWASP Agentic
 
-| Control (catalog-ai.yaml) | SSDF AI Profile | OWASP LLM | OWASP Agentic |
+OWASP LLM IDs use the 2025 numbering (https://genai.owasp.org/llm-top-10/);
+the Agentic column references the OWASP Top 10 for Agentic Applications (2026)
+by theme rather than by ID.
+
+| Control (catalog-ai.yaml) | SSDF AI Profile | OWASP LLM (2025) | OWASP Agentic (2026) |
 |---|---|---|---|
-| `AI-MODEL-CARD` | PS.AI.1 | LLM06 | — |
+| `AI-MODEL-CARD` | PS.AI.1 | LLM02 | — |
 | `AI-PROMPT-INJ` | PW.4.AI | LLM01 | — |
-| `AI-SAFETY-EVAL` | PW.4.AI | LLM01 / LLM06 | — |
-| `AI-TRAINING-LINEAGE` | PS.AI.2 | LLM03 | — |
-| `AI-MCP-INVENTORY` | PW.4.AI | — | A1 (excessive tool reach) |
-| `AI-THREAT-MODEL` | PW.1.AI | — | A2 |
-| `AI-SBOM` | PS.3 | LLM05 | — |
-| `AI-SCA` | PW.4 | LLM05 | — |
-| `AI-SAST` | PW.7 | LLM02 | A3 |
+| `AI-SAFETY-EVAL` | PW.4.AI | LLM01 / LLM02 | — |
+| `AI-TRAINING-LINEAGE` | PS.AI.2 | LLM04 | — |
+| `AI-MCP-INVENTORY` | PW.4.AI | LLM06 | tool misuse / excessive tool reach |
+| `AI-THREAT-MODEL` | PW.1.AI | — | agentic blast radius |
+| `AI-SBOM` | PS.3 | LLM03 | — |
+| `AI-SCA` | PW.4 | LLM03 | — |
+| `AI-SAST` | PW.7 | LLM05 | tool misuse |
 | `AI-RELEASE-APPROVAL` | (org-internal) | — | — |
 
 ## Consequences
