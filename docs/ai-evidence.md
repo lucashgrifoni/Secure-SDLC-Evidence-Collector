@@ -4,7 +4,8 @@ The Secure SDLC Evidence Collector supports five evidence types
 specific to AI / LLM / agentic systems and ships an opt-in catalog
 that gates releases on them. This page explains what to produce and
 where to put it. The full mapping to **NIST SP 800-218A** (SSDF AI
-Profile), **OWASP LLM Top 10**, and **OWASP Agentic AI Top 10** lives
+Profile), the **OWASP Top 10 for LLM Applications (2025)**, and the
+**OWASP Top 10 for Agentic Applications (2026)** lives
 in [ADR-0008](./adr/0008-ai-evidence-types-and-provenance.md).
 
 ## Quick start
@@ -51,7 +52,7 @@ File names recognised: `model-card.json`, `model_card.json`,
 `*.modelcard.json`. Content sniff also matches files that carry
 `model_details` or `model-index` at the top level.
 
-Mapped control: `AI-MODEL-CARD` (SSDF PS.AI.1, OWASP LLM06).
+Mapped control: `AI-MODEL-CARD` (SSDF PS.AI.1, OWASP LLM02:2025).
 
 ### `prompt_injection_test_result`
 
@@ -70,7 +71,7 @@ single failing probe should block the release.
 File names recognised: `*.garak.json`, `*.garak.jsonl`,
 `*.report.jsonl`, `garak.json`, `garak.jsonl`.
 
-Mapped control: `AI-PROMPT-INJ` (SSDF PW.4.AI, OWASP LLM01).
+Mapped control: `AI-PROMPT-INJ` (SSDF PW.4.AI, OWASP LLM01:2025).
 
 ### `ai_safety_eval`
 
@@ -109,7 +110,9 @@ The collector does not normalise the tool inventory shape today; it
 preserves the file as evidence so a reviewer can inspect blast
 radius.
 
-Mapped control: `AI-MCP-INVENTORY` (OWASP Agentic A1).
+Mapped control: `AI-MCP-INVENTORY` (OWASP Top 10 for Agentic
+Applications 2026 — tool misuse / excessive tool reach; OWASP
+LLM06:2025 excessive agency).
 
 ### `ai_training_data_lineage`
 
@@ -122,7 +125,7 @@ the model. Recommended fields:
 - `datasets[*].pii_review` — boolean / link to a PII assessment
 - `datasets[*].fingerprint` — content hash, when available
 
-Mapped control: `AI-TRAINING-LINEAGE` (SSDF PS.AI.2, OWASP LLM03).
+Mapped control: `AI-TRAINING-LINEAGE` (SSDF PS.AI.2, OWASP LLM04:2025).
 
 ## What the verdict looks like
 
@@ -165,8 +168,8 @@ specific schema.
 ## References
 
 - NIST SP 800-218A — https://csrc.nist.gov/publications/detail/sp/800-218A/final
-- OWASP LLM Top 10 — https://owasp.org/www-project-top-10-for-large-language-model-applications/
-- OWASP Agentic AI Top 10 — https://owasp.org/www-project-top-10-for-large-language-model-applications/
+- OWASP Top 10 for LLM Applications (2025) — https://genai.owasp.org/llm-top-10/
+- OWASP Top 10 for Agentic Applications (2026) — https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 - garak — https://github.com/leondz/garak
 - lm-evaluation-harness — https://github.com/EleutherAI/lm-evaluation-harness
 - Hugging Face model cards — https://huggingface.co/docs/hub/model-cards
