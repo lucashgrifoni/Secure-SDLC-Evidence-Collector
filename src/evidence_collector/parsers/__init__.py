@@ -5,6 +5,7 @@ from __future__ import annotations
 from evidence_collector.parsers.attestation import parse_attestation
 from evidence_collector.parsers.exception import parse_exception
 from evidence_collector.parsers.garak import parse_garak
+from evidence_collector.parsers.intoto_provenance import parse_provenance
 from evidence_collector.parsers.intoto_vsa import parse_vsa
 from evidence_collector.parsers.junit import parse_junit
 from evidence_collector.parsers.lm_eval import parse_lm_eval
@@ -22,6 +23,7 @@ __all__ = [
     "parse_lm_eval",
     "parse_model_card",
     "parse_osv",
+    "parse_provenance",
     "parse_sarif",
     "parse_sbom",
     "parse_vsa",
