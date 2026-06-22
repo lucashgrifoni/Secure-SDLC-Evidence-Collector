@@ -35,6 +35,7 @@ from evidence_collector.domain.models import (
 from evidence_collector.parsers._common import ParsedArtifact
 from evidence_collector.parsers.attestation import ParsedAttestation
 from evidence_collector.parsers.garak import ParsedGarak
+from evidence_collector.parsers.intoto_provenance import ParsedProvenance
 from evidence_collector.parsers.intoto_vsa import ParsedVsa
 from evidence_collector.parsers.junit import ParsedJUnit
 from evidence_collector.parsers.lm_eval import ParsedLmEval
@@ -341,6 +342,55 @@ def normalize_osv(
         summary=(
             f"{parsed.tool_name} reported {parsed.total_findings} OSV "
             f"vulnerabilities across {len(parsed.ecosystems)} ecosystem(s)"
+        ),
+        metadata=metadata,
+    )
+
+
+def normalize_provenance(
+    parsed: ParsedProvenance,
+    release: ReleaseContext,
+    *,
+    artifact_root: str | None = None,
+) -> NormalizedEvidence:
+    """Build an ``artifact_attestation`` evidence from SLSA build provenance.
+
+    Records *how* an artifact was built (builder identity, build type, and the
+    in-toto/DSSE/Sigstore envelope it travelled in) without verifying the
+    signature. Provenance is descriptive, not pass/fail, so the status is
+    GENERATED (the same convention as SBOM evidence).
+    """
+    subject_ref = (parsed.subject_name or parsed.source_repository or parsed.builder_id)[:500]
+    producer = parsed.builder_id[:100]
+    metadata: dict[str, Any] = {
+        "predicate_type": parsed.predicate_type,
+        "builder_id": parsed.builder_id,
+        "build_type": parsed.build_type,
+        "envelope": parsed.envelope,
+    }
+    if parsed.invocation_id:
+        metadata["invocation_id"] = parsed.invocation_id
+    if parsed.source_repository:
+        metadata["source_repository"] = parsed.source_repository
+    return NormalizedEvidence(
+        evidence_id=_new_evidence_id(
+            "prov", parsed.artifact.integrity_hash, subject_ref, release.release_id
+        ),
+        evidence_type=EvidenceType.ARTIFACT_ATTESTATION,
+        source=EvidenceSource(name=producer, kind="slsa-provenance"),
+        producer=producer,
+        subject_type=SubjectType.ARTIFACT,
+        subject_ref=subject_ref,
+        status=EvidenceStatus.GENERATED,
+        confidence=ConfidenceLevel.HIGH,
+        release_id=release.release_id,
+        commit_sha=release.commit_sha,
+        generated_at=None,
+        raw=_raw_ref(parsed.artifact, artifact_root),
+        findings_count={},
+        summary=(
+            f"SLSA provenance ({parsed.predicate_type.rsplit('/', 1)[-1]}) "
+            f"built by {producer} via {parsed.build_type}"
         ),
         metadata=metadata,
     )
