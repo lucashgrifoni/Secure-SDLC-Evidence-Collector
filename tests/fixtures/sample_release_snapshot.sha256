@@ -31,4 +31,11 @@
 # default to an empty list / null respectively so the change is fully
 # backwards compatible, but their presence alters the canonical JSON
 # representation and therefore the structural hash.
-7d8b94c781ae46ed1c51a39e528eb2410bf3c51e6477fc1851196863b1989465
+#
+# 2026-06-22 (C2 — CISA 2025 SBOM conformance): bumped from 7d8b94c7… to
+# 788ac044… after SBOM evidence gained two metadata fields
+# (``cisa_2025_minimum_elements`` map + ``cisa_2025_conformant`` bool), a
+# content-derived presence check against CISA's 2025 Minimum Elements.
+# Additive and byte-stable per run; only the canonical representation (and
+# therefore the structural hash) changed.
+788ac044c5fec8834db9174a01cbda76d7672f5b9a430c21325b0a3a5f240c22
