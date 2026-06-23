@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 _HEADER_DATE_PATTERN = re.compile(r"score_date:([0-9]{4}-[0-9]{2}-[0-9]{2})")
+_HEADER_MODEL_PATTERN = re.compile(r"model_version:(v?[0-9][\w.\-]*)")
 
 
 @dataclass(frozen=True)
@@ -42,6 +43,7 @@ class EpssFeed:
     """Loaded EPSS feed with O(1) CVE lookup."""
 
     feed_date: str | None
+    model_version: str | None = None
     records: dict[str, EpssRecord] = field(default_factory=dict)
 
     def get(self, cve_id: str) -> EpssRecord | None:
@@ -81,6 +83,7 @@ def load_epss_feed(path: Path) -> EpssFeed:
         return EpssFeed(feed_date=None, records={})
 
     feed_date: str | None = None
+    model_version: str | None = None
     records: dict[str, EpssRecord] = {}
 
     try:
@@ -94,11 +97,14 @@ def load_epss_feed(path: Path) -> EpssFeed:
             match = _HEADER_DATE_PATTERN.search(first_line)
             if match:
                 feed_date = match.group(1)
+            model_match = _HEADER_MODEL_PATTERN.search(first_line)
+            if model_match:
+                model_version = model_match.group(1)
             header_line = stream.readline()
         else:
             header_line = first_line
         if not header_line:
-            return EpssFeed(feed_date=feed_date, records={})
+            return EpssFeed(feed_date=feed_date, model_version=model_version, records={})
 
         reader = csv.DictReader(
             io.StringIO(header_line + stream.read()),
@@ -117,4 +123,4 @@ def load_epss_feed(path: Path) -> EpssFeed:
                 epss_percentile=percentile,
             )
 
-    return EpssFeed(feed_date=feed_date, records=records)
+    return EpssFeed(feed_date=feed_date, model_version=model_version, records=records)

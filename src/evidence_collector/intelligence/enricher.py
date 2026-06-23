@@ -110,6 +110,7 @@ def enrich_evidence(
         cves_known_ransomware_count=ransomware_count,
         top_risk_cves=top_risk,
         epss_feed_date=epss.feed_date,
+        epss_model_version=epss.model_version,
         kev_feed_date=kev.feed_date,
         enriched_at=now or datetime.now(tz=UTC),
     )
