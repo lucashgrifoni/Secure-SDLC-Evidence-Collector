@@ -167,6 +167,16 @@ class VulnerabilityIntelligence(_BaseModel):
         max_length=20,
         description="YYYY-MM-DD date stamped on the EPSS feed used for enrichment.",
     )
+    epss_model_version: str | None = Field(
+        default=None,
+        max_length=40,
+        description=(
+            "EPSS model version stamped on the feed header (e.g. 'v2026.01.04'). "
+            "EPSS scores are not comparable across model versions, so recording "
+            "it keeps day-to-day score deltas honest. None when enrichment is "
+            "skipped or the feed header omits it."
+        ),
+    )
     kev_feed_date: str | None = Field(
         default=None,
         max_length=20,

@@ -167,8 +167,9 @@ These are explicitly out of scope for security reports (see
 
 - `sdlc-evidence enrich` and `sdlc-evidence run --enrich` write
   EPSS / KEV signal into evidence. The structural-hash gate
-  deliberately captures `epss_feed_date` and `kev_feed_date` so a
-  feed bump surfaces as drift.
+  deliberately captures `epss_feed_date`, `epss_model_version`, and
+  `kev_feed_date` so a feed bump (or an EPSS model-version change)
+  surfaces as drift.
 - This means **the same source artifacts produce different bundle
   hashes on different days when enrichment is on**. That is the
   intent: drift in the EPSS feed is meaningful, not noise.
