@@ -245,6 +245,34 @@ _CISA_2025_ELEMENT_KEYS: tuple[str, ...] = (
     "generation_context",
 )
 
+# SPDX relationshipType values that express an actual dependency / inclusion
+# graph. A document-to-package ``DESCRIBES`` (or its inverse) is NOT a
+# dependency relationship, so it must not satisfy CISA's dependency element.
+_SPDX_DEPENDENCY_RELATIONSHIP_TYPES: frozenset[str] = frozenset(
+    {
+        "DEPENDS_ON",
+        "DEPENDENCY_OF",
+        "BUILD_DEPENDENCY_OF",
+        "DEV_DEPENDENCY_OF",
+        "OPTIONAL_DEPENDENCY_OF",
+        "PROVIDED_DEPENDENCY_OF",
+        "RUNTIME_DEPENDENCY_OF",
+        "TEST_DEPENDENCY_OF",
+        "CONTAINS",
+        "CONTAINED_BY",
+        "STATIC_LINK",
+        "DYNAMIC_LINK",
+        "PREREQUISITE_FOR",
+        "HAS_PREREQUISITE",
+    }
+)
+
+
+def _canonical(elements: dict[str, bool]) -> dict[str, bool]:
+    """Return the element map in the canonical CISA key order; indexing each
+    key also asserts both format builders emit the full element set."""
+    return {key: elements[key] for key in _CISA_2025_ELEMENT_KEYS}
+
 
 def _as_dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
@@ -264,6 +292,12 @@ def _all_components_have(
 def _cyclonedx_cisa_elements(data: dict[str, Any]) -> dict[str, bool]:
     metadata = _as_dict(data.get("metadata"))
     components = _as_list(data.get("components"))
+    # CISA's component-level elements apply to every component, including the
+    # top-level subject in metadata.component. Without this an application
+    # with no supplier/hash/license is masked by complete dependencies.
+    subject = metadata.get("component")
+    if isinstance(subject, dict):
+        components = [subject, *components]
     tools = metadata.get("tools")
     has_tool = (
         bool(tools)
@@ -273,7 +307,7 @@ def _cyclonedx_cisa_elements(data: dict[str, Any]) -> dict[str, bool]:
     authors = metadata.get("authors")
     has_author = (isinstance(authors, list) and bool(authors)) or has_tool
     lifecycles = metadata.get("lifecycles")
-    return {
+    elements = {
         "author": bool(has_author),
         "timestamp": bool(metadata.get("timestamp")),
         "supplier": _all_components_have(
@@ -292,6 +326,7 @@ def _cyclonedx_cisa_elements(data: dict[str, Any]) -> dict[str, bool]:
         "tool": bool(has_tool),
         "generation_context": bool(isinstance(lifecycles, list) and lifecycles),
     }
+    return _canonical(elements)
 
 
 def _spdx_cisa_elements(data: dict[str, Any]) -> dict[str, bool]:
@@ -310,7 +345,7 @@ def _spdx_cisa_elements(data: dict[str, Any]) -> dict[str, bool]:
     gen_context = isinstance(comment, str) and any(
         stage in comment.lower() for stage in ("source", "build", "binary")
     )
-    return {
+    elements = {
         "author": bool(has_author),
         "timestamp": bool(creation.get("created")),
         "supplier": _all_components_have(
@@ -321,8 +356,11 @@ def _spdx_cisa_elements(data: dict[str, Any]) -> dict[str, bool]:
         "unique_identifier": _all_components_have(
             packages, lambda p: bool(p.get("SPDXID") or p.get("externalRefs"))
         ),
-        "dependency_relationships": bool(
-            isinstance(data.get("relationships"), list) and data.get("relationships")
+        "dependency_relationships": any(
+            isinstance(r, dict)
+            and isinstance(r.get("relationshipType"), str)
+            and r["relationshipType"].upper() in _SPDX_DEPENDENCY_RELATIONSHIP_TYPES
+            for r in _as_list(data.get("relationships"))
         ),
         "hash": _all_components_have(packages, lambda p: bool(p.get("checksums"))),
         "license": _all_components_have(
@@ -331,6 +369,7 @@ def _spdx_cisa_elements(data: dict[str, Any]) -> dict[str, bool]:
         "tool": bool(has_tool),
         "generation_context": bool(gen_context),
     }
+    return _canonical(elements)
 
 
 def parse_sbom(path: str | Path) -> ParsedSbom:

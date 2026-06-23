@@ -18,7 +18,14 @@ CDX_COMPLETE: dict[str, Any] = {
         "authors": [{"name": "Acme"}],
         "tools": {"components": [{"name": "syft", "version": "1.0"}]},
         "lifecycles": [{"phase": "build"}],
-        "component": {"name": "app", "version": "1.0", "purl": "pkg:pypi/app@1.0"},
+        "component": {
+            "name": "app",
+            "version": "1.0",
+            "purl": "pkg:pypi/app@1.0",
+            "supplier": {"name": "Acme"},
+            "hashes": [{"alg": "SHA-256", "content": "def456"}],
+            "licenses": [{"license": {"id": "Apache-2.0"}}],
+        },
     },
     "components": [
         {
@@ -62,8 +69,13 @@ SPDX_COMPLETE: dict[str, Any] = {
         {
             "spdxElementId": "SPDXRef-DOCUMENT",
             "relationshipType": "DESCRIBES",
+            "relatedSpdxElement": "SPDXRef-app",
+        },
+        {
+            "spdxElementId": "SPDXRef-app",
+            "relationshipType": "DEPENDS_ON",
             "relatedSpdxElement": "SPDXRef-lib",
-        }
+        },
     ],
 }
 
@@ -110,3 +122,51 @@ def test_normalize_sbom_surfaces_cisa_conformance(tmp_path: Path) -> None:
 
     incomplete = normalize_sbom(parse_sbom(_write(tmp_path, CDX_INCOMPLETE)), _release())
     assert incomplete.metadata["cisa_2025_conformant"] is False
+
+
+def test_cyclonedx_subject_component_is_held_to_the_same_bar(tmp_path: Path) -> None:
+    # The subject in metadata.component lacks a license; its dependency is
+    # complete. The subject must not be masked by complete dependencies.
+    sbom: dict[str, Any] = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "metadata": {
+            "timestamp": "2026-06-01T00:00:00Z",
+            "tools": [{"name": "x"}],
+            "lifecycles": [{"phase": "build"}],
+            "component": {
+                "name": "app",
+                "version": "1.0",
+                "purl": "pkg:pypi/app@1.0",
+                "supplier": {"name": "Acme"},
+                "hashes": [{"alg": "SHA-256", "content": "d"}],
+            },
+        },
+        "components": [
+            {
+                "name": "lib",
+                "version": "2.0",
+                "purl": "pkg:pypi/lib@2.0",
+                "supplier": {"name": "LibCo"},
+                "hashes": [{"alg": "SHA-256", "content": "a"}],
+                "licenses": [{"license": {"id": "MIT"}}],
+            }
+        ],
+        "dependencies": [{"ref": "pkg:pypi/app@1.0", "dependsOn": ["pkg:pypi/lib@2.0"]}],
+    }
+    elements = parse_sbom(_write(tmp_path, sbom)).cisa_minimum_elements
+    assert elements["license"] is False
+    assert elements["supplier"] is True
+
+
+def test_spdx_describes_only_is_not_a_dependency_graph(tmp_path: Path) -> None:
+    sbom = dict(SPDX_COMPLETE)
+    sbom["relationships"] = [
+        {
+            "spdxElementId": "SPDXRef-DOCUMENT",
+            "relationshipType": "DESCRIBES",
+            "relatedSpdxElement": "SPDXRef-lib",
+        }
+    ]
+    elements = parse_sbom(_write(tmp_path, sbom)).cisa_minimum_elements
+    assert elements["dependency_relationships"] is False
