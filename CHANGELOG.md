@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.6...v2.1.0) (2026-06-23)
+
+
+### Added
+
+* **catalog:** add OpenSSF OSPS Baseline catalog ([#71](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/71)) ([6ee72c5](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/6ee72c5f1e6044b5c66b7bede931d635c2d1b35c))
+* **parsers:** ingest GitHub Artifact Attestations (SLSA build provenance) ([#69](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/69)) ([874dd9b](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/874dd9be7b1ab8063b8706cff529e41f4ba73cc2))
+* **parsers:** ingest SLSA Verification Summary Attestations (VSA) ([#65](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/65)) ([5ebf065](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/5ebf065a935ceed31ec26d3b6b65ff2b20b0a376))
+* **sbom:** check CISA 2025 Minimum Elements on SBOM evidence ([#72](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/72)) ([3fb47eb](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/3fb47eb3bc74ffc69859532c5b21c35e9bc4263a))
+
+
+### Documentation
+
+* **catalog:** refresh AI catalog to OWASP LLM Top 10 2025 numbering ([#70](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/70)) ([29f58fc](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/29f58fcdd81327095cbeb3f31b8795f644395941))
+
 ## [2.0.6](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.5...v2.0.6) (2026-06-17)
 
 
