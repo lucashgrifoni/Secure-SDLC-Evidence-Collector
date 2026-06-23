@@ -115,6 +115,30 @@ def test_load_epss_feed_reads_score_date(synth_epss: Path) -> None:
     assert record.epss_percentile == pytest.approx(0.99001)
 
 
+def test_load_epss_feed_reads_model_version(synth_epss: Path) -> None:
+    assert load_epss_feed(synth_epss).model_version == "v2026.05.01"
+
+
+def test_load_epss_feed_model_version_none_without_header(tmp_path: Path) -> None:
+    path = tmp_path / "epss.csv"
+    path.write_text("cve,epss,percentile\nCVE-2023-1111,0.5,0.5\n", encoding="utf-8")
+    feed = load_epss_feed(path)
+    assert feed.model_version is None
+    assert feed.get("CVE-2023-1111") is not None
+
+
+def test_enrich_evidence_records_epss_model_version(synth_epss: Path, synth_kev: Path) -> None:
+    enriched = enrich_evidence(
+        _build_evidence(["CVE-2023-1111"]),
+        load_epss_feed(synth_epss),
+        load_kev_feed(synth_kev),
+    )
+    intel = enriched.vulnerability_intelligence
+    assert intel is not None
+    assert intel.epss_model_version == "v2026.05.01"
+    assert intel.epss_feed_date == "2026-05-17"
+
+
 def test_load_epss_feed_handles_gzip(synth_epss_gz: Path) -> None:
     feed = load_epss_feed(synth_epss_gz)
     assert feed.feed_date == "2026-05-17"

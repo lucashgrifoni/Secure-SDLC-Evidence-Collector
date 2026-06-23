@@ -49,8 +49,9 @@ the signal.
   (see `application/integrity.py`).
 - **Enriched bundles are not byte-stable across EPSS/KEV feed
   refreshes.** Documented in `docs/limitations.md`. The structural
-  hash deliberately captures `epss_feed_date` and `kev_feed_date` so
-  feed updates surface as drift.
+  hash deliberately captures `epss_feed_date`, `epss_model_version`,
+  and `kev_feed_date` so feed (or EPSS model-version) updates surface
+  as drift.
 - **Only downgrades, never upgrades.** A `not_ready` base verdict is
   not promoted to `ready` even when no CVE is exploitable. Missing
   evidence is its own gap — risk weighting cannot wave hand it away.
