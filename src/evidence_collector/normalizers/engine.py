@@ -270,6 +270,13 @@ def normalize_sbom(
             }
             for a in sorted(parsed.vulnerability_analyses, key=lambda x: x.cve_id)
         ]
+    if parsed.cisa_minimum_elements:
+        # Presence check against CISA's 2025 Minimum Elements for an SBOM.
+        # Turns "an SBOM exists" into "the SBOM is shaped like a conformant
+        # one"; the booleans are content-derived so the bundle stays
+        # byte-stable across runs on the same input.
+        metadata["cisa_2025_minimum_elements"] = dict(parsed.cisa_minimum_elements)
+        metadata["cisa_2025_conformant"] = all(parsed.cisa_minimum_elements.values())
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
             "sbom", parsed.artifact.integrity_hash, subject_ref, release.release_id

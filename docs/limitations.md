@@ -58,6 +58,15 @@ The collector checks **presence**, not correctness.
   visible only if the underlying scanner reports them in its SARIF.
   The collector does not flag "scan ran but everything was
   suppressed".
+- SBOM evidence carries a `metadata.cisa_2025_minimum_elements`
+  presence map and a `metadata.cisa_2025_conformant` flag, checked
+  against CISA's 2025 Minimum Elements for an SBOM (author, timestamp,
+  supplier, component name, version, unique identifier, dependency
+  relationships, hash, license, tool name, generation context). A
+  component-level element is reported present only when **every**
+  component carries it. This checks the SBOM's *shape*, not the
+  correctness of the values — a component with a bogus license string
+  still counts the `license` element as present.
 
 ## 4 · Control catalog is small on purpose
 
