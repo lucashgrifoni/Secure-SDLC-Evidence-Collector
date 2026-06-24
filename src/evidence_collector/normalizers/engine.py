@@ -277,6 +277,17 @@ def normalize_sbom(
         # byte-stable across runs on the same input.
         metadata["cisa_2025_minimum_elements"] = dict(parsed.cisa_minimum_elements)
         metadata["cisa_2025_conformant"] = all(parsed.cisa_minimum_elements.values())
+    # CycloneDX 1.6/1.7 evidence-bearing objects, surfaced only when present so
+    # a classic dependency SBOM stays byte-identical to pre-1.7 bundles.
+    if parsed.ml_model_count or parsed.dataset_count:
+        metadata["ml_bom"] = {
+            "model_count": parsed.ml_model_count,
+            "dataset_count": parsed.dataset_count,
+        }
+    if parsed.crypto_asset_count:
+        metadata["cbom"] = {"cryptographic_asset_count": parsed.crypto_asset_count}
+    if parsed.attestation_count:
+        metadata["cyclonedx_attestation_count"] = parsed.attestation_count
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
             "sbom", parsed.artifact.integrity_hash, subject_ref, release.release_id
