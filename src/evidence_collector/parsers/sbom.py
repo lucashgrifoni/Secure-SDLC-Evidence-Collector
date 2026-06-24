@@ -57,6 +57,10 @@ class ParsedSbom:
     lifecycle_phases: list[str] = field(default_factory=list)
     vulnerability_analyses: list[CycloneDxVulnerabilityAnalysis] = field(default_factory=list)
     cisa_minimum_elements: dict[str, bool] = field(default_factory=dict)
+    ml_model_count: int = 0
+    dataset_count: int = 0
+    crypto_asset_count: int = 0
+    attestation_count: int = 0
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -73,6 +77,47 @@ def _cyclonedx_component_count(data: dict[str, Any]) -> int:
     if isinstance(components, list):
         return sum(1 for c in components if isinstance(c, dict))
     return 0
+
+
+@dataclass
+class CycloneDxObjectCounts:
+    """Counts of CycloneDX 1.6/1.7 evidence-bearing objects in a BOM."""
+
+    ml_model_count: int = 0
+    dataset_count: int = 0
+    crypto_asset_count: int = 0
+    attestation_count: int = 0
+
+
+def _cyclonedx_object_counts(data: dict[str, Any]) -> CycloneDxObjectCounts:
+    """Count CycloneDX 1.6/1.7 evidence-bearing objects.
+
+    ML-BOM models (``type: machine-learning-model``) and datasets
+    (``type: data``), CBOM cryptographic assets
+    (``type: cryptographic-asset``), and the ``declarations.attestations``
+    array. CycloneDX 1.7 promotes all of these into the SBOM itself; the
+    collector surfaces their presence as SBOM evidence metadata only when
+    non-zero, so a classic dependency SBOM is unaffected.
+    """
+    counts = CycloneDxObjectCounts()
+    components = data.get("components")
+    if isinstance(components, list):
+        for component in components:
+            if not isinstance(component, dict):
+                continue
+            component_type = component.get("type")
+            if component_type == "machine-learning-model":
+                counts.ml_model_count += 1
+            elif component_type == "data":
+                counts.dataset_count += 1
+            elif component_type == "cryptographic-asset":
+                counts.crypto_asset_count += 1
+    declarations = data.get("declarations")
+    if isinstance(declarations, dict):
+        attestations = declarations.get("attestations")
+        if isinstance(attestations, list):
+            counts.attestation_count = sum(1 for a in attestations if isinstance(a, dict))
+    return counts
 
 
 def _cyclonedx_subject(data: dict[str, Any]) -> str | None:
@@ -381,6 +426,7 @@ def parse_sbom(path: str | Path) -> ParsedSbom:
     lifecycle_phases: list[str] = []
     vulnerability_analyses: list[CycloneDxVulnerabilityAnalysis] = []
     cisa_elements: dict[str, bool] = {}
+    object_counts = CycloneDxObjectCounts()
     if sbom_format == "cyclonedx":
         spec_version = data.get("specVersion")
         serial_number = data.get("serialNumber")
@@ -391,6 +437,7 @@ def parse_sbom(path: str | Path) -> ParsedSbom:
         lifecycle_phases = _cyclonedx_lifecycle_phases(data)
         vulnerability_analyses = _cyclonedx_vulnerability_analyses(data)
         cisa_elements = _cyclonedx_cisa_elements(data)
+        object_counts = _cyclonedx_object_counts(data)
     else:
         spec_version = data.get("spdxVersion")
         serial_number = data.get("documentNamespace")
@@ -411,5 +458,9 @@ def parse_sbom(path: str | Path) -> ParsedSbom:
         lifecycle_phases=lifecycle_phases,
         vulnerability_analyses=vulnerability_analyses,
         cisa_minimum_elements=cisa_elements,
+        ml_model_count=object_counts.ml_model_count,
+        dataset_count=object_counts.dataset_count,
+        crypto_asset_count=object_counts.crypto_asset_count,
+        attestation_count=object_counts.attestation_count,
         raw=data,
     )
