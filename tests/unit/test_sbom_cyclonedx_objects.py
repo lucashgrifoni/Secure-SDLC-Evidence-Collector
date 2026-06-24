@@ -72,6 +72,19 @@ def test_spdx_has_zero_object_counts(tmp_path: Path) -> None:
     assert parsed.crypto_asset_count == 0
 
 
+def test_ml_bom_subject_component_is_counted(tmp_path: Path) -> None:
+    # A single-model ML-BOM describes the model as the BOM subject in
+    # metadata.component, with nothing under components[].
+    sbom: dict[str, Any] = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "metadata": {"component": {"type": "machine-learning-model", "name": "m"}},
+        "components": [],
+    }
+    parsed = parse_sbom(_write(tmp_path, sbom))
+    assert parsed.ml_model_count == 1
+
+
 def test_normalize_surfaces_object_metadata_when_present(tmp_path: Path) -> None:
     ev = normalize_sbom(parse_sbom(_write(tmp_path, CDX_RICH)), _release())
     assert ev.metadata["ml_bom"] == {"model_count": 1, "dataset_count": 1}

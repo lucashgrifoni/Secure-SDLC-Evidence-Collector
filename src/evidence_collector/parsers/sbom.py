@@ -100,18 +100,26 @@ def _cyclonedx_object_counts(data: dict[str, Any]) -> CycloneDxObjectCounts:
     non-zero, so a classic dependency SBOM is unaffected.
     """
     counts = CycloneDxObjectCounts()
-    components = data.get("components")
-    if isinstance(components, list):
-        for component in components:
-            if not isinstance(component, dict):
-                continue
-            component_type = component.get("type")
-            if component_type == "machine-learning-model":
-                counts.ml_model_count += 1
-            elif component_type == "data":
-                counts.dataset_count += 1
-            elif component_type == "cryptographic-asset":
-                counts.crypto_asset_count += 1
+    raw_components = data.get("components")
+    components: list[Any] = list(raw_components) if isinstance(raw_components, list) else []
+    # A single-model ML-BOM or single-key CBOM often describes the asset as the
+    # BOM subject in metadata.component with nothing under components[]; include
+    # it so the subject is counted (mirrors the CISA component checks).
+    metadata = data.get("metadata")
+    if isinstance(metadata, dict):
+        subject = metadata.get("component")
+        if isinstance(subject, dict):
+            components.insert(0, subject)
+    for component in components:
+        if not isinstance(component, dict):
+            continue
+        component_type = component.get("type")
+        if component_type == "machine-learning-model":
+            counts.ml_model_count += 1
+        elif component_type == "data":
+            counts.dataset_count += 1
+        elif component_type == "cryptographic-asset":
+            counts.crypto_asset_count += 1
     declarations = data.get("declarations")
     if isinstance(declarations, dict):
         attestations = declarations.get("attestations")
