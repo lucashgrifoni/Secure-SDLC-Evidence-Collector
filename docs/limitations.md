@@ -67,6 +67,13 @@ The collector checks **presence**, not correctness.
   component carries it. This checks the SBOM's *shape*, not the
   correctness of the values — a component with a bogus license string
   still counts the `license` element as present.
+- For CycloneDX 1.6/1.7, SBOM evidence also surfaces counts of ML-BOM
+  components (`metadata.ml_bom`), CBOM cryptographic assets
+  (`metadata.cbom`), and `declarations.attestations`
+  (`metadata.cyclonedx_attestation_count`) — added only when present, so
+  a classic dependency SBOM stays byte-identical to pre-1.7 bundles.
+  These are presence/count signals, not a validation of the ML, crypto,
+  or attestation content.
 
 ## 4 · Control catalog is small on purpose
 
