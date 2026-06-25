@@ -288,6 +288,18 @@ def normalize_sbom(
         metadata["cbom"] = {"cryptographic_asset_count": parsed.crypto_asset_count}
     if parsed.attestation_count:
         metadata["cyclonedx_attestation_count"] = parsed.attestation_count
+    # SPDX 3.0 AI / Dataset / Security profile element counts, conditional so
+    # an SBOM without those profiles is unaffected.
+    if (
+        parsed.spdx_ai_package_count
+        or parsed.spdx_dataset_count
+        or parsed.spdx_security_assessment_count
+    ):
+        metadata["spdx_profiles"] = {
+            "ai_package_count": parsed.spdx_ai_package_count,
+            "dataset_count": parsed.spdx_dataset_count,
+            "security_assessment_count": parsed.spdx_security_assessment_count,
+        }
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
             "sbom", parsed.artifact.integrity_hash, subject_ref, release.release_id
