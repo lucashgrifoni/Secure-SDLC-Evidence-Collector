@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.1.0...v2.2.0) (2026-06-25)
+
+
+### Added
+
+* **devex:** publish pre-commit hooks for the collector CLI ([#78](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/78)) ([66d74d1](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/66d74d1f07d2d1868d80bf6e1a9f0893fc189ee7))
+* **intelligence:** record the EPSS model version on enriched evidence ([#73](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/73)) ([1b74d81](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/1b74d81b16034b2a33acd01468c960e9b8db0df4))
+* **profiles:** emit the full CRA Article 14 reporting timeline ([#77](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/77)) ([3ede662](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/3ede662ce4dd583ecf19d747b90f25181ee0c8bd))
+* **sbom:** detect SPDX 3.0 and surface AI/Dataset/Security profile counts ([#76](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/76)) ([b5c5a05](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/b5c5a05427c24b2a4185951cba141925c9b83357))
+* **sbom:** surface CycloneDX 1.6/1.7 ML-BOM, CBOM, and attestation objects ([#75](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/75)) ([fa8a4ce](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/fa8a4ce9acdb922839486df4597e5723e3ae58a3))
+* **schema:** publish a stable, self-describing EvidenceBundle JSON Schema ([#79](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/79)) ([4cc92bb](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/4cc92bbc0f24d4ab603f03c38b7c7814f72f994a))
+
 ## [2.1.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.0.6...v2.1.0) (2026-06-23)
 
 
