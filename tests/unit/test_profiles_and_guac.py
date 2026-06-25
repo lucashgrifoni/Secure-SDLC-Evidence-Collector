@@ -112,7 +112,11 @@ def test_cra_profile_emits_full_reporting_timeline() -> None:
     deadlines = annotated.evidence[0].metadata["cra"]["reporting_deadlines"]
     assert deadlines["early_warning"] == (fixed_now + CRA_DISCLOSURE_WINDOW).isoformat()
     assert deadlines["full_notification"] == (fixed_now + CRA_FULL_NOTIFICATION_WINDOW).isoformat()
-    assert deadlines["final_report"] == (fixed_now + CRA_FINAL_REPORT_WINDOW).isoformat()
+    # The final report is relative to remediation availability, not the anchor.
+    assert deadlines["final_report"] == {
+        "relative_to": "corrective_or_mitigating_measure_available",
+        "window_days": CRA_FINAL_REPORT_WINDOW.days,
+    }
     assert annotated.evidence[0].metadata["cra"]["reporting_obligation_start"] == "2026-09-11"
 
 

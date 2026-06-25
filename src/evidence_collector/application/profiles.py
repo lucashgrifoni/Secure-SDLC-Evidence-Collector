@@ -11,10 +11,12 @@ Two profiles ship in v2.0:
   vulnerability/incident reporting obligations start 2026-09-11).
   Annotates each evidence with ``metadata.cra.exploitation_status``
   and the CRA Article 14 reporting timeline under
-  ``metadata.cra.reporting_deadlines`` — ``early_warning`` (24h),
-  ``full_notification`` (72h), and ``final_report`` (14 days), all
-  anchored on the report time — plus ``disclosure_deadline`` (kept as
-  the 24h early-warning alias). The ENISA payload format is not yet
+  ``metadata.cra.reporting_deadlines`` — ``early_warning`` (24h) and
+  ``full_notification`` (72h), both anchored on becoming aware, plus
+  ``final_report`` (14 days after a corrective/mitigating measure is
+  available — expressed as a relative obligation, since that timestamp
+  is unknown at annotation time). ``disclosure_deadline`` is kept as
+  the 24h early-warning alias. The ENISA payload format is not yet
   final; the field names follow the spec direction and will be
   adjusted when ENISA publishes.
 
@@ -76,7 +78,6 @@ def _annotate_cra(bundle: EvidenceBundle, *, now: datetime | None = None) -> Evi
     anchor = now or datetime.now(tz=UTC)
     early_warning_iso = (anchor + CRA_DISCLOSURE_WINDOW).isoformat()
     full_notification_iso = (anchor + CRA_FULL_NOTIFICATION_WINDOW).isoformat()
-    final_report_iso = (anchor + CRA_FINAL_REPORT_WINDOW).isoformat()
     new_evidence: list[NormalizedEvidence] = []
     for evidence in bundle.evidence:
         metadata: dict[str, Any] = dict(evidence.metadata)
@@ -85,11 +86,18 @@ def _annotate_cra(bundle: EvidenceBundle, *, now: datetime | None = None) -> Evi
             # Kept for backward compatibility: the 24h early-warning deadline.
             "disclosure_deadline": early_warning_iso,
             # CRA Article 14 reporting timeline for actively-exploited
-            # vulnerabilities, all anchored on the report time.
+            # vulnerabilities. The early warning and full notification are
+            # anchored on becoming aware (~ the report time); the final report
+            # clock starts when a corrective/mitigating measure is available
+            # — unknown at annotation time — so it is expressed as a relative
+            # obligation rather than a (potentially too-early) absolute date.
             "reporting_deadlines": {
                 "early_warning": early_warning_iso,
                 "full_notification": full_notification_iso,
-                "final_report": final_report_iso,
+                "final_report": {
+                    "relative_to": "corrective_or_mitigating_measure_available",
+                    "window_days": CRA_FINAL_REPORT_WINDOW.days,
+                },
             },
             "reporting_obligation_start": CRA_REPORTING_OBLIGATION_START,
             "regulation": "EU CRA 2024/2847",
