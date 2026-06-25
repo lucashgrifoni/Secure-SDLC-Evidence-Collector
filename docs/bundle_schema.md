@@ -22,18 +22,26 @@ fails CI if it ever drifts. Regenerate it locally with:
 sdlc-evidence schema --output docs/evidence-bundle.schema.json
 ```
 
-Point an editor at it to validate bundles as you write them. For example, add a
-modeline a YAML/JSON language server understands:
-
-```yaml
-# yaml-language-server: $schema=https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/evidence-bundle.schema.json
-```
-
-or reference it from the document itself:
+Associate it with your bundle files in your editor to get live validation — do
+this **externally**, never by adding a `$schema` key inside a bundle: the
+contract sets `additionalProperties: false` (and the model forbids extras), so
+any unknown top-level member would fail validation. In VS Code, map the schema
+in `.vscode/settings.json`:
 
 ```json
-{ "$schema": "https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/evidence-bundle.schema.json" }
+{
+  "json.schemas": [
+    {
+      "fileMatch": ["**/bundle.json", "**/*.evidence-bundle.json"],
+      "url": "https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/evidence-bundle.schema.json"
+    }
+  ]
+}
 ```
+
+Most editors also auto-associate schemas published on
+[SchemaStore](https://www.schemastore.org/) by filename, with no per-repo
+configuration, once the contract is registered there.
 
 ```jsonc
 {
