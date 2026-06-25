@@ -61,13 +61,31 @@ class ParsedSbom:
     dataset_count: int = 0
     crypto_asset_count: int = 0
     attestation_count: int = 0
+    spdx_ai_package_count: int = 0
+    spdx_dataset_count: int = 0
+    spdx_security_assessment_count: int = 0
     raw: dict[str, Any] = field(default_factory=dict)
+
+
+_SPDX3_CONTEXT_MARKER = "spdx.org/rdf/3"
+
+
+def is_spdx3(data: dict[str, Any]) -> bool:
+    """True when ``data`` is an SPDX 3.x JSON-LD document, detected via its
+    ``@context``. SPDX 3.0 dropped the top-level ``spdxVersion`` / ``SPDXID``
+    keys that 2.x used, so the context reference is the reliable marker."""
+    context = data.get("@context")
+    if isinstance(context, str):
+        return _SPDX3_CONTEXT_MARKER in context
+    if isinstance(context, list):
+        return any(isinstance(c, str) and _SPDX3_CONTEXT_MARKER in c for c in context)
+    return False
 
 
 def _detect_format(data: dict[str, Any], path: Path) -> SbomFormat:
     if data.get("bomFormat") == "CycloneDX" or "components" in data:
         return "cyclonedx"
-    if "spdxVersion" in data or "SPDXID" in data:
+    if "spdxVersion" in data or "SPDXID" in data or is_spdx3(data):
         return "spdx"
     raise ParseError(f"Unknown SBOM format in {path}")
 
@@ -157,6 +175,94 @@ def _spdx_subject(data: dict[str, Any]) -> str | None:
     if isinstance(name, str) and name:
         return name
     return None
+
+
+def _type_contains(element: dict[str, Any], needle: str) -> bool:
+    element_type = element.get("type")
+    return isinstance(element_type, str) and needle in element_type
+
+
+def _spdx3_elements(data: dict[str, Any]) -> list[dict[str, Any]]:
+    graph = data.get("@graph")
+    if isinstance(graph, list):
+        return [e for e in graph if isinstance(e, dict)]
+    return [data] if isinstance(data.get("type"), str) else []
+
+
+def _spdx3_spec_version(elements: list[dict[str, Any]]) -> str | None:
+    for element in elements:
+        if element.get("type") == "CreationInfo":
+            version = element.get("specVersion")
+            if isinstance(version, str) and version:
+                return version
+    return None
+
+
+def _spdx3_package_count(elements: list[dict[str, Any]]) -> int:
+    # AIPackage / DatasetPackage are Package subclasses, so a substring match
+    # on "Package" counts software, AI, and dataset packages alike.
+    return sum(1 for e in elements if _type_contains(e, "Package"))
+
+
+def _spdx3_subject(elements: list[dict[str, Any]]) -> str | None:
+    by_id: dict[str, dict[str, Any]] = {}
+    for element in elements:
+        spdx_id = element.get("spdxId")
+        if isinstance(spdx_id, str):
+            by_id[spdx_id] = element
+
+    # Resolve the product via the Sbom/SpdxDocument rootElement reference. This
+    # is order-independent, so the subject does not depend on whichever Package
+    # happens to appear first in @graph. Fall back to the document's own name,
+    # then (last resort) the first named package.
+    for marker in ("Sbom", "SpdxDocument"):
+        for element in elements:
+            if not _type_contains(element, marker):
+                continue
+            for ref in _as_list(element.get("rootElement")):
+                target = by_id.get(ref) if isinstance(ref, str) else None
+                if target is not None:
+                    name = target.get("name")
+                    if isinstance(name, str) and name:
+                        return name
+            own_name = element.get("name")
+            if isinstance(own_name, str) and own_name:
+                return own_name
+    for element in elements:
+        name = element.get("name")
+        if _type_contains(element, "Package") and isinstance(name, str) and name:
+            return name
+    return None
+
+
+@dataclass
+class Spdx3ProfileCounts:
+    """Counts of SPDX 3.0 AI / Dataset / Security profile elements in a BOM."""
+
+    ai_package_count: int = 0
+    dataset_count: int = 0
+    security_assessment_count: int = 0
+
+
+def _spdx3_profile_counts(elements: list[dict[str, Any]]) -> Spdx3ProfileCounts:
+    """Count SPDX 3.0 AI / Dataset / Security profile elements by ``@type``.
+
+    Matched by substring so the count is robust to the exact profile prefix:
+    ``AIPackage`` (AI profile), ``DatasetPackage`` (Dataset profile), and the
+    ``security_`` vulnerability-assessment relationships (Security profile).
+    """
+    counts = Spdx3ProfileCounts()
+    for element in elements:
+        element_type = element.get("type")
+        if not isinstance(element_type, str):
+            continue
+        if "AIPackage" in element_type:
+            counts.ai_package_count += 1
+        elif "DatasetPackage" in element_type:
+            counts.dataset_count += 1
+        elif element_type.startswith("security_") or "VulnAssessment" in element_type:
+            counts.security_assessment_count += 1
+    return counts
 
 
 def _collect_cves_from_string(value: Any, sink: set[str]) -> None:
@@ -435,6 +541,7 @@ def parse_sbom(path: str | Path) -> ParsedSbom:
     vulnerability_analyses: list[CycloneDxVulnerabilityAnalysis] = []
     cisa_elements: dict[str, bool] = {}
     object_counts = CycloneDxObjectCounts()
+    profile_counts = Spdx3ProfileCounts()
     if sbom_format == "cyclonedx":
         spec_version = data.get("specVersion")
         serial_number = data.get("serialNumber")
@@ -446,6 +553,16 @@ def parse_sbom(path: str | Path) -> ParsedSbom:
         vulnerability_analyses = _cyclonedx_vulnerability_analyses(data)
         cisa_elements = _cyclonedx_cisa_elements(data)
         object_counts = _cyclonedx_object_counts(data)
+    elif is_spdx3(data):
+        # SPDX 3.0 is a @graph of typed elements, not the 2.x packages[] shape.
+        # The 2.x CISA presence check does not apply, so cisa_elements stays {}.
+        spdx3_graph = _spdx3_elements(data)
+        spec_version = _spdx3_spec_version(spdx3_graph)
+        serial_number = None
+        component_count = _spdx3_package_count(spdx3_graph)
+        subject_ref = _spdx3_subject(spdx3_graph)
+        content_type = "application/spdx+json"
+        profile_counts = _spdx3_profile_counts(spdx3_graph)
     else:
         spec_version = data.get("spdxVersion")
         serial_number = data.get("documentNamespace")
@@ -470,5 +587,8 @@ def parse_sbom(path: str | Path) -> ParsedSbom:
         dataset_count=object_counts.dataset_count,
         crypto_asset_count=object_counts.crypto_asset_count,
         attestation_count=object_counts.attestation_count,
+        spdx_ai_package_count=profile_counts.ai_package_count,
+        spdx_dataset_count=profile_counts.dataset_count,
+        spdx_security_assessment_count=profile_counts.security_assessment_count,
         raw=data,
     )

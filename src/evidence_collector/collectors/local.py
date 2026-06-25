@@ -48,6 +48,7 @@ from evidence_collector.parsers import (
 from evidence_collector.parsers._common import ParseError
 from evidence_collector.parsers.intoto_provenance import file_has_provenance
 from evidence_collector.parsers.intoto_vsa import VSA_PREDICATE_TYPE
+from evidence_collector.parsers.sbom import is_spdx3
 
 logger = logging.getLogger(__name__)
 
@@ -236,7 +237,12 @@ def _looks_like_sbom(path: Path) -> bool:
     data = _peek_json(path)
     if not isinstance(data, dict):
         return False
-    return data.get("bomFormat") == "CycloneDX" or "components" in data or "spdxVersion" in data
+    return (
+        data.get("bomFormat") == "CycloneDX"
+        or "components" in data
+        or "spdxVersion" in data
+        or is_spdx3(data)
+    )
 
 
 def _looks_like_vsa(path: Path) -> bool:

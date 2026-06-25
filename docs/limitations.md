@@ -74,6 +74,11 @@ The collector checks **presence**, not correctness.
   a classic dependency SBOM stays byte-identical to pre-1.7 bundles.
   These are presence/count signals, not a validation of the ML, crypto,
   or attestation content.
+- SPDX 3.0.x JSON-LD documents (a `@context` + `@graph` of typed
+  elements, rather than the 2.x `packages[]` shape) are detected and
+  ingested; their AI / Dataset / Security profile element counts surface
+  as `metadata.spdx_profiles`. The CISA presence check above is shaped for
+  SPDX 2.x / CycloneDX and is **not** applied to SPDX 3.0 documents.
 
 ## 4 · Control catalog is small on purpose
 
