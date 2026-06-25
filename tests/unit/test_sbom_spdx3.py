@@ -93,3 +93,18 @@ def test_local_collector_ingests_spdx3(tmp_path: Path) -> None:
     assert len(sbom_evidence) == 1
     assert sbom_evidence[0].metadata.get("spdx_profiles", {}).get("ai_package_count") == 1
     assert not report.errors
+
+
+def test_spdx3_subject_resolves_via_root_element(tmp_path: Path) -> None:
+    # A dependency package is listed BEFORE the product in @graph; the subject
+    # must resolve to the product via the Sbom rootElement, not by graph order.
+    sbom: dict[str, Any] = {
+        "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+        "@graph": [
+            {"type": "software_Package", "spdxId": "urn:dep", "name": "dependency"},
+            {"type": "software_Package", "spdxId": "urn:product", "name": "the-product"},
+            {"type": "software_Sbom", "spdxId": "urn:sbom", "rootElement": ["urn:product"]},
+        ],
+    }
+    parsed = parse_sbom(_write(tmp_path, sbom))
+    assert parsed.subject_ref == "the-product"

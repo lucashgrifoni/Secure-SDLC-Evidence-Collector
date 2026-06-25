@@ -205,11 +205,29 @@ def _spdx3_package_count(elements: list[dict[str, Any]]) -> int:
 
 
 def _spdx3_subject(elements: list[dict[str, Any]]) -> str | None:
+    by_id: dict[str, dict[str, Any]] = {}
+    for element in elements:
+        spdx_id = element.get("spdxId")
+        if isinstance(spdx_id, str):
+            by_id[spdx_id] = element
+
+    # Resolve the product via the Sbom/SpdxDocument rootElement reference. This
+    # is order-independent, so the subject does not depend on whichever Package
+    # happens to appear first in @graph. Fall back to the document's own name,
+    # then (last resort) the first named package.
     for marker in ("Sbom", "SpdxDocument"):
         for element in elements:
-            name = element.get("name")
-            if _type_contains(element, marker) and isinstance(name, str) and name:
-                return name
+            if not _type_contains(element, marker):
+                continue
+            for ref in _as_list(element.get("rootElement")):
+                target = by_id.get(ref) if isinstance(ref, str) else None
+                if target is not None:
+                    name = target.get("name")
+                    if isinstance(name, str) and name:
+                        return name
+            own_name = element.get("name")
+            if isinstance(own_name, str) and own_name:
+                return own_name
     for element in elements:
         name = element.get("name")
         if _type_contains(element, "Package") and isinstance(name, str) and name:
