@@ -50,11 +50,12 @@
   name: sdlc-evidence — refresh bundle JSON Schema contract
   description: >-
     Regenerate the EvidenceBundle JSON Schema so a vendored copy stays in
-    sync with the pinned collector version. Bootstrap the file once, then
-    this hook fails the commit whenever it drifts. Override `args`/`files`
-    to point at your vendored path.
+    sync with the pinned collector version. Runs on every commit so a bump
+    of this repo's pinned `rev` is enough to catch drift; pre-commit fails
+    the commit whenever the regenerated contract differs from the committed
+    one. Bootstrap the file once, then override `args` to your vendored path.
   entry: sdlc-evidence schema
   language: python
   pass_filenames: false
+  always_run: true
   args: [--output, contracts/evidence-bundle.schema.json]
-  files: (^|/)contracts/evidence-bundle\.schema\.json$
