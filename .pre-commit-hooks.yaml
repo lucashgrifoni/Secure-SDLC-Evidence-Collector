@@ -1,0 +1,61 @@
+# Pre-commit hooks PUBLISHED by the Secure SDLC Evidence Collector.
+#
+# These wire the collector into another repository's local dev loop
+# WITHOUT turning it into a scanner: they validate waiver/exception
+# files, keep a vendored bundle JSON Schema in sync, and smoke-test that
+# the pinned collector release installs and imports cleanly.
+#
+# Consume them from a downstream `.pre-commit-config.yaml`:
+#
+#   repos:
+#     - repo: https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector
+#       rev: v2.1.0            # pin to a released tag
+#       hooks:
+#         - id: sdlc-evidence-validate-exceptions
+#         - id: sdlc-evidence-doctor
+#         # Opt in to the schema hook only if you vendor the contract.
+#         # Bootstrap once, then the hook keeps it fresh:
+#         #   sdlc-evidence schema --output contracts/evidence-bundle.schema.json
+#         - id: sdlc-evidence-schema
+#
+# pre-commit installs the collector itself in an isolated, version-pinned
+# virtualenv (`language: python`), so consumers need nothing pre-installed.
+#
+# NOTE: this file (`.pre-commit-hooks.yaml`) is the hook *definitions* this
+# project exports. The project's OWN local gates live in
+# `.pre-commit-config.yaml`.
+
+- id: sdlc-evidence-validate-exceptions
+  name: sdlc-evidence — validate exception/waiver files
+  description: >-
+    Validate Secure SDLC exception (waiver) files against the canonical
+    schema. Fails the commit if any staged waiver is malformed or missing
+    required fields. Override `files` to match where you keep waivers.
+  entry: sdlc-evidence exceptions validate
+  language: python
+  files: (^|/)exceptions/.*\.(ya?ml|json)$
+
+- id: sdlc-evidence-doctor
+  name: sdlc-evidence — environment pre-flight (doctor)
+  description: >-
+    Smoke-test that the pinned collector release installs, imports its
+    runtime dependencies, and can export the bundle schema. Fails the
+    commit only when a required check fails.
+  entry: sdlc-evidence doctor
+  language: python
+  pass_filenames: false
+  always_run: true
+
+- id: sdlc-evidence-schema
+  name: sdlc-evidence — refresh bundle JSON Schema contract
+  description: >-
+    Regenerate the EvidenceBundle JSON Schema so a vendored copy stays in
+    sync with the pinned collector version. Runs on every commit so a bump
+    of this repo's pinned `rev` is enough to catch drift; pre-commit fails
+    the commit whenever the regenerated contract differs from the committed
+    one. Bootstrap the file once, then override `args` to your vendored path.
+  entry: sdlc-evidence schema
+  language: python
+  pass_filenames: false
+  always_run: true
+  args: [--output, contracts/evidence-bundle.schema.json]
