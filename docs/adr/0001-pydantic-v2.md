@@ -23,8 +23,10 @@ Candidates considered: hand-rolled `dataclasses` + custom validators,
 Use **Pydantic v2** as the canonical schema layer. Every domain entity
 inherits from `pydantic.BaseModel`, with `model_config = ConfigDict(
 extra="forbid", frozen=True)`. The JSON Schema export command
-(`sdlc-evidence schema`) calls `EvidenceBundle.model_json_schema()`
-directly so external tools never depend on importing Pydantic.
+(`sdlc-evidence schema`) builds on `EvidenceBundle.model_json_schema()`,
+adding the `$schema`/`$id` keywords (see `evidence_collector.schema`), so
+external tools get a self-describing, registry-ready contract without ever
+importing Pydantic.
 
 ## Consequences
 

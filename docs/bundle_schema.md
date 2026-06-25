@@ -5,6 +5,36 @@ Bundle schema version: **`1.0.0`**
 Top-level document produced by every `run` / `evaluate` invocation. All
 timestamps are ISO 8601 UTC. All enum values serialize as their string form.
 
+## Machine-readable schema
+
+A self-describing JSON Schema (Draft 2020-12, with `$schema` and `$id`) for the
+`EvidenceBundle` is published at a stable URL:
+
+```
+https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/evidence-bundle.schema.json
+```
+
+It is generated from the Pydantic models and committed at
+[`docs/evidence-bundle.schema.json`](evidence-bundle.schema.json); a test gate
+fails CI if it ever drifts. Regenerate it locally with:
+
+```bash
+sdlc-evidence schema --output docs/evidence-bundle.schema.json
+```
+
+Point an editor at it to validate bundles as you write them. For example, add a
+modeline a YAML/JSON language server understands:
+
+```yaml
+# yaml-language-server: $schema=https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/evidence-bundle.schema.json
+```
+
+or reference it from the document itself:
+
+```json
+{ "$schema": "https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/evidence-bundle.schema.json" }
+```
+
 ```jsonc
 {
   "bundle_version": "1.0.0",
