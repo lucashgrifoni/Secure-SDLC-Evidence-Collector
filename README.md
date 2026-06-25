@@ -168,7 +168,7 @@ sdlc-evidence enrich BUNDLE          # attach EPSS + CISA KEV intelligence to a 
 sdlc-evidence vex BUNDLE             # emit an OpenVEX document from a bundle
 sdlc-evidence statement BUNDLE       # wrap a bundle as an in-toto Statement v1
 sdlc-evidence guac BUNDLE [-o PATH]  # emit a GUAC-collector container from a bundle
-sdlc-evidence exceptions validate F  # validate a single waiver file
+sdlc-evidence exceptions validate F… # validate one or more waiver files
 sdlc-evidence exceptions list DIR    # list every valid waiver in a directory
 sdlc-evidence --version
 ```
@@ -176,6 +176,35 @@ sdlc-evidence --version
 Every command exits `0` when the release status meets `--fail-on`, `2` when
 the release is `not_ready`, `1` when `conditional`. This makes the CLI a
 drop-in gate in any pipeline.
+
+### Use the collector as a pre-commit hook
+
+The collector publishes `.pre-commit-hooks.yaml`, so other repositories can
+wire it into their local dev loop without installing anything by hand —
+[pre-commit](https://pre-commit.com/) builds an isolated, version-pinned
+environment for you. Add to your `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector
+    rev: v2.1.0            # pin to a released tag
+    hooks:
+      - id: sdlc-evidence-validate-exceptions   # validate staged waiver files
+      - id: sdlc-evidence-doctor                # smoke-test the pinned release
+      # Opt in only if you vendor the bundle schema. Bootstrap once with
+      # `sdlc-evidence schema --output contracts/evidence-bundle.schema.json`,
+      # then this hook fails the commit whenever it drifts:
+      - id: sdlc-evidence-schema
+```
+
+| Hook id | What it does | Fails the commit when |
+|---------|--------------|-----------------------|
+| `sdlc-evidence-validate-exceptions` | Validates staged exception/waiver files (override `files` to your waiver path) | a waiver is malformed or missing required fields |
+| `sdlc-evidence-doctor` | Confirms the pinned release installs, imports, and can export the schema | a required environment check fails |
+| `sdlc-evidence-schema` | Regenerates a vendored `EvidenceBundle` JSON Schema | the committed contract is out of date |
+
+This keeps the collector a *consumer of evidence* in the dev loop — it never
+becomes a scanner.
 
 ### Release context (required on `run`)
 
@@ -299,7 +328,10 @@ make test          # pytest with coverage gate (>=85%)
 make run-example   # generate the sample bundle
 ```
 
-The repository ships `.pre-commit-config.yaml` for local hooks (optional).
+The repository ships `.pre-commit-config.yaml` for its own local gates
+(optional). The separate `.pre-commit-hooks.yaml` is the hook set this
+project *publishes* for downstream consumers — see
+[Use the collector as a pre-commit hook](#use-the-collector-as-a-pre-commit-hook).
 
 ---
 

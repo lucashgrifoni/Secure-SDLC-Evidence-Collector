@@ -26,19 +26,36 @@ def register(app: typer.Typer) -> None:
 
     @exceptions_app.command("validate")
     def cmd_exceptions_validate(
-        path: Annotated[Path, typer.Argument(help="Exception YAML/JSON to validate")],
+        paths: Annotated[
+            list[Path],
+            typer.Argument(help="One or more exception YAML/JSON files to validate"),
+        ],
     ) -> None:
-        """Validate an exception file against the canonical schema."""
-        try:
-            exception = parse_exception(path)
-        except (ParseError, FileNotFoundError) as exc:
-            console.print(f"[red]Invalid exception file:[/red] {exc}")
-            raise typer.Exit(code=1) from exc
-        console.print(
-            f"[green]{exception.exception_id}[/green] valid · "
-            f"control={exception.control_id} · approver={exception.approver} "
-            f"· expires_at={exception.expires_at.isoformat()}"
-        )
+        """Validate one or more exception files against the canonical schema.
+
+        Accepts multiple paths so it can be wired as a ``pre-commit`` hook:
+        pre-commit passes every matched, staged file in a single
+        invocation. Each file is reported individually; the command exits
+        1 if *any* file is invalid, 0 when all are valid.
+        """
+        if not paths:
+            console.print("[red]No exception files given.[/red]")
+            raise typer.Exit(code=2)
+        invalid = 0
+        for path in paths:
+            try:
+                exception = parse_exception(path)
+            except (ParseError, FileNotFoundError) as exc:
+                invalid += 1
+                console.print(f"[red]Invalid exception file[/red] {path}: {exc}")
+                continue
+            console.print(
+                f"[green]{exception.exception_id}[/green] valid · "
+                f"control={exception.control_id} · approver={exception.approver} "
+                f"· expires_at={exception.expires_at.isoformat()}"
+            )
+        if invalid:
+            raise typer.Exit(code=1)
 
     @exceptions_app.command("list")
     def cmd_exceptions_list(
