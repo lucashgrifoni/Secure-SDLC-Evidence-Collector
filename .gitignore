@@ -65,6 +65,12 @@ Thumbs.db
 output/
 /artifacts/
 
+# CLI emit commands default to writing these to the cwd when run without
+# -o/--output (sdlc-evidence vex -> openvex.json, statement -> statement.intoto.json).
+# Root-anchored so they are ignored only as repo-root scratch, never test fixtures.
+/openvex.json
+/statement.intoto.json
+
 # mkdocs build output (site_dir in mkdocs.yml)
 site/
 site-docs/
