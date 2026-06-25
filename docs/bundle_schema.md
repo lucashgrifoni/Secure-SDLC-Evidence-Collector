@@ -5,6 +5,44 @@ Bundle schema version: **`1.0.0`**
 Top-level document produced by every `run` / `evaluate` invocation. All
 timestamps are ISO 8601 UTC. All enum values serialize as their string form.
 
+## Machine-readable schema
+
+A self-describing JSON Schema (Draft 2020-12, with `$schema` and `$id`) for the
+`EvidenceBundle` is published at a stable URL:
+
+```
+https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/evidence-bundle.schema.json
+```
+
+It is generated from the Pydantic models and committed at
+[`docs/evidence-bundle.schema.json`](evidence-bundle.schema.json); a test gate
+fails CI if it ever drifts. Regenerate it locally with:
+
+```bash
+sdlc-evidence schema --output docs/evidence-bundle.schema.json
+```
+
+Associate it with your bundle files in your editor to get live validation — do
+this **externally**, never by adding a `$schema` key inside a bundle: the
+contract sets `additionalProperties: false` (and the model forbids extras), so
+any unknown top-level member would fail validation. In VS Code, map the schema
+in `.vscode/settings.json`:
+
+```json
+{
+  "json.schemas": [
+    {
+      "fileMatch": ["**/bundle.json", "**/*.evidence-bundle.json"],
+      "url": "https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/evidence-bundle.schema.json"
+    }
+  ]
+}
+```
+
+Most editors also auto-associate schemas published on
+[SchemaStore](https://www.schemastore.org/) by filename, with no per-repo
+configuration, once the contract is registered there.
+
 ```jsonc
 {
   "bundle_version": "1.0.0",
