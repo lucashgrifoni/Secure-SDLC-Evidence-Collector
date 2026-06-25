@@ -235,6 +235,53 @@ def test_exceptions_validate_rejects_missing_required_fields(
 
 
 @pytest.mark.integration
+def test_exceptions_validate_accepts_multiple_files(runner: CliRunner) -> None:
+    # pre-commit passes every matched, staged file in a single invocation,
+    # so validate must accept more than one path and pass when all are valid.
+    fixtures_dir = (
+        Path(__file__).resolve().parents[2] / "examples" / "sample_release" / "exceptions"
+    )
+    yaml_files = [str(p) for p in sorted(fixtures_dir.glob("*.yaml"))]
+    assert yaml_files, "expected at least one demo waiver fixture"
+    result = runner.invoke(app, ["exceptions", "validate", *yaml_files])
+    assert result.exit_code == 0, result.output
+    assert "valid" in result.output
+
+
+@pytest.mark.integration
+def test_exceptions_validate_one_invalid_among_many_exits_nonzero(
+    runner: CliRunner, tmp_path: Path
+) -> None:
+    # A mixed batch (one valid, one malformed) must fail: the exit code is
+    # what makes this usable as a pre-commit gate.
+    good = (
+        Path(__file__).resolve().parents[2]
+        / "examples"
+        / "sample_release"
+        / "exceptions"
+        / "EXC-2026-DEMO-001.yaml"
+    )
+    bad = tmp_path / "broken.yaml"
+    bad.write_text(
+        "exception_id: 'EXC-BROKEN'\ncontrol_id: 'SSDF-PW.1'\n",  # missing required fields
+        encoding="utf-8",
+    )
+    result = runner.invoke(app, ["exceptions", "validate", str(good), str(bad)])
+    assert result.exit_code == 1, result.output
+    # The valid one is still reported, and the invalid one is named.
+    assert "EXC-2026-DEMO-001" in result.output
+    assert "broken.yaml" in result.output
+
+
+@pytest.mark.integration
+def test_exceptions_validate_with_no_paths_exits_usage_error(runner: CliRunner) -> None:
+    # No paths is operator misuse (pre-commit never calls a files-gated hook
+    # with zero matches). Surface it rather than silently passing.
+    result = runner.invoke(app, ["exceptions", "validate"])
+    assert result.exit_code != 0
+
+
+@pytest.mark.integration
 def test_exceptions_list_walks_directory_and_counts_validity(
     runner: CliRunner, tmp_path: Path
 ) -> None:
