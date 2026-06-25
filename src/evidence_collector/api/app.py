@@ -13,8 +13,8 @@ from fastapi import FastAPI
 
 from evidence_collector import __version__
 from evidence_collector.controls import default_catalog
-from evidence_collector.domain.models import EvidenceBundle
 from evidence_collector.plugins import list_plugins
+from evidence_collector.schema import bundle_json_schema
 
 
 def build_app() -> FastAPI:
@@ -44,7 +44,7 @@ def build_app() -> FastAPI:
 
     @api.get("/schema", tags=["meta"])
     def schema() -> dict[str, Any]:
-        return EvidenceBundle.model_json_schema()
+        return bundle_json_schema()
 
     @api.get("/catalog", tags=["meta"])
     def catalog() -> list[dict[str, Any]]:

@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
 from evidence_collector.cli._state import console
-from evidence_collector.domain.models import EvidenceBundle
+from evidence_collector.schema import bundle_json_schema_text
 
 
 def register(app: typer.Typer) -> None:
@@ -22,12 +21,15 @@ def register(app: typer.Typer) -> None:
             typer.Option("--output", help="Write JSON Schema to this file instead of stdout"),
         ] = None,
     ) -> None:
-        """Emit the JSON Schema for EvidenceBundle so teams can validate externally."""
-        schema = EvidenceBundle.model_json_schema()
-        payload = json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False)
+        """Emit the self-describing JSON Schema for EvidenceBundle ($schema + $id)."""
+        text = bundle_json_schema_text()
         if output_path is None:
-            typer.echo(payload)
+            # ``text`` already ends with a newline; do not add another.
+            typer.echo(text, nl=False)
             return
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(payload + "\n", encoding="utf-8")
+        # Force LF so the artifact is byte-identical regardless of the OS that
+        # generated it (the committed contract + its freshness gate depend on
+        # this; Windows would otherwise translate \n to \r\n).
+        output_path.write_text(text, encoding="utf-8", newline="\n")
         console.print(f"[green]EvidenceBundle JSON Schema[/green] → {output_path}")
