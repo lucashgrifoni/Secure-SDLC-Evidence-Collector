@@ -112,7 +112,6 @@ def test_parse_vsa_rejects_missing_predicate(tmp_path: Path) -> None:
         lambda p: p.pop("verifier"),
         lambda p: p.__setitem__("verifier", {}),
         lambda p: p.pop("verificationResult"),
-        lambda p: p.pop("timeVerified"),
         lambda p: p.pop("resourceUri"),
         lambda p: p.pop("policy"),
         lambda p: p.pop("verifiedLevels"),
@@ -126,6 +125,86 @@ def test_parse_vsa_rejects_incomplete_predicate(
     mutate(payload["predicate"])
     with pytest.raises(ParseError):
         parse_vsa(_write(tmp_path, payload))
+
+
+def test_parse_vsa_without_time_verified_is_accepted(tmp_path: Path) -> None:
+    # timeVerified became optional in SLSA v1.2 (required in v1.0): a
+    # spec-valid v1.2 VSA without it must parse, not be rejected.
+    payload = _vsa()
+    del payload["predicate"]["timeVerified"]
+    parsed = parse_vsa(_write(tmp_path, payload))
+    assert parsed.time_verified is None
+    ev = normalize_vsa(parsed, _release())
+    assert "time_verified" not in ev.metadata
+
+
+# ---------------------------------------------------------------------------
+# SLSA v1.2 Source Track
+# ---------------------------------------------------------------------------
+
+
+def _source_vsa() -> dict[str, Any]:
+    """A SLSA v1.2 Source Track VSA: same predicate, source semantics."""
+    payload = _vsa(
+        verifiedLevels=["SLSA_SOURCE_LEVEL_3"],
+        resourceUri="git+https://github.com/acme/hello-world",
+        slsaVersion="1.2",
+    )
+    payload["subject"] = [
+        {
+            "name": "git+https://github.com/acme/hello-world@refs/heads/main",
+            "digest": {"gitCommit": "9a04d1ee393b5be2773b1ce204f61fe0fd02366a"},
+            "annotations": {"sourceRefs": ["refs/heads/main", "refs/tags/v1.0.0"]},
+        }
+    ]
+    return payload
+
+
+def test_parse_vsa_source_track_extracts_levels_and_refs(tmp_path: Path) -> None:
+    parsed = parse_vsa(_write(tmp_path, _source_vsa()))
+    assert parsed.verified_levels == ["SLSA_SOURCE_LEVEL_3"]
+    assert parsed.source_levels == ["SLSA_SOURCE_LEVEL_3"]
+    assert parsed.source_refs == ["refs/heads/main", "refs/tags/v1.0.0"]
+
+
+def test_parse_vsa_build_track_has_no_source_semantics(tmp_path: Path) -> None:
+    parsed = parse_vsa(_write(tmp_path, _vsa()))
+    assert parsed.source_levels == []
+    assert parsed.source_refs == []
+
+
+def test_parse_vsa_mixed_tracks_split_source_levels(tmp_path: Path) -> None:
+    parsed = parse_vsa(
+        _write(tmp_path, _vsa(verifiedLevels=["SLSA_BUILD_LEVEL_3", "SLSA_SOURCE_LEVEL_2"]))
+    )
+    assert parsed.verified_levels == ["SLSA_BUILD_LEVEL_3", "SLSA_SOURCE_LEVEL_2"]
+    assert parsed.source_levels == ["SLSA_SOURCE_LEVEL_2"]
+
+
+def test_parse_vsa_source_refs_deduped_and_tolerant(tmp_path: Path) -> None:
+    payload = _source_vsa()
+    payload["subject"].append("not-a-dict")
+    payload["subject"].append({"name": "x", "annotations": "nope"})
+    payload["subject"].append(
+        {"name": "y", "annotations": {"sourceRefs": ["refs/heads/main", "refs/heads/dev", 7]}}
+    )
+    parsed = parse_vsa(_write(tmp_path, payload))
+    assert parsed.source_refs == ["refs/heads/main", "refs/tags/v1.0.0", "refs/heads/dev"]
+
+
+def test_normalize_vsa_source_track_metadata(tmp_path: Path) -> None:
+    parsed = parse_vsa(_write(tmp_path, _source_vsa()))
+    ev = normalize_vsa(parsed, _release())
+    assert ev.metadata["source_levels"] == ["SLSA_SOURCE_LEVEL_3"]
+    assert ev.metadata["source_refs"] == ["refs/heads/main", "refs/tags/v1.0.0"]
+    assert ev.metadata["verified_levels"] == ["SLSA_SOURCE_LEVEL_3"]
+
+
+def test_normalize_vsa_build_track_omits_source_metadata(tmp_path: Path) -> None:
+    parsed = parse_vsa(_write(tmp_path, _vsa()))
+    ev = normalize_vsa(parsed, _release())
+    assert "source_levels" not in ev.metadata
+    assert "source_refs" not in ev.metadata
 
 
 def test_normalize_vsa_passed(tmp_path: Path) -> None:

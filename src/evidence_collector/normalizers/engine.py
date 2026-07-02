@@ -456,15 +456,23 @@ def normalize_vsa(
         "verification_result": parsed.verification_result,
         "verifier_id": parsed.verifier_id,
         "verified_levels": list(parsed.verified_levels),
-        "time_verified": parsed.time_verified,
         "resource_uri": parsed.resource_uri,
     }
+    # Optional since SLSA v1.2 — only recorded when the verifier stated it.
+    if parsed.time_verified:
+        metadata["time_verified"] = parsed.time_verified
     if parsed.slsa_version:
         metadata["slsa_version"] = parsed.slsa_version
     if parsed.policy_uri:
         metadata["policy_uri"] = parsed.policy_uri
     if parsed.input_attestation_count:
         metadata["input_attestation_count"] = parsed.input_attestation_count
+    # SLSA v1.2 Source Track: surface source semantics so a source VSA is
+    # distinguishable from a build VSA without re-reading the raw statement.
+    if parsed.source_levels:
+        metadata["source_levels"] = list(parsed.source_levels)
+    if parsed.source_refs:
+        metadata["source_refs"] = list(parsed.source_refs)
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
             "vsa", parsed.artifact.integrity_hash, subject_ref, release.release_id
