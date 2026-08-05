@@ -98,3 +98,40 @@ def test_ensure_file_normalizes_user_home(tmp_path: Path, monkeypatch: pytest.Mo
     resolved = ensure_file("~/.sdlc/evidence.json")
     assert resolved.is_file()
     assert os.fspath(resolved).endswith("evidence.json")
+
+
+# ---------------------------------------------------------------------------
+# Text-encoding guardrails (ING-01)
+#
+# The loaders used to let a UnicodeDecodeError escape as-is. Because it is a
+# ValueError (not an OSError or a JSONDecodeError), every `except ParseError`
+# in the collector missed it and a single mis-encoded file aborted the whole
+# run with a raw traceback and no bundle. They must degrade like any other
+# malformed input: a ParseError that names the file.
+# ---------------------------------------------------------------------------
+
+
+def test_load_json_raises_parse_error_on_invalid_encoding(tmp_path: Path) -> None:
+    path = tmp_path / "bad.json"
+    path.write_bytes(b'{"runs": [], "x": "\xff\xfe"}')
+    with pytest.raises(ParseError) as excinfo:
+        load_json(path)
+    assert "Invalid text encoding" in str(excinfo.value)
+    assert "bad.json" in str(excinfo.value)
+
+
+def test_load_json_raises_parse_error_on_utf16_document(tmp_path: Path) -> None:
+    """A *valid* JSON document saved as UTF-16 (PowerShell's default redirect)."""
+    path = tmp_path / "utf16.json"
+    path.write_bytes('{"runs": []}'.encode("utf-16"))
+    with pytest.raises(ParseError) as excinfo:
+        load_json(path)
+    assert "Invalid text encoding" in str(excinfo.value)
+
+
+def test_load_yaml_or_json_raises_parse_error_on_invalid_encoding(tmp_path: Path) -> None:
+    path = tmp_path / "bad.yaml"
+    path.write_bytes(b"control_id: \xff\xfe\n")
+    with pytest.raises(ParseError) as excinfo:
+        load_yaml_or_json(path)
+    assert "Invalid text encoding" in str(excinfo.value)

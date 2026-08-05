@@ -100,3 +100,25 @@ def test_export_html(tmp_path: Path) -> None:
     assert "<html" in content
     assert "payments-api" in content
     assert "status-ready" in content
+
+
+def test_export_markdown_never_glues_two_bullets_onto_one_line(tmp_path: Path) -> None:
+    """Jinja `trim_blocks=True` eats the newline after a block tag (UX-01).
+
+    Three lines of `report.md.j2` ended with an inline `{% endif %}` /
+    `{% endfor %}`, so their line break was swallowed and the next bullet was
+    appended to them. The canonical sample report shipped 32 such lines,
+    rendering raw `- **Producer:**` in the middle of running text — in the
+    human-facing deliverable the README showcases. Fixed with `+%}` whitespace
+    control; this test fails if any template regains the pattern.
+    """
+    import re
+
+    target = tmp_path / "report.md"
+    export_markdown(_build_bundle(), target)
+    glued = [
+        line
+        for line in target.read_text(encoding="utf-8").splitlines()
+        if re.search(r"\S- \*\*(Producer|Summary|Artifact|Findings|Status|Subject)", line)
+    ]
+    assert glued == [], f"{len(glued)} bullet(s) glued onto the previous line: {glued[:3]}"

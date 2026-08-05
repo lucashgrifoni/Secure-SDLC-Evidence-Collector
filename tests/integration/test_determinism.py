@@ -15,6 +15,7 @@ from typing import Any
 import pytest
 
 from evidence_collector.application.orchestrator import run_pipeline
+from evidence_collector.application.profiles import ReleaseProfile
 from evidence_collector.domain.models import Application, ReleaseContext
 
 _VOLATILE_KEYS = {
@@ -54,9 +55,15 @@ def test_sample_release_bundle_is_deterministic(tmp_path: Path, sample_release_r
     first = _run(tmp_path / "run-a")
     second = _run(tmp_path / "run-b")
 
-    # Volatile fields must differ (they are proof of a fresh run).
+    # Volatile fields are proof of a fresh run.
     assert first["bundle_id"] != second["bundle_id"]
-    assert first["generated_at"] != second["generated_at"] or first["generated_at"]
+    # `generated_at` is asserted as *present and non-empty* rather than
+    # different: two runs can legitimately land in the same microsecond, so a
+    # strict inequality would be flaky. The previous form was
+    # `a != b or a`, whose right operand is a non-empty ISO string and is
+    # therefore always truthy — the assertion could never fail.
+    assert isinstance(first["generated_at"], str) and first["generated_at"]
+    assert isinstance(second["generated_at"], str) and second["generated_at"]
 
     # Everything else must be identical.
     assert _strip_volatile(first) == _strip_volatile(second)
@@ -115,3 +122,66 @@ def test_sample_release_bundle_is_stable_across_artifact_reorder(
 
     # Summary must be identical (release_status drives release gate).
     assert first["summary"] == second["summary"]
+
+
+# ---------------------------------------------------------------------------
+# Determinism must hold under every regulatory profile (DET-01)
+#
+# `--profile cra-2026` anchored its reporting deadlines on
+# `datetime.now(tz=UTC)` and wrote them into evidence[*].metadata.cra, which
+# `normalize_bundle` never reached. Two identical runs therefore produced
+# different structural hashes — with microsecond precision, always — which
+# made `verify --expected` unusable exactly under the regulatory profile, and
+# left any in-toto statement built over a CRA bundle permanently
+# unverifiable. The old test only ever ran the default profile.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("profile", list(ReleaseProfile))
+def test_structural_hash_is_stable_under_every_profile(
+    tmp_path: Path, sample_release_root: Path, profile: ReleaseProfile
+) -> None:
+    from evidence_collector.application.integrity import structural_sha256
+
+    app_ = Application(name="payments-api", repository="acme/payments-api")
+    release = ReleaseContext(release_id="2026.04.10", commit_sha="abcdef1234567890")
+
+    def _hash(output_dir: Path) -> str:
+        run_pipeline(
+            application=app_,
+            release=release,
+            artifacts_dirs=[sample_release_root / "artifacts"],
+            attestations_dirs=[sample_release_root / "attestations"],
+            output_dir=output_dir,
+            artifact_root=sample_release_root.parent.parent,
+            profile=profile,
+        )
+        return structural_sha256(output_dir / "bundle.json")
+
+    assert _hash(tmp_path / "a") == _hash(tmp_path / "b")
+
+
+@pytest.mark.integration
+def test_cra_profile_keeps_its_deadlines_in_the_written_bundle(
+    tmp_path: Path, sample_release_root: Path
+) -> None:
+    """Stripping happens at hash time only — the artifact must keep the content.
+
+    Guards against "fixing" determinism by deleting the regulatory annotation
+    the profile exists to produce.
+    """
+    run_pipeline(
+        application=Application(name="payments-api", repository="acme/payments-api"),
+        release=ReleaseContext(release_id="2026.04.10", commit_sha="abcdef1234567890"),
+        artifacts_dirs=[sample_release_root / "artifacts"],
+        output_dir=tmp_path / "cra",
+        profile=ReleaseProfile.CRA_2026,
+    )
+    payload = json.loads((tmp_path / "cra" / "bundle.json").read_text(encoding="utf-8"))
+    cra = payload["evidence"][0]["metadata"]["cra"]
+    assert cra["disclosure_deadline"]
+    assert cra["reporting_deadlines"]["early_warning"]
+    assert cra["reporting_deadlines"]["full_notification"]
+    assert cra["reporting_deadlines"]["final_report"]["window_days"]
+    assert cra["exploitation_status"]

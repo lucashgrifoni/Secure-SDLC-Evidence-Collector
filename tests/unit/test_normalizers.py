@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from evidence_collector.domain.enums import EvidenceStatus, EvidenceType
@@ -173,4 +174,73 @@ def test_normalize_workflow_run_success(sample_release) -> None:
         },
         sample_release,
     )
+    assert evidence.status == EvidenceStatus.PASSED
+
+
+# ---------------------------------------------------------------------------
+# SARIF severity → evidence status (TST-01)
+#
+# `_sarif_status` maps critical/high findings to EvidenceStatus.FAILED. Nothing
+# exercised the FAILED branch: patching the function to always return PASSED
+# left the entire suite green. That branch matters — controls/engine.py treats
+# PASSED as satisfying, so an inverted condition would let a SAST scan with
+# critical findings satisfy SSDF-PW.7 and free the release, with every test
+# still passing. Every sibling normalizer already asserts this convention
+# (test_zap, test_normalizers/OSV, test_ai_normalizers, test_vsa); SARIF was
+# the one gap.
+# ---------------------------------------------------------------------------
+
+
+def _sarif_with_severity(path: Path, *, level: str, security_severity: str) -> Path:
+    path.write_text(
+        json.dumps(
+            {
+                "version": "2.1.0",
+                "runs": [
+                    {
+                        "tool": {
+                            "driver": {
+                                "name": "semgrep",
+                                "version": "1.70.0",
+                                "rules": [
+                                    {
+                                        "id": "rule-1",
+                                        "properties": {"security-severity": security_severity},
+                                    }
+                                ],
+                            }
+                        },
+                        "results": [
+                            {
+                                "ruleId": "rule-1",
+                                "level": level,
+                                "message": {"text": "finding"},
+                            }
+                        ],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_normalize_sarif_marks_high_severity_findings_as_failed(
+    tmp_path: Path, sample_release
+) -> None:
+    artifact = _sarif_with_severity(tmp_path / "high.sarif", level="error", security_severity="9.1")
+    evidence = normalize_sarif(parse_sarif(artifact), sample_release)
+    blocking = evidence.findings_count.get("critical", 0) + evidence.findings_count.get("high", 0)
+    assert blocking > 0, f"fixture did not produce a blocking finding: {evidence.findings_count}"
+    assert evidence.status == EvidenceStatus.FAILED
+
+
+def test_normalize_sarif_marks_low_severity_findings_as_passed(
+    tmp_path: Path, sample_release
+) -> None:
+    """The other half of the branch, so the test cannot pass by always-FAILED."""
+    artifact = _sarif_with_severity(tmp_path / "low.sarif", level="note", security_severity="2.0")
+    evidence = normalize_sarif(parse_sarif(artifact), sample_release)
+    assert evidence.findings_count.get("critical", 0) + evidence.findings_count.get("high", 0) == 0
     assert evidence.status == EvidenceStatus.PASSED

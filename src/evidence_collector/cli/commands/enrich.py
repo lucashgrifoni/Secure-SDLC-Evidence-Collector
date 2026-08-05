@@ -27,6 +27,8 @@ from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
 from evidence_collector.intelligence import (
+    EpssFeed,
+    KevFeed,
     enrich_bundle,
     load_epss_feed,
     load_kev_feed,
@@ -94,8 +96,21 @@ def register(app: typer.Typer) -> None:
     ) -> None:
         """Attach EPSS + CISA KEV intelligence to a bundle.json."""
         bundle = _load_bundle(bundle_path)
-        epss = load_epss_feed(epss_feed) if epss_feed else load_epss_feed(Path("/dev/null"))
-        kev = load_kev_feed(kev_feed) if kev_feed else load_kev_feed(Path("/dev/null"))
+        # A feed that was asked for but could not be used must fail loudly.
+        # The loaders degrade an unreadable feed into an empty one so the
+        # library never raises; at the CLI boundary that would be
+        # indistinguishable from "no feed supplied", and the resulting bundle
+        # would claim "no exploitable CVEs" without ever reading a feed.
+        epss = (
+            _require_usable(load_epss_feed(epss_feed), epss_feed, "EPSS")
+            if epss_feed
+            else EpssFeed(feed_date=None)
+        )
+        kev = (
+            _require_usable(load_kev_feed(kev_feed), kev_feed, "CISA KEV")
+            if kev_feed
+            else KevFeed(feed_date=None)
+        )
 
         enriched, report = enrich_bundle(bundle, epss, kev, top_risk_limit=top_risk_limit)
         destination = output or bundle_path
@@ -124,6 +139,29 @@ def register(app: typer.Typer) -> None:
                 f"kev={report.kev_feed_date or 'absent'}"
             )
             console.print(f"bundle.json → {destination}")
+
+
+def _require_usable[FeedT: (EpssFeed, KevFeed)](feed: FeedT, path: Path, label: str) -> FeedT:
+    """Return ``feed`` when it actually carries records, else exit 3.
+
+    ``load_epss_feed`` / ``load_kev_feed`` deliberately degrade a missing or
+    malformed file into an empty feed so library callers keep working. At the
+    CLI boundary that degradation is dangerous: an empty feed produces exactly
+    the same bundle as passing no feed at all, so a typo in the path silently
+    turns an exploitability check into a no-op. Requesting a feed is a promise
+    that it was consulted; if it could not be, say so and stop.
+    """
+    if feed.records:
+        return feed
+    if not path.is_file():
+        reason = "file not found"
+    else:
+        reason = "no usable records (unreadable, empty, or malformed)"
+    if is_json_logs():
+        emit_event("enrich_failed", feed=str(path), feed_kind=label, reason=reason)
+    else:
+        console.print(f"[red]{label} feed {path} could not be used:[/red] {reason}")
+    raise typer.Exit(code=3)
 
 
 def _load_bundle(path: Path) -> EvidenceBundle:

@@ -173,9 +173,35 @@ sdlc-evidence exceptions list DIR    # list every valid waiver in a directory
 sdlc-evidence --version
 ```
 
-Every command exits `0` when the release status meets `--fail-on`, `2` when
-the release is `not_ready`, `1` when `conditional`. This makes the CLI a
-drop-in gate in any pipeline.
+### Exit codes
+
+`run`, `evaluate` and `bundle` turn the release status into an exit code, which
+is what makes the CLI a drop-in gate in a pipeline. `--fail-on` sets how severe
+the status must be before the exit is non-zero — it **raises** the bar, it never
+lowers it. The full matrix:
+
+| `release_status` ↓ / `--fail-on` → | `ready` | `conditional` | `not_ready` *(default)* |
+|---|---|---|---|
+| `ready`       | 0 | 0 | 0 |
+| `conditional` | 1 | 1 | **0** |
+| `not_ready`   | 2 | 2 | 2 |
+
+Read the bold cell before wiring a gate: **with the default `--fail-on=not_ready`,
+a `conditional` release exits `0`.** Pass `--fail-on conditional` if a conditional
+verdict must stop the pipeline.
+
+`bundle` is a partial alias of `evaluate`: it always runs with `--fail-on
+not_ready` and does not accept `--owner-team`. Use `evaluate` when you need
+either.
+
+Every other command reports a verdict but never encodes it in the exit status —
+`compare`, `controls`, `plugins`, `schema`, `oscal` and `doctor` exit `0` on
+success regardless of the release status, and `compare` in particular does
+**not** fail a build on regression. Their non-zero codes mean an operational
+failure: `2` for a missing or malformed input on the emitting commands
+(`vex`, `guac`, `statement`, `enrich`, `oscal`), and `3` on `verify`, `compare`,
+`evaluate` and for a `--epss-feed`/`--kev-feed` that was supplied but could not
+be read.
 
 ### Use the collector as a pre-commit hook
 
@@ -212,6 +238,10 @@ becomes a scanner.
 - optional: `--branch`, `--environment`, `--owner-team`, `--pipeline-run-id`,
   `--build-id`, `--artifact-digest`, `--tag`
 
+`--environment` defaults to `production` and is recorded in the bundle as
+stated fact. Set it explicitly when the run is not a production release, so the
+evidence does not claim an environment nobody asserted.
+
 ### Ingestion options
 
 - `--artifacts-dir PATH` — folder with SARIF, SBOM, JUnit files
@@ -222,6 +252,9 @@ becomes a scanner.
 - `--artifact-root PATH` — base directory that absolute artifact paths
   are rewritten against, so the bundle records repo-relative paths
   instead of leaking local filesystem locations. Recommended in CI.
+- `--exceptions-dir PATH` — folder with YAML/JSON waiver files.
+- `--fail-on ready|conditional|not_ready` — severity at which the exit
+  status turns non-zero. Default `not_ready`; see [Exit codes](#exit-codes).
 
 ### GitHub integration (opt-in)
 

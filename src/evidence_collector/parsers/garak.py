@@ -95,6 +95,8 @@ def _load_jsonl(path: Path) -> list[dict[str, Any]]:
                     records.append(entry)
     except OSError as exc:
         raise ParseError(f"Could not read garak report {path}: {exc}") from exc
+    except UnicodeDecodeError as exc:
+        raise ParseError(f"Invalid text encoding in garak report {path}: {exc}") from exc
     if not records:
         raise ParseError(f"garak report {path} has no JSON records")
     return records

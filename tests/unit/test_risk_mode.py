@@ -83,13 +83,42 @@ def test_off_mode_returns_summary_unchanged() -> None:
     assert out.risk_assessment is None
 
 
-def test_no_signals_preserves_base_verdict() -> None:
+def test_no_intelligence_preserves_base_verdict_and_says_so() -> None:
+    """No enrichment at all ⇒ base verdict kept, and the rationale admits it.
+
+    This used to assert ``"No exploitable" in rationale``. That wording was the
+    fail-open: it reads as "the EPSS/KEV thresholds were applied and nothing
+    matched", when in fact no feed was ever consulted. A missing, unreadable, or
+    never-supplied feed all landed here and produced a bundle asserting the
+    release had no exploitable CVEs. The verdict behaviour (base preserved) is
+    unchanged — only the claim is now honest.
+    """
     summary = _summary(ReleaseStatus.READY)
     out = apply_risk_mode(summary, [], mode=RiskMode.EPSS_WEIGHTED)
     assert out.release_status == ReleaseStatus.READY
     assert out.risk_assessment is not None
     assert out.risk_assessment.exploitable_cve_count == 0
-    assert "No exploitable" in out.risk_assessment.rationale
+    assert "no vulnerability intelligence" in out.risk_assessment.rationale
+    # The claim that no exploitable CVE exists must NOT be made here.
+    assert "No exploitable CVEs detected" not in out.risk_assessment.rationale
+
+
+def test_enriched_evidence_without_exploitable_cves_reports_a_clean_assessment() -> None:
+    """Enrichment present and nothing over threshold ⇒ the clean claim is earned."""
+    summary = _summary(ReleaseStatus.READY)
+    benign = TopRiskCve(
+        cve_id="CVE-2024-0001",
+        epss_score=0.0001,
+        epss_percentile=0.01,
+        in_kev=False,
+        known_ransomware=False,
+    )
+    out = apply_risk_mode(summary, [_evidence([benign])], mode=RiskMode.EPSS_WEIGHTED)
+    assert out.release_status == ReleaseStatus.READY
+    assert out.risk_assessment is not None
+    assert out.risk_assessment.exploitable_cve_count == 0
+    assert "No exploitable CVEs detected" in out.risk_assessment.rationale
+    assert "1 enriched evidence record(s) assessed" in out.risk_assessment.rationale
 
 
 def test_kev_with_ransomware_forces_not_ready() -> None:
