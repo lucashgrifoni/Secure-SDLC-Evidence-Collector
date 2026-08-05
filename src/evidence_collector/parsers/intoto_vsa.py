@@ -26,12 +26,23 @@ predicate::
       }
     }
 
-The predicate fields ``verifier`` (with ``id``), ``timeVerified``,
-``resourceUri``, ``policy``, ``verificationResult``, and ``verifiedLevels``
-are **required** by the spec and by this parser: an incomplete or anonymous
-VSA is rejected rather than normalized, so a malformed attestation can never
-make a release-integrity control look met. ``inputAttestations``,
-``slsaVersion``, and ``policy.uri`` are optional.
+The predicate fields ``verifier`` (with ``id``), ``resourceUri``,
+``policy``, ``verificationResult``, and ``verifiedLevels`` are **required**
+by the spec and by this parser: an incomplete or anonymous VSA is rejected
+rather than normalized, so a malformed attestation can never make a
+release-integrity control look met. ``timeVerified`` became **optional** in
+SLSA v1.2 (it was required in v1.0), so its absence alone no longer rejects
+the attestation. ``inputAttestations``, ``slsaVersion``, and ``policy.uri``
+are also optional.
+
+SLSA v1.2 (approved 2025-11-24) added the **Source Track**: the same
+``verification_summary/v1`` predicate, but with ``verifiedLevels`` such as
+``SLSA_SOURCE_LEVEL_1``..``SLSA_SOURCE_LEVEL_4``, a ``git+https://...``
+``resourceUri``, subjects digested by ``gitCommit``, and the verified
+branches/tags recorded under ``subject[*].annotations.sourceRefs``
+(https://slsa.dev/spec/v1.2/verifying-source). This parser surfaces that
+semantics — ``source_levels`` and ``source_refs`` — so a source VSA is
+distinguishable from a build VSA in the normalized evidence.
 
 Scope (see ``docs/limitations.md``): the collector records the *presence*
 and the *stated* result of the VSA. It does **not** verify the VSA's
@@ -55,6 +66,10 @@ from evidence_collector.parsers._common import (
 
 VSA_PREDICATE_TYPE = "https://slsa.dev/verification_summary/v1"
 
+# SLSA v1.2 track prefixes inside ``verifiedLevels``.
+SOURCE_LEVEL_PREFIX = "SLSA_SOURCE_LEVEL_"
+BUILD_LEVEL_PREFIX = "SLSA_BUILD_LEVEL_"
+
 
 @dataclass
 class ParsedVsa:
@@ -62,12 +77,16 @@ class ParsedVsa:
     verification_result: str
     verifier_id: str
     resource_uri: str
-    time_verified: str
     verified_levels: list[str]
+    # Optional since SLSA v1.2 (required in v1.0).
+    time_verified: str | None = None
     policy_uri: str | None = None
     slsa_version: str | None = None
     subject_name: str | None = None
     input_attestation_count: int = 0
+    # SLSA v1.2 Source Track semantics, derived from the same predicate.
+    source_levels: list[str] = field(default_factory=list)
+    source_refs: list[str] = field(default_factory=list)
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -81,6 +100,28 @@ def _first_subject_name(data: dict[str, Any]) -> str | None:
             if isinstance(name, str) and name:
                 return name
     return None
+
+
+def _source_refs(data: dict[str, Any]) -> list[str]:
+    """Collect ``subject[*].annotations.sourceRefs`` (SLSA v1.2 Source Track).
+
+    The verified branches/tags of a source VSA live as annotations on each
+    subject. Order is preserved and duplicates across subjects are dropped.
+    """
+    refs: list[str] = []
+    subjects = data.get("subject")
+    if not isinstance(subjects, list):
+        return refs
+    for entry in subjects:
+        if not isinstance(entry, dict):
+            continue
+        annotations = entry.get("annotations")
+        if not isinstance(annotations, dict):
+            continue
+        for ref in _string_list(annotations.get("sourceRefs")):
+            if ref not in refs:
+                refs.append(ref)
+    return refs
 
 
 def _string_list(value: Any) -> list[str]:
@@ -108,7 +149,7 @@ def parse_vsa(path: str | Path) -> ParsedVsa:
         raise ParseError(f"VSA {resolved} is missing a 'predicate' object.")
 
     # Required VSA predicate fields per
-    # https://slsa.dev/spec/v1.0/verification_summary. An incomplete or
+    # https://slsa.dev/spec/v1.2/verification_summary. An incomplete or
     # anonymous VSA is rejected rather than silently treated as a passing
     # attestation that could satisfy a release-integrity control.
     verifier = predicate.get("verifier")
@@ -120,9 +161,9 @@ def parse_vsa(path: str | Path) -> ParsedVsa:
     if verification_result is None:
         raise ParseError(f"VSA {resolved} is missing required field 'verificationResult'.")
 
+    # Optional since SLSA v1.2: a spec-valid v1.2 VSA may omit timeVerified,
+    # so its absence must not reject the attestation (it did under v1.0).
     time_verified = _optional_str(predicate.get("timeVerified"))
-    if time_verified is None:
-        raise ParseError(f"VSA {resolved} is missing required field 'timeVerified'.")
 
     resource_uri = _optional_str(predicate.get("resourceUri"))
     if resource_uri is None:
@@ -139,6 +180,10 @@ def parse_vsa(path: str | Path) -> ParsedVsa:
     input_attestations = predicate.get("inputAttestations")
     input_count = len(input_attestations) if isinstance(input_attestations, list) else 0
 
+    # SLSA v1.2 Source Track: source levels share the verifiedLevels list
+    # with build levels; the verified branches/tags live on the subjects.
+    source_levels = [level for level in verified_levels if level.startswith(SOURCE_LEVEL_PREFIX)]
+
     artifact = describe(resolved, content_type="application/json")
     return ParsedVsa(
         artifact=artifact,
@@ -151,5 +196,7 @@ def parse_vsa(path: str | Path) -> ParsedVsa:
         slsa_version=_optional_str(predicate.get("slsaVersion")),
         subject_name=_first_subject_name(data),
         input_attestation_count=input_count,
+        source_levels=source_levels,
+        source_refs=_source_refs(data),
         raw=data,
     )
