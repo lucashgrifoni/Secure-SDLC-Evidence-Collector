@@ -15,6 +15,7 @@ from typing import Any
 import pytest
 
 from evidence_collector.application.orchestrator import run_pipeline
+from evidence_collector.application.profiles import ReleaseProfile
 from evidence_collector.domain.models import Application, ReleaseContext
 
 _VOLATILE_KEYS = {
@@ -137,9 +138,9 @@ def test_sample_release_bundle_is_stable_across_artifact_reorder(
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("profile", ["none", "cra-2026", "fedramp-20x"])
+@pytest.mark.parametrize("profile", list(ReleaseProfile))
 def test_structural_hash_is_stable_under_every_profile(
-    tmp_path: Path, sample_release_root: Path, profile: str
+    tmp_path: Path, sample_release_root: Path, profile: ReleaseProfile
 ) -> None:
     from evidence_collector.application.integrity import structural_sha256
 
@@ -175,7 +176,7 @@ def test_cra_profile_keeps_its_deadlines_in_the_written_bundle(
         release=ReleaseContext(release_id="2026.04.10", commit_sha="abcdef1234567890"),
         artifacts_dirs=[sample_release_root / "artifacts"],
         output_dir=tmp_path / "cra",
-        profile="cra-2026",
+        profile=ReleaseProfile.CRA_2026,
     )
     payload = json.loads((tmp_path / "cra" / "bundle.json").read_text(encoding="utf-8"))
     cra = payload["evidence"][0]["metadata"]["cra"]
