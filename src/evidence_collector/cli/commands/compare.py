@@ -14,6 +14,30 @@ from evidence_collector.application.compare import compare_bundles, load_bundle
 from evidence_collector.cli._state import console
 from evidence_collector.domain.enums import ReleaseStatus
 
+# Worse status ⇒ higher rank, mirroring cli/_exit_codes.py so the arrow and
+# the exit code can never disagree about what "worse" means.
+_RELEASE_STATUS_RANK: dict[ReleaseStatus, int] = {
+    ReleaseStatus.READY: 0,
+    ReleaseStatus.CONDITIONAL: 1,
+    ReleaseStatus.NOT_READY: 2,
+}
+
+
+def _status_delta(before: ReleaseStatus, after: ReleaseStatus) -> str:
+    """Direction of travel between two release statuses.
+
+    This used to be ``"⬆" if after == READY else ""``, which never looked at
+    ``before``: a release regressing from ready to not_ready rendered a blank
+    cell, while comparing a bundle against itself rendered an improvement
+    arrow. The table is the output meant for a PR comment, so the reviewer got
+    the wrong signal on precisely the most serious change.
+    """
+    if _RELEASE_STATUS_RANK[after] < _RELEASE_STATUS_RANK[before]:
+        return "⬆ improved"
+    if _RELEASE_STATUS_RANK[after] > _RELEASE_STATUS_RANK[before]:
+        return "⬇ regressed"
+    return "="
+
 
 def register(app: typer.Typer) -> None:
     """Attach the ``compare`` command to ``app``."""
@@ -48,7 +72,7 @@ def register(app: typer.Typer) -> None:
             "release_status",
             comparison.before_release_status.value,
             comparison.after_release_status.value,
-            "⬆" if comparison.after_release_status == ReleaseStatus.READY else "",
+            _status_delta(comparison.before_release_status, comparison.after_release_status),
         )
         table.add_row(
             "coverage",
