@@ -67,7 +67,7 @@ logs = [
 docs = [
     "mkdocs>=1.6,<2.0",
     "mkdocs-material>=9.5,<10.0",
-    "pymdown-extensions>=10.7,<11.0",
+    "pymdown-extensions>=10.7,<12.0",
 ]
 
 [project.scripts]
