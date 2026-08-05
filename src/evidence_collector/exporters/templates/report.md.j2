@@ -99,15 +99,15 @@ No gaps detected.
 {% for item in bundle.evidence %}
 ### `{{ item.evidence_id }}` — {{ item.evidence_type.value }}
 
-- **Source:** {{ item.source.name }} ({{ item.source.kind }}){% if item.source.version %} · version {{ item.source.version }}{% endif %}
+- **Source:** {{ item.source.name }} ({{ item.source.kind }}){% if item.source.version %} · version {{ item.source.version }}{% endif +%}
 - **Producer:** {{ item.producer }}
 - **Subject:** `{{ item.subject_ref }}` ({{ item.subject_type.value }})
-- **Status:** {{ item.status.value }} · **Confidence:** {{ item.confidence.value }}{% if item.manual %} · manual attestation{% endif %}
+- **Status:** {{ item.status.value }} · **Confidence:** {{ item.confidence.value }}{% if item.manual %} · manual attestation{% endif +%}
 {% if item.summary %}
 - **Summary:** {{ item.summary }}
 {% endif %}
 {% if item.findings_count %}
-- **Findings:** {% for key, value in item.findings_count.items() %}{{ key }}={{ value }}{% if not loop.last %} · {% endif %}{% endfor %}
+- **Findings:** {% for key, value in item.findings_count.items() %}{{ key }}={{ value }}{% if not loop.last %} · {% endif %}{% endfor +%}
 {% endif %}
 {% if item.raw %}
 - **Artifact:** `{{ item.raw.artifact_path or item.raw.artifact_uri }}` ({{ item.raw.integrity_hash or "no hash" }})
