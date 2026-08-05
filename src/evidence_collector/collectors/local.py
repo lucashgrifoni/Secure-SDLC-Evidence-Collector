@@ -7,6 +7,7 @@ content sniffing when needed.
 
 from __future__ import annotations
 
+import codecs
 import json
 import logging
 from dataclasses import dataclass, field
@@ -122,7 +123,7 @@ class LocalArtifactCollector:
             return
         try:
             report.exceptions.append(parse_exception(file_path))
-        except (ParseError, FileNotFoundError) as exc:
+        except (ParseError, OSError) as exc:
             logger.warning("Failed to ingest exception %s: %s", file_path, exc)
             report.errors.append(LocalCollectionError(path=file_path, reason=str(exc)))
 
@@ -205,8 +206,17 @@ class LocalArtifactCollector:
                     normalize_junit(parsed_junit, self._release, artifact_root=self._artifact_root)
                 )
                 return
+            # Nothing claimed the file. Before dropping it, separate "a format
+            # we do not recognize" from "a file we could not even read": the
+            # latter is evidence the caller believes they supplied, so losing
+            # it silently would understate coverage with no way to notice.
+            encoding_error = _undecodable_text_reason(file_path)
+            if encoding_error is not None:
+                logger.warning("Failed to ingest %s: %s", file_path, encoding_error)
+                report.errors.append(LocalCollectionError(path=file_path, reason=encoding_error))
+                return
             logger.debug("Ignoring unrecognized artifact: %s", file_path)
-        except (ParseError, FileNotFoundError) as exc:
+        except (ParseError, OSError) as exc:
             logger.warning("Failed to ingest %s: %s", file_path, exc)
             report.errors.append(LocalCollectionError(path=file_path, reason=str(exc)))
 
@@ -219,7 +229,7 @@ class LocalArtifactCollector:
             report.evidence.append(
                 normalize_attestation(parsed, self._release, artifact_root=self._artifact_root)
             )
-        except (ParseError, FileNotFoundError) as exc:
+        except (ParseError, OSError) as exc:
             logger.warning("Failed to ingest attestation %s: %s", file_path, exc)
             report.errors.append(LocalCollectionError(path=file_path, reason=str(exc)))
 
@@ -351,9 +361,44 @@ def _looks_like_zap(path: Path) -> bool:
     return isinstance(first, dict) and ("alerts" in first or "@name" in first)
 
 
+# Suffixes the collector treats as text evidence. A file with one of these
+# that cannot be decoded as UTF-8 is a reporting problem worth surfacing; a
+# stray binary with another suffix is not.
+_TEXT_EVIDENCE_SUFFIXES = frozenset({".json", ".jsonl", ".sarif", ".xml", ".yaml", ".yml"})
+
+# Enough bytes to catch a wrong-encoding file (a UTF-16 BOM is in the first
+# two) without reading a large artifact twice.
+_ENCODING_PROBE_BYTES = 8192
+
+
+def _undecodable_text_reason(path: Path) -> str | None:
+    """Return why ``path`` is unreadable as UTF-8 text, or ``None`` if it is fine.
+
+    Only applies to suffixes the collector treats as text evidence. Uses an
+    incremental decoder over a prefix so a multi-byte character straddling the
+    probe boundary is not mistaken for corruption.
+    """
+    if path.suffix.lower() not in _TEXT_EVIDENCE_SUFFIXES:
+        return None
+    try:
+        with path.open("rb") as handle:
+            head = handle.read(_ENCODING_PROBE_BYTES)
+    except OSError as exc:
+        return f"Could not read {path}: {exc}"
+    decoder = codecs.getincrementaldecoder("utf-8")()
+    try:
+        decoder.decode(head, False)
+    except UnicodeDecodeError as exc:
+        return f"Invalid text encoding in {path}: {exc}"
+    return None
+
+
 def _peek_json(path: Path) -> Any:
     try:
         with path.open("r", encoding="utf-8") as handle:
             return json.load(handle)
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        # Detection must never raise: an undecodable file is simply "not this
+        # format". The parser that eventually claims the file reports the real
+        # reason via ParseError.
         return None

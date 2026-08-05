@@ -58,6 +58,11 @@ def load_json(path: Path) -> dict[str, Any]:
             data = json.load(handle)
     except json.JSONDecodeError as exc:
         raise ParseError(f"Invalid JSON in {path}: {exc}") from exc
+    except UnicodeDecodeError as exc:
+        # A UTF-16 SARIF (what `scanner > report.json` writes on Windows
+        # PowerShell) or any non-UTF-8 byte would otherwise escape as a raw
+        # UnicodeDecodeError and abort the whole collection run.
+        raise ParseError(f"Invalid text encoding in {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise ParseError(f"Expected top-level JSON object in {path}, got {type(data).__name__}")
     return data
@@ -69,6 +74,8 @@ def load_yaml_or_json(path: Path) -> dict[str, Any]:
             data = yaml.safe_load(handle)
     except yaml.YAMLError as exc:
         raise ParseError(f"Invalid YAML in {path}: {exc}") from exc
+    except UnicodeDecodeError as exc:
+        raise ParseError(f"Invalid text encoding in {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise ParseError(
             f"Expected top-level mapping in {path}, got {type(data).__name__ if data else 'empty'}"

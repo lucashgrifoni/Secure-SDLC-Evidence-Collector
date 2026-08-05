@@ -148,7 +148,7 @@ def file_has_provenance(path: Path) -> bool:
     detection; never raises on an unreadable file."""
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError:
+    except (OSError, UnicodeDecodeError):
         return False
     return _find_provenance(_iter_record_dicts(text)) is not None
 
@@ -205,7 +205,11 @@ def _source_repository(predicate: dict[str, Any]) -> str | None:
 
 def parse_provenance(path: str | Path) -> ParsedProvenance:
     resolved = ensure_file(path)
-    records = _iter_record_dicts(resolved.read_text(encoding="utf-8"))
+    try:
+        text = resolved.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise ParseError(f"Invalid text encoding in {resolved}: {exc}") from exc
+    records = _iter_record_dicts(text)
     if not records:
         raise ParseError(f"File {resolved} is not a JSON object or a JSONL of objects.")
 
