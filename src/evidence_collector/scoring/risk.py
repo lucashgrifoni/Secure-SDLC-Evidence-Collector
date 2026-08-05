@@ -99,6 +99,10 @@ def _count_exploitable(
         "kev": 0,
         "kev_ransomware": 0,
         "high_epss": 0,
+        # How many evidence records actually carried enrichment data. Zero
+        # means the mode could not be evaluated at all, which must never be
+        # reported as "nothing is exploitable" (see _decide_risk_weighted_status).
+        "enriched_evidence": 0,
     }
     for evidence in evidence_list:
         if _reachability_blocks_signal(evidence):
@@ -106,6 +110,7 @@ def _count_exploitable(
         intel = evidence.vulnerability_intelligence
         if intel is None:
             continue
+        counters["enriched_evidence"] += 1
         for top in intel.top_risk_cves:
             is_kev = top.in_kev
             is_kev_ransomware = is_kev and top.known_ransomware
@@ -145,8 +150,19 @@ def _decide_risk_weighted_status(
             f"{counters['high_epss']}); release downgraded to "
             f"{new_status.value}."
         )
+    if counters["enriched_evidence"] == 0:
+        # Nothing carried EPSS / KEV data, so no threshold was ever applied.
+        # Claiming "no exploitable CVEs detected" here would assert a check
+        # that never ran — the same bundle is produced whether the feeds were
+        # missing, unreadable, or simply never supplied. Say so instead.
+        return base, (
+            "Risk mode requested but no vulnerability intelligence was present on any "
+            "evidence record; no EPSS / KEV threshold was applied. Run 'enrich' with "
+            "valid feeds first. Presence-based verdict preserved."
+        )
     return base, (
-        "No exploitable CVEs detected under the EPSS / KEV thresholds; "
+        "No exploitable CVEs detected under the EPSS / KEV thresholds "
+        f"({counters['enriched_evidence']} enriched evidence record(s) assessed); "
         "presence-based verdict preserved."
     )
 

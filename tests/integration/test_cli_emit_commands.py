@@ -175,3 +175,80 @@ def test_enrich_writes_enriched_bundle_without_feeds(
     # The output must round-trip back into the bundle model unchanged in shape.
     enriched = EvidenceBundle.model_validate_json(target.read_text(encoding="utf-8"))
     assert enriched.summary is not None
+
+
+# ---------------------------------------------------------------------------
+# enrich — a requested feed that could not be used must fail loudly (SEC-01)
+#
+# The feed loaders degrade a missing or malformed file into an *empty* feed so
+# library callers keep working. At the CLI that degradation is dangerous: an
+# empty feed produces byte-for-byte the same bundle as passing no feed at all.
+# A one-character typo in the path (`.csv` -> `.cvs`) therefore turned the
+# exploitability check into a no-op while the bundle went on to claim "No
+# exploitable CVEs detected under the EPSS / KEV thresholds" — with exit 0.
+# Exit 3 for an unusable feed was already the documented contract in the
+# module docstring; it had simply never been implemented.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_enrich_exits_three_when_epss_feed_is_missing(
+    runner: CliRunner, sample_bundle: Path, tmp_path: Path
+) -> None:
+    missing = tmp_path / "epss.cvs"  # the classic .csv typo
+    result = runner.invoke(
+        app,
+        [
+            "enrich",
+            str(sample_bundle),
+            "--output",
+            str(tmp_path / "o.json"),
+            "--epss-feed",
+            str(missing),
+        ],
+    )
+    assert result.exit_code == 3, result.output
+    assert "epss.cvs" in result.output
+    assert not (tmp_path / "o.json").exists()
+
+
+@pytest.mark.integration
+def test_enrich_exits_three_when_kev_feed_is_malformed(
+    runner: CliRunner, sample_bundle: Path, tmp_path: Path
+) -> None:
+    broken = tmp_path / "kev.json"
+    broken.write_text("{ not valid json", encoding="utf-8")
+    result = runner.invoke(
+        app,
+        [
+            "enrich",
+            str(sample_bundle),
+            "--output",
+            str(tmp_path / "o.json"),
+            "--kev-feed",
+            str(broken),
+        ],
+    )
+    assert result.exit_code == 3, result.output
+    assert "no usable records" in result.output
+
+
+@pytest.mark.integration
+def test_enrich_accepts_a_usable_feed(
+    runner: CliRunner, sample_bundle: Path, tmp_path: Path
+) -> None:
+    """The guard must not reject a real feed — the positive control."""
+    epss = tmp_path / "epss.csv"
+    epss.write_text(
+        "#model_version:v2026.06.15,score_date:2026-08-01T00:00:00+0000\n"
+        "cve,epss,percentile\n"
+        "CVE-2024-12345,0.97132,0.99991\n",
+        encoding="utf-8",
+    )
+    target = tmp_path / "enriched.json"
+    result = runner.invoke(
+        app,
+        ["enrich", str(sample_bundle), "--output", str(target), "--epss-feed", str(epss)],
+    )
+    assert result.exit_code == 0, result.output
+    assert target.is_file()

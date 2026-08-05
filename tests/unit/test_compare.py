@@ -305,3 +305,40 @@ def test_load_bundle_round_trips_json(tmp_path: Path) -> None:
     assert loaded.bundle_id == "round-trip"
     assert loaded.summary.release_status is ReleaseStatus.CONDITIONAL
     assert loaded.control_evaluations[0].evaluation_status is (ControlEvaluationStatus.PARTIAL)
+
+
+# ---------------------------------------------------------------------------
+# release_status arrow in the Rich table (UX-02)
+#
+# The Delta cell was `"⬆" if after == READY else ""` — it never looked at
+# `before`. Measured: a ready → not_ready regression rendered a **blank** cell,
+# while comparing a bundle against itself rendered an improvement arrow. The
+# table is the output intended for a PR comment, so a reviewer got no signal on
+# the most serious change and a false positive signal on a no-op. The JSON
+# output was correct throughout, which is why the suite never noticed.
+# ---------------------------------------------------------------------------
+
+
+def test_status_delta_marks_regression() -> None:
+    from evidence_collector.cli.commands.compare import _status_delta
+
+    assert "regressed" in _status_delta(ReleaseStatus.READY, ReleaseStatus.NOT_READY)
+    assert "regressed" in _status_delta(ReleaseStatus.READY, ReleaseStatus.CONDITIONAL)
+    assert "regressed" in _status_delta(ReleaseStatus.CONDITIONAL, ReleaseStatus.NOT_READY)
+
+
+def test_status_delta_marks_improvement() -> None:
+    from evidence_collector.cli.commands.compare import _status_delta
+
+    assert "improved" in _status_delta(ReleaseStatus.NOT_READY, ReleaseStatus.READY)
+    assert "improved" in _status_delta(ReleaseStatus.CONDITIONAL, ReleaseStatus.READY)
+    assert "improved" in _status_delta(ReleaseStatus.NOT_READY, ReleaseStatus.CONDITIONAL)
+
+
+def test_status_delta_marks_no_change() -> None:
+    from evidence_collector.cli.commands.compare import _status_delta
+
+    for status in ReleaseStatus:
+        delta = _status_delta(status, status)
+        assert "improved" not in delta
+        assert "regressed" not in delta

@@ -39,6 +39,22 @@ VOLATILE_CONTROL: Final[frozenset[str]] = frozenset({"evaluated_at"})
 # which DO contribute to the structural hash so a feed bump is detectable).
 VOLATILE_VULN_INTEL: Final[frozenset[str]] = frozenset({"enriched_at"})
 
+# Deadlines the ``cra-2026`` profile derives from the run clock and writes into
+# ``evidence[*].metadata.cra``. Each one is the run timestamp plus a fixed
+# window — ``disclosure_deadline`` is literally ``generated_at + 24h`` — so
+# they are exactly as volatile as ``generated_at``, which VOLATILE_TOP already
+# strips. Because the anchor carries microsecond precision, two otherwise
+# identical runs always drifted, which made ``verify --expected`` unusable
+# under the regulatory profile and left in-toto statements over a CRA bundle
+# permanently unverifiable.
+#
+# Only the clock-derived values are dropped. The semantics of the same block —
+# ``exploitation_status``, ``reporting_obligation_start``, ``regulation``, and
+# the *relative* ``final_report`` window — are real content and keep
+# contributing to the hash. The bundle written to disk is untouched either way.
+VOLATILE_CRA: Final[frozenset[str]] = frozenset({"disclosure_deadline"})
+VOLATILE_CRA_REPORTING: Final[frozenset[str]] = frozenset({"early_warning", "full_notification"})
+
 # Keys inside each entry of evidence[*].raw[*] whose value is a filesystem
 # path and must be normalized to POSIX form before hashing.
 PATH_KEYS_IN_RAW: Final[frozenset[str]] = frozenset({"artifact_path"})
@@ -97,6 +113,22 @@ def _strip_volatile_in_vuln_intel(entry: dict[str, object]) -> None:
             intel.pop(key, None)
 
 
+def _strip_volatile_in_metadata(entry: dict[str, object]) -> None:
+    """Drop clock-derived deadlines from ``metadata.cra`` if present."""
+    metadata = entry.get("metadata")
+    if not isinstance(metadata, dict):
+        return
+    cra = metadata.get("cra")
+    if not isinstance(cra, dict):
+        return
+    for key in VOLATILE_CRA:
+        cra.pop(key, None)
+    deadlines = cra.get("reporting_deadlines")
+    if isinstance(deadlines, dict):
+        for key in VOLATILE_CRA_REPORTING:
+            deadlines.pop(key, None)
+
+
 def _strip_null_optional_field(container: object, key: str) -> None:
     """Remove ``key`` from ``container`` when its value is ``None``.
 
@@ -121,6 +153,7 @@ def normalize_bundle(data: dict[str, object]) -> bytes:
     for entry in _strip_keys(data.get("evidence"), VOLATILE_EVIDENCE):
         _normalize_raw_paths(entry)
         _strip_volatile_in_vuln_intel(entry)
+        _strip_volatile_in_metadata(entry)
         # §3.2 — drop ``reachability`` when None so pre-§3.2 bundles
         # hash identically to post-§3.2 bundles that did not opt in.
         _strip_null_optional_field(entry, "reachability")
