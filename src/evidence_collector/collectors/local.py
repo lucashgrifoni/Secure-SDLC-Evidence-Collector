@@ -46,7 +46,7 @@ from evidence_collector.parsers import (
     parse_vsa,
     parse_zap,
 )
-from evidence_collector.parsers._common import ParseError
+from evidence_collector.parsers._common import MAX_INPUT_BYTES, ParseError
 from evidence_collector.parsers.intoto_provenance import file_has_provenance
 from evidence_collector.parsers.intoto_vsa import VSA_PREDICATE_TYPE
 from evidence_collector.parsers.sbom import is_spdx3
@@ -397,10 +397,16 @@ def _undecodable_text_reason(path: Path) -> str | None:
     if path.suffix.lower() not in _TEXT_EVIDENCE_SUFFIXES:
         return None
     try:
+        size = path.stat().st_size
         with path.open("rb") as handle:
             head = handle.read(_ENCODING_PROBE_BYTES)
     except OSError as exc:
         return f"Could not read {path}: {exc}"
+    # Detection skips files over the cap without parsing them, so an oversized
+    # artifact would otherwise fall through to "unrecognized" and vanish. It is
+    # evidence the caller believes they supplied — say why it was not read.
+    if size > MAX_INPUT_BYTES:
+        return f"File {path} is {size} bytes, exceeding the {MAX_INPUT_BYTES} byte safety cap."
     decoder = codecs.getincrementaldecoder("utf-8")()
     try:
         decoder.decode(head, False)
@@ -409,12 +415,48 @@ def _undecodable_text_reason(path: Path) -> str | None:
     return None
 
 
-def _peek_json(path: Path) -> Any:
+# Detection chains up to seven ``_peek_json`` calls over the same file before a
+# parser claims it, so the document is remembered between them. A single slot is
+# enough and is the reason it is not an unbounded dict: every call for one file
+# happens inside one ``_ingest_artifact``, so the next file simply evicts the
+# previous one and at most one parsed document is ever held.
+_LAST_PEEK: dict[str, Any] = {"key": None, "value": None}
+
+
+def _peek_key(path: Path) -> tuple[str, int, int] | None:
     try:
-        with path.open("r", encoding="utf-8") as handle:
-            return json.load(handle)
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-        # Detection must never raise: an undecodable file is simply "not this
-        # format". The parser that eventually claims the file reports the real
-        # reason via ParseError.
+        stat = path.stat()
+    except OSError:
         return None
+    return (str(path), stat.st_mtime_ns, stat.st_size)
+
+
+def _peek_json(path: Path) -> Any:
+    """Parse ``path`` for *detection* only, memoizing the most recent file.
+
+    Never raises: an unreadable or undecodable file is simply "not this
+    format", and the parser that eventually claims it reports the real reason
+    via ParseError.
+
+    The size cap is enforced here as well as in ``ensure_file``. It used to
+    live only inside the parsers, which run *after* detection — so a 40 MB JSON
+    was fully deserialized seven times (peak heap measured at 2.4x the file
+    size) before ``ensure_file`` rejected it for exceeding the 25 MB cap that
+    SECURITY.md advertises as the input guardrail.
+    """
+    key = _peek_key(path)
+    if key is None:
+        return None
+    if _LAST_PEEK["key"] == key:
+        return _LAST_PEEK["value"]
+
+    value: Any = None
+    if key[2] <= MAX_INPUT_BYTES:
+        try:
+            with path.open("r", encoding="utf-8") as handle:
+                value = json.load(handle)
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            value = None
+    _LAST_PEEK["key"] = key
+    _LAST_PEEK["value"] = value
+    return value

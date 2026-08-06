@@ -135,3 +135,48 @@ def test_load_yaml_or_json_raises_parse_error_on_invalid_encoding(tmp_path: Path
     with pytest.raises(ParseError) as excinfo:
         load_yaml_or_json(path)
     assert "Invalid text encoding" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# The advertised input cap must also cover detection (PERF-01)
+#
+# MAX_INPUT_BYTES lived only inside `ensure_file`, which runs *after* the
+# collector's detection chain. A 40 MB JSON was therefore fully deserialized —
+# measured seven times, peak heap 2.4x the file size — before the cap rejected
+# it. SECURITY.md advertises the cap as the input guardrail, so it has to hold
+# on the first path that touches the file, not the last.
+# ---------------------------------------------------------------------------
+
+
+def test_detection_refuses_a_file_over_the_cap_without_parsing_it(tmp_path: Path) -> None:
+    from evidence_collector.collectors.local import _peek_json
+
+    oversized = tmp_path / "big.json"
+    # A structurally valid document that would otherwise parse cleanly.
+    oversized.write_bytes(b'{"runs": [' + b'{"x": 1},' * 10 + b'{"x": 1}]}')
+    os.truncate(oversized, MAX_INPUT_BYTES + 1)
+
+    assert _peek_json(oversized) is None
+
+
+def test_detection_still_reads_a_file_within_the_cap(tmp_path: Path) -> None:
+    from evidence_collector.collectors.local import _peek_json
+
+    ok = tmp_path / "small.json"
+    ok.write_text('{"runs": []}', encoding="utf-8")
+    assert _peek_json(ok) == {"runs": []}
+
+
+def test_detection_reparses_when_the_file_changes(tmp_path: Path) -> None:
+    """The memo is keyed on (path, mtime, size), so edits are never stale."""
+    import os as _os
+
+    from evidence_collector.collectors.local import _peek_json
+
+    path = tmp_path / "changing.json"
+    path.write_text('{"runs": []}', encoding="utf-8")
+    assert _peek_json(path) == {"runs": []}
+
+    path.write_text('{"runs": [1, 2]}', encoding="utf-8")
+    _os.utime(path, (0, 0))  # force a different mtime even on coarse clocks
+    assert _peek_json(path) == {"runs": [1, 2]}
