@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "secure-sdlc-evidence-collector"
-version = "2.3.0"
+version = "2.4.0"
 description = "CLI-first tool to collect, normalize, evaluate and bundle Secure SDLC evidence per release."
 readme = "README.md"
 requires-python = ">=3.12"
