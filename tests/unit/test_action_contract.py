@@ -107,3 +107,31 @@ def test_exceptions_dir_is_not_silently_skipped(collect_step: dict[str, Any]) ->
 def test_artifact_root_defaults_to_the_workspace(action: dict[str, Any]) -> None:
     """Otherwise bundles built by the Action leak the runner's absolute paths."""
     assert "github.workspace" in str(action["inputs"]["artifact-root"]["default"])
+
+
+def test_every_public_cli_option_has_help_text() -> None:
+    """`--help` is cited as the interface documentation, so it must be complete.
+
+    25 of 69 public options shipped with no help at all, including every
+    optional flag on `bundle` and most of `evaluate`. That contradicts
+    docs/program/openssf-bestpractices-answers.md, which claims the
+    documentation_interface criterion is met by "README.md + `--help`".
+    """
+    import click
+    from typer.main import get_command
+
+    from evidence_collector.cli.main import app as cli_app
+
+    missing: list[str] = []
+
+    def walk(command: click.Command, prefix: str = "") -> None:
+        if isinstance(command, click.Group):
+            for name, sub in command.commands.items():
+                walk(sub, f"{prefix}{name} ")
+            return
+        for param in command.params:
+            if isinstance(param, click.Option) and not param.help and not param.hidden:
+                missing.append(f"{prefix.strip() or '(root)'} {'/'.join(param.opts)}")
+
+    walk(get_command(cli_app))
+    assert missing == [], f"options without help: {missing}"

@@ -15,15 +15,26 @@ def register(app: typer.Typer) -> None:
 
     @app.command("bundle")
     def cmd_bundle(
-        evidence_path: Annotated[Path, typer.Option("--evidence")],
-        application: Annotated[str, typer.Option()],
-        repository: Annotated[str, typer.Option()],
-        release_id: Annotated[str, typer.Option("--release-id")],
-        commit_sha: Annotated[str, typer.Option("--commit-sha")],
-        output_dir: Annotated[Path, typer.Option("--output-dir")] = Path("output"),
-        branch: Annotated[str, typer.Option()] = "main",
-        environment: Annotated[str, typer.Option()] = "production",
-        catalog_path: Annotated[Path | None, typer.Option("--catalog")] = None,
+        evidence_path: Annotated[
+            Path, typer.Option("--evidence", help="Path to the evidence JSON produced by `collect`")
+        ],
+        application: Annotated[str, typer.Option(help="Application name")],
+        repository: Annotated[str, typer.Option(help="Repository reference, e.g. owner/repo")],
+        release_id: Annotated[str, typer.Option("--release-id", help="Release identifier")],
+        commit_sha: Annotated[str, typer.Option("--commit-sha", help="Commit SHA for the release")],
+        output_dir: Annotated[
+            Path, typer.Option("--output-dir", help="Directory where bundle outputs are written")
+        ] = Path("output"),
+        branch: Annotated[str, typer.Option(help="Branch name")] = "main",
+        environment: Annotated[
+            str, typer.Option(help="Target environment recorded in the bundle as stated fact")
+        ] = "production",
+        catalog_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--catalog", help="Control catalog: a path, or the bare name of a bundled catalog"
+            ),
+        ] = None,
     ) -> None:
         """Alias of `evaluate` kept for naming compatibility with the plan doc."""
         evaluate(
