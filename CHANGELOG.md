@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.4.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.3.0...v2.4.0) (2026-08-06)
+
+
+### Fixed
+
+* silent evidence loss, crash-vs-verdict exit codes, and unreachable catalogs ([#90](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/90)) ([a19e1d3](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/a19e1d3eedb66651f7810e200167024c87e2cbba))
+
+
+### Chores
+
+* **parsers:** drop the unused build-level prefix constant ([#92](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/92)) ([a19a6f2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/a19a6f2cd2b77e84a113893f616c1faba33d2700))
+
 ## [2.3.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.2.0...v2.3.0) (2026-08-05)
 
 
