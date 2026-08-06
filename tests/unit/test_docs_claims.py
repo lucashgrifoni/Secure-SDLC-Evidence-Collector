@@ -33,7 +33,19 @@ _HOOKS_MANIFEST = Path(".pre-commit-hooks.yaml")
 
 
 def _git(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(["git", *args], capture_output=True, text=True, check=False)
+    # `-c safe.directory` so the test still runs on a checkout git considers
+    # foreign-owned (common on Windows). Without it every git call fails and
+    # the skip below would silently swallow the check.
+    return subprocess.run(
+        ["git", "-c", f"safe.directory={Path.cwd()}", *args],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def _git_is_usable() -> bool:
+    return _git("rev-parse", "--git-dir").returncode == 0
 
 
 def _tag_exists(tag: str) -> bool:
@@ -52,10 +64,11 @@ def test_docs_index_does_not_reference_a_version_that_was_never_released() -> No
 @pytest.mark.parametrize("path", [_README, _HOOKS_MANIFEST])
 def test_pre_commit_pin_points_at_a_tag_that_ships_the_manifest(path: Path) -> None:
     """A `rev:` older than the manifest breaks before installing any hook."""
+    if not _git_is_usable():
+        pytest.skip("git is not usable here; cannot resolve tags")
     text = path.read_text(encoding="utf-8")
     revs = re.findall(r"rev:\s*(v[0-9]+\.[0-9]+\.[0-9]+)", text)
-    if not revs:
-        pytest.skip(f"{path} pins no rev")
+    assert revs, f"{path} pins no rev — the pre-commit example must pin a tag"
     for rev in revs:
         if not _tag_exists(rev):
             pytest.skip(f"tag {rev} not present in this checkout (shallow clone?)")

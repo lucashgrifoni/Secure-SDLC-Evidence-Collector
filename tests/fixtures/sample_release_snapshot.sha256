@@ -55,4 +55,11 @@
 # the fixtures changes their SHA-256, which the bundle records as
 # evidence[*].raw.integrity_hash — hence the second bump. Both bumps ship in
 # 3.0.0 deliberately, so consumers absorb one digest change rather than two.
-0171b09eee7ee6fb70e583e25fc069cda1ac0b8b9e80fe637c04b043a8b99986
+#
+# Note for whoever regenerates this next: .gitattributes sets `* text=auto
+# eol=lf`, so the fixtures are stored and hashed as LF. Rewriting them from a
+# Windows checkout with a text-mode write produces CRLF, whose SHA-256 differs
+# — the digest computed locally then disagrees with CI. Write fixture bytes
+# with LF explicitly, or read the digest off the CI failure. This is the same
+# trap that caused the 2026-05-18 bump above.
+6c420913138afaba2df96c5ef4ccc051597a9b0a482b94c2889397614b1a5d82
