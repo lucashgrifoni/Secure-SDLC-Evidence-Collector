@@ -292,8 +292,15 @@ def test_exceptions_list_walks_directory_and_counts_validity(
     result = runner.invoke(app, ["exceptions", "list", str(fixtures_dir)])
     assert result.exit_code == 0, result.output
     # The README is markdown, not YAML — only the YAML file should count.
-    assert "1 valid" in result.output
-    assert "0 invalid" in result.output
+    #
+    # This used to assert `1 valid · 0 invalid`. "valid" meant "parsed", so an
+    # *expired* waiver — one that waives nothing — was reported as valid, which
+    # is the opposite of what a reader needs from a command that ships as a
+    # pre-commit hook. The counters now separate the two, and expiry has its own
+    # column. The demo fixture is in-date, so it counts as active.
+    assert "1 active" in result.output
+    assert "0 expired" in result.output
+    assert "0 unparseable" in result.output
     # The Rich table truncates long IDs to fit terminal width (`EXC-2026-DEM…`),
     # so assert on a stable prefix instead of the full ID.
     assert "EXC-2026-DEM" in result.output

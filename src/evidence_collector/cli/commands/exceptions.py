@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -49,10 +50,19 @@ def register(app: typer.Typer) -> None:
                 invalid += 1
                 console.print(f"[red]Invalid exception file[/red] {path}: {exc}")
                 continue
+            # Expiry is not a schema error, so it must not change this
+            # command's exit contract (it ships as a pre-commit hook). It is
+            # still worth saying out loud: a well-formed waiver that expired
+            # waives nothing, and silence here reads as approval.
+            expiry_note = (
+                " [yellow](EXPIRED — waives nothing)[/yellow]"
+                if datetime.now(tz=UTC) >= exception.expires_at
+                else ""
+            )
             console.print(
                 f"[green]{exception.exception_id}[/green] valid · "
                 f"control={exception.control_id} · approver={exception.approver} "
-                f"· expires_at={exception.expires_at.isoformat()}"
+                f"· expires_at={exception.expires_at.isoformat()}{expiry_note}"
             )
         if invalid:
             raise typer.Exit(code=1)
@@ -63,7 +73,7 @@ def register(app: typer.Typer) -> None:
             Path, typer.Argument(help="Directory containing exception YAML/JSON files")
         ],
     ) -> None:
-        """Walk a directory and list every valid exception."""
+        """Walk a directory and list every exception, flagging expired ones."""
         if not directory.is_dir():
             console.print(f"[red]Not a directory:[/red] {directory}")
             raise typer.Exit(code=2)
@@ -73,7 +83,9 @@ def register(app: typer.Typer) -> None:
         table.add_column("Approver")
         table.add_column("Expires at")
         table.add_column("Scope")
-        valid = 0
+        now = datetime.now(tz=UTC)
+        parseable = 0
+        expired = 0
         invalid = 0
         for path in sorted(directory.rglob("*")):
             if path.suffix.lower() not in {".yaml", ".yml", ".json"} or not path.is_file():
@@ -84,18 +96,35 @@ def register(app: typer.Typer) -> None:
                 invalid += 1
                 console.print(f"[yellow]skipped[/yellow] {path}: {err}")
                 continue
-            valid += 1
+            parseable += 1
+            is_expired = now >= exc.expires_at
+            if is_expired:
+                expired += 1
             scope_bits: list[str] = []
             if exc.scope.application:
                 scope_bits.append(f"app={exc.scope.application}")
             if exc.scope.release_id:
                 scope_bits.append(f"release={exc.scope.release_id}")
+            # Expiry is rendered on the date itself rather than in a sixth
+            # column: an extra column squeezes the exception ID to unreadable
+            # width on an 80-column terminal, and the state belongs to the date.
+            expires_cell = exc.expires_at.isoformat()
+            if is_expired:
+                expires_cell = f"[yellow]{expires_cell} (expired)[/yellow]"
             table.add_row(
                 exc.exception_id,
                 exc.control_id,
                 exc.approver,
-                exc.expires_at.isoformat(),
+                expires_cell,
                 ", ".join(scope_bits) or "global",
             )
         console.print(table)
-        console.print(f"[bold]{valid}[/bold] valid · [yellow]{invalid}[/yellow] invalid")
+        # "valid" used to mean "parsed", so an expired waiver was reported as
+        # `1 valid · 0 invalid` — the opposite of what a reader needs, and this
+        # command ships as a pre-commit hook. Expiry is now counted separately:
+        # the file is still well-formed, it just no longer waives anything.
+        console.print(
+            f"[bold]{parseable - expired}[/bold] active · "
+            f"[yellow]{expired}[/yellow] expired · "
+            f"[yellow]{invalid}[/yellow] unparseable"
+        )

@@ -48,7 +48,36 @@ inputs:
     required: false
     default: ""
   catalog:
-    description: "Path to a custom control catalog YAML"
+    description: >-
+      Control catalog: a path to your own YAML, or the bare name of a bundled
+      catalog (catalog.yaml, catalog-ssdf-1.2.yaml, catalog-ai.yaml,
+      catalog-fedramp-20x-ksi.yaml, catalog-osps-baseline.yaml)
+    required: false
+    default: ""
+  exceptions-dir:
+    description: "Directory with YAML/JSON waiver (exception) files"
+    required: false
+    default: ""
+  artifact-root:
+    description: >-
+      Base directory that absolute artifact paths are rewritten against, so the
+      bundle records repo-relative paths instead of the runner's filesystem
+      layout. Defaults to the workspace; set to "" to disable.
+    required: false
+    default: ${{ github.workspace }}
+  profile:
+    description: "Regulatory profile: none | cra-2026 | fedramp-20x"
+    required: false
+    default: "none"
+  risk-mode:
+    description: >-
+      Verdict mode: off (presence-based, preserves byte-stability) or
+      epss-weighted (re-derives release_status from EPSS + KEV data already
+      present in the bundle)
+    required: false
+    default: "off"
+  epss-percentile-threshold:
+    description: "Under risk-mode epss-weighted, EPSS percentile treated as exploitable"
     required: false
     default: ""
   output-dir:
@@ -125,6 +154,11 @@ runs:
         CATALOG: ${{ inputs.catalog }}
         ARTIFACTS_DIR: ${{ inputs.artifacts-dir }}
         ATTESTATIONS_DIR: ${{ inputs.attestations-dir }}
+        EXCEPTIONS_DIR: ${{ inputs.exceptions-dir }}
+        ARTIFACT_ROOT: ${{ inputs.artifact-root }}
+        PROFILE: ${{ inputs.profile }}
+        RISK_MODE: ${{ inputs.risk-mode }}
+        EPSS_PERCENTILE_THRESHOLD: ${{ inputs.epss-percentile-threshold }}
       run: |
         set -euo pipefail
         extra_args=()
@@ -142,6 +176,25 @@ runs:
         fi
         if [ -d "$ATTESTATIONS_DIR" ]; then
           extra_args+=(--attestations-dir "$ATTESTATIONS_DIR")
+        fi
+        # A waiver directory that was configured but is not there is a real
+        # problem — the release would silently lose an approved, time-bound
+        # exception — so it is passed through and the collector reports it,
+        # rather than being skipped like the optional evidence directories.
+        if [ -n "$EXCEPTIONS_DIR" ]; then
+          extra_args+=(--exceptions-dir "$EXCEPTIONS_DIR")
+        fi
+        if [ -n "$ARTIFACT_ROOT" ]; then
+          extra_args+=(--artifact-root "$ARTIFACT_ROOT")
+        fi
+        if [ -n "$PROFILE" ] && [ "$PROFILE" != "none" ]; then
+          extra_args+=(--profile "$PROFILE")
+        fi
+        if [ -n "$RISK_MODE" ] && [ "$RISK_MODE" != "off" ]; then
+          extra_args+=(--risk-mode "$RISK_MODE")
+        fi
+        if [ -n "$EPSS_PERCENTILE_THRESHOLD" ]; then
+          extra_args+=(--epss-percentile-threshold "$EPSS_PERCENTILE_THRESHOLD")
         fi
 
         python -m evidence_collector.cli.main run \
