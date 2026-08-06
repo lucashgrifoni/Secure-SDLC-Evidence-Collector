@@ -20,6 +20,7 @@ from typing import Annotated
 import typer
 
 from evidence_collector.application.integrity import structural_sha256
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 
@@ -67,7 +68,7 @@ def register(app: typer.Typer) -> None:
                 )
             else:
                 console.print(f"[red]Could not read {bundle_path}:[/red] {exc}")
-            raise typer.Exit(code=3) from exc
+            raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
         if expected is None:
             if is_json_logs():

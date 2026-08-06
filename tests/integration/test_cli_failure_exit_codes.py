@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -162,3 +163,66 @@ def test_help_and_version_still_exit_zero() -> None:
     """Deliberate exits raise SystemExit, which the guard must not intercept."""
     assert _run("--version").returncode == 0
     assert _run("--help").returncode == 0
+
+
+# ---------------------------------------------------------------------------
+# One input-error code across every command (GATE-03)
+#
+# Until 3.0.0 the same malformed bundle produced 2 from vex/guac/statement/
+# enrich/oscal and 3 from verify/compare/evaluate, and `2` simultaneously meant
+# "release not_ready" and "Click usage error". A CI wrapper needed a
+# per-subcommand table to tell a bad file from a blocked release, and this repo
+# pinned both contradictory contracts at once — `test_cli_emit_commands.py`
+# asserted 2 while `test_verify_command.py` asserted 3 for the same input.
+#
+# This test is the one that was missing: it feeds every bundle-consuming
+# command the identical broken file and requires them to agree.
+# ---------------------------------------------------------------------------
+
+# (command, how it takes the bundle). `oscal` reads it from --bundle rather
+# than positionally, which is why it needs its own argv shape here.
+_BUNDLE_CONSUMERS = [
+    ("verify", lambda p: ("verify", p)),
+    ("guac", lambda p: ("guac", p)),
+    ("statement", lambda p: ("statement", p)),
+    ("vex", lambda p: ("vex", p)),
+    ("enrich", lambda p: ("enrich", p)),
+    ("oscal", lambda p: ("oscal", "--kind", "assessment-results", "--bundle", p)),
+]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    ("command", "argv"), _BUNDLE_CONSUMERS, ids=[c for c, _ in _BUNDLE_CONSUMERS]
+)
+def test_every_command_reports_a_malformed_bundle_the_same_way(
+    command: str, argv: Callable[[str], tuple[str, ...]], tmp_path: Path
+) -> None:
+    broken = tmp_path / "broken.json"
+    broken.write_text("{ this is not valid json", encoding="utf-8")
+
+    result = _run(*argv(str(broken)))
+
+    assert result.returncode == 3, (
+        f"`{command}` returned {result.returncode} for a malformed bundle; "
+        "every command must use 3 so a wrapper can tell a bad input from a verdict"
+    )
+
+
+@pytest.mark.integration
+def test_compare_agrees_on_the_same_code(tmp_path: Path) -> None:
+    """`compare` takes two bundles, so it needs its own invocation."""
+    broken = tmp_path / "broken.json"
+    broken.write_text("{ nope", encoding="utf-8")
+    assert _run("compare", str(broken), str(broken)).returncode == 3
+
+
+@pytest.mark.integration
+def test_the_input_error_code_never_collides_with_a_verdict() -> None:
+    """3 must stay outside the verdict range, which owns 0, 1 and 2."""
+    from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, exit_code_for_status
+    from evidence_collector.domain.enums import ReleaseStatus
+
+    verdict_codes = {exit_code_for_status(status) for status in ReleaseStatus}
+    assert EXIT_INPUT_ERROR not in verdict_codes
+    assert verdict_codes == {0, 1, 2}

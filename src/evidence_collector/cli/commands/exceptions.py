@@ -9,6 +9,7 @@ from typing import Annotated
 import typer
 from rich.table import Table
 
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli._state import console
 from evidence_collector.parsers import parse_exception
 from evidence_collector.parsers._common import ParseError
@@ -41,7 +42,7 @@ def register(app: typer.Typer) -> None:
         """
         if not paths:
             console.print("[red]No exception files given.[/red]")
-            raise typer.Exit(code=2)
+            raise typer.Exit(code=EXIT_INPUT_ERROR)
         invalid = 0
         for path in paths:
             try:
@@ -76,7 +77,7 @@ def register(app: typer.Typer) -> None:
         """Walk a directory and list every exception, flagging expired ones."""
         if not directory.is_dir():
             console.print(f"[red]Not a directory:[/red] {directory}")
-            raise typer.Exit(code=2)
+            raise typer.Exit(code=EXIT_INPUT_ERROR)
         table = Table(title=f"Exceptions in {directory}")
         table.add_column("Exception ID")
         table.add_column("Control")

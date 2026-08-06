@@ -15,6 +15,7 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
@@ -53,7 +54,7 @@ def register(app: typer.Typer) -> None:
                 emit_event("guac_failed", bundle=str(bundle_path), reason=str(exc))
             else:
                 console.print(f"[red]Could not read {bundle_path}:[/red] {exc}")
-            raise typer.Exit(code=2) from exc
+            raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
         try:
             bundle = EvidenceBundle.model_validate(raw)
         except ValidationError as exc:
@@ -61,7 +62,7 @@ def register(app: typer.Typer) -> None:
                 emit_event("guac_failed", bundle=str(bundle_path), reason=str(exc))
             else:
                 console.print(f"[red]Bundle does not match the current schema:[/red] {exc}")
-            raise typer.Exit(code=2) from exc
+            raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
         document = build_guac_collection(bundle)
         output.parent.mkdir(parents=True, exist_ok=True)

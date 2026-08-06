@@ -10,6 +10,7 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli._state import console
 
 
@@ -94,7 +95,7 @@ def register(app: typer.Typer) -> None:
             console.print(
                 "[red]--bundle is required and must exist for --kind assessment-results[/red]"
             )
-            raise typer.Exit(code=2)
+            raise typer.Exit(code=EXIT_INPUT_ERROR)
 
         from evidence_collector.domain.models import EvidenceBundle
         from evidence_collector.exporters.oscal import export_oscal_assessment_results
@@ -104,10 +105,10 @@ def register(app: typer.Typer) -> None:
             bundle = EvidenceBundle.model_validate(raw)
         except (OSError, json.JSONDecodeError) as exc:
             console.print(f"[red]Could not read {bundle_path}:[/red] {exc}")
-            raise typer.Exit(code=2) from exc
+            raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
         except ValidationError as exc:
             console.print(f"[red]Bundle does not match the current schema:[/red] {exc}")
-            raise typer.Exit(code=2) from exc
+            raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
         payload = json.dumps(
             export_oscal_assessment_results(bundle),

@@ -102,7 +102,8 @@ def test_statement_dsse_envelope_is_written_alongside(
 @pytest.mark.integration
 def test_statement_rejects_unknown_predicate_type(runner: CliRunner, sample_bundle: Path) -> None:
     result = runner.invoke(app, ["statement", str(sample_bundle), "--predicate-type", "bogus"])
-    assert result.exit_code == 2
+    # 3, not 2, since 3.0.0: a rejected input is an input error, not a verdict.
+    assert result.exit_code == 3
     assert "predicate-type" in result.output.lower() or "bogus" in result.output
 
 
@@ -153,8 +154,16 @@ def test_guac_rejects_malformed_bundle(runner: CliRunner, tmp_path: Path) -> Non
     bad = tmp_path / "broken.json"
     bad.write_text("{ this is not valid json", encoding="utf-8")
     result = runner.invoke(app, ["guac", str(bad)])
-    # Malformed JSON is a read/parse failure → exit code 2 per the contract.
-    assert result.exit_code == 2
+    # Malformed JSON is a read/parse failure → exit code 3.
+    #
+    # This asserted 2 until 3.0.0, while tests/unit/test_verify_command.py
+    # asserted 3 for the identical input on `verify`. The repo pinned both
+    # contradictory contracts at once: five emitting commands returned 2 and
+    # three returned 3 for the same class of failure, and `2` simultaneously
+    # meant "release not_ready" and "Click usage error". A CI wrapper needed a
+    # per-subcommand table to tell a bad file from a blocked release. 3 is now
+    # the single input-error code (cli/_exit_codes.EXIT_INPUT_ERROR).
+    assert result.exit_code == 3
 
 
 # ---------------------------------------------------------------------------
