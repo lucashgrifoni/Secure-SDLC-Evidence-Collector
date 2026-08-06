@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from evidence_collector.controls.catalog import (
+    bundled_catalog_names,
     bundled_catalog_path,
     catalog_from_source,
     default_catalog,
@@ -231,3 +232,58 @@ def test_catalog_from_source_returns_custom_when_given(tmp_path: Path) -> None:
     f = tmp_path / "c.yaml"
     f.write_text(_VALID_CONTROL, encoding="utf-8")
     assert len(catalog_from_source(f)) == 1
+
+
+# ---------------------------------------------------------------------------
+# Bundled catalogs are reachable by name from --catalog (CAT-01)
+#
+# Five catalogs ship with the package (default, SSDF 1.2, AI, FedRAMP 20x KSI,
+# OSPS Baseline) and none of them had a CLI surface: `--catalog catalog-ai.yaml`
+# raised FileNotFoundError, and `bundled_catalog_path` existed with no caller
+# anywhere in `cli/`. The documented workaround was an `importlib.resources`
+# incantation that breaks under pipx, containers with `python3`, and Windows —
+# and docs/comparison.md taught the form that fails.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", ["catalog.yaml", "catalog-ai.yaml", "catalog-osps-baseline.yaml"])
+def test_bundled_catalog_resolves_by_bare_name(name: str) -> None:
+    controls = load_catalog(name)
+    assert controls, f"{name} resolved but produced no controls"
+
+
+def test_every_bundled_catalog_is_loadable_by_name() -> None:
+    """Guards against shipping a catalog that the resolver cannot reach."""
+    names = bundled_catalog_names()
+    assert len(names) >= 5
+    for name in names:
+        assert load_catalog(name), name
+
+
+def test_a_local_file_wins_over_a_bundled_name(tmp_path: Path, monkeypatch) -> None:
+    """The filesystem is consulted first, so a local override is never shadowed."""
+    local = tmp_path / "catalog-ai.yaml"
+    local.write_text(
+        "controls:\n"
+        '  - control_id: "LOCAL-1"\n'
+        '    framework: "NIST_SSDF"\n'
+        '    name: "Local override"\n'
+        '    description: "only in the local file"\n'
+        '    criticality: "low"\n'
+        '    required_evidence_types: ["sast_scan"]\n'
+        "    recommended_evidence_types: []\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    controls = load_catalog("catalog-ai.yaml")
+    assert [c.control_id for c in controls] == ["LOCAL-1"]
+
+
+def test_unknown_catalog_error_lists_the_bundled_ones() -> None:
+    """The failure must be actionable, not just 'not found'."""
+    with pytest.raises(FileNotFoundError) as excinfo:
+        load_catalog("does-not-exist.yaml")
+    message = str(excinfo.value)
+    assert "does-not-exist.yaml" in message
+    for name in bundled_catalog_names():
+        assert name in message

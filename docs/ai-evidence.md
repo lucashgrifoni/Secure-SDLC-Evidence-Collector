@@ -28,7 +28,7 @@ sdlc-evidence run \
   --release-id 2026.05.19 \
   --commit-sha "$(git rev-parse HEAD)" \
   --artifacts-dir artifacts \
-  --catalog "$(python -c 'from evidence_collector.controls.catalog import bundled_catalog_path; print(bundled_catalog_path("catalog-ai.yaml"))')"
+  --catalog catalog-ai.yaml
 ```
 
 The collector auto-detects each AI shape via filename + content
