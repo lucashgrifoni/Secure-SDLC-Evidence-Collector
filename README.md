@@ -286,7 +286,7 @@ environment for you. Add to your `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector
-    rev: v2.1.0            # pin to a released tag
+    rev: v2.2.0            # first tag that ships .pre-commit-hooks.yaml
     hooks:
       - id: sdlc-evidence-validate-exceptions   # validate staged waiver files
       - id: sdlc-evidence-doctor                # smoke-test the pinned release
