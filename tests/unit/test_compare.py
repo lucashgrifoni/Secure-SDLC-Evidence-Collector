@@ -342,3 +342,18 @@ def test_status_delta_marks_no_change() -> None:
         delta = _status_delta(status, status)
         assert "improved" not in delta
         assert "regressed" not in delta
+
+
+def test_compare_rejects_an_unknown_format() -> None:
+    """`--format xml` used to fall back to the Rich table with exit 0.
+
+    A script asking for JSON received unicode box-drawing characters and no
+    error — the worst kind of silence, because it looks like success.
+    """
+    from typer.testing import CliRunner
+
+    from evidence_collector.cli.main import app
+
+    result = CliRunner().invoke(app, ["compare", "a.json", "b.json", "--format", "xml"])
+    assert result.exit_code != 0
+    assert "table" in result.output and "json" in result.output

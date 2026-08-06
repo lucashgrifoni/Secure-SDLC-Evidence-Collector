@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import Final
 
+import typer
+
 from evidence_collector.domain.enums import ReleaseStatus
 
 _STATUS_RANK: Final[dict[ReleaseStatus, int]] = {
@@ -26,6 +28,25 @@ _THRESHOLD_RANK: Final[dict[str, int]] = {
     "conditional": 1,
     "not_ready": 2,
 }
+
+
+FAIL_ON_VALUES: Final[tuple[str, ...]] = ("ready", "conditional", "not_ready")
+
+
+def validate_fail_on(value: str) -> str:
+    """Return ``value`` normalized, or raise ``typer.BadParameter``.
+
+    ``--fail-on`` was never validated: an unrecognized value silently fell back
+    to the natural exit code for the status. The fallback is provably the
+    strictest reading — a typo can only produce a false red, never a false
+    green — but it is still a typo the user never hears about, on the flag that
+    decides whether a pipeline stops. Sibling flags (``--risk-mode``,
+    ``--profile``, ``--policy``) all reject unknown values already.
+    """
+    normalized = value.lower()
+    if normalized not in FAIL_ON_VALUES:
+        raise typer.BadParameter(f"--fail-on must be one of {list(FAIL_ON_VALUES)}; got '{value}'.")
+    return normalized
 
 
 def exit_code_for_status(status: ReleaseStatus) -> int:

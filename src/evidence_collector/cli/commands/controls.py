@@ -16,7 +16,12 @@ def register(app: typer.Typer) -> None:
 
     @app.command("controls")
     def cmd_controls(
-        catalog_path: Annotated[Path | None, typer.Option("--catalog")] = None,
+        catalog_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--catalog", help="Control catalog: a path, or the bare name of a bundled catalog"
+            ),
+        ] = None,
     ) -> None:
         """Print the control catalog currently used for evaluation."""
         from evidence_collector.controls import default_catalog, load_catalog
