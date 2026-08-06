@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.3.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.2.0...v2.3.0) (2026-08-05)
+
+
+### Added
+
+* **parsers:** recognize SLSA v1.2 Source Track VSAs ([#81](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/81)) ([224cc22](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/224cc220f2272cf4506d8bd2571120eb542828b1))
+
+
+### Fixed
+
+* collection resilience, honest risk claims, and the exit-code contract ([#88](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/88)) ([8966fdd](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8966fdda6313bcb5fc39bc8aeaffdc1083ee5b66))
+
 ## [2.2.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.1.0...v2.2.0) (2026-06-25)
 
 
