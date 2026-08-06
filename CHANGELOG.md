@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.4.0...v2.5.0) (2026-08-06)
+
+
+### Added
+
+* waivers that actually work — expose them in the Action, and stop losing rejected ones ([#93](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/93)) ([16b7371](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/16b7371e33013fba15680c5b77ac9305eae8bcee))
+
 ## [2.4.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.3.0...v2.4.0) (2026-08-06)
 
 
