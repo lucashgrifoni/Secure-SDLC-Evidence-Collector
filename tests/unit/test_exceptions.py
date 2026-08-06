@@ -212,3 +212,92 @@ scope: "payments-api"
     )
     with pytest.raises(ParseError, match=r"scope.*must be a mapping"):
         parse_exception(path)
+
+
+# ---------------------------------------------------------------------------
+# The demo waiver fixture must not rot silently (FIX-01)
+#
+# `examples/sample_release/exceptions/EXC-2026-DEMO-001.yaml` is the only way
+# to demonstrate the WAIVED state. Its `expires_at` lapsed on 2026-08-05 and
+# the documented command in that folder's README silently stopped reproducing:
+# `waived=1` became `waived=0`, `missing=5` became `missing=6`, and nothing
+# failed. A date-bearing fixture needs a test that trips before the date does.
+# ---------------------------------------------------------------------------
+
+_DEMO_WAIVER = Path("examples/sample_release/exceptions/EXC-2026-DEMO-001.yaml")
+_RENEW_MARGIN = timedelta(days=180)
+
+
+def test_demo_waiver_fixture_is_not_close_to_expiring() -> None:
+    exc = parse_exception(_DEMO_WAIVER)
+    remaining = exc.expires_at - datetime.now(tz=UTC)
+    assert remaining > _RENEW_MARGIN, (
+        f"{_DEMO_WAIVER} expires in {remaining.days} days. Renew expires_at "
+        "before it lapses, or the documented waiver walkthrough in "
+        "examples/sample_release/exceptions/README.md stops reproducing."
+    )
+
+
+def test_demo_waiver_still_produces_a_waived_control(sample_release_root: Path) -> None:
+    """The state the fixture exists to demonstrate must actually be reachable."""
+    exc = parse_exception(_DEMO_WAIVER)
+    evaluations, _ = evaluate_controls(
+        default_catalog(),
+        [],
+        exceptions=[exc],
+        application=exc.scope.application,
+        release=exc.scope.release_id,
+    )
+    waived = [e for e in evaluations if e.evaluation_status == ControlEvaluationStatus.WAIVED]
+    assert [e.control_id for e in waived] == [exc.control_id]
+    assert exc.exception_id in waived[0].exception_refs
+
+
+# ---------------------------------------------------------------------------
+# A waiver that did not apply must leave a trace (FIX-01)
+#
+# An expired or out-of-scope waiver was dropped in silence: it still appeared
+# in `bundle.exceptions`, but the control came out MISSING with an empty
+# `exception_refs` and a rationale that never mentioned it. An auditor could
+# not tell "no exception was ever requested" from "an exception was requested
+# and refused" — in a tool whose entire product is the audit trail.
+# ---------------------------------------------------------------------------
+
+
+def test_expired_waiver_is_named_in_the_rationale() -> None:
+    expired = _exception(application="app", release_id="1.0.0", expires_in_days=1)
+    evaluations, _ = evaluate_controls(
+        default_catalog(),
+        [],
+        exceptions=[expired],
+        application="app",
+        release="1.0.0",
+        now=expired.expires_at + timedelta(days=1),
+    )
+    target = next(e for e in evaluations if e.control_id == expired.control_id)
+    assert target.evaluation_status == ControlEvaluationStatus.MISSING
+    assert expired.exception_id in target.rationale
+    assert "expired" in target.rationale
+
+
+def test_out_of_scope_waiver_is_named_in_the_rationale() -> None:
+    scoped = _exception(application="some-other-app", expires_in_days=3650)
+    evaluations, _ = evaluate_controls(
+        default_catalog(),
+        [],
+        exceptions=[scoped],
+        application="the-app-being-released",
+        release="1.0.0",
+        now=scoped.approved_at + timedelta(days=1),
+    )
+    target = next(e for e in evaluations if e.control_id == scoped.control_id)
+    assert target.evaluation_status == ControlEvaluationStatus.MISSING
+    assert scoped.exception_id in target.rationale
+    assert "out of scope" in target.rationale
+
+
+def test_control_without_any_exception_keeps_a_clean_rationale() -> None:
+    """The trace must only appear when an exception really was supplied."""
+    evaluations, _ = evaluate_controls(default_catalog(), [], exceptions=[])
+    for evaluation in evaluations:
+        assert "exception was supplied" not in evaluation.rationale

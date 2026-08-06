@@ -113,6 +113,36 @@ def _valid_exceptions_for(
     ]
 
 
+def _rejected_exceptions_for(
+    control_id: str,
+    exceptions: Sequence[EvidenceException],
+    application: str,
+    release_id: str,
+    now: datetime,
+) -> list[str]:
+    """Describe waivers that name ``control_id`` but did not apply, and why.
+
+    A waiver that is expired or out of scope was previously dropped in silence:
+    it still appeared in ``bundle.exceptions`` but the control came out MISSING
+    with an empty ``exception_refs`` and a rationale that never mentioned it.
+    An auditor reading the bundle could not tell "nobody ever requested an
+    exception" apart from "an exception was requested and refused" — a gap in
+    the audit trail of a tool whose whole purpose is the audit trail.
+    """
+    reasons: list[str] = []
+    for exc in exceptions:
+        if exc.control_id != control_id:
+            continue
+        if exc.is_valid_for(application=application, release_id=release_id, now=now):
+            continue
+        if now >= exc.expires_at:
+            why = f"expired {exc.expires_at.isoformat()}"
+        else:
+            why = "out of scope for this application/release"
+        reasons.append(f"{exc.exception_id} ({why})")
+    return reasons
+
+
 def evaluate_control(
     control: ControlDefinition,
     evidence: Sequence[NormalizedEvidence],
@@ -219,6 +249,14 @@ def evaluate_control(
             f"evidence types "
             f"{[t.value for t in missing_required]}."
         )
+        rejected = _rejected_exceptions_for(
+            control.control_id, exceptions, application, release_id, now
+        )
+        if rejected:
+            rationale += (
+                f" An exception was supplied for this control but did not apply: "
+                f"{'; '.join(rejected)}."
+            )
         confidence = ConfidenceLevel.LOW
     elif missing_recommended:
         status = ControlEvaluationStatus.PARTIAL
