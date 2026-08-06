@@ -203,6 +203,12 @@ failure: `2` for a missing or malformed input on the emitting commands
 `evaluate` and for a `--epss-feed`/`--kev-feed` that was supplied but could not
 be read.
 
+**`3` also means "the command could not run at all".** Any failure that is not
+a release verdict — an unreadable catalog, an invalid `--commit-sha`, a missing
+input file — exits `3` with a single-line explanation (`--verbose` for the
+traceback). It never exits `1`, so a pipeline can rely on `1` meaning
+`conditional` and nothing else.
+
 ### Use the collector as a pre-commit hook
 
 The collector publishes `.pre-commit-hooks.yaml`, so other repositories can
