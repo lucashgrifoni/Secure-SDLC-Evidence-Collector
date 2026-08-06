@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.1](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.5.0...v2.5.1) (2026-08-06)
+
+
+### Changed
+
+* make the advertised 25 MB input cap actually hold, and stop silent flag typos ([#95](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/95)) ([df01925](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/df01925c356c2932e9c653a99017153f7d08091c))
+
 ## [2.5.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.4.0...v2.5.0) (2026-08-06)
 
 
