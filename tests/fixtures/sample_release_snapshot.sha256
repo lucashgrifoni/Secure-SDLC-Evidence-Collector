@@ -38,4 +38,13 @@
 # content-derived presence check against CISA's 2025 Minimum Elements.
 # Additive and byte-stable per run; only the canonical representation (and
 # therefore the structural hash) changed.
-788ac044c5fec8834db9174a01cbda76d7672f5b9a430c21325b0a3a5f240c22
+# 2026-08-06 (3.0.0 — human-readable rationales): bumped from 788ac044… to
+# 8c0b0a9b… after control rationales stopped rendering Python's list repr.
+# `Control SSDF-PW.7 is met by evidence ['sast-cfcf7a634b32'].` became
+# `Control SSDF-PW.7 is met by evidence sast-cfcf7a634b32.` across all 13
+# rationales of the canonical bundle. The change is cosmetic in intent but it
+# alters `control_evaluations[*].rationale`, which is inside the structural
+# hash and inside the in-toto predicate — so it is a BREAKING change for anyone
+# pinning `verify --expected` against the default profile, and is released as
+# 3.0.0 with migration notes rather than folded into a patch.
+8c0b0a9b32320d8face418e4d23aa530e78a81508794801f6ffc9da3cdac1dd7
