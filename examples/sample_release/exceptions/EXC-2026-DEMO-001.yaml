@@ -1,4 +1,10 @@
 # Demo exception used by examples/sample_release/exceptions/README.md.
+#
+# expires_at is deliberately far in the future: this fixture is the only
+# way to demonstrate the WAIVED state, and when it lapsed on 2026-08-05 the
+# documented command silently stopped reproducing (waived=1 became
+# waived=0). tests/unit/test_exceptions.py fails well before the new date,
+# so it cannot rot unnoticed again.
 # Scoped to a release context the canonical sample fixture does NOT use,
 # so loading this file with --exceptions-dir against the canonical
 # sample release does not change the sample's ready 13/13 verdict.
@@ -6,7 +12,7 @@ exception_id: "EXC-2026-DEMO-001"
 control_id: "SSDF-PW.1"
 approver: "appsec-lead@example.com"
 approved_at: "2026-05-05T10:00:00Z"
-expires_at: "2026-08-05T10:00:00Z"
+expires_at: "2036-01-01T00:00:00Z"
 justification: >-
   Demo waiver: no new trust boundary introduced in this synthetic
   release. The next quarterly threat model refresh will cover the
