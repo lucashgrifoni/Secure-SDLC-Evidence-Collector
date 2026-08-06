@@ -66,9 +66,10 @@ from evidence_collector.parsers._common import (
 
 VSA_PREDICATE_TYPE = "https://slsa.dev/verification_summary/v1"
 
-# SLSA v1.2 track prefixes inside ``verifiedLevels``.
+# SLSA v1.2 Source Track prefix inside ``verifiedLevels``. Build levels
+# (``SLSA_BUILD_LEVEL_*``) need no prefix constant: they are kept as-is in
+# ``verified_levels`` and are never singled out.
 SOURCE_LEVEL_PREFIX = "SLSA_SOURCE_LEVEL_"
-BUILD_LEVEL_PREFIX = "SLSA_BUILD_LEVEL_"
 
 
 @dataclass
