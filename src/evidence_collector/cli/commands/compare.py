@@ -14,6 +14,8 @@ from evidence_collector.application.compare import compare_bundles, load_bundle
 from evidence_collector.cli._state import console
 from evidence_collector.domain.enums import ReleaseStatus
 
+_FORMATS = ("table", "json")
+
 # Worse status ⇒ higher rank, mirroring cli/_exit_codes.py so the arrow and
 # the exit code can never disagree about what "worse" means.
 _RELEASE_STATUS_RANK: dict[ReleaseStatus, int] = {
@@ -51,6 +53,14 @@ def register(app: typer.Typer) -> None:
         ] = "table",
     ) -> None:
         """Compare two bundle.json files and summarize what changed."""
+        # An unrecognized --format silently fell back to the Rich table, so a
+        # script asking for JSON received unicode box-drawing characters and
+        # exit 0. Reject it the way --risk-mode and --policy already do.
+        normalized_format = output_format.lower()
+        if normalized_format not in _FORMATS:
+            raise typer.BadParameter(
+                f"--format must be one of {list(_FORMATS)}; got '{output_format}'."
+            )
         try:
             baseline = load_bundle(before)
             candidate = load_bundle(after)
@@ -59,7 +69,7 @@ def register(app: typer.Typer) -> None:
             raise typer.Exit(code=3) from exc
 
         comparison = compare_bundles(baseline, candidate)
-        if output_format.lower() == "json":
+        if normalized_format == "json":
             console.print_json(data=comparison.to_dict())
             return
 

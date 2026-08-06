@@ -36,6 +36,7 @@ from pathlib import Path
 from typing import Any
 
 from evidence_collector.parsers._common import (
+    MAX_INPUT_BYTES,
     ParsedArtifact,
     ParseError,
     describe,
@@ -147,6 +148,12 @@ def file_has_provenance(path: Path) -> bool:
     JSON object, or any record of a JSONL). Used by the local collector for
     detection; never raises on an unreadable file."""
     try:
+        # This runs during detection, before any parser applies the input cap,
+        # and it reads the whole file rather than going through the collector's
+        # memoized peek. Without the guard an oversized artifact is fully loaded
+        # here even though every other detection path now refuses it.
+        if path.stat().st_size > MAX_INPUT_BYTES:
+            return False
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return False

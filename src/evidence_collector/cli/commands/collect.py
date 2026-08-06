@@ -17,14 +17,26 @@ def register(app: typer.Typer) -> None:
 
     @app.command("collect")
     def cmd_collect(
-        release_id: Annotated[str, typer.Option("--release-id")],
-        commit_sha: Annotated[str, typer.Option("--commit-sha")],
+        release_id: Annotated[str, typer.Option("--release-id", help="Release identifier")],
+        commit_sha: Annotated[str, typer.Option("--commit-sha", help="Commit SHA for the release")],
         output_path: Annotated[
             Path, typer.Option("--output", help="Where to write the evidence JSON list")
         ] = Path("evidence.json"),
         branch: Annotated[str, typer.Option(help="Branch name")] = "main",
-        artifacts_dir: Annotated[list[Path] | None, typer.Option("--artifacts-dir")] = None,
-        attestations_dir: Annotated[list[Path] | None, typer.Option("--attestations-dir")] = None,
+        artifacts_dir: Annotated[
+            list[Path] | None,
+            typer.Option(
+                "--artifacts-dir",
+                help="Directory with raw evidence artifacts (can be given multiple times)",
+            ),
+        ] = None,
+        attestations_dir: Annotated[
+            list[Path] | None,
+            typer.Option(
+                "--attestations-dir",
+                help="Directory with YAML/JSON attestations (can be given multiple times)",
+            ),
+        ] = None,
     ) -> None:
         """Collect evidence from local directories and write the normalized list."""
         release = build_release(release_id, commit_sha, branch)

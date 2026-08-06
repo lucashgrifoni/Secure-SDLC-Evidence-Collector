@@ -37,9 +37,13 @@ mypy src tests
 pytest
 ```
 
-Coverage must stay at 70% or higher (the pytest config fails the run
-otherwise). Integration tests under `tests/integration/` exercise the
-orchestrator and CLI against `examples/sample_release/`.
+Coverage must stay at or above the `--cov-fail-under` floor in
+`pyproject.toml` (the pytest config fails the run otherwise). That file is the
+single source of truth — this guide used to name a number of its own, which
+drifted below the real gate and failed a new contributor's very first `pytest`
+on a threshold the guide had called sufficient. Integration tests under
+`tests/integration/` exercise the orchestrator and CLI against
+`examples/sample_release/`.
 
 ## Branch and commit conventions
 

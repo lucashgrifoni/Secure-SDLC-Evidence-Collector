@@ -9,7 +9,10 @@ its filename does not declare the source tool.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
+from typing import Any
+from unittest import mock
 
 from evidence_collector.collectors.local import LocalArtifactCollector
 from evidence_collector.domain.enums import EvidenceType
@@ -175,3 +178,52 @@ def test_file_passed_as_attestations_or_exceptions_dir_is_reported(tmp_path: Pat
 
     assert len(report.errors) == 2
     assert all("not a directory" in e.reason for e in report.errors)
+
+
+def test_oversized_artifact_is_reported_not_dropped(tmp_path: Path) -> None:
+    """Enforcing the cap in detection must not turn a loud failure into silence.
+
+    Before PERF-01 an oversized `.json` was parsed by detection, claimed by a
+    parser, and rejected by `ensure_file` — noisy, but the user was told. Now
+    detection skips it, so without this the file would fall through to
+    "unrecognized" and disappear. It is evidence the caller supplied.
+    """
+    from evidence_collector.parsers._common import MAX_INPUT_BYTES
+
+    artifacts_dir = tmp_path / "artifacts"
+    artifacts_dir.mkdir()
+    big = artifacts_dir / "huge.json"
+    big.write_text('{"runs": []}', encoding="utf-8")
+    os.truncate(big, MAX_INPUT_BYTES + 1)
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir]).collect()
+
+    assert report.evidence == []
+    assert len(report.errors) == 1
+    assert "safety cap" in report.errors[0].reason
+
+
+def test_detection_does_not_reread_the_same_file_for_every_probe(tmp_path: Path) -> None:
+    """Seven detectors used to deserialize the same document seven times."""
+    artifacts_dir = tmp_path / "artifacts"
+    artifacts_dir.mkdir()
+    target = artifacts_dir / "unrecognized.json"
+    target.write_text('{"hello": "world"}', encoding="utf-8")
+
+    opens = 0
+    real_open = Path.open
+
+    def counting_open(self: Path, *args: Any, **kwargs: Any) -> Any:
+        nonlocal opens
+        if self.name == "unrecognized.json":
+            opens += 1
+        return real_open(self, *args, **kwargs)
+
+    with mock.patch.object(Path, "open", counting_open):
+        LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir]).collect()
+
+    # Three distinct readers remain, each reading once: the memoized JSON peek
+    # shared by seven detectors, `file_has_provenance` (which parses JSONL and
+    # cannot reuse the peek), and the 8 KB encoding probe on the fallthrough.
+    # Before the memo, the peek alone accounted for seven full deserializations.
+    assert opens <= 3, f"detection opened the file {opens} times"
