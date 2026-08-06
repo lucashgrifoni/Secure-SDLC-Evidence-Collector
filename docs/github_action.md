@@ -65,11 +65,36 @@ jobs:
 | `attestations-dir` | no | `attestations` | YAML or JSON |
 | `pull-request` | no | — | Enables PR approval collector |
 | `workflow-run` | no | — | Enables workflow metadata collector |
-| `catalog` | no | — | Custom controls YAML |
+| `exceptions-dir` | no | — | Directory with waiver (exception) files |
+| `catalog` | no | — | Your own controls YAML, **or** the bare name of a bundled catalog |
+| `artifact-root` | no | `github.workspace` | Paths recorded relative to this; set to `""` to keep absolute paths |
+| `profile` | no | `none` | `none` / `cra-2026` / `fedramp-20x` |
+| `risk-mode` | no | `off` | `off` / `epss-weighted` |
+| `epss-percentile-threshold` | no | — | Only meaningful with `risk-mode: epss-weighted` |
 | `output-dir` | no | `output/sdlc-evidence` | |
-| `fail-on` | no | `not_ready` | `ready` / `conditional` / `not_ready` |
+| `fail-on` | no | `not_ready` | `ready` / `conditional` / `not_ready`. With the default, a `conditional` release exits **0** |
 | `python-version` | no | `3.12` | |
 | `version` | no | — | Git ref of the collector to install |
+
+The five bundled catalogs can be selected by name, without a path:
+`catalog.yaml`, `catalog-ssdf-1.2.yaml`, `catalog-ai.yaml`,
+`catalog-fedramp-20x-ksi.yaml`, `catalog-osps-baseline.yaml`.
+
+### Applying waivers in CI
+
+```yaml
+- uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v2
+  with:
+    application: payments-api
+    release-id: ${{ github.ref_name }}
+    artifacts-dir: artifacts
+    exceptions-dir: .security/waivers
+```
+
+Unlike the evidence directories, a configured `exceptions-dir` that does not
+exist is **not** skipped silently — losing an approved, time-bound exception
+would change the verdict without a word, so the collector reports the bad path
+in the collection warnings instead.
 
 ## Outputs
 
