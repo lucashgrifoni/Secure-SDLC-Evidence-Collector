@@ -124,7 +124,11 @@ def test_every_public_cli_option_has_help_text() -> None:
 
     missing: list[str] = []
 
-    def walk(command: click.Command, prefix: str = "") -> None:
+    # Deliberately untyped: newer Typer returns its own `typer._click.core.Command`
+    # subclass, so annotating `click.Command` fails under mypy --strict on some
+    # dependency resolutions and passes on others. The isinstance checks below
+    # are the real contract.
+    def walk(command: Any, prefix: str = "") -> None:
         if isinstance(command, click.Group):
             for name, sub in command.commands.items():
                 walk(sub, f"{prefix}{name} ")
