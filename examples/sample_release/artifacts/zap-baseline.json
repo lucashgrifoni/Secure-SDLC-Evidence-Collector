@@ -4,7 +4,7 @@
   "@generated": "2026-04-10T12:15:00Z",
   "site": [
     {
-      "@name": "http./sample_release",
+      "@name": "https://payments-api.acme.internal",
       "@host": "payments-api.acme.internal",
       "@port": "443",
       "@ssl": "true",

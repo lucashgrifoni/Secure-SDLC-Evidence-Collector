@@ -122,3 +122,35 @@ def test_export_markdown_never_glues_two_bullets_onto_one_line(tmp_path: Path) -
         if re.search(r"\S- \*\*(Producer|Summary|Artifact|Findings|Status|Subject)", line)
     ]
     assert glued == [], f"{len(glued)} bullet(s) glued onto the previous line: {glued[:3]}"
+
+
+def test_sample_fixtures_carry_real_urls() -> None:
+    r"""The canonical demo must not ship visibly corrupted URLs (FIX-02).
+
+    `examples/sample_release/artifacts/*` carried `http./sample_release` in
+    every SARIF `$schema` and `informationUri` and in the ZAP site name — dating
+    back to v1.0.0. It leaked into the showcase deliverable: `report.md` from
+    the README's own smoke test rendered
+    `| OWASP ZAP | \`http./sample_release\` |` as the subject reference.
+    """
+    import re
+
+    root = Path("examples")
+    offenders = [
+        f"{path}:{i}"
+        for path in root.rglob("*.json")
+        for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
+        if "http./" in line
+    ] + [
+        f"{path}:{i}"
+        for path in root.rglob("*.sarif")
+        for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
+        if "http./" in line
+    ]
+    assert offenders == [], f"corrupted URLs in example fixtures: {offenders}"
+
+    # And the URLs that are there parse as URLs.
+    for path in root.rglob("*.sarif"):
+        text = path.read_text(encoding="utf-8")
+        for match in re.finditer(r'"(?:\$schema|informationUri)":\s*"([^"]+)"', text):
+            assert match.group(1).startswith("https://"), f"{path}: {match.group(1)}"

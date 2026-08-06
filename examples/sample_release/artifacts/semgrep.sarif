@@ -1,13 +1,13 @@
 {
   "version": "2.1.0",
-  "$schema": "http./sample_release",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
   "runs": [
     {
       "tool": {
         "driver": {
           "name": "semgrep",
           "semanticVersion": "1.70.0",
-          "informationUri": "http./sample_release"
+          "informationUri": "https://semgrep.dev"
         }
       },
       "results": [
