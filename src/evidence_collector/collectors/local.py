@@ -86,31 +86,47 @@ class LocalArtifactCollector:
         self._exceptions_dirs = exceptions_dirs or []
         self._artifact_root = str(artifact_root) if artifact_root else None
 
+    def _usable_directory(self, directory: Path, report: LocalCollectionReport) -> bool:
+        """Return whether ``directory`` can be walked, recording why when it cannot.
+
+        The check used to be ``not directory.exists()``, which a *file* passes:
+        ``Path.rglob`` over a file yields nothing, so the run reported zero
+        evidence with no warning at all. The realistic trigger is a shell glob —
+        ``--artifacts-dir artifacts/*.sarif`` expands to a file — and the result
+        is a report claiming the SAST/SCA/secrets evidence is missing while the
+        scanners actually ran. A false negative that looks exactly like a real
+        finding is worse than an error, so the two cases are now distinct.
+        """
+        if not directory.exists():
+            report.errors.append(LocalCollectionError(path=directory, reason="directory not found"))
+            return False
+        if not directory.is_dir():
+            report.errors.append(
+                LocalCollectionError(
+                    path=directory,
+                    reason="not a directory (expected a folder; pass the containing folder, "
+                    "not a single file)",
+                )
+            )
+            return False
+        return True
+
     def collect(self) -> LocalCollectionReport:
         report = LocalCollectionReport()
         for directory in self._artifacts_dirs:
-            if not directory.exists():
-                report.errors.append(
-                    LocalCollectionError(path=directory, reason="directory not found")
-                )
+            if not self._usable_directory(directory, report):
                 continue
             for file_path in sorted(p for p in directory.rglob("*") if p.is_file()):
                 report.inspected_files += 1
                 self._ingest_artifact(file_path, report)
         for directory in self._attestations_dirs:
-            if not directory.exists():
-                report.errors.append(
-                    LocalCollectionError(path=directory, reason="directory not found")
-                )
+            if not self._usable_directory(directory, report):
                 continue
             for file_path in sorted(p for p in directory.rglob("*") if p.is_file()):
                 report.inspected_files += 1
                 self._ingest_attestation(file_path, report)
         for directory in self._exceptions_dirs:
-            if not directory.exists():
-                report.errors.append(
-                    LocalCollectionError(path=directory, reason="directory not found")
-                )
+            if not self._usable_directory(directory, report):
                 continue
             for file_path in sorted(p for p in directory.rglob("*") if p.is_file()):
                 report.inspected_files += 1

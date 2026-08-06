@@ -7,6 +7,7 @@ extended by passing an alternative path.
 
 from __future__ import annotations
 
+import contextlib
 from functools import cache
 from importlib.resources import as_file, files
 from pathlib import Path
@@ -18,11 +19,37 @@ from pydantic import TypeAdapter
 from evidence_collector.domain.models import ControlDefinition
 
 
+def bundled_catalog_names() -> list[str]:
+    """Return the sorted names of every catalog shipped with the package."""
+    return sorted(
+        entry.name
+        for entry in files("evidence_collector.controls.data").iterdir()
+        if entry.name.endswith((".yaml", ".yml"))
+    )
+
+
 def _coerce_path(path: str | Path) -> Path:
+    """Resolve ``path`` to a readable catalog file.
+
+    A bare bundled name (``catalog-ai.yaml``) resolves to the packaged copy.
+    The five shipped catalogs — AI, SSDF 1.2, FedRAMP 20x KSI, OSPS Baseline
+    and the default — otherwise had no CLI surface at all: `--catalog
+    catalog-ai.yaml` raised FileNotFoundError, and the only documented way in
+    was an `importlib.resources` incantation that breaks under pipx, Windows
+    and containers where the interpreter is `python3`. The filesystem is still
+    consulted first, so a local file of the same name always wins.
+    """
     candidate = Path(path).expanduser()
-    if not candidate.is_file():
-        raise FileNotFoundError(f"Control catalog not found at {candidate}")
-    return candidate
+    if candidate.is_file():
+        return candidate
+    name = candidate.name
+    if candidate == Path(name):
+        with contextlib.suppress(FileNotFoundError):
+            return bundled_catalog_path(name)
+    available = ", ".join(bundled_catalog_names())
+    raise FileNotFoundError(
+        f"Control catalog not found at {candidate}. Bundled catalogs available by name: {available}"
+    )
 
 
 def _parse_catalog(content: str, source: str) -> list[ControlDefinition]:

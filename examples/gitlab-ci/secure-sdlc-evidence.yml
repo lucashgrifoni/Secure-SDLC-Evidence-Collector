@@ -64,8 +64,7 @@
         args="$args --exceptions-dir $EXCEPTIONS_DIR";
       fi;
       if [ -n "$CATALOG" ]; then
-        catalog_path=$(python -c "from evidence_collector.controls.catalog import bundled_catalog_path; print(bundled_catalog_path('$CATALOG'))");
-        args="$args --catalog $catalog_path";
+        args="$args --catalog $CATALOG";
       fi;
       sdlc-evidence run $args
   artifacts:

@@ -129,3 +129,49 @@ def test_unrecognized_but_readable_artifact_stays_silent(tmp_path: Path) -> None
 
     assert report.evidence == []
     assert report.errors == []
+
+
+# ---------------------------------------------------------------------------
+# A path that is not a directory must be reported, not silently ignored (EVD-01)
+#
+# The guard was `not directory.exists()`, which a *file* passes. `Path.rglob`
+# over a file yields nothing, so the run produced zero evidence with no warning
+# whatsoever — a report claiming SAST/SCA/secrets evidence is missing while the
+# scanners actually ran. The realistic trigger is a shell glob:
+# `--artifacts-dir artifacts/*.sarif` expands to a file.
+# ---------------------------------------------------------------------------
+
+
+def test_file_passed_as_artifacts_dir_is_reported(tmp_path: Path) -> None:
+    artifact = tmp_path / "semgrep.sarif"
+    artifact.write_text(_sarif_bytes(), encoding="utf-8")
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifact]).collect()
+
+    assert report.evidence == []
+    assert len(report.errors) == 1
+    assert "not a directory" in report.errors[0].reason
+    assert report.errors[0].path == artifact
+
+
+def test_missing_directory_is_still_reported_distinctly(tmp_path: Path) -> None:
+    """The two failure modes must stay distinguishable to the reader."""
+    report = LocalArtifactCollector(
+        _release(), artifacts_dirs=[tmp_path / "does-not-exist"]
+    ).collect()
+
+    assert len(report.errors) == 1
+    assert report.errors[0].reason == "directory not found"
+
+
+def test_file_passed_as_attestations_or_exceptions_dir_is_reported(tmp_path: Path) -> None:
+    """All three directory inputs share the guard, not just artifacts."""
+    stray = tmp_path / "stray.yaml"
+    stray.write_text("kind: attestation\n", encoding="utf-8")
+
+    report = LocalArtifactCollector(
+        _release(), attestations_dirs=[stray], exceptions_dirs=[stray]
+    ).collect()
+
+    assert len(report.errors) == 2
+    assert all("not a directory" in e.reason for e in report.errors)
