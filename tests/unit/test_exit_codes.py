@@ -68,3 +68,34 @@ def test_natural_exit_codes() -> None:
     assert exit_code_for_status(ReleaseStatus.READY) == 0
     assert exit_code_for_status(ReleaseStatus.CONDITIONAL) == 1
     assert exit_code_for_status(ReleaseStatus.NOT_READY) == 2
+
+
+# ---------------------------------------------------------------------------
+# --fail-on rejects unknown values (UX-03)
+#
+# The flag was never validated: an unrecognized value silently fell back to the
+# natural exit code. The fallback is provably the strictest reading — a typo
+# can only produce a false red, never a false green — but it is still a typo
+# the user never hears about, on the flag that decides whether a pipeline
+# stops. Sibling flags (--risk-mode, --profile, --policy) already reject.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("value", ["banana", "", "not-ready", "notready", "READY!"])
+def test_validate_fail_on_rejects_unknown_values(value: str) -> None:
+    import typer
+
+    from evidence_collector.cli._exit_codes import validate_fail_on
+
+    with pytest.raises(typer.BadParameter) as excinfo:
+        validate_fail_on(value)
+    # The message must name the accepted values, not just complain.
+    for accepted in ("ready", "conditional", "not_ready"):
+        assert accepted in str(excinfo.value)
+
+
+@pytest.mark.parametrize("value", ["ready", "conditional", "not_ready", "NOT_READY"])
+def test_validate_fail_on_accepts_and_normalizes(value: str) -> None:
+    from evidence_collector.cli._exit_codes import validate_fail_on
+
+    assert validate_fail_on(value) == value.lower()

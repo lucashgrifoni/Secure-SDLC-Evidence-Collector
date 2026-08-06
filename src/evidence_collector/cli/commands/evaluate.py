@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from evidence_collector.application.orchestrator import BundleBuildResult, build_bundle
 from evidence_collector.cli._builders import build_application, build_release
-from evidence_collector.cli._exit_codes import fail_on_exit_code
+from evidence_collector.cli._exit_codes import fail_on_exit_code, validate_fail_on
 from evidence_collector.cli._render import render_summary
 from evidence_collector.cli._state import EVIDENCE_ADAPTER, console
 from evidence_collector.exporters import export_html, export_json, export_markdown
@@ -31,6 +31,7 @@ def evaluate(
     fail_on: str,
 ) -> None:
     """Reusable core for ``evaluate`` and the legacy ``bundle`` alias."""
+    fail_on = validate_fail_on(fail_on)
     try:
         data = json.loads(evidence_path.read_text(encoding="utf-8"))
         evidence = EVIDENCE_ADAPTER.validate_python(data)
@@ -67,14 +68,31 @@ def register(app: typer.Typer) -> None:
         ],
         application: Annotated[str, typer.Option(help="Application name")],
         repository: Annotated[str, typer.Option(help="Repository reference")],
-        release_id: Annotated[str, typer.Option("--release-id")],
-        commit_sha: Annotated[str, typer.Option("--commit-sha")],
-        output_dir: Annotated[Path, typer.Option("--output-dir")] = Path("output"),
+        release_id: Annotated[str, typer.Option("--release-id", help="Release identifier")],
+        commit_sha: Annotated[str, typer.Option("--commit-sha", help="Commit SHA for the release")],
+        output_dir: Annotated[
+            Path, typer.Option("--output-dir", help="Directory where bundle outputs are written")
+        ] = Path("output"),
         branch: Annotated[str, typer.Option(help="Branch name")] = "main",
-        environment: Annotated[str, typer.Option()] = "production",
-        owner_team: Annotated[str | None, typer.Option()] = None,
-        catalog_path: Annotated[Path | None, typer.Option("--catalog")] = None,
-        fail_on: Annotated[str, typer.Option("--fail-on")] = "not_ready",
+        environment: Annotated[
+            str, typer.Option(help="Target environment recorded in the bundle as stated fact")
+        ] = "production",
+        owner_team: Annotated[
+            str | None, typer.Option(help="Owning team recorded on the release context")
+        ] = None,
+        catalog_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--catalog", help="Control catalog: a path, or the bare name of a bundled catalog"
+            ),
+        ] = None,
+        fail_on: Annotated[
+            str,
+            typer.Option(
+                "--fail-on",
+                help="Exit non-zero when release_status reaches this severity: ready|conditional|not_ready",
+            ),
+        ] = "not_ready",
     ) -> None:
         """Evaluate an existing evidence list and produce the full bundle outputs."""
         evaluate(

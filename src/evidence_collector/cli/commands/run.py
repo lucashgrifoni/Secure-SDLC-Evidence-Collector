@@ -10,7 +10,7 @@ import typer
 from evidence_collector.application.orchestrator import run_pipeline
 from evidence_collector.application.profiles import ReleaseProfile
 from evidence_collector.cli._builders import build_application, build_release
-from evidence_collector.cli._exit_codes import fail_on_exit_code
+from evidence_collector.cli._exit_codes import fail_on_exit_code, validate_fail_on
 from evidence_collector.cli._render import render_collection_errors, render_summary
 from evidence_collector.collectors.github import GitHubCollector, GitHubCollectorConfig
 from evidence_collector.domain.models import NormalizedEvidence
@@ -37,10 +37,27 @@ def register(app: typer.Typer) -> None:
         branch: Annotated[str, typer.Option(help="Branch name")] = "main",
         environment: Annotated[str, typer.Option(help="Target environment")] = "production",
         owner_team: Annotated[str | None, typer.Option(help="Owner team")] = None,
-        pipeline_run_id: Annotated[str | None, typer.Option("--pipeline-run-id")] = None,
-        build_id: Annotated[str | None, typer.Option("--build-id")] = None,
-        artifact_digest: Annotated[str | None, typer.Option("--artifact-digest")] = None,
-        tag: Annotated[str | None, typer.Option("--tag")] = None,
+        pipeline_run_id: Annotated[
+            str | None,
+            typer.Option(
+                "--pipeline-run-id",
+                help="CI pipeline run identifier recorded on the release context",
+            ),
+        ] = None,
+        build_id: Annotated[
+            str | None,
+            typer.Option("--build-id", help="Build identifier recorded on the release context"),
+        ] = None,
+        artifact_digest: Annotated[
+            str | None,
+            typer.Option(
+                "--artifact-digest",
+                help="Digest of the artifact this release produces (e.g. sha256:...)",
+            ),
+        ] = None,
+        tag: Annotated[
+            str | None, typer.Option("--tag", help="Git tag for the release, when one exists")
+        ] = None,
         artifacts_dir: Annotated[
             list[Path] | None,
             typer.Option(
@@ -136,6 +153,7 @@ def register(app: typer.Typer) -> None:
         ] = "none",
     ) -> None:
         """Run the full pipeline: collect, evaluate, and export the bundle."""
+        fail_on = validate_fail_on(fail_on)
         if risk_mode not in {"off", "epss-weighted"}:
             raise typer.BadParameter(
                 f"--risk-mode must be 'off' or 'epss-weighted'; got '{risk_mode}'."
