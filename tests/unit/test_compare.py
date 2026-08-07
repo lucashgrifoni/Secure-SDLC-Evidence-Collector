@@ -25,14 +25,20 @@ from evidence_collector.domain.enums import (
     ControlCriticality,
     ControlEvaluationStatus,
     ControlFramework,
+    EvidenceStatus,
+    EvidenceType,
     ReleaseStatus,
+    SubjectType,
 )
 from evidence_collector.domain.models import (
     Application,
     ControlEvaluation,
     EvidenceBundle,
+    EvidenceSource,
+    NormalizedEvidence,
     ReleaseContext,
     Summary,
+    VulnerabilityIntelligence,
 )
 
 _NOW = datetime(2026, 5, 5, tzinfo=UTC)
@@ -357,3 +363,104 @@ def test_compare_rejects_an_unknown_format() -> None:
     result = CliRunner().invoke(app, ["compare", "a.json", "b.json", "--format", "xml"])
     assert result.exit_code != 0
     assert "table" in result.output and "json" in result.output
+
+
+# ---------------------------------------------------------------------------
+# EPSS model drift (B3)
+# ---------------------------------------------------------------------------
+
+
+def _sca_evidence(evidence_id: str, model_version: str | None) -> NormalizedEvidence:
+    intelligence = (
+        VulnerabilityIntelligence(epss_model_version=model_version)
+        if model_version is not None
+        else None
+    )
+    return NormalizedEvidence(
+        evidence_id=evidence_id,
+        evidence_type=EvidenceType.SCA_SCAN,
+        source=EvidenceSource(name="trivy", kind="sca"),
+        producer="trivy",
+        subject_type=SubjectType.ARTIFACT,
+        subject_ref="artifact",
+        status=EvidenceStatus.PASSED,
+        release_id="r",
+        commit_sha="0" * 16,
+        cve_ids=["CVE-2026-1"],
+        vulnerability_intelligence=intelligence,
+    )
+
+
+def _bundle_with_epss(bundle_id: str, model_versions: list[str | None]) -> EvidenceBundle:
+    bundle = _make_bundle(
+        bundle_id,
+        release_status=ReleaseStatus.READY,
+        coverage=90,
+        confidence=90,
+        evaluations=[],
+    )
+    bundle.evidence = [
+        _sca_evidence(f"{bundle_id}-{index}", version)
+        for index, version in enumerate(model_versions)
+    ]
+    return bundle
+
+
+def test_epss_model_drift_detected_between_versions() -> None:
+    comparison = compare_bundles(
+        _bundle_with_epss("before", ["v2026.01.04"]),
+        _bundle_with_epss("after", ["v2026.06.15"]),
+    )
+    assert comparison.epss_model_drift is True
+    assert comparison.before_epss_model_versions == ["v2026.01.04"]
+    assert comparison.after_epss_model_versions == ["v2026.06.15"]
+
+
+def test_no_drift_when_both_bundles_use_the_same_model() -> None:
+    comparison = compare_bundles(
+        _bundle_with_epss("before", ["v2026.06.15"]),
+        _bundle_with_epss("after", ["v2026.06.15"]),
+    )
+    assert comparison.epss_model_drift is False
+
+
+def test_no_drift_when_one_side_was_never_enriched() -> None:
+    # Absence of enrichment is a different problem from a model change,
+    # and reporting it as drift would cry wolf on every un-enriched diff.
+    comparison = compare_bundles(
+        _bundle_with_epss("before", [None]),
+        _bundle_with_epss("after", ["v2026.06.15"]),
+    )
+    assert comparison.epss_model_drift is False
+    assert comparison.before_epss_model_versions == []
+
+
+def test_no_drift_when_neither_side_was_enriched() -> None:
+    comparison = compare_bundles(
+        _bundle_with_epss("before", [None]),
+        _bundle_with_epss("after", [None]),
+    )
+    assert comparison.epss_model_drift is False
+
+
+def test_multiple_model_versions_within_one_bundle_are_all_reported() -> None:
+    # A bundle enriched in stages can legitimately carry more than one.
+    comparison = compare_bundles(
+        _bundle_with_epss("before", ["v2026.01.04", "v2026.06.15"]),
+        _bundle_with_epss("after", ["v2026.06.15"]),
+    )
+    assert comparison.before_epss_model_versions == ["v2026.01.04", "v2026.06.15"]
+    assert comparison.epss_model_drift is True
+
+
+def test_epss_block_is_in_the_json_contract() -> None:
+    comparison = compare_bundles(
+        _bundle_with_epss("before", ["v2026.01.04"]),
+        _bundle_with_epss("after", ["v2026.06.15"]),
+    )
+    payload = comparison.to_dict()
+    assert payload["epss"] == {
+        "before_model_versions": ["v2026.01.04"],
+        "after_model_versions": ["v2026.06.15"],
+        "model_drift": True,
+    }

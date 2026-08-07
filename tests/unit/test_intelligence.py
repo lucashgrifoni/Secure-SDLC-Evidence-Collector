@@ -250,3 +250,30 @@ def test_enrich_bundle_reports_aggregates(
     # Original bundle untouched
     assert bundle.evidence[0].vulnerability_intelligence is None
     assert enriched.evidence[0].vulnerability_intelligence is not None
+
+
+# ---------------------------------------------------------------------------
+# EPSS v5 (production 2026-06-15)
+# ---------------------------------------------------------------------------
+
+
+def test_load_epss_feed_reads_the_v5_model_version(tmp_path: Path) -> None:
+    """EPSS v5 ships the same CSV shape with a new model version stamp.
+
+    The header regex is generic, so this is a regression guard rather than
+    new behaviour: if anyone ever tightens it to a v4-shaped literal, the
+    feed silently loses its model version and the compare-time drift
+    warning stops firing — the one signal that says scores from two feeds
+    are not comparable.
+    """
+    body = (
+        "#model_version:v2026.06.15,score_date:2026-06-20T00:00:00+0000\n"
+        "cve,epss,percentile\n"
+        "CVE-2023-1111,0.88000,0.98000\n"
+    )
+    path = tmp_path / "epss-v5.csv"
+    path.write_text(body, encoding="utf-8")
+    feed = load_epss_feed(path)
+    assert feed.model_version == "v2026.06.15"
+    assert feed.feed_date == "2026-06-20"
+    assert feed.get("CVE-2023-1111") is not None

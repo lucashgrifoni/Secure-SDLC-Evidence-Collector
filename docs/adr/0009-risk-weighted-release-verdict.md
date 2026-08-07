@@ -57,7 +57,30 @@ the signal.
   evidence is its own gap — risk weighting cannot wave hand it away.
 - **Composable with `compare`.** `sdlc-evidence compare` can be used
   to diff two enriched bundles and reason about whether the verdict
-  drifted because of new CVEs or because the EPSS feed moved.
+  drifted because of new CVEs or because the EPSS feed moved. Since
+  2026-08-07 `compare` states this explicitly: when the two bundles
+  carry different `epss_model_version` values it reports EPSS model
+  drift, in the table output and under the `epss` key of the JSON
+  contract.
+
+### The default threshold was calibrated under EPSS v4
+
+EPSS **v5 went to production on 2026-06-15** (feed header
+`#model_version:v2026.06.15`). It is a re-fit of the model, not a
+re-scoring under the old one, so **scores and percentiles are not
+comparable across model versions**: a CVE can move without anything
+about the CVE, the dependency, or the release having changed.
+
+Two consequences for anyone operating this mode:
+
+- The `0.70` default for `--epss-percentile-threshold` was chosen
+  against v4 output. It is not automatically wrong under v5, but it is
+  not evidence-backed under v5 either — re-check it against your own
+  finding population before treating it as tuned.
+- A release-over-release comparison that straddles the v4→v5 boundary
+  cannot attribute score movement to posture. Re-enrich both bundles
+  under a single model before drawing a conclusion; `compare` now warns
+  when you have not.
 
 ## Alternatives considered
 
