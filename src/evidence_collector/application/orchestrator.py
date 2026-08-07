@@ -23,6 +23,7 @@ from evidence_collector.collectors.local import (
     LocalCollectionReport,
 )
 from evidence_collector.controls import default_catalog, evaluate_controls, load_catalog
+from evidence_collector.domain.enums import ReleaseStatus
 from evidence_collector.domain.models import (
     Application,
     CollectionError,
@@ -57,6 +58,46 @@ def _default_bundle_id(application: Application, release: ReleaseContext) -> str
     return f"bundle-{today}-{slug}-{release.release_id}-{uuid.uuid4().hex[:8]}"
 
 
+def _release_anchor_drift(
+    release: ReleaseContext, evidence: list[NormalizedEvidence]
+) -> list[CollectionError]:
+    """Report evidence anchored to a release other than the one being asserted.
+
+    Every normalizer stamps ``release_id`` and ``commit_sha`` on each record —
+    the domain calls them the anchor, and both fields are required. Nothing
+    ever read them back. ``evaluate`` therefore accepted an evidence file
+    collected for one commit and certified a completely different release with
+    it: verdict `ready`, exit 0, no warning, and `statement` then signed that
+    false binding into an in-toto predicate.
+
+    ``run`` was never exposed — it builds the collector and the bundle from the
+    same context object — but the two-step ``collect`` → ``evaluate`` split is
+    a documented, first-class CLI flow, so the check has to live in the tool.
+
+    Not a hard refusal: carrying part of an evidence set forward is a plausible
+    operator intent. It is recorded where it survives (bundle, report, HTML)
+    and the verdict is degraded, so the discrepancy cannot be missed.
+    """
+    expected = (release.release_id, release.commit_sha)
+    counts: dict[tuple[str, str], int] = {}
+    for record in evidence:
+        anchor = (record.release_id, record.commit_sha)
+        if anchor != expected:
+            counts[anchor] = counts.get(anchor, 0) + 1
+    return [
+        CollectionError(
+            path=f"evidence[{release_id}@{commit_sha}]",
+            reason=(
+                f"{count} evidence record(s) are anchored to release {release_id} / "
+                f"commit {commit_sha}, but this bundle asserts {release.release_id} / "
+                f"{release.commit_sha}. The verdict does not describe the release "
+                "named in the header."
+            ),
+        )
+        for (release_id, commit_sha), count in sorted(counts.items())
+    ]
+
+
 def build_bundle(
     application: Application,
     release: ReleaseContext,
@@ -80,6 +121,17 @@ def build_bundle(
     )
     summary = build_summary(controls, evaluations, gaps)
     summary = apply_risk_mode(summary, evidence, mode=risk_mode, thresholds=risk_thresholds)
+
+    errors = list(collection_errors or [])
+    drift = _release_anchor_drift(release, evidence)
+    if drift:
+        errors.extend(drift)
+        # A `ready` verdict backed by another commit's evidence is the actual
+        # harm, so the verdict is degraded as well as recorded. One-way only,
+        # mirroring apply_risk_mode: never a promotion.
+        if summary.release_status is ReleaseStatus.READY:
+            summary = summary.model_copy(update={"release_status": ReleaseStatus.CONDITIONAL})
+
     bundle = EvidenceBundle(
         bundle_id=_default_bundle_id(application, release),
         application=application,
@@ -88,7 +140,7 @@ def build_bundle(
         control_evaluations=evaluations,
         gaps=gaps,
         exceptions=exception_list,
-        collection_errors=collection_errors or [],
+        collection_errors=errors,
         summary=summary,
     )
     return bundle, controls
