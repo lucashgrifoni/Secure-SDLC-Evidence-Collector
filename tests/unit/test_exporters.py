@@ -25,6 +25,7 @@ from evidence_collector.domain.models import (
     Summary,
 )
 from evidence_collector.exporters import export_html, export_json, export_markdown
+from evidence_collector.exporters._jinja import md_escape
 
 
 def _build_bundle() -> EvidenceBundle:
@@ -154,3 +155,98 @@ def test_sample_fixtures_carry_real_urls() -> None:
         text = path.read_text(encoding="utf-8")
         for match in re.finditer(r'"(?:\$schema|informationUri)":\s*"([^"]+)"', text):
             assert match.group(1).startswith("https://"), f"{path}: {match.group(1)}"
+
+
+_XSS = '<script>alert("pwned")</script>'
+
+
+def _hostile_bundle() -> EvidenceBundle:
+    """A bundle whose strings all came from artifacts the tool did not write.
+
+    Every value replaced here has an untrusted origin in a real run: the
+    producer and summary come from a scanner, `subject_ref` from an SBOM
+    component or an image reference, `control_name`/`rationale` from a custom
+    catalog YAML, the application name from CLI input or CI variables.
+    """
+    bundle = _build_bundle()
+    evidence = bundle.evidence[0].model_copy(
+        update={
+            "producer": _XSS,
+            "subject_ref": "pkg:npm/evil|md",
+            "summary": "3 components\n\n## Verdict\n\n- **Release status:** `ready`",
+        }
+    )
+    evaluation = bundle.control_evaluations[0].model_copy(
+        update={
+            "control_name": _XSS,
+            "rationale": "met | forged\nsecond line",
+        }
+    )
+    return bundle.model_copy(
+        update={
+            "application": Application(name=_XSS, repository="acme/payments-api"),
+            "evidence": [evidence],
+            "control_evaluations": [evaluation],
+        }
+    )
+
+
+def test_html_summary_escapes_untrusted_strings(tmp_path: Path) -> None:
+    """`summary.html` must not execute what a scanner put in a package name.
+
+    `select_autoescape(["html", "xml"])` matches on the template name's
+    suffix, and every template here ends in `.j2` — so the HTML template was
+    rendered with escaping OFF and the `default=False` fallback applied.
+    Almost nothing in that page is written by this tool; a dependency named
+    `<img src=x onerror=...>` or a SARIF message carrying a `<script>` tag
+    reached the browser of whoever opened the release summary, and CI
+    publishes that file as a build artifact.
+    """
+    path = export_html(_hostile_bundle(), tmp_path / "summary.html")
+    content = path.read_text(encoding="utf-8")
+
+    assert "<script>alert" not in content
+    assert "&lt;script&gt;alert(&#34;pwned&#34;)&lt;/script&gt;" in content
+    # The value is still shown, just inert.
+    assert content.count("&lt;script&gt;") >= 2
+
+
+def test_markdown_report_cannot_be_restructured_by_untrusted_strings(
+    tmp_path: Path,
+) -> None:
+    """A value must land *in* the report, not rewrite it.
+
+    Markdown has no autoescape: an unescaped `|` closes a table cell and
+    shifts every later column, and a newline ends the row outright so whatever
+    follows is parsed as top-level Markdown. That is enough to forge a
+    `## Verdict` section reading `ready` inside a report whose real verdict is
+    `not_ready` — from a string the tool merely copied out of an SBOM.
+    """
+    path = export_markdown(_hostile_bundle(), tmp_path / "report.md")
+    content = path.read_text(encoding="utf-8")
+
+    # A heading is only a heading at the start of a line. The injected text
+    # survives verbatim — inline, inside the bullet it was written into — but
+    # the document still has exactly the one `## Verdict` this tool wrote.
+    lines = content.splitlines()
+    assert [line for line in lines if line.startswith("## Verdict")] == ["## Verdict"]
+    assert "## Verdict" in content
+    assert "second line" in content
+    assert "\nsecond line" not in content
+
+    # Pipes are escaped, so every table row keeps its own column count.
+    assert "pkg:npm/evil\\|md" in content
+    assert "pkg:npm/evil|md" not in content
+
+    rows = [line for line in content.splitlines() if line.startswith("| `ev-1`")]
+    assert rows, "the evidence inventory row should be present"
+    for row in rows:
+        assert row.count("|") - row.count("\\|") == 7
+
+
+def test_markdown_escape_filter_keeps_ordinary_values_untouched() -> None:
+    """Escaping must not corrupt the overwhelmingly common clean case."""
+    assert md_escape("payments-api") == "payments-api"
+    assert md_escape("pkg:npm/lodash@4.17.20") == "pkg:npm/lodash@4.17.20"
+    assert md_escape(None) == ""
+    assert md_escape(42) == "42"
