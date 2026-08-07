@@ -417,3 +417,81 @@ def test_walk_order_is_deterministic_across_nested_directories(tmp_path: Path) -
     walked = collector._walk_tree(artifacts_dir, mock.MagicMock(errors=[]))
 
     assert [p.parent.name for p in walked] == ["alpha", "middle", "zeta"]
+
+
+def test_the_same_artifact_supplied_twice_yields_one_evidence_record(
+    tmp_path: Path,
+) -> None:
+    """One artifact at two paths is one piece of evidence, not two.
+
+    ``evidence_id`` is a digest of the artifact's content hash plus its tool
+    and release context, so identical bytes at two paths produce the *same*
+    id. Two CI jobs each uploading the scanner's SARIF into their own folder
+    is enough to trigger it. The bundle then carried two records under one id
+    and ``evidence_refs`` no longer identified a single record — in a tool
+    whose product is the audit trail. A consumer writing the obvious
+    ``{e.evidence_id: e for e in bundle.evidence}`` silently kept the last.
+    """
+    artifacts_dir = tmp_path / "artifacts"
+    for job in ("job-a", "job-b"):
+        (artifacts_dir / job).mkdir(parents=True)
+        (artifacts_dir / job / "semgrep.sarif").write_text(_sarif_bytes(), encoding="utf-8")
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir]).collect()
+
+    assert len(report.evidence) == 1
+    assert len({e.evidence_id for e in report.evidence}) == 1
+    # The surviving record is the first in walk order, so the result is
+    # deterministic rather than dependent on filesystem iteration.
+    assert report.evidence[0].raw is not None
+    assert "job-a" in str(report.evidence[0].raw.artifact_path)
+    # A duplicate supply is not a failure; nothing is reported as an error.
+    assert report.errors == []
+
+
+def test_genuinely_different_records_sharing_an_id_are_reported_not_dropped(
+    tmp_path: Path,
+) -> None:
+    """A real id collision must surface: silently dropping it would lose evidence.
+
+    De-duplication is only safe while the two records describe the same thing.
+    If they differ in substance the shared id is a defect in id derivation, and
+    discarding one would delete real evidence — the exact failure this tool
+    exists to prevent. Both are kept so the bundle model rejects them loudly.
+    """
+    artifacts_dir = tmp_path / "artifacts"
+    artifacts_dir.mkdir()
+    (artifacts_dir / "a.sarif").write_text(_sarif_bytes(), encoding="utf-8")
+    (artifacts_dir / "b.sarif").write_text(_sarif_bytes(), encoding="utf-8")
+
+    collector = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir])
+    original = collector._ingest_artifact
+
+    def _ingest_and_diverge(file_path: Path, report: Any) -> None:
+        original(file_path, report)
+        if file_path.name == "b.sarif" and report.evidence:
+            report.evidence[-1] = report.evidence[-1].model_copy(
+                update={"producer": "a-different-tool"}
+            )
+
+    with mock.patch.object(collector, "_ingest_artifact", _ingest_and_diverge):
+        report = collector.collect()
+
+    assert len(report.evidence) == 2
+    assert len(report.errors) == 1
+    assert "was derived for two different records" in report.errors[0].reason
+
+
+def test_dedup_ignores_exactly_the_fields_the_structural_hash_calls_volatile() -> None:
+    """Keep the two volatile-field lists in step without importing upwards.
+
+    `collectors` sits below `application` in the layering, so the collector
+    restates the volatile evidence fields instead of importing them. Restating
+    invites drift: a field added to the structural-hash normaliser but not
+    here would make two reads of one artifact look like different evidence and
+    turn a duplicate supply back into a reported id collision.
+    """
+    from evidence_collector.application.integrity import VOLATILE_EVIDENCE
+    from evidence_collector.collectors.local import _VOLATILE_EVIDENCE_FIELDS
+
+    assert _VOLATILE_EVIDENCE_FIELDS == VOLATILE_EVIDENCE

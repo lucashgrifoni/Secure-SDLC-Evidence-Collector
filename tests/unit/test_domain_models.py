@@ -168,3 +168,53 @@ def test_control_definition_requires_some_evidence_type() -> None:
             description="missing evidence type",
             criticality=ControlCriticality.LOW,
         )
+
+
+def test_bundle_rejects_two_evidence_records_sharing_an_id(
+    sample_application: Application, sample_release: ReleaseContext
+) -> None:
+    """`evidence_id` must identify exactly one record, or refs are ambiguous.
+
+    The bundle already validated that every `evidence_refs` entry points at a
+    known id. That is half the guarantee: with two records under one id the
+    reference resolves to two things, and the tool's own consumers — anything
+    keying evidence by id — silently keep whichever came last.
+    """
+    evidence = NormalizedEvidence(
+        evidence_id="ev-1",
+        evidence_type=EvidenceType.SBOM,
+        source=EvidenceSource(name="cyclonedx", kind="sbom"),
+        producer="cyclonedx",
+        subject_type=SubjectType.ARTIFACT,
+        subject_ref="payments-api:2026.04.10",
+        status=EvidenceStatus.GENERATED,
+        confidence=ConfidenceLevel.HIGH,
+        release_id=sample_release.release_id,
+        commit_sha=sample_release.commit_sha,
+    )
+    twin = evidence.model_copy(update={"producer": "another-scanner"})
+    summary = Summary(
+        evidence_coverage_score=0,
+        confidence_score=0,
+        release_status=ReleaseStatus.NOT_READY,
+        total_controls=0,
+        controls_met=0,
+        controls_partial=0,
+        controls_missing=0,
+        controls_waived=0,
+        controls_not_applicable=0,
+    )
+
+    with pytest.raises(ValidationError) as excinfo:
+        EvidenceBundle(
+            bundle_id="bundle-x",
+            application=sample_application,
+            release=sample_release,
+            evidence=[evidence, twin],
+            control_evaluations=[],
+            summary=summary,
+        )
+
+    message = str(excinfo.value)
+    assert "Duplicate evidence ids" in message
+    assert "ev-1" in message

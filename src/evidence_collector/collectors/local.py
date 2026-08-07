@@ -74,6 +74,42 @@ class LocalCollectionError:
     reason: str
 
 
+# Fields that legitimately differ between two reads of one artifact, and so
+# must not make two records look like different evidence. `collected_at` is a
+# wall-clock stamp taken per record, so two reads differ by microseconds; the
+# structural-hash normaliser calls it volatile for the same reason. It is
+# restated here rather than imported because `collectors` sits below
+# `application` in the layering — `test_local_collector` pins the two together.
+_VOLATILE_EVIDENCE_FIELDS = {"collected_at"}
+_LOCATION_FIELDS_IN_RAW = {"artifact_path", "artifact_uri"}
+
+
+def _artifact_location(evidence: NormalizedEvidence) -> str:
+    """Best available description of where an evidence record was read from."""
+    raw = evidence.raw
+    if raw is None:
+        return evidence.evidence_id
+    return raw.artifact_path or raw.artifact_uri or evidence.evidence_id
+
+
+def _same_evidence_apart_from_path(first: NormalizedEvidence, second: NormalizedEvidence) -> bool:
+    """Whether two records are the same evidence read from two locations.
+
+    The comparison ignores exactly the fields that legitimately differ
+    between two copies of one artifact — where it was found — and nothing
+    else. Anything beyond that means the shared id is a real collision, not
+    a duplicate supply, and the caller must not discard either record.
+    """
+    ignore = {"raw"} | _VOLATILE_EVIDENCE_FIELDS
+    if first.model_dump(exclude=ignore) != second.model_dump(exclude=ignore):
+        return False
+    if first.raw is None or second.raw is None:
+        return first.raw is second.raw
+    return first.raw.model_dump(exclude=_LOCATION_FIELDS_IN_RAW) == second.raw.model_dump(
+        exclude=_LOCATION_FIELDS_IN_RAW
+    )
+
+
 @dataclass
 class LocalCollectionReport:
     evidence: list[NormalizedEvidence] = field(default_factory=list)
@@ -199,7 +235,61 @@ class LocalArtifactCollector:
         for file_path in self._walk_once(self._exceptions_dirs, report):
             report.inspected_files += 1
             self._ingest_exception(file_path, report)
+        report.evidence = self._deduplicate_evidence(report.evidence, report)
         return report
+
+    @staticmethod
+    def _deduplicate_evidence(
+        evidence: list[NormalizedEvidence], report: LocalCollectionReport
+    ) -> list[NormalizedEvidence]:
+        """Collapse records that describe the same evidence found twice.
+
+        ``evidence_id`` is a digest of the artifact's content hash plus its
+        tool and release context, so the *same bytes* supplied at two paths
+        produce the same id — two CI jobs uploading one scanner's SARIF into
+        their own folder is enough. Nothing rejected that: the bundle carried
+        two records under one id, and `evidence_refs` stopped identifying a
+        single record, in a tool whose entire product is traceability. A
+        consumer doing the obvious ``{e.evidence_id: e for e in evidence}``
+        silently kept whichever came last.
+
+        Two records sharing an id are the same evidence and differ only in
+        where it was read from, so the first (walk order is deterministic) is
+        kept and the duplicate path is recorded on it.
+
+        If they differ in substance, that is not a duplicate supply but a
+        genuine id collision — dropping one would lose real evidence, so it
+        is reported instead and both are kept for the model to reject.
+        """
+        kept: dict[str, NormalizedEvidence] = {}
+        order: list[str] = []
+        collisions: list[NormalizedEvidence] = []
+        for item in evidence:
+            first = kept.get(item.evidence_id)
+            if first is None:
+                kept[item.evidence_id] = item
+                order.append(item.evidence_id)
+                continue
+            if _same_evidence_apart_from_path(first, item):
+                logger.info(
+                    "Ignoring duplicate evidence %s: %s is the same artifact already "
+                    "ingested from %s",
+                    item.evidence_id,
+                    _artifact_location(item),
+                    _artifact_location(first),
+                )
+                continue
+            reason = (
+                f"evidence id {item.evidence_id} was derived for two different "
+                f"records ({_artifact_location(first)} and {_artifact_location(item)}); "
+                "the bundle cannot reference either one unambiguously"
+            )
+            logger.error("%s", reason)
+            report.errors.append(
+                LocalCollectionError(path=Path(_artifact_location(item)), reason=reason)
+            )
+            collisions.append(item)
+        return [kept[key] for key in order] + collisions
 
     def _ingest_exception(self, file_path: Path, report: LocalCollectionReport) -> None:
         suffix = file_path.suffix.lower()

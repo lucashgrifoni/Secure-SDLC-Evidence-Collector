@@ -532,6 +532,31 @@ class EvidenceBundle(_BaseModel):
     summary: Summary
 
     @model_validator(mode="after")
+    def _evidence_ids_are_unique(self) -> EvidenceBundle:
+        """An `evidence_id` must identify exactly one record.
+
+        The validator below already checks that every `evidence_refs` entry
+        points at a known id. That is only half the guarantee: if two records
+        share an id, the reference resolves to two things, and a consumer
+        doing the obvious `{e.evidence_id: e for e in bundle.evidence}` keeps
+        whichever came last without noticing. For a tool whose product is the
+        audit trail, an ambiguous reference is not a bundle worth signing.
+        """
+        seen: set[str] = set()
+        duplicates: list[str] = []
+        for item in self.evidence:
+            if item.evidence_id in seen and item.evidence_id not in duplicates:
+                duplicates.append(item.evidence_id)
+            seen.add(item.evidence_id)
+        if duplicates:
+            raise ValueError(
+                f"Duplicate evidence ids: {duplicates}. Each id must identify "
+                "exactly one evidence record, otherwise control evidence_refs "
+                "are ambiguous."
+            )
+        return self
+
+    @model_validator(mode="after")
     def _evaluations_reference_existing_evidence(self) -> EvidenceBundle:
         known_ids = {e.evidence_id for e in self.evidence}
         known_exception_ids = {e.exception_id for e in self.exceptions}

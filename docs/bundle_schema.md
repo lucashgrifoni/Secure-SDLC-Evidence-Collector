@@ -127,6 +127,8 @@ configuration, once the contract is registered there.
 
 ## Invariants enforced by the schema
 
+- `NormalizedEvidence.evidence_id` is unique across the bundle, so a
+  reference resolves to exactly one record,
 - every `ControlEvaluation.evidence_refs` entry must match an existing
   `NormalizedEvidence.evidence_id` in the bundle,
 - `Summary` control counters must sum to `total_controls`,
