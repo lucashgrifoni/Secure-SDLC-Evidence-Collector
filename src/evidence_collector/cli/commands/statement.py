@@ -22,6 +22,7 @@ from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
 from evidence_collector.exporters.intoto import (
+    PREDICATE_TYPE_NAMES,
     PredicateType,
     build_dsse_envelope,
     build_statement,
@@ -70,17 +71,18 @@ def register(app: typer.Typer) -> None:
                 help=(
                     "predicateType variant: 'evidence-bundle' (default, "
                     "project-native), 'witness' (Witness-compatible custom "
-                    "attestation), or 'slsa-provenance' "
-                    "(SLSA Provenance v1 URI)."
+                    "attestation), 'slsa-provenance' (SLSA Provenance v1 "
+                    "URI), or 'svr' (in-toto Simple Verification Result "
+                    "v0.2 — emits a verdict summary instead of the bundle)."
                 ),
             ),
         ] = "evidence-bundle",
     ) -> None:
         """Wrap BUNDLE_PATH as an in-toto Statement v1 JSON document."""
-        if predicate_type not in {"evidence-bundle", "witness", "slsa-provenance"}:
+        if predicate_type not in PREDICATE_TYPE_NAMES:
             message = (
                 f"Unknown --predicate-type '{predicate_type}'. Valid values: "
-                "evidence-bundle, witness, slsa-provenance."
+                f"{', '.join(PREDICATE_TYPE_NAMES)}."
             )
             if is_json_logs():
                 emit_event("statement_failed", bundle=str(bundle_path), reason=message)
