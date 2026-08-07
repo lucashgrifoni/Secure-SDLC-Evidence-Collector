@@ -27,6 +27,8 @@ from pathlib import Path
 
 import pytest
 
+from evidence_collector.domain.enums import EvidenceType
+
 _DOCS_INDEX = Path("docs/index.md")
 _README = Path("README.md")
 _HOOKS_MANIFEST = Path(".pre-commit-hooks.yaml")
@@ -78,3 +80,24 @@ def test_pre_commit_pin_points_at_a_tag_that_ships_the_manifest(path: Path) -> N
             "tag — `pre-commit` fails with InvalidManifestError before "
             "installing any hook."
         )
+
+
+def test_readme_lists_every_shipped_evidence_type() -> None:
+    """The README's enum block drifted six values behind the code.
+
+    It named 15 types while 21 shipped — the five AI types added in T6.5 and
+    `iac_scan` added with the native Trivy parser were all missing. A reader
+    building a pipeline against that list would conclude the collector cannot
+    represent an IaC finding, when it can and does.
+
+    The enum is the single source of truth. This test does not check prose, it
+    checks that every shipped value is reachable from the README, so the next
+    addition cannot land without the docs following.
+    """
+    readme = (Path(__file__).resolve().parents[2] / "README.md").read_text(encoding="utf-8")
+    missing = [
+        evidence_type.value
+        for evidence_type in EvidenceType
+        if f"`{evidence_type.value}`" not in readme
+    ]
+    assert not missing, f"README does not mention shipped evidence types: {missing}"

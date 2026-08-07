@@ -374,10 +374,17 @@ controls:
 
 ### Evidence types (enum)
 
-`sast_scan`, `sca_scan`, `secrets_scan`, `dast_scan`, `sbom`, `test_result`,
-`code_review`, `pr_metadata`, `workflow_run`, `threat_model`,
-`release_approval`, `rollback_plan`, `artifact_signature`,
+Core: `sast_scan`, `sca_scan`, `secrets_scan`, `dast_scan`, `iac_scan`,
+`sbom`, `test_result`, `code_review`, `pr_metadata`, `workflow_run`,
+`threat_model`, `release_approval`, `rollback_plan`, `artifact_signature`,
 `artifact_attestation`, `generic_attestation`.
+
+AI evidence: `model_card`, `prompt_injection_test_result`, `ai_safety_eval`,
+`mcp_tool_inventory`, `ai_training_data_lineage`.
+
+The authoritative list is `EvidenceType` in
+`src/evidence_collector/domain/enums.py`, mirrored in the published
+[`docs/evidence-bundle.schema.json`](./docs/evidence-bundle.schema.json).
 
 ---
 
