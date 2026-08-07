@@ -20,6 +20,13 @@ class EvidenceType(StrEnum):
     SCA_SCAN = "sca_scan"
     SECRETS_SCAN = "secrets_scan"
     DAST_SCAN = "dast_scan"
+    # Infrastructure-as-code / misconfiguration findings. Added when the
+    # native Trivy JSON parser landed: Trivy separates `config` results
+    # from code findings, and folding them into SAST_SCAN would have made
+    # a Terraform misconfiguration indistinguishable from a code
+    # vulnerability in the bundle. Additive to the enum — bundles produced
+    # by earlier versions stay valid.
+    IAC_SCAN = "iac_scan"
     SBOM = "sbom"
     TEST_RESULT = "test_result"
     CODE_REVIEW = "code_review"

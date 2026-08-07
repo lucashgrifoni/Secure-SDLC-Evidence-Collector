@@ -51,6 +51,7 @@ from evidence_collector.parsers.registry_attestation import ParsedRegistryAttest
 from evidence_collector.parsers.release_attestation import ParsedReleaseAttestation
 from evidence_collector.parsers.sarif import ParsedSarif
 from evidence_collector.parsers.sbom import ParsedSbom
+from evidence_collector.parsers.trivy_json import ParsedTrivyJson
 from evidence_collector.parsers.zap import ParsedZap
 
 _SAST_TOOLS: frozenset[str] = frozenset(
@@ -559,6 +560,93 @@ def normalize_release_attestation(
         ),
         metadata=metadata,
     )
+
+
+_TRIVY_KIND_SHAPE: dict[str, tuple[EvidenceType, str]] = {
+    "sca": (EvidenceType.SCA_SCAN, "sca"),
+    "secrets": (EvidenceType.SECRETS_SCAN, "secrets"),
+    "iac": (EvidenceType.IAC_SCAN, "iac"),
+}
+
+
+def normalize_trivy_json(
+    parsed: ParsedTrivyJson,
+    release: ReleaseContext,
+    *,
+    artifact_root: str | None = None,
+) -> list[NormalizedEvidence]:
+    """Build one evidence **per finding class** in a native Trivy report.
+
+    This is the only normalizer that returns a list. A single Trivy run
+    over a repository routinely produces dependency vulnerabilities,
+    secret hits and IaC misconfigurations at once; the SARIF route
+    collapses all of them into one evidence type, which makes a Terraform
+    misconfiguration indistinguishable from a code vulnerability. Keeping
+    them separate is the whole point of reading the native format.
+
+    Each evidence gets its own deterministic id — derived from the report
+    hash *and* the class — so re-running the same report is stable and the
+    three do not collide.
+
+    Status follows the convention the OSV normalizer set: FAILED when the
+    class carries a critical or high finding, PASSED otherwise. An empty
+    class produces no evidence at all rather than a vacuous PASSED, since
+    "Trivy found no secrets" and "Trivy was not asked about secrets" are
+    different claims and the report cannot tell them apart.
+    """
+    subject_ref = (
+        parsed.repo_digest or parsed.image_id or release.artifact_digest or release.release_id
+    )[:500]
+    evidences: list[NormalizedEvidence] = []
+    for group in parsed.groups:
+        if group.total == 0:
+            continue
+        evidence_type, source_kind = _TRIVY_KIND_SHAPE[group.kind]
+        blocking = group.findings_count.get("critical", 0) + group.findings_count.get("high", 0)
+        metadata: dict[str, Any] = {
+            "trivy_schema_version": parsed.schema_version,
+            "result_class": group.kind,
+        }
+        if parsed.artifact_name:
+            metadata["artifact_name"] = parsed.artifact_name
+        if parsed.artifact_type:
+            metadata["artifact_type"] = parsed.artifact_type
+        if group.targets:
+            metadata["targets"] = list(group.targets)
+        evidences.append(
+            NormalizedEvidence(
+                evidence_id=_new_evidence_id(
+                    "trivy", parsed.artifact.integrity_hash, group.kind, release.release_id
+                ),
+                evidence_type=evidence_type,
+                source=EvidenceSource(name="trivy", kind=source_kind),
+                producer="trivy",
+                subject_type=SubjectType.ARTIFACT,
+                subject_ref=subject_ref,
+                status=EvidenceStatus.FAILED if blocking > 0 else EvidenceStatus.PASSED,
+                confidence=ConfidenceLevel.HIGH,
+                classification=EvidenceClassification(
+                    confidence=ConfidenceLevel.HIGH,
+                    reason="driver_match",
+                    driver_name="trivy",
+                ),
+                release_id=release.release_id,
+                commit_sha=release.commit_sha,
+                generated_at=None,
+                raw=_raw_ref(parsed.artifact, artifact_root),
+                findings_count=dict(group.findings_count),
+                # Only the dependency lane carries CVE ids; secret rule ids
+                # and misconfiguration check ids are not CVEs and must not
+                # be fed to EPSS/KEV enrichment as if they were.
+                cve_ids=list(group.ids) if group.kind == "sca" else [],
+                summary=(
+                    f"trivy reported {group.total} {group.kind} finding(s) "
+                    f"across {len(group.targets)} target(s)"
+                ),
+                metadata=metadata,
+            )
+        )
+    return evidences
 
 
 def normalize_registry_attestation(
