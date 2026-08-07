@@ -64,6 +64,7 @@ from evidence_collector.parsers.registry_attestation import looks_like_registry_
 from evidence_collector.parsers.release_attestation import file_has_release_attestation
 from evidence_collector.parsers.sbom import is_spdx3
 from evidence_collector.parsers.trivy_json import looks_like_trivy_json
+from evidence_collector.paths import relative_to_root
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +137,23 @@ class LocalArtifactCollector:
         self._exceptions_dirs = exceptions_dirs or []
         self._artifact_root = str(artifact_root) if artifact_root else None
 
+    def _record_error(self, report: LocalCollectionReport, path: Path, reason: str) -> None:
+        """Record a failed input, with its path rewritten against the artifact root.
+
+        `--artifact-root` exists so a published bundle records repo-relative
+        paths "instead of leaking local filesystem locations". Collection
+        errors were exempt from that: `collection_errors[].path` carried the
+        absolute path, and so did `reason`, which embeds the path in the
+        parser's own message. So a run that set the flag precisely to avoid
+        publishing `/home/alice/clients/acme/...` published it anyway — in the
+        one part of the bundle nobody thinks to check, and only when something
+        had already gone wrong.
+        """
+        relative = relative_to_root(path, self._artifact_root)
+        if relative != path:
+            reason = reason.replace(str(path), str(relative))
+        report.errors.append(LocalCollectionError(path=relative, reason=reason))
+
     def _usable_directory(self, directory: Path, report: LocalCollectionReport) -> bool:
         """Return whether ``directory`` can be walked, recording why when it cannot.
 
@@ -148,15 +166,14 @@ class LocalArtifactCollector:
         finding is worse than an error, so the two cases are now distinct.
         """
         if not directory.exists():
-            report.errors.append(LocalCollectionError(path=directory, reason="directory not found"))
+            self._record_error(report, directory, "directory not found")
             return False
         if not directory.is_dir():
-            report.errors.append(
-                LocalCollectionError(
-                    path=directory,
-                    reason="not a directory (expected a folder; pass the containing folder, "
-                    "not a single file)",
-                )
+            self._record_error(
+                report,
+                directory,
+                "not a directory (expected a folder; pass the containing folder, "
+                "not a single file)",
             )
             return False
         return True
@@ -216,7 +233,7 @@ class LocalArtifactCollector:
             path = Path(exc.filename) if exc.filename else directory
             reason = f"Could not read directory {path}: {exc.strerror or exc}"
             logger.warning("%s", reason)
-            report.errors.append(LocalCollectionError(path=path, reason=reason))
+            self._record_error(report, path, reason)
 
         for root, dir_names, file_names in os.walk(directory, onerror=_on_error):
             dir_names.sort()
@@ -299,7 +316,7 @@ class LocalArtifactCollector:
             report.exceptions.append(parse_exception(file_path))
         except (ParseError, OSError) as exc:
             logger.warning("Failed to ingest exception %s: %s", file_path, exc)
-            report.errors.append(LocalCollectionError(path=file_path, reason=str(exc)))
+            self._record_error(report, file_path, str(exc))
 
     def _ingest_artifact(self, file_path: Path, report: LocalCollectionReport) -> None:
         suffix = file_path.suffix.lower()
@@ -458,7 +475,7 @@ class LocalArtifactCollector:
             encoding_error = _undecodable_text_reason(file_path)
             if encoding_error is not None:
                 logger.warning("Failed to ingest %s: %s", file_path, encoding_error)
-                report.errors.append(LocalCollectionError(path=file_path, reason=encoding_error))
+                self._record_error(report, file_path, encoding_error)
                 return
             # A .json/.jsonl file that is not valid JSON is a THIRD case: not
             # an unknown format, not an unreadable byte stream, but a file the
@@ -472,12 +489,12 @@ class LocalArtifactCollector:
             json_error = _malformed_json_reason(file_path)
             if json_error is not None:
                 logger.warning("Failed to ingest %s: %s", file_path, json_error)
-                report.errors.append(LocalCollectionError(path=file_path, reason=json_error))
+                self._record_error(report, file_path, json_error)
                 return
             logger.debug("Ignoring unrecognized artifact: %s", file_path)
         except (ParseError, OSError) as exc:
             logger.warning("Failed to ingest %s: %s", file_path, exc)
-            report.errors.append(LocalCollectionError(path=file_path, reason=str(exc)))
+            self._record_error(report, file_path, str(exc))
 
     def _ingest_attestation(self, file_path: Path, report: LocalCollectionReport) -> None:
         suffix = file_path.suffix.lower()
@@ -490,7 +507,7 @@ class LocalArtifactCollector:
             )
         except (ParseError, OSError) as exc:
             logger.warning("Failed to ingest attestation %s: %s", file_path, exc)
-            report.errors.append(LocalCollectionError(path=file_path, reason=str(exc)))
+            self._record_error(report, file_path, str(exc))
 
 
 def _looks_like_sarif(path: Path) -> bool:

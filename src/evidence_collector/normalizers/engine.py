@@ -53,6 +53,7 @@ from evidence_collector.parsers.sarif import ParsedSarif
 from evidence_collector.parsers.sbom import ParsedSbom
 from evidence_collector.parsers.trivy_json import ParsedTrivyJson
 from evidence_collector.parsers.zap import ParsedZap
+from evidence_collector.paths import relative_to_root
 
 _SAST_TOOLS: frozenset[str] = frozenset(
     {
@@ -105,14 +106,8 @@ def _new_evidence_id(prefix: str, *parts: str) -> str:
 
 
 def _raw_ref(artifact: ParsedArtifact, root: str | None = None) -> RawEvidenceRef:
-    artifact_path = str(artifact.path)
-    if root is not None:
-        try:
-            artifact_path = str(artifact.path.relative_to(root))
-        except ValueError:
-            artifact_path = str(artifact.path)
     return RawEvidenceRef(
-        artifact_path=artifact_path,
+        artifact_path=str(relative_to_root(artifact.path, root)),
         integrity_hash=artifact.integrity_hash,
         content_type=artifact.content_type,
         size_bytes=artifact.size_bytes,
