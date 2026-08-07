@@ -48,7 +48,7 @@ from evidence_collector.parsers import (
     parse_provenances,
     parse_registry_attestation,
     parse_release_attestations,
-    parse_sarif,
+    parse_sarifs,
     parse_sbom,
     parse_trivy_json,
     parse_vsa,
@@ -185,9 +185,18 @@ class LocalArtifactCollector:
         suffix = file_path.suffix.lower()
         try:
             if suffix in {".sarif", ".sarif.json"} or _looks_like_sarif(file_path):
-                parsed = parse_sarif(file_path)
-                evidence = normalize_sarif(parsed, self._release, artifact_root=self._artifact_root)
-                report.evidence.append(evidence)
+                # One evidence per SARIF ``runs[]`` entry. A merged file — what
+                # `trivy fs --format sarif` and most aggregators emit — carries
+                # one run per tool, each with its own `tool.driver.name`, which
+                # is exactly what the classifier reads. Taking only runs[0]
+                # made every later run vanish: a semgrep+gitleaks+trivy file
+                # produced a single `sast_scan`, and the release reported the
+                # secrets and SCA controls as missing critical evidence while
+                # both scans had in fact been supplied.
+                for parsed in parse_sarifs(file_path):
+                    report.evidence.append(
+                        normalize_sarif(parsed, self._release, artifact_root=self._artifact_root)
+                    )
                 return
             # Native Trivy JSON. Checked early because it is the only
             # artifact that yields SEVERAL evidences from one file: Trivy

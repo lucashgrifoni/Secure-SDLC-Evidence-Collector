@@ -229,7 +229,15 @@ def normalize_sarif(
     )
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
-            prefix, parsed.tool_name, parsed.artifact.integrity_hash, release.commit_sha
+            prefix,
+            parsed.tool_name,
+            parsed.artifact.integrity_hash,
+            release.commit_sha,
+            # Only from the second run onward, so a single-run SARIF — every
+            # fixture and the overwhelming majority of real files — keeps the
+            # id it had before merged files were split per run, and the
+            # determinism snapshots do not move.
+            *([str(parsed.run_index)] if parsed.run_index else []),
         ),
         evidence_type=evidence_type,
         source=EvidenceSource(name=parsed.tool_name, kind="sarif", version=parsed.tool_version),

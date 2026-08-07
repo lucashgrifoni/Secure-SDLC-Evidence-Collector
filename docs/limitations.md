@@ -21,14 +21,16 @@ SARIF is a format, not a taxonomy. A single SARIF file may contain
 multiple `runs` from different tools with overlapping intent (Trivy
 exports vuln + secret + misconfig in one file; Snyk exports SAST + SCA
 separately; Sonar exports a mix). The collector classifies each `run`
-into exactly one `evidence_type` based on the driver name.
+into exactly one `evidence_type` based on that run's own driver name,
+and emits **one evidence record per run**.
 
-- **False-positive risk**: a Trivy SARIF with a vuln run and a secret
-  run in the same file is classified as `sca_scan`; the secret run is
-  counted under SCA rather than under `secrets_scan`. Mitigation:
-  export Trivy's secret scan into a separate file (`trivy fs --scanners
-  secret --format sarif --output trivy-secrets.sarif`) or provide the
-  output of a dedicated secrets tool (Gitleaks/TruffleHog).
+- Until 3.x only `runs[0]` set the record's identity while the findings
+  of every run were aggregated into it, so a merged
+  semgrep+gitleaks+trivy file produced a single `sast_scan` and the
+  release reported the secrets and SCA controls as *missing critical
+  evidence* — with both scans supplied. Splitting per run removed that;
+  exporting each scanner to its own file is no longer necessary, though
+  it remains perfectly valid.
 - **False-negative risk**: an unknown driver defaults to `sast_scan`.
   If the driver was actually a DAST tool, the `sast_scan` control is
   credited while `dast_scan` remains missing.
