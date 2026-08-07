@@ -22,7 +22,7 @@ from evidence_collector.collectors.local import LocalArtifactCollector
 from evidence_collector.domain.enums import EvidenceStatus, EvidenceType
 from evidence_collector.domain.models import ReleaseContext
 from evidence_collector.normalizers import normalize_release_attestation
-from evidence_collector.parsers import parse_release_attestation
+from evidence_collector.parsers import parse_release_attestation, parse_release_attestations
 from evidence_collector.parsers._common import ParseError
 
 _RELEASE_V01 = "https://in-toto.io/attestation/release/v0.1"
@@ -351,3 +351,75 @@ def test_collector_still_ingests_provenance(tmp_path: Path) -> None:
     assert len(evidence) == 1
     assert evidence[0].source.kind == "slsa-provenance"
     assert not report.errors
+
+
+# ---------------------------------------------------------------------------
+# Multi-record release JSONL
+# ---------------------------------------------------------------------------
+
+
+def _release_jsonl(directory: Path, statements: list[dict[str, Any]], name: str) -> Path:
+    return _write(
+        directory,
+        "\n".join(json.dumps(_bundle(s)) for s in statements),
+        name=name,
+    )
+
+
+def _release_statement(purl: str, asset: str) -> dict[str, Any]:
+    payload = _statement(_RELEASE_V02)
+    payload["predicate"]["purl"] = purl
+    payload["subject"] = [{"name": asset, "digest": {"sha256": "cafe"}}]
+    return payload
+
+
+def test_jsonl_with_two_release_attestations_yields_both(tmp_path: Path) -> None:
+    # A real release publishes an attestation per artifact — an sdist and a
+    # wheel, or several npm packages. Keeping only the first loses the rest.
+    path = _release_jsonl(
+        tmp_path,
+        [
+            _release_statement("pkg:pypi/demo@1.0.0", "demo-1.0.0.tar.gz"),
+            _release_statement("pkg:npm/demo@1.0.0", "demo-1.0.0.tgz"),
+        ],
+        "releases.jsonl",
+    )
+    parsed = parse_release_attestations(path)
+    assert [p.purl for p in parsed] == ["pkg:pypi/demo@1.0.0", "pkg:npm/demo@1.0.0"]
+
+
+def test_record_without_purl_is_skipped_but_valid_ones_survive(tmp_path: Path) -> None:
+    # One malformed attestation must not take the valid ones down with it.
+    broken = _release_statement("pkg:pypi/broken@1.0.0", "broken.tar.gz")
+    del broken["predicate"]["purl"]
+    path = _release_jsonl(
+        tmp_path,
+        [broken, _release_statement("pkg:pypi/good@1.0.0", "good.tar.gz")],
+        "mixed.jsonl",
+    )
+    parsed = parse_release_attestations(path)
+    assert [p.purl for p in parsed] == ["pkg:pypi/good@1.0.0"]
+
+
+def test_all_records_missing_purl_still_raises(tmp_path: Path) -> None:
+    broken = _release_statement("pkg:pypi/broken@1.0.0", "broken.tar.gz")
+    del broken["predicate"]["purl"]
+    path = _release_jsonl(tmp_path, [broken, broken], "allbroken.jsonl")
+    with pytest.raises(ParseError, match="purl"):
+        parse_release_attestations(path)
+
+
+def test_collector_ingests_every_release_attestation(tmp_path: Path) -> None:
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    _release_jsonl(
+        artifacts,
+        [
+            _release_statement("pkg:pypi/demo@1.0.0", "demo-1.0.0.tar.gz"),
+            _release_statement("pkg:npm/demo@1.0.0", "demo-1.0.0.tgz"),
+        ],
+        "releases.jsonl",
+    )
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
+    purls = sorted(e.metadata["purl"] for e in report.evidence)
+    assert purls == ["pkg:npm/demo@1.0.0", "pkg:pypi/demo@1.0.0"]

@@ -36,7 +36,7 @@ from evidence_collector.parsers._common import (
 )
 from evidence_collector.parsers._intoto import (
     file_has_statement,
-    find_statement,
+    find_statements,
     first_subject_name,
     iter_record_dicts,
 )
@@ -124,7 +124,17 @@ def _source_repository(predicate: dict[str, Any]) -> str | None:
     return None
 
 
-def parse_provenance(path: str | Path) -> ParsedProvenance:
+def parse_provenances(path: str | Path) -> list[ParsedProvenance]:
+    """Return one parsed record per SLSA provenance in ``path``.
+
+    Ingestion entry point. A `gh attestation download` JSONL routinely holds
+    one provenance per published artifact; taking only the first dropped the
+    rest with no warning.
+
+    A record missing the required ``builder.id`` or ``buildType`` is skipped
+    rather than aborting the file, so one anonymous provenance cannot take
+    the valid ones down with it. If every record is unusable the file raises.
+    """
     resolved = ensure_file(path)
     try:
         text = resolved.read_text(encoding="utf-8")
@@ -134,37 +144,51 @@ def parse_provenance(path: str | Path) -> ParsedProvenance:
     if not records:
         raise ParseError(f"File {resolved} is not a JSON object or a JSONL of objects.")
 
-    found = find_statement(records, _is_provenance_predicate)
-    if found is None:
+    found = find_statements(records, _is_provenance_predicate)
+    if not found:
         raise ParseError(
             f"File {resolved} contains no SLSA provenance (a predicateType under "
             f"'{SLSA_PROVENANCE_PREFIX}') across {len(records)} record(s)."
         )
-    record, statement, envelope = found
-    predicate_type = statement["predicateType"]
-
-    predicate = statement.get("predicate")
-    if not isinstance(predicate, dict):
-        raise ParseError(f"Provenance {resolved} is missing a 'predicate' object.")
-
-    # Required so an anonymous / shapeless provenance cannot satisfy a control.
-    builder_id = _builder_id(predicate)
-    if builder_id is None:
-        raise ParseError(f"Provenance {resolved} is missing required field 'builder.id'.")
-
-    build_type = _build_type(predicate)
-    if build_type is None:
-        raise ParseError(f"Provenance {resolved} is missing required field 'buildType'.")
 
     artifact = describe(resolved, content_type="application/json")
-    return ParsedProvenance(
-        artifact=artifact,
-        predicate_type=predicate_type,
-        builder_id=builder_id,
-        build_type=build_type,
-        envelope=envelope,
-        subject_name=first_subject_name(statement),
-        invocation_id=_invocation_id(predicate),
-        source_repository=_source_repository(predicate),
-        raw=record,
-    )
+    parsed: list[ParsedProvenance] = []
+    for record, statement, envelope in found:
+        predicate = statement.get("predicate")
+        if not isinstance(predicate, dict):
+            continue
+        # Required so an anonymous / shapeless provenance cannot satisfy a
+        # control.
+        builder_id = _builder_id(predicate)
+        build_type = _build_type(predicate)
+        if builder_id is None or build_type is None:
+            continue
+        parsed.append(
+            ParsedProvenance(
+                artifact=artifact,
+                predicate_type=statement["predicateType"],
+                builder_id=builder_id,
+                build_type=build_type,
+                envelope=envelope,
+                subject_name=first_subject_name(statement),
+                invocation_id=_invocation_id(predicate),
+                source_repository=_source_repository(predicate),
+                raw=record,
+            )
+        )
+
+    if not parsed:
+        raise ParseError(
+            f"Provenance {resolved} is missing required field 'builder.id' or "
+            f"'buildType' in all {len(found)} record(s)."
+        )
+    return parsed
+
+
+def parse_provenance(path: str | Path) -> ParsedProvenance:
+    """Return the first SLSA provenance in ``path``.
+
+    Convenience wrapper for single-provenance callers and tests; the
+    collector uses :func:`parse_provenances`.
+    """
+    return parse_provenances(path)[0]

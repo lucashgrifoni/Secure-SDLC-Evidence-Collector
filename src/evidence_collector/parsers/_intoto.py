@@ -106,25 +106,44 @@ def iter_record_dicts(text: str) -> list[dict[str, Any]]:
     return records
 
 
-def find_statement(
+def find_statements(
     records: list[dict[str, Any]],
     matches: PredicateMatcher,
-) -> tuple[dict[str, Any], dict[str, Any], str] | None:
-    """Return ``(record, statement, envelope)`` for the first record whose
+) -> list[tuple[dict[str, Any], dict[str, Any], str]]:
+    """Return ``(record, statement, envelope)`` for **every** record whose
     unwrapped Statement carries a ``predicateType`` accepted by ``matches``.
 
-    Scanning every record — rather than only the first — is what lets a
-    ``gh attestation download`` JSONL holding several predicates yield the one
-    the caller wants instead of whichever happens to appear first in the file.
+    A JSONL is the multi-attestation format: ``gh attestation download``
+    writes one bundle per line and fetches up to 30 by default. Returning
+    only the first match made every attestation after it disappear with no
+    warning — and because the generic ingestor's matcher accepts every
+    predicate no dedicated parser claims, an SVR, a failing test-result and
+    an unknown predicate in one file all collapsed into a single "family"
+    where exactly one survived.
     """
+    found: list[tuple[dict[str, Any], dict[str, Any], str]] = []
     for record in records:
         statement, envelope = unwrap(record)
         if statement is None:
             continue
         predicate_type = statement.get("predicateType")
         if isinstance(predicate_type, str) and matches(predicate_type):
-            return record, statement, envelope
-    return None
+            found.append((record, statement, envelope))
+    return found
+
+
+def find_statement(
+    records: list[dict[str, Any]],
+    matches: PredicateMatcher,
+) -> tuple[dict[str, Any], dict[str, Any], str] | None:
+    """Return the first matching ``(record, statement, envelope)``, or None.
+
+    Kept for detection, where "is there at least one?" is the whole
+    question. Ingestion must use :func:`find_statements` — taking only the
+    first is how multi-attestation files silently lost records.
+    """
+    found = find_statements(records, matches)
+    return found[0] if found else None
 
 
 # One-slot memo keyed on (path, mtime, size), mirroring the collector's JSON

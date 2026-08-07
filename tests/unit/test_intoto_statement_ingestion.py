@@ -21,7 +21,7 @@ from evidence_collector.collectors.local import LocalArtifactCollector
 from evidence_collector.domain.enums import EvidenceStatus, EvidenceType
 from evidence_collector.domain.models import ReleaseContext
 from evidence_collector.normalizers import normalize_intoto_statement
-from evidence_collector.parsers import parse_intoto_statement
+from evidence_collector.parsers import parse_intoto_statement, parse_intoto_statements
 from evidence_collector.parsers._common import ParseError
 
 _SVR = "https://in-toto.io/attestation/svr/v0.2"
@@ -310,3 +310,86 @@ def test_collector_ingests_provenance_and_unknown_from_one_jsonl(tmp_path: Path)
     report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
     kinds = sorted(e.source.kind for e in report.evidence)
     assert kinds == ["in-toto-statement", "slsa-provenance"]
+
+
+# ---------------------------------------------------------------------------
+# Multi-record files: every Statement is ingested, not just the first
+# ---------------------------------------------------------------------------
+#
+# A JSONL is the multi-attestation format. Returning only the first match made
+# every attestation after it vanish with exit 0 and no warning — and because
+# this module's matcher accepts every predicate no dedicated parser claims,
+# an SVR, a failing test-result and an unknown predicate collapsed into one
+# "family" where exactly one survived.
+
+
+def _jsonl(directory: Path, statements: list[dict[str, Any]], name: str) -> Path:
+    return _write(
+        directory,
+        "\n".join(json.dumps(_dsse(s)) for s in statements),
+        name=name,
+    )
+
+
+def test_jsonl_with_three_predicates_yields_three_records(tmp_path: Path) -> None:
+    path = _jsonl(
+        tmp_path,
+        [_svr_payload(), _test_result_payload("FAILED"), _statement(_UNKNOWN, {"x": 1})],
+        "attestations.jsonl",
+    )
+    parsed = parse_intoto_statements(path)
+    assert [p.predicate_type for p in parsed] == [_SVR, _TEST_RESULT, _UNKNOWN]
+
+
+def test_jsonl_with_two_statements_of_the_same_predicate_yields_both(tmp_path: Path) -> None:
+    path = _jsonl(tmp_path, [_vulns_payload("low"), _vulns_payload("critical")], "vulns.jsonl")
+    parsed = parse_intoto_statements(path)
+    assert len(parsed) == 2
+    assert [p.findings_count.get("low", 0) for p in parsed] == [1, 0]
+    assert [p.findings_count.get("critical", 0) for p in parsed] == [0, 1]
+
+
+def test_collector_ingests_every_statement_in_a_jsonl(tmp_path: Path) -> None:
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    _jsonl(
+        artifacts,
+        [_svr_payload(), _test_result_payload("FAILED"), _statement(_UNKNOWN, {"x": 1})],
+        "attestations.jsonl",
+    )
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
+    assert len(report.evidence) == 3
+    assert sorted(e.evidence_type for e in report.evidence) == sorted(
+        [
+            EvidenceType.ARTIFACT_ATTESTATION,
+            EvidenceType.TEST_RESULT,
+            EvidenceType.GENERIC_ATTESTATION,
+        ]
+    )
+    # The FAILED test-result must survive — losing it is losing a red signal.
+    test_evidence = next(e for e in report.evidence if e.evidence_type == EvidenceType.TEST_RESULT)
+    assert test_evidence.status == EvidenceStatus.FAILED
+    assert not report.errors
+
+
+def test_warning_fires_once_per_unrecognized_statement_not_only_the_survivor(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    other = "https://example.com/attestation/second-unknown/v1"
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    _jsonl(
+        artifacts,
+        [_statement(_UNKNOWN, {"a": 1}), _statement(other, {"b": 2})],
+        "unknowns.jsonl",
+    )
+    with caplog.at_level(logging.WARNING):
+        report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
+    assert len(report.evidence) == 2
+    assert _UNKNOWN in caplog.text
+    assert other in caplog.text
+
+
+def test_single_statement_file_still_yields_exactly_one(tmp_path: Path) -> None:
+    parsed = parse_intoto_statements(_write(tmp_path, _svr_payload()))
+    assert len(parsed) == 1

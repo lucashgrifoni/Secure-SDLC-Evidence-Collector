@@ -40,14 +40,14 @@ from evidence_collector.parsers import (
     parse_attestation,
     parse_exception,
     parse_garak,
-    parse_intoto_statement,
+    parse_intoto_statements,
     parse_junit,
     parse_lm_eval,
     parse_model_card,
     parse_osv,
-    parse_provenance,
+    parse_provenances,
     parse_registry_attestation,
-    parse_release_attestation,
+    parse_release_attestations,
     parse_sarif,
     parse_sbom,
     parse_trivy_json,
@@ -208,20 +208,20 @@ class LocalArtifactCollector:
             # returning on the first match would silently drop the other.
             intoto_found = False
             if _looks_like_provenance(file_path):
-                parsed_prov = parse_provenance(file_path)
-                report.evidence.append(
-                    normalize_provenance(
-                        parsed_prov, self._release, artifact_root=self._artifact_root
+                for parsed_prov in parse_provenances(file_path):
+                    report.evidence.append(
+                        normalize_provenance(
+                            parsed_prov, self._release, artifact_root=self._artifact_root
+                        )
                     )
-                )
                 intoto_found = True
             if _looks_like_release_attestation(file_path):
-                parsed_rel = parse_release_attestation(file_path)
-                report.evidence.append(
-                    normalize_release_attestation(
-                        parsed_rel, self._release, artifact_root=self._artifact_root
+                for parsed_rel in parse_release_attestations(file_path):
+                    report.evidence.append(
+                        normalize_release_attestation(
+                            parsed_rel, self._release, artifact_root=self._artifact_root
+                        )
                     )
-                )
                 intoto_found = True
             # Anything else that is still a valid in-toto Statement. Known
             # predicates (SVR, test-result, vulns) map to a real evidence
@@ -230,18 +230,19 @@ class LocalArtifactCollector:
             # dropped silently — the user got a bundle with no trace of a
             # file they believed they had supplied.
             if _looks_like_intoto_statement(file_path):
-                parsed_stmt = parse_intoto_statement(file_path)
-                if not parsed_stmt.recognized:
-                    logger.warning(
-                        "Ingesting %s as a generic attestation: unrecognized in-toto predicate %s",
-                        file_path,
-                        parsed_stmt.predicate_type,
+                for parsed_stmt in parse_intoto_statements(file_path):
+                    if not parsed_stmt.recognized:
+                        logger.warning(
+                            "Ingesting %s as a generic attestation: unrecognized in-toto "
+                            "predicate %s",
+                            file_path,
+                            parsed_stmt.predicate_type,
+                        )
+                    report.evidence.append(
+                        normalize_intoto_statement(
+                            parsed_stmt, self._release, artifact_root=self._artifact_root
+                        )
                     )
-                report.evidence.append(
-                    normalize_intoto_statement(
-                        parsed_stmt, self._release, artifact_root=self._artifact_root
-                    )
-                )
                 intoto_found = True
             if intoto_found:
                 return
