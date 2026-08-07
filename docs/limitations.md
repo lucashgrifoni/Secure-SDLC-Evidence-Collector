@@ -149,6 +149,27 @@ The collector checks **presence**, not correctness.
   in the dedicated VSA parser, which reads raw Statements only. The
   evidence survives, but with less detail than an unwrapped VSA.
 
+## 7c · Package-registry attestations
+
+- PyPI (PEP 740) and npm attestations are read **from a file you saved**.
+  The collector never calls a registry: no network access, no tokens, and
+  the same workflow you already use for `gh attestation download`.
+- What is recorded is the *envelope of publication* — which registry,
+  which `publisher.kind`, and the predicate types the bundle carries. The
+  embedded predicates are **not** each turned into separate evidence, so
+  a SLSA provenance inside a PyPI provenance object does not currently
+  satisfy build-provenance controls on its own. Save the provenance
+  attestation separately if you need that.
+- `publisher.kind` is recorded as the open string PEP 740 defines it to
+  be, never mapped to a closed set.
+- Only the *names* of `publisher.claims` are kept, not their values:
+  claim values are publisher-specific and can carry repository, ref and
+  workflow detail that should not land in a shareable bundle by default.
+- When npm's declared `predicateType` disagrees with the Statement inside
+  the signed DSSE payload, the **payload wins**. The declared field sits
+  outside the signature, so trusting it would let unsigned registry
+  metadata relabel an attestation.
+
 ## 8 · Determinism boundaries
 
 - Bundle JSON is deterministic for a fixed set of inputs **after

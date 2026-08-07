@@ -28,6 +28,7 @@ from evidence_collector.normalizers import (
     normalize_model_card,
     normalize_osv,
     normalize_provenance,
+    normalize_registry_attestation,
     normalize_release_attestation,
     normalize_sarif,
     normalize_sbom,
@@ -44,6 +45,7 @@ from evidence_collector.parsers import (
     parse_model_card,
     parse_osv,
     parse_provenance,
+    parse_registry_attestation,
     parse_release_attestation,
     parse_sarif,
     parse_sbom,
@@ -54,6 +56,7 @@ from evidence_collector.parsers._common import MAX_INPUT_BYTES, ParseError
 from evidence_collector.parsers.intoto_provenance import file_has_provenance
 from evidence_collector.parsers.intoto_statement import file_has_ingestable_statement
 from evidence_collector.parsers.intoto_vsa import VSA_PREDICATE_TYPE
+from evidence_collector.parsers.registry_attestation import looks_like_registry_attestation
 from evidence_collector.parsers.release_attestation import file_has_release_attestation
 from evidence_collector.parsers.sbom import is_spdx3
 
@@ -165,6 +168,18 @@ class LocalArtifactCollector:
                 parsed_vsa = parse_vsa(file_path)
                 report.evidence.append(
                     normalize_vsa(parsed_vsa, self._release, artifact_root=self._artifact_root)
+                )
+                return
+            # Package-registry attestations (PyPI PEP 740, npm). These are
+            # not in-toto Statements at the top level — they are registry
+            # envelopes *around* Statements — so they get their own route
+            # ahead of the in-toto block rather than competing with it.
+            if _looks_like_registry_attestation(file_path):
+                parsed_reg = parse_registry_attestation(file_path)
+                report.evidence.append(
+                    normalize_registry_attestation(
+                        parsed_reg, self._release, artifact_root=self._artifact_root
+                    )
                 )
                 return
             # in-toto attestations beyond the VSA: SLSA build provenance
@@ -337,6 +352,15 @@ def _looks_like_provenance(path: Path) -> bool:
     if path.suffix.lower() not in {".json", ".jsonl"}:
         return False
     return file_has_provenance(path)
+
+
+def _looks_like_registry_attestation(path: Path) -> bool:
+    """Detect a PyPI (PEP 740) provenance/attestation object or an npm
+    attestations payload. Reuses the memoized peek — these are ordinary
+    single-document JSON, so no extra read is needed."""
+    if path.suffix.lower() != ".json":
+        return False
+    return looks_like_registry_attestation(_peek_json(path))
 
 
 def _looks_like_intoto_statement(path: Path) -> bool:

@@ -42,23 +42,28 @@ from evidence_collector.parsers._common import MAX_INPUT_BYTES
 PredicateMatcher = Callable[[str], bool]
 
 
-def decode_dsse(envelope: dict[str, Any]) -> dict[str, Any] | None:
-    """Return the Statement carried in a DSSE ``payload``, or None.
+def decode_b64_statement(value: Any) -> dict[str, Any] | None:
+    """Return the JSON object base64-encoded in ``value``, or None.
 
-    The payload is base64 of the Statement JSON. A payload that is not valid
+    in-toto Statements travel base64-encoded under different key names —
+    ``payload`` in a DSSE envelope, ``statement`` in a PEP 740 attestation
+    object — so the decode itself is shared. Anything that is not valid
     base64, not valid JSON, or not a JSON object yields None rather than
-    raising: the caller is usually scanning a multi-record file where one
-    unreadable record must not abort the whole scan.
+    raising: the caller is usually scanning a multi-record document where
+    one unreadable entry must not abort the whole scan.
     """
-    payload = envelope.get("payload")
-    if not isinstance(payload, str):
+    if not isinstance(value, str):
         return None
     try:
-        decoded = base64.b64decode(payload, validate=True)
-        obj = json.loads(decoded)
+        obj = json.loads(base64.b64decode(value, validate=True))
     except (binascii.Error, ValueError):
         return None
     return obj if isinstance(obj, dict) else None
+
+
+def decode_dsse(envelope: dict[str, Any]) -> dict[str, Any] | None:
+    """Return the Statement carried in a DSSE ``payload``, or None."""
+    return decode_b64_statement(envelope.get("payload"))
 
 
 def unwrap(data: dict[str, Any]) -> tuple[dict[str, Any] | None, str]:

@@ -47,6 +47,7 @@ from evidence_collector.parsers.junit import ParsedJUnit
 from evidence_collector.parsers.lm_eval import ParsedLmEval
 from evidence_collector.parsers.model_card import ParsedModelCard
 from evidence_collector.parsers.osv import ParsedOsv
+from evidence_collector.parsers.registry_attestation import ParsedRegistryAttestation
 from evidence_collector.parsers.release_attestation import ParsedReleaseAttestation
 from evidence_collector.parsers.sarif import ParsedSarif
 from evidence_collector.parsers.sbom import ParsedSbom
@@ -555,6 +556,71 @@ def normalize_release_attestation(
         summary=(
             f"Release attestation ({parsed.predicate_type.rsplit('/', 1)[-1]}) "
             f"for {parsed.purl} binding {len(parsed.assets)} asset(s)"
+        ),
+        metadata=metadata,
+    )
+
+
+def normalize_registry_attestation(
+    parsed: ParsedRegistryAttestation,
+    release: ReleaseContext,
+    *,
+    artifact_root: str | None = None,
+) -> NormalizedEvidence:
+    """Build an ``artifact_attestation`` evidence from a registry attestation.
+
+    Records the *envelope of publication*: which registry served the
+    attestation, which kind of trusted publisher it names, and the
+    predicate types the bundle carries. A package can hold flawless build
+    provenance and still have been uploaded by the wrong identity — the
+    registry's own record is the only thing that speaks to that.
+
+    ``producer`` is the registry, because the registry is what asserts
+    this. ``publisher_kind`` is carried verbatim in metadata as the open
+    string PEP 740 defines it to be. Only the *names* of the publisher
+    claims are recorded: their values are publisher-specific and can
+    carry repository and workflow detail that does not belong in a bundle
+    by default.
+
+    Status is GENERATED — publication is a fact being recorded, not a
+    verdict — and the signature is decoded, never verified.
+    """
+    predicate_types = sorted({statement.predicate_type for statement in parsed.statements})
+    subject_name = next(
+        (s.subject_name for s in parsed.statements if s.subject_name),
+        None,
+    )
+    subject_ref = (subject_name or release.artifact_digest or release.release_id)[:500]
+    metadata: dict[str, Any] = {
+        "registry": parsed.registry,
+        "predicate_types": predicate_types,
+        "attestation_count": len(parsed.statements),
+    }
+    if parsed.publisher_kind:
+        metadata["publisher_kind"] = parsed.publisher_kind
+    if parsed.publisher_claim_keys:
+        metadata["publisher_claim_keys"] = list(parsed.publisher_claim_keys)
+    publisher = f" published by {parsed.publisher_kind}" if parsed.publisher_kind else ""
+    return NormalizedEvidence(
+        evidence_id=_new_evidence_id(
+            "reg", parsed.artifact.integrity_hash, parsed.registry, release.release_id
+        ),
+        evidence_type=EvidenceType.ARTIFACT_ATTESTATION,
+        source=EvidenceSource(name=parsed.registry, kind="registry-attestation"),
+        producer=parsed.registry,
+        subject_type=SubjectType.RELEASE,
+        subject_ref=subject_ref,
+        status=EvidenceStatus.GENERATED,
+        confidence=ConfidenceLevel.HIGH,
+        release_id=release.release_id,
+        commit_sha=release.commit_sha,
+        generated_at=None,
+        raw=_raw_ref(parsed.artifact, artifact_root),
+        findings_count={},
+        summary=(
+            f"{parsed.registry} registry attestation{publisher}: "
+            f"{len(parsed.statements)} attestation(s) carrying "
+            f"{len(predicate_types)} predicate type(s)"
         ),
         metadata=metadata,
     )
