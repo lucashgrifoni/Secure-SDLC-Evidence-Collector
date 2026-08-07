@@ -48,7 +48,20 @@ def register(app: typer.Typer) -> None:
             attestations_dirs=list(attestations_dir) if attestations_dir else [],
         )
         report = collector.collect()
-        payload = EVIDENCE_ADAPTER.dump_python(report.evidence, mode="json")
+        # Envelope, not a bare list. The bare list had nowhere to carry the
+        # collection errors, so the documented `collect` -> `evaluate` split
+        # dropped them at the boundary: the console warned, the file did not
+        # record it, and the resulting bundle asserted `collection_errors: []`
+        # — a positive claim that nothing had failed to parse.
+        #
+        # `evaluate` still accepts a bare list, so files written by earlier
+        # versions keep working.
+        payload = {
+            "evidence": EVIDENCE_ADAPTER.dump_python(report.evidence, mode="json"),
+            "collection_errors": [
+                {"path": str(error.path), "reason": error.reason} for error in report.errors
+            ],
+        }
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(
             json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"

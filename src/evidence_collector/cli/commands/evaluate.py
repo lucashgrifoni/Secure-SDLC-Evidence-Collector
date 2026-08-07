@@ -14,6 +14,7 @@ from evidence_collector.cli._builders import build_application, build_release
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, fail_on_exit_code, validate_fail_on
 from evidence_collector.cli._render import render_summary
 from evidence_collector.cli._state import EVIDENCE_ADAPTER, console
+from evidence_collector.domain.models import CollectionError
 from evidence_collector.exporters import export_html, export_json, export_markdown
 
 
@@ -34,14 +35,36 @@ def evaluate(
     fail_on = validate_fail_on(fail_on)
     try:
         data = json.loads(evidence_path.read_text(encoding="utf-8"))
-        evidence = EVIDENCE_ADAPTER.validate_python(data)
+        # `collect` writes an envelope carrying the evidence and the inputs it
+        # could not read. A bare list is what earlier versions wrote and is
+        # still accepted — but it can say nothing about failed inputs, so a
+        # bundle built from one must not claim there were none.
+        if isinstance(data, dict):
+            raw_evidence = data.get("evidence", [])
+            raw_errors = data.get("collection_errors", [])
+        else:
+            raw_evidence = data
+            raw_errors = []
+        evidence = EVIDENCE_ADAPTER.validate_python(raw_evidence)
+        collection_errors = [CollectionError.model_validate(entry) for entry in raw_errors]
     except (ValidationError, json.JSONDecodeError) as exc:
         console.print(f"[red]Invalid evidence file {evidence_path}:[/red] {exc}")
         raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
+    if collection_errors:
+        console.print("[yellow]Collection warnings carried from the evidence file:[/yellow]")
+        for error in collection_errors:
+            console.print(f"  - {error.path}: {error.reason}")
+
     app_ = build_application(application, repository, environment, owner_team)
     release = build_release(release_id, commit_sha, branch)
-    bundle, _ = build_bundle(app_, release, list(evidence), catalog_path=catalog_path)
+    bundle, _ = build_bundle(
+        app_,
+        release,
+        list(evidence),
+        catalog_path=catalog_path,
+        collection_errors=collection_errors,
+    )
 
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = export_json(bundle, output_dir / "bundle.json")
