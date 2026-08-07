@@ -119,6 +119,16 @@ The collector checks **presence**, not correctness.
   example in the `publish-pypi.yml` workflow or on the consumer side). The
   project's own release workflow signs its artifacts; downstream
   consumers still need to run `cosign verify-blob` themselves.
+- The same boundary applies to every in-toto attestation the collector
+  ingests — SLSA provenance, VSA, and release attestations. A DSSE
+  envelope or Sigstore bundle is *decoded*, never *verified*: the
+  signature and the verification material are read past, not checked.
+- In particular, an in-toto **release attestation** states no issuer of
+  its own. The only identity in the file lives in the Sigstore
+  verification material, and treating that as authoritative would be
+  signature verification. The normalized evidence therefore records
+  `producer = "in-toto-release-attestation"` — the format that was read —
+  rather than naming an organization the collector did not authenticate.
 
 ## 8 · Determinism boundaries
 

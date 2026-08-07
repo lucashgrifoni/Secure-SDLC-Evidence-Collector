@@ -41,6 +41,7 @@ from evidence_collector.parsers.junit import ParsedJUnit
 from evidence_collector.parsers.lm_eval import ParsedLmEval
 from evidence_collector.parsers.model_card import ParsedModelCard
 from evidence_collector.parsers.osv import ParsedOsv
+from evidence_collector.parsers.release_attestation import ParsedReleaseAttestation
 from evidence_collector.parsers.sarif import ParsedSarif
 from evidence_collector.parsers.sbom import ParsedSbom
 from evidence_collector.parsers.zap import ParsedZap
@@ -492,6 +493,62 @@ def normalize_vsa(
         summary=(
             f"SLSA VSA from {producer}: {parsed.verification_result}; "
             f"levels={', '.join(parsed.verified_levels)}"
+        ),
+        metadata=metadata,
+    )
+
+
+def normalize_release_attestation(
+    parsed: ParsedReleaseAttestation,
+    release: ReleaseContext,
+    *,
+    artifact_root: str | None = None,
+) -> NormalizedEvidence:
+    """Build an ``artifact_attestation`` evidence from an in-toto release
+    attestation.
+
+    Records *what was released*: the package URL, the stable package
+    identifier when stated, and every asset the attestation binds to a digest.
+    A release attestation asserts existence and binding rather than a verdict,
+    so the status is GENERATED (the same convention as SBOM and provenance).
+
+    ``producer`` is the attestation *format*, not an organization: the release
+    predicate states no issuer, and the only place an identity appears is the
+    Sigstore verification material — reading that as authoritative would be
+    signature verification, which is out of scope (see ``docs/limitations.md``).
+    Recording the format keeps the evidence honest about what was actually read.
+    """
+    subject_ref = (parsed.subject_name or parsed.purl)[:500]
+    producer = "in-toto-release-attestation"
+    metadata: dict[str, Any] = {
+        "predicate_type": parsed.predicate_type,
+        "purl": parsed.purl,
+        "envelope": parsed.envelope,
+        "asset_count": len(parsed.assets),
+        "assets": [{"name": asset.name, "digests": dict(asset.digests)} for asset in parsed.assets],
+    }
+    # Optional in both predicate versions — only recorded when stated.
+    if parsed.package_id:
+        metadata["package_id"] = parsed.package_id
+    return NormalizedEvidence(
+        evidence_id=_new_evidence_id(
+            "rel", parsed.artifact.integrity_hash, subject_ref, release.release_id
+        ),
+        evidence_type=EvidenceType.ARTIFACT_ATTESTATION,
+        source=EvidenceSource(name=producer, kind="release-attestation"),
+        producer=producer,
+        subject_type=SubjectType.RELEASE,
+        subject_ref=subject_ref,
+        status=EvidenceStatus.GENERATED,
+        confidence=ConfidenceLevel.HIGH,
+        release_id=release.release_id,
+        commit_sha=release.commit_sha,
+        generated_at=None,
+        raw=_raw_ref(parsed.artifact, artifact_root),
+        findings_count={},
+        summary=(
+            f"Release attestation ({parsed.predicate_type.rsplit('/', 1)[-1]}) "
+            f"for {parsed.purl} binding {len(parsed.assets)} asset(s)"
         ),
         metadata=metadata,
     )

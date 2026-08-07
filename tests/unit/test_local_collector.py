@@ -223,7 +223,10 @@ def test_detection_does_not_reread_the_same_file_for_every_probe(tmp_path: Path)
         LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir]).collect()
 
     # Three distinct readers remain, each reading once: the memoized JSON peek
-    # shared by seven detectors, `file_has_provenance` (which parses JSONL and
-    # cannot reuse the peek), and the 8 KB encoding probe on the fallthrough.
-    # Before the memo, the peek alone accounted for seven full deserializations.
+    # shared by seven detectors, the memoized in-toto record reader shared by
+    # the provenance and release-attestation detectors (it parses JSONL, so it
+    # cannot reuse the single-document peek), and the 8 KB encoding probe on
+    # the fallthrough. Before the memos, the peek alone accounted for seven
+    # full deserializations. Adding an in-toto predicate must reuse the record
+    # memo rather than raise this bound.
     assert opens <= 3, f"detection opened the file {opens} times"
