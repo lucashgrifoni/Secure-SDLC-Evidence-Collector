@@ -8,6 +8,7 @@ extended by passing an alternative path.
 from __future__ import annotations
 
 import contextlib
+import logging
 from functools import cache
 from importlib.resources import as_file, files
 from pathlib import Path
@@ -28,6 +29,9 @@ def bundled_catalog_names() -> list[str]:
     )
 
 
+logger = logging.getLogger(__name__)
+
+
 def _coerce_path(path: str | Path) -> Path:
     """Resolve ``path`` to a readable catalog file.
 
@@ -45,7 +49,25 @@ def _coerce_path(path: str | Path) -> Path:
     name = candidate.name
     if candidate == Path(name):
         with contextlib.suppress(FileNotFoundError):
-            return bundled_catalog_path(name)
+            resolved = bundled_catalog_path(name)
+            # The fallback is a real feature, but it must never be silent.
+            # ``catalog.yaml`` is both the default bundled name and the most
+            # likely name a user gives their own file: running from one
+            # directory up turned `--catalog catalog.yaml` into "evaluate
+            # against the stock 13 controls", verdict `ready`, exit 0, with
+            # nothing in stdout, stderr or the bundle to say the org catalog
+            # was never read. A substituted control set is a substituted
+            # verdict.
+            logger.warning(
+                "Control catalog %r was not found on disk; falling back to the "
+                "BUNDLED catalog of the same name (%s). The verdict will be "
+                "computed against the bundled control set, not yours. Pass an "
+                "explicit path (./%s) if you meant a local file.",
+                str(path),
+                resolved,
+                name,
+            )
+            return resolved
     available = ", ".join(bundled_catalog_names())
     raise FileNotFoundError(
         f"Control catalog not found at {candidate}. Bundled catalogs available by name: {available}"
@@ -64,6 +86,17 @@ def _parse_catalog(content: str, source: str) -> list[ControlDefinition]:
     entries = raw["controls"]
     if not isinstance(entries, list):
         raise ValueError(f"Control catalog {source} 'controls' must be a list")
+    if not entries:
+        # An empty catalog made the gate fail OPEN: zero controls means zero
+        # gaps, so `build_summary` returned `ready` with coverage 0 and the
+        # command exited 0. A truncated or half-written catalog therefore
+        # passed every release silently. There is no honest verdict to give
+        # for "nothing was checked", so refuse at the boundary.
+        raise ValueError(
+            f"Control catalog {source} has an empty 'controls' list. A catalog that "
+            "defines no controls cannot evaluate a release: it would report `ready` "
+            "because nothing was checked."
+        )
 
     adapter: TypeAdapter[list[ControlDefinition]] = TypeAdapter(list[ControlDefinition])
     controls = adapter.validate_python(entries)

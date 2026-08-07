@@ -6,6 +6,7 @@ Covers misuse / misconfiguration scenarios for catalogs loaded via
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import pytest
@@ -287,3 +288,63 @@ def test_unknown_catalog_error_lists_the_bundled_ones() -> None:
     assert "does-not-exist.yaml" in message
     for name in bundled_catalog_names():
         assert name in message
+
+
+# ---------------------------------------------------------------------------
+# The gate must not be substituted or bypassed silently
+# ---------------------------------------------------------------------------
+
+
+def test_empty_controls_list_is_refused_rather_than_passing_everything(
+    tmp_path: Path,
+) -> None:
+    """An empty catalog made the release gate fail OPEN.
+
+    Zero controls means zero gaps, so `build_summary` returned `ready` with
+    coverage 0 and the command exited 0. A truncated or half-written catalog
+    therefore passed every release with `Controls met=0 missing=0` and nothing
+    to read as a warning. There is no honest verdict for "nothing was
+    checked".
+    """
+    catalog = tmp_path / "empty.yaml"
+    catalog.write_text("controls: []\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="empty 'controls' list"):
+        load_catalog(catalog)
+
+
+def test_bundled_fallback_warns_that_the_verdict_used_another_control_set(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`--catalog catalog.yaml` from the wrong directory silently swapped the
+    control set.
+
+    `catalog.yaml` is both the default bundled name and the most likely name a
+    user gives their own file. Running one directory up turned the flag into
+    "evaluate against the stock 13 controls" — verdict `ready`, exit 0, with
+    nothing in stdout, stderr or the bundle saying the org catalog was never
+    read. A substituted control set is a substituted verdict, so the fallback
+    has to say so.
+    """
+    monkeypatch.chdir(tmp_path)  # no catalog.yaml here
+    with caplog.at_level(logging.WARNING):
+        controls = load_catalog("catalog.yaml")
+    assert controls, "the bundled catalog should still load"
+    assert "BUNDLED" in caplog.text
+    assert "catalog.yaml" in caplog.text
+
+
+def test_a_real_local_file_still_wins_over_the_bundled_name(tmp_path: Path) -> None:
+    """The fallback must not fire when the user's file is actually there."""
+    local = tmp_path / "catalog.yaml"
+    local.write_text(
+        "controls:\n"
+        "  - control_id: ORG-ONLY\n"
+        "    framework: ORG_INTERNAL\n"
+        "    name: Only control\n"
+        "    description: local file wins\n"
+        "    criticality: high\n"
+        "    required_evidence_types: ['sast_scan']\n",
+        encoding="utf-8",
+    )
+    controls = load_catalog(local)
+    assert [c.control_id for c in controls] == ["ORG-ONLY"]
