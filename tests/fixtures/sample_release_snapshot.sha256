@@ -38,4 +38,28 @@
 # content-derived presence check against CISA's 2025 Minimum Elements.
 # Additive and byte-stable per run; only the canonical representation (and
 # therefore the structural hash) changed.
-788ac044c5fec8834db9174a01cbda76d7672f5b9a430c21325b0a3a5f240c22
+# 2026-08-06 (3.0.0 — human-readable rationales): bumped from 788ac044… to
+# 8c0b0a9b… after control rationales stopped rendering Python's list repr.
+# `Control SSDF-PW.7 is met by evidence ['sast-cfcf7a634b32'].` became
+# `Control SSDF-PW.7 is met by evidence sast-cfcf7a634b32.` across all 13
+# rationales of the canonical bundle. The change is cosmetic in intent but it
+# alters `control_evaluations[*].rationale`, which is inside the structural
+# hash and inside the in-toto predicate — so it is a BREAKING change for anyone
+# pinning `verify --expected` against the default profile, and is released as
+# 3.0.0 with migration notes rather than folded into a patch.
+#
+# 2026-08-06 (3.0.0, same release — fixture URL repair): bumped again to
+# 0171b09e… after examples/sample_release/artifacts/*.sarif and
+# zap-baseline.json had `http./sample_release` replaced with real URLs. The
+# corruption dated to v1.0.0 and leaked into the showcase report.md. Repairing
+# the fixtures changes their SHA-256, which the bundle records as
+# evidence[*].raw.integrity_hash — hence the second bump. Both bumps ship in
+# 3.0.0 deliberately, so consumers absorb one digest change rather than two.
+#
+# Note for whoever regenerates this next: .gitattributes sets `* text=auto
+# eol=lf`, so the fixtures are stored and hashed as LF. Rewriting them from a
+# Windows checkout with a text-mode write produces CRLF, whose SHA-256 differs
+# — the digest computed locally then disagrees with CI. Write fixture bytes
+# with LF explicitly, or read the digest off the CI failure. This is the same
+# trap that caused the 2026-05-18 bump above.
+6c420913138afaba2df96c5ef4ccc051597a9b0a482b94c2889397614b1a5d82

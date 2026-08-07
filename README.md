@@ -197,17 +197,84 @@ either.
 Every other command reports a verdict but never encodes it in the exit status —
 `compare`, `controls`, `plugins`, `schema`, `oscal` and `doctor` exit `0` on
 success regardless of the release status, and `compare` in particular does
-**not** fail a build on regression. Their non-zero codes mean an operational
-failure: `2` for a missing or malformed input on the emitting commands
-(`vex`, `guac`, `statement`, `enrich`, `oscal`), and `3` on `verify`, `compare`,
-`evaluate` and for a `--epss-feed`/`--kev-feed` that was supplied but could not
-be read.
+**not** fail a build on regression.
 
-**`3` also means "the command could not run at all".** Any failure that is not
-a release verdict — an unreadable catalog, an invalid `--commit-sha`, a missing
-input file — exits `3` with a single-line explanation (`--verbose` for the
-traceback). It never exits `1`, so a pipeline can rely on `1` meaning
-`conditional` and nothing else.
+**Every failure that is not a release verdict exits `3`.** A missing or
+malformed bundle, an unreadable catalog, an invalid `--commit-sha`, an
+`--epss-feed` that could not be read, a rejected `--predicate-type` — all of
+them, on every command, with a single-line explanation (`--verbose` for the
+traceback). The full taxonomy:
+
+| Code | Meaning | Where |
+|---|---|---|
+| `0` | `ready`, or a command that does not gate | everywhere |
+| `1` | `conditional` | `run`, `evaluate`, `bundle` (subject to `--fail-on`) |
+| `2` | `not_ready` | `run`, `evaluate`, `bundle` |
+| `3` | the command could not run: bad input, unreadable file, failed validation | every command |
+
+A wrapper can therefore branch on the code alone. `1` means `conditional` and
+nothing else; `3` means "nothing was produced, do not read this as a verdict".
+
+> Before `3.0.0` this was inconsistent: `vex`, `guac`, `statement`, `enrich`
+> and `oscal` returned `2` for a malformed input — the same code as a
+> `not_ready` release — while `verify`, `compare` and `evaluate` returned `3`.
+> See [Migrating to 3.0.0](#migrating-to-300).
+
+The one code still shared with something else is `2`: Click emits it for a
+usage error (an unknown flag, a missing required option). That is upstream
+behaviour, and it is distinguishable because a usage error prints `Usage:` and
+produces no bundle.
+
+### Migrating to 3.0.0
+
+Two changes are observable to existing callers. Neither changes the schema, the
+flags, or the control catalog.
+
+**1. Input errors now exit `3` everywhere (was `2` on five commands).**
+
+`vex`, `guac`, `statement`, `enrich` and `oscal` returned `2` for a missing or
+malformed bundle — indistinguishable from a `not_ready` release — while
+`verify`, `compare` and `evaluate` already returned `3` for the identical
+input. A CI wrapper needed a per-subcommand table to tell the two apart.
+
+```bash
+# before: had to know which subcommand you were calling
+if [ $code -eq 2 ]; then ... fi   # not_ready? or a broken file? depends
+
+# after: the code alone is enough
+case $code in
+  0) echo "ready" ;;
+  1) echo "conditional" ;;
+  2) echo "not_ready" ;;
+  3) echo "the command could not run — no bundle was produced" ;;
+esac
+```
+
+If you branch on `2` after `vex`/`guac`/`statement`/`enrich`/`oscal`, switch to
+`3`. If you branch on non-zero, nothing changes.
+
+**2. Control rationales are no longer Python `repr`.**
+
+`control_evaluations[*].rationale` rendered lists through Python's `repr`:
+
+```diff
+- Control SSDF-PW.7 is met by evidence ['sast-cfcf7a634b32'].
++ Control SSDF-PW.7 is met by evidence sast-cfcf7a634b32.
+```
+
+The field is free text and the verdict is unchanged, but `rationale` is inside
+the structural hash and inside the in-toto predicate. **Any `verify --expected`
+pin recorded against a 2.x bundle will no longer match**, and a re-signed
+statement over the same inputs carries a different `subject.digest.sha256`.
+
+Regenerate pins with:
+
+```bash
+sdlc-evidence verify path/to/bundle.json
+```
+
+Bundles produced by 2.x are still readable by 3.0.0 — only newly produced ones
+hash differently.
 
 ### Use the collector as a pre-commit hook
 
@@ -219,7 +286,7 @@ environment for you. Add to your `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector
-    rev: v2.1.0            # pin to a released tag
+    rev: v2.2.0            # first tag that ships .pre-commit-hooks.yaml
     hooks:
       - id: sdlc-evidence-validate-exceptions   # validate staged waiver files
       - id: sdlc-evidence-doctor                # smoke-test the pinned release

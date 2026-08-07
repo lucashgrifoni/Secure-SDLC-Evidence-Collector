@@ -18,6 +18,7 @@ from typing import Annotated, cast
 import typer
 from pydantic import ValidationError
 
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
@@ -88,7 +89,7 @@ def register(app: typer.Typer) -> None:
                 emit_event("statement_failed", bundle=str(bundle_path), reason=message)
             else:
                 console.print(f"[red]{message}[/red]")
-            raise typer.Exit(code=2)
+            raise typer.Exit(code=EXIT_INPUT_ERROR)
         try:
             raw = json.loads(bundle_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
@@ -96,7 +97,7 @@ def register(app: typer.Typer) -> None:
                 emit_event("statement_failed", bundle=str(bundle_path), reason=str(exc))
             else:
                 console.print(f"[red]Could not read {bundle_path}:[/red] {exc}")
-            raise typer.Exit(code=2) from exc
+            raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
         try:
             bundle = EvidenceBundle.model_validate(raw)
         except ValidationError as exc:
@@ -104,7 +105,7 @@ def register(app: typer.Typer) -> None:
                 emit_event("statement_failed", bundle=str(bundle_path), reason=str(exc))
             else:
                 console.print(f"[red]Bundle does not match the current schema:[/red] {exc}")
-            raise typer.Exit(code=2) from exc
+            raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
         # Safe cast: predicate_type was validated against the literal
         # set above; mypy needs the explicit narrowing.

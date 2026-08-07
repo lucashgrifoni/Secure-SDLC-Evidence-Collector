@@ -30,6 +30,17 @@ _THRESHOLD_RANK: Final[dict[str, int]] = {
 }
 
 
+# Reserved for "the command could not run": a missing, unreadable or malformed
+# input, or an unhandled failure. Deliberately outside the verdict range, which
+# owns 0 (ready), 1 (conditional) and 2 (not_ready).
+#
+# Five commands used to return 2 for exactly this — the same code as a
+# not_ready release — so a CI wrapper had to keep a per-subcommand table, and
+# `2` meant three different things at once (not_ready, bad input, and Click's
+# own usage error). Two tests in this repo pinned the two contradictory
+# contracts against each other.
+EXIT_INPUT_ERROR: Final[int] = 3
+
 FAIL_ON_VALUES: Final[tuple[str, ...]] = ("ready", "conditional", "not_ready")
 
 

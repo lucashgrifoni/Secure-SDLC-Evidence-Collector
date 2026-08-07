@@ -225,11 +225,11 @@ def evaluate_control(
         confidence = ConfidenceLevel.LOW
         rationale = (
             f"Control {control.control_id} is waived by "
-            f"{[exc.exception_id for exc in applicable_exceptions]} "
+            f"{', '.join(exc.exception_id for exc in applicable_exceptions)} "
             f"(approver={applicable_exceptions[0].approver}, "
             f"expires_at={applicable_exceptions[0].expires_at.isoformat()}). "
             f"Missing evidence would otherwise have been "
-            f"{[t.value for t in missing_required]}."
+            f"{', '.join(t.value for t in missing_required)}."
         )
         # Waived gaps must not block the release; downgrade criticality.
         gaps = [
@@ -237,7 +237,7 @@ def evaluate_control(
                 control_id=gap.control_id,
                 evidence_type=gap.evidence_type,
                 criticality=ControlCriticality.LOW,
-                description=f"{gap.description} (waived by {exception_refs}).",
+                description=f"{gap.description} (waived by {', '.join(exception_refs)}).",
                 remediation=gap.remediation,
             )
             for gap in gaps
@@ -247,7 +247,7 @@ def evaluate_control(
         rationale = (
             f"Control {control.control_id} is not satisfied: missing required "
             f"evidence types "
-            f"{[t.value for t in missing_required]}."
+            f"{', '.join(t.value for t in missing_required)}."
         )
         rejected = _rejected_exceptions_for(
             control.control_id, exceptions, application, release_id, now
@@ -265,13 +265,13 @@ def evaluate_control(
         rationale = (
             f"Control {control.control_id} is partially satisfied: required "
             f"evidence is present, but recommended evidence "
-            f"{[t.value for t in missing_recommended]} is missing."
+            f"{', '.join(t.value for t in missing_recommended)} is missing."
         )
     else:
         status = ControlEvaluationStatus.MET
         base_confidence = _lowest_confidence(supporting_evidence)
         confidence = _downgrade_if_manual(base_confidence, supporting_evidence)
-        rationale = f"Control {control.control_id} is met by evidence {supporting_refs}."
+        rationale = f"Control {control.control_id} is met by evidence {', '.join(supporting_refs)}."
 
     evaluation = ControlEvaluation(
         control_id=control.control_id,

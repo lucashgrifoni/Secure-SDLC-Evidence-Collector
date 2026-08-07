@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from evidence_collector.application.orchestrator import BundleBuildResult, build_bundle
 from evidence_collector.cli._builders import build_application, build_release
-from evidence_collector.cli._exit_codes import fail_on_exit_code, validate_fail_on
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, fail_on_exit_code, validate_fail_on
 from evidence_collector.cli._render import render_summary
 from evidence_collector.cli._state import EVIDENCE_ADAPTER, console
 from evidence_collector.exporters import export_html, export_json, export_markdown
@@ -37,7 +37,7 @@ def evaluate(
         evidence = EVIDENCE_ADAPTER.validate_python(data)
     except (ValidationError, json.JSONDecodeError) as exc:
         console.print(f"[red]Invalid evidence file {evidence_path}:[/red] {exc}")
-        raise typer.Exit(code=3) from exc
+        raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
     app_ = build_application(application, repository, environment, owner_team)
     release = build_release(release_id, commit_sha, branch)

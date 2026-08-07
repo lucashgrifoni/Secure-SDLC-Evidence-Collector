@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from rich.table import Table
 
 from evidence_collector.application.compare import compare_bundles, load_bundle
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli._state import console
 from evidence_collector.domain.enums import ReleaseStatus
 
@@ -66,7 +67,7 @@ def register(app: typer.Typer) -> None:
             candidate = load_bundle(after)
         except (ValidationError, json.JSONDecodeError, OSError) as exc:
             console.print(f"[red]Could not load bundles:[/red] {exc}")
-            raise typer.Exit(code=3) from exc
+            raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
         comparison = compare_bundles(baseline, candidate)
         if normalized_format == "json":

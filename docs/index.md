@@ -32,39 +32,48 @@ operate it in a real pipeline**.
 |--------------------------------------|-------------------------------------------------------------------------------------------|
 | CLI (`sdlc-evidence`)                | `src/evidence_collector/cli/main.py`                                                      |
 | GitHub Action                        | [`action.yml`](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/action.yml) |
-| Container image                      | `publish-pypi.yml` builds and signs `ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector` (multi-arch, cosign keyless + SBOM attestation) on tag push. The first publicly verifiable image will be `:v1.1.0`. |
+| Container image                      | `publish-pypi.yml` builds and signs `ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector` (multi-arch, cosign keyless + SBOM attestation) on tag push. Every release since `2.0.0` is published and verifiable. |
 | Wheel + sdist                        | Built and signed by `publish-pypi.yml`; PyPI publishing depends on the repository's Trusted Publisher configuration in PyPI. |
 | Bundle JSON Schema                   | Exported by `sdlc-evidence schema`; validated in CI on every run.                         |
 
 ## Verifying signatures
 
 `publish-pypi.yml` is configured to sign every release artifact with
-**cosign keyless** and to record each signature on the **Sigstore
-Rekor** transparency log. Once the first signed `v1.1.0` release is
-published, you can verify the wheel with:
+**cosign keyless** and records each signature on the **Sigstore Rekor**
+transparency log. `2.0.0` was the first public release; every release since is
+signed, so the commands below work today against any published tag. Set the
+version you want to verify — the examples use the installed one:
+
+```bash
+VERSION=$(sdlc-evidence --version)
+```
+
+Download the wheel and its signature assets from the matching
+[GitHub Release](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/releases),
+then verify the wheel:
 
 ```bash
 cosign verify-blob \
-  --certificate signatures/secure_sdlc_evidence_collector-1.1.0-py3-none-any.whl.pem \
-  --signature signatures/secure_sdlc_evidence_collector-1.1.0-py3-none-any.whl.sig \
+  --certificate "secure_sdlc_evidence_collector-${VERSION}-py3-none-any.whl.pem" \
+  --signature "secure_sdlc_evidence_collector-${VERSION}-py3-none-any.whl.sig" \
   --certificate-identity-regexp 'https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  secure_sdlc_evidence_collector-1.1.0-py3-none-any.whl
+  "secure_sdlc_evidence_collector-${VERSION}-py3-none-any.whl"
 ```
 
-To verify the container image (after the first published `v1.1.0`):
+Verify the container image:
 
 ```bash
-cosign verify ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector:v1.1.0 \
+cosign verify "ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector:v${VERSION}" \
   --certificate-identity-regexp 'https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
 ```
 
-To inspect the SBOM attestation:
+Inspect the SBOM attestation:
 
 ```bash
 cosign download attestation \
-  ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector:v1.1.0
+  "ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector:v${VERSION}"
 ```
 
 ## Reporting issues

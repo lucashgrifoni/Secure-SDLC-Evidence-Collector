@@ -146,13 +146,13 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      # No `snyk auth` step: the Snyk CLI reads SNYK_TOKEN from the
+      # environment, which every scan step below already sets. The separate
+      # auth step was redundant and was the only place an invalid token could
+      # fail — with a bare `exit 2` and no explanation. Without it, a bad token
+      # surfaces in the scan itself, with the scanner's own message.
       - name: Install Snyk CLI
         run: npm install -g snyk
-
-      - name: Authenticate Snyk
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk auth "$SNYK_TOKEN"
 
       - name: Run Snyk Code
         env:
@@ -214,13 +214,13 @@ jobs:
           echo "Resolved dependencies:"
           cat requirements-snyk.txt
 
+      # No `snyk auth` step: the Snyk CLI reads SNYK_TOKEN from the
+      # environment, which every scan step below already sets. The separate
+      # auth step was redundant and was the only place an invalid token could
+      # fail — with a bare `exit 2` and no explanation. Without it, a bad token
+      # surfaces in the scan itself, with the scanner's own message.
       - name: Install Snyk CLI
         run: npm install -g snyk
-
-      - name: Authenticate Snyk
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk auth "$SNYK_TOKEN"
 
       - name: Run Snyk Open Source scan
         env:

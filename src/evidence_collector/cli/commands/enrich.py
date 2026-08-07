@@ -10,8 +10,8 @@ collector remains side-effect-free and air-gap-friendly.
 Exit codes:
 
 * 0 — enrichment ran (with or without matches); bundle written to ``--output``.
-* 2 — bundle path missing or malformed.
-* 3 — feed path supplied but file unreadable / malformed.
+* 3 — bundle path missing or malformed, or a feed path was supplied but the
+  file is unreadable / malformed. See ``cli/_exit_codes.EXIT_INPUT_ERROR``.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
@@ -142,7 +143,7 @@ def register(app: typer.Typer) -> None:
 
 
 def _require_usable[FeedT: (EpssFeed, KevFeed)](feed: FeedT, path: Path, label: str) -> FeedT:
-    """Return ``feed`` when it actually carries records, else exit 3.
+    """Return ``feed`` when it actually carries records, else exit EXIT_INPUT_ERROR.
 
     ``load_epss_feed`` / ``load_kev_feed`` deliberately degrade a missing or
     malformed file into an empty feed so library callers keep working. At the
@@ -161,7 +162,7 @@ def _require_usable[FeedT: (EpssFeed, KevFeed)](feed: FeedT, path: Path, label: 
         emit_event("enrich_failed", feed=str(path), feed_kind=label, reason=reason)
     else:
         console.print(f"[red]{label} feed {path} could not be used:[/red] {reason}")
-    raise typer.Exit(code=3)
+    raise typer.Exit(code=EXIT_INPUT_ERROR)
 
 
 def _load_bundle(path: Path) -> EvidenceBundle:
@@ -172,7 +173,7 @@ def _load_bundle(path: Path) -> EvidenceBundle:
             emit_event("enrich_failed", bundle=str(path), reason=str(exc))
         else:
             console.print(f"[red]Could not read {path}:[/red] {exc}")
-        raise typer.Exit(code=2) from exc
+        raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
     try:
         return EvidenceBundle.model_validate(raw)
     except ValidationError as exc:
@@ -180,4 +181,4 @@ def _load_bundle(path: Path) -> EvidenceBundle:
             emit_event("enrich_failed", bundle=str(path), reason=str(exc))
         else:
             console.print(f"[red]Bundle does not match the current schema:[/red] {exc}")
-        raise typer.Exit(code=2) from exc
+        raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
