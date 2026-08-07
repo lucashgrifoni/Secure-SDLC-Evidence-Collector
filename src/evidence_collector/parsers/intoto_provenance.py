@@ -8,16 +8,12 @@ statement states *how* an artifact was built — builder identity, build type,
 and the materials consumed — which is exactly the kind of release evidence the
 collector normalizes (distinct from *verifying* the signature).
 
-This parser accepts the three shapes these attestations travel in:
-
-* **raw in-toto Statement** — ``{"_type": ".../Statement/v1",
-  "predicateType": "https://slsa.dev/provenance/v1", "predicate": {…}}``;
-* **DSSE envelope** — ``{"payloadType": "application/vnd.in-toto+json",
-  "payload": "<base64 Statement>", "signatures": [...]}``;
-* **Sigstore bundle** — ``{"mediaType": ".../bundle…", "dsseEnvelope":
-  {"payload": "<base64>", …}, "verificationMaterial": {…}}`` (one per line in
-  the ``.jsonl`` that ``gh attestation download`` writes; the first record is
-  used).
+The envelopes these attestations travel in — raw in-toto Statement, DSSE,
+Sigstore bundle, and the JSONL that ``gh attestation download`` writes — are
+handled by :mod:`evidence_collector.parsers._intoto`, which every in-toto
+predicate parser shares. This module contributes only the part that is
+specific to SLSA provenance: which ``predicateType`` to look for, and how to
+read builder identity and build type out of the predicate.
 
 Consistent with the project's scope (see ``docs/limitations.md``): the
 collector decodes and records the *stated* provenance. It does **not** verify
@@ -28,22 +24,30 @@ an anonymous attestation cannot make a build-integrity control look met.
 
 from __future__ import annotations
 
-import base64
-import binascii
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from evidence_collector.parsers._common import (
-    MAX_INPUT_BYTES,
     ParsedArtifact,
     ParseError,
     describe,
     ensure_file,
 )
+from evidence_collector.parsers._intoto import (
+    file_has_statement,
+    find_statement,
+    first_subject_name,
+    iter_record_dicts,
+)
 
 SLSA_PROVENANCE_PREFIX = "https://slsa.dev/provenance/"
+
+
+def _is_provenance_predicate(predicate_type: str) -> bool:
+    """SLSA provenance is versioned in the path (``…/provenance/v1``,
+    ``…/v0.2``), so the prefix — not an exact string — is the marker."""
+    return predicate_type.startswith(SLSA_PROVENANCE_PREFIX)
 
 
 @dataclass
@@ -63,101 +67,11 @@ def _optional_str(value: Any) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def _first_subject_name(statement: dict[str, Any]) -> str | None:
-    subjects = statement.get("subject")
-    if not isinstance(subjects, list):
-        return None
-    for entry in subjects:
-        if isinstance(entry, dict):
-            name = entry.get("name")
-            if isinstance(name, str) and name:
-                return name
-    return None
-
-
-def _decode_dsse(envelope: dict[str, Any]) -> dict[str, Any] | None:
-    payload = envelope.get("payload")
-    if not isinstance(payload, str):
-        return None
-    try:
-        decoded = base64.b64decode(payload, validate=True)
-        obj = json.loads(decoded)
-    except (binascii.Error, ValueError):
-        return None
-    return obj if isinstance(obj, dict) else None
-
-
-def _unwrap(data: dict[str, Any]) -> tuple[dict[str, Any] | None, str]:
-    """Return ``(in-toto Statement, envelope-kind)`` from any supported shape."""
-    bundle_envelope = data.get("dsseEnvelope")
-    if isinstance(bundle_envelope, dict):
-        return _decode_dsse(bundle_envelope), "sigstore-bundle"
-    if isinstance(data.get("payload"), str) and "payloadType" in data:
-        return _decode_dsse(data), "dsse"
-    if "predicateType" in data:
-        return data, "statement"
-    return None, "unknown"
-
-
-def _iter_record_dicts(text: str) -> list[dict[str, Any]]:
-    """Return every JSON object in ``text`` — a single object, or each record
-    of a JSONL document. Blank and non-JSON lines are skipped."""
-    try:
-        whole = json.loads(text)
-    except json.JSONDecodeError:
-        whole = None
-    if isinstance(whole, dict):
-        return [whole]
-    records: list[dict[str, Any]] = []
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        try:
-            candidate = json.loads(stripped)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(candidate, dict):
-            records.append(candidate)
-    return records
-
-
-def _find_provenance(
-    records: list[dict[str, Any]],
-) -> tuple[dict[str, Any], dict[str, Any], str] | None:
-    """Return ``(record, statement, envelope)`` for the first record whose
-    unwrapped statement carries a SLSA Provenance predicateType.
-
-    A ``gh attestation download`` JSONL can hold many bundles (SBOM, custom
-    predicates, and provenance), and ``download`` fetches up to 30 by default.
-    Scanning every record avoids dropping a valid build provenance just
-    because another predicate happens to appear first in the file.
-    """
-    for record in records:
-        statement, envelope = _unwrap(record)
-        if statement is None:
-            continue
-        predicate_type = statement.get("predicateType")
-        if isinstance(predicate_type, str) and predicate_type.startswith(SLSA_PROVENANCE_PREFIX):
-            return record, statement, envelope
-    return None
-
-
 def file_has_provenance(path: Path) -> bool:
     """True when ``path`` holds at least one SLSA provenance record (a single
     JSON object, or any record of a JSONL). Used by the local collector for
     detection; never raises on an unreadable file."""
-    try:
-        # This runs during detection, before any parser applies the input cap,
-        # and it reads the whole file rather than going through the collector's
-        # memoized peek. Without the guard an oversized artifact is fully loaded
-        # here even though every other detection path now refuses it.
-        if path.stat().st_size > MAX_INPUT_BYTES:
-            return False
-        text = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return False
-    return _find_provenance(_iter_record_dicts(text)) is not None
+    return file_has_statement(path, _is_provenance_predicate)
 
 
 def _builder_id(predicate: dict[str, Any]) -> str | None:
@@ -216,11 +130,11 @@ def parse_provenance(path: str | Path) -> ParsedProvenance:
         text = resolved.read_text(encoding="utf-8")
     except UnicodeDecodeError as exc:
         raise ParseError(f"Invalid text encoding in {resolved}: {exc}") from exc
-    records = _iter_record_dicts(text)
+    records = iter_record_dicts(text)
     if not records:
         raise ParseError(f"File {resolved} is not a JSON object or a JSONL of objects.")
 
-    found = _find_provenance(records)
+    found = find_statement(records, _is_provenance_predicate)
     if found is None:
         raise ParseError(
             f"File {resolved} contains no SLSA provenance (a predicateType under "
@@ -249,7 +163,7 @@ def parse_provenance(path: str | Path) -> ParsedProvenance:
         builder_id=builder_id,
         build_type=build_type,
         envelope=envelope,
-        subject_name=_first_subject_name(statement),
+        subject_name=first_subject_name(statement),
         invocation_id=_invocation_id(predicate),
         source_repository=_source_repository(predicate),
         raw=record,
