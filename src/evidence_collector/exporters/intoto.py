@@ -44,6 +44,28 @@ from evidence_collector.application.integrity import normalize_bundle
 from evidence_collector.domain.enums import ControlEvaluationStatus, ReleaseStatus
 from evidence_collector.domain.models import EvidenceBundle
 
+# Declared explicitly because this module's constants are consumed from
+# other modules (the CLI validates `--predicate-type` against
+# PREDICATE_TYPE_NAMES). Without it, a same-module reachability check reads
+# them as dead globals — CodeQL's py/unused-global-variable flagged exactly
+# that. Naming the public surface is also the honest documentation of it.
+__all__ = [
+    "IN_TOTO_TYPE",
+    "PREDICATE_TYPE",
+    "PREDICATE_TYPE_EVIDENCE_BUNDLE",
+    "PREDICATE_TYPE_NAMES",
+    "PREDICATE_TYPE_SLSA_PROVENANCE",
+    "PREDICATE_TYPE_SVR",
+    "PREDICATE_TYPE_WITNESS",
+    "SVR_PROPERTY_PREFIX",
+    "SVR_PROPERTY_RELEASE_READY",
+    "VERIFIER_ID_BASE",
+    "PredicateType",
+    "build_dsse_envelope",
+    "build_statement",
+    "predicate_type_url",
+]
+
 IN_TOTO_TYPE = "https://in-toto.io/Statement/v1"
 
 # Identity this collector claims when it acts as an in-toto *verifier*
