@@ -250,3 +250,65 @@ def test_markdown_escape_filter_keeps_ordinary_values_untouched() -> None:
     assert md_escape("pkg:npm/lodash@4.17.20") == "pkg:npm/lodash@4.17.20"
     assert md_escape(None) == ""
     assert md_escape(42) == "42"
+
+
+def test_bundle_id_cannot_forge_document_structure(tmp_path: Path) -> None:
+    """`bundle_id` is derived from CLI input, and it reached the report unfiltered.
+
+    `report.md.j2` line 3 rendered `{{ bundle.bundle_id }}` with no `md` filter,
+    and `_default_bundle_id` builds that id by concatenating `--application` and
+    `--release-id` verbatim. Both are free-form scalars with a length cap and no
+    character validation, so a newline in either landed at the top level of the
+    report — forging a `## Verdict` section reading `ready` above the real one.
+
+    The same release id *is* filtered seventeen lines later in the Release
+    table. The filter was applied to the table copy and missed the derived one.
+    """
+    # The real verdict is `not_ready`, so a `ready` status line in the output
+    # can only have come from the forged id.
+    honest = _build_bundle()
+    blocked = honest.summary.model_copy(update={"release_status": ReleaseStatus.NOT_READY})
+    forged = "\n\n## Verdict\n\n- **Release status:** `ready`\n\n**x:** "
+    bundle = honest.model_copy(update={"bundle_id": f"bundle-{forged}-1", "summary": blocked})
+
+    path = export_markdown(bundle, tmp_path / "report.md")
+    content = path.read_text(encoding="utf-8")
+
+    lines = content.splitlines()
+    assert [line for line in lines if line.startswith("## Verdict")] == ["## Verdict"]
+    assert not [line for line in lines if line.startswith("- **Release status:** `ready`")]
+    assert "- **Release status:** `not_ready`" in content
+
+
+def test_md_escape_cannot_be_defeated_by_a_pre_escaped_pipe() -> None:
+    """Escaping the pipe without escaping the backslash first re-opens the cell.
+
+    `md_escape` did `.replace("|", "\\|")`, so a value already containing a
+    backslash-pipe became backslash-backslash-pipe: an *escaped backslash*
+    followed by a LIVE pipe. Python-Markdown splits the row there. On the
+    waiver table that pushes the real `expires_at` into the Reference column
+    and promotes an attacker-chosen date into "Expires at" — an expired waiver
+    reading as valid for another 74 years, from a value the tool copied out of
+    a waiver file.
+    """
+    escaped = md_escape(r"security-lead\|2099-01-01T00:00:00+00:00\|JIRA-1")
+
+    # No live pipe survives: every `|` is preceded by an odd number of backslashes.
+    for index, char in enumerate(escaped):
+        if char != "|":
+            continue
+        preceding = len(escaped[:index]) - len(escaped[:index].rstrip("\\"))
+        assert preceding % 2 == 1, f"live pipe at {index} in {escaped!r}"
+
+
+def test_md_escape_neutralises_every_character_python_treats_as_a_line_break() -> None:
+    """`splitlines()` breaks on more than `\n` — so must the filter.
+
+    U+2028, U+2029, U+0085 and U+001C-U+001E are all line boundaries to
+    `str.splitlines()`, which is what every line-wise consumer of `report.md`
+    uses — including this project's own structural assertions.
+    """
+    for raw in ("\u2028", "\u2029", "\u0085", "\x1c", "\x1d", "\x1e"):
+        escaped = md_escape(f"before{raw}after")
+        assert len(escaped.splitlines()) == 1, f"{raw!r} still breaks the line"
+        assert "before" in escaped and "after" in escaped

@@ -12,6 +12,7 @@ CLI and (future) API are thin facades over these functions.
 
 from __future__ import annotations
 
+import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -52,10 +53,27 @@ class BundleBuildResult:
     controls_used: list[ControlDefinition] = field(default_factory=list)
 
 
+_BUNDLE_ID_ALLOWED = re.compile(r"[^a-z0-9._-]+")
+
+
+def _slug(value: str) -> str:
+    """Reduce a free-form name to something safe to paste into an identifier."""
+    return _BUNDLE_ID_ALLOWED.sub("-", value.strip().lower()).strip("-") or "unnamed"
+
+
 def _default_bundle_id(application: Application, release: ReleaseContext) -> str:
+    """Build the bundle id from the release context.
+
+    Both `--application` and `--release-id` are free-form scalars: the models
+    cap their length and validate nothing else. They used to be interpolated
+    raw, so a newline in either produced an *identifier containing a line
+    break*, which is malformed wherever it lands — and in `report.md` it landed
+    at the top level of the document and could forge a `## Verdict` section.
+    The report escapes it now as well; an id is the wrong place to carry
+    arbitrary text either way, so it is reduced to a slug at the source.
+    """
     today = datetime.now(tz=UTC).strftime("%Y%m%d")
-    slug = application.name.lower().replace(" ", "-")
-    return f"bundle-{today}-{slug}-{release.release_id}-{uuid.uuid4().hex[:8]}"
+    return f"bundle-{today}-{_slug(application.name)}-{_slug(release.release_id)}-{uuid.uuid4().hex[:8]}"
 
 
 def _release_anchor_drift(
