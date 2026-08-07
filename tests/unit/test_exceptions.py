@@ -301,3 +301,63 @@ def test_control_without_any_exception_keeps_a_clean_rationale() -> None:
     evaluations, _ = evaluate_controls(default_catalog(), [], exceptions=[])
     for evaluation in evaluations:
         assert "exception was supplied" not in evaluation.rationale
+
+
+def test_waiver_does_not_apply_before_its_approval_date() -> None:
+    """A waiver approved for a future window must not waive anything today.
+
+    `is_valid_for` only checked the upper bound (`now < expires_at`), so an
+    exception with `approved_at` in the future was already in force: paste a
+    2027 waiver into the exceptions directory today and the control flips to
+    WAIVED immediately. The approval window has two ends, and a release gate
+    that honours a not-yet-granted approval is exactly the failure mode the
+    waiver file exists to prevent.
+    """
+    future = _exception()
+    now = future.approved_at - timedelta(days=1)
+
+    assert not future.is_valid_for(application="", release_id="", now=now)
+
+    evaluations, _ = evaluate_controls(default_catalog(), [], exceptions=[future], now=now)
+    target = next(e for e in evaluations if e.control_id == future.control_id)
+    assert target.evaluation_status == ControlEvaluationStatus.MISSING
+    assert target.exception_refs == []
+    assert "not yet in effect" in target.rationale
+    assert future.exception_id in target.rationale
+
+
+def test_waiver_applies_exactly_on_its_approval_instant() -> None:
+    """The lower bound is inclusive: the waiver is live the moment it starts."""
+    exception = _exception()
+    assert exception.is_valid_for(application="", release_id="", now=exception.approved_at)
+
+
+@pytest.mark.parametrize("field", ["approved_at", "expires_at"])
+def test_naive_waiver_timestamps_are_rejected_with_an_actionable_message(field: str) -> None:
+    """A timestamp with no timezone has no defined instant, so it cannot be compared.
+
+    Waiver windows are evaluated against an aware UTC `now`. A naive value
+    used to reach that comparison and raise `TypeError: can't compare offset-naive
+    and offset-aware datetimes` from deep inside the engine — the run died with a
+    stack trace that never named the file or the field. YAML makes this easy to
+    hit: `expires_at: 2026-12-31` parses to a naive datetime.
+    """
+    approved = datetime(2026, 4, 10, tzinfo=UTC)
+    expires = approved + timedelta(days=30)
+    timestamps = {"approved_at": approved, "expires_at": expires}
+    timestamps[field] = timestamps[field].replace(tzinfo=None)
+
+    with pytest.raises(ValueError) as excinfo:
+        EvidenceException(
+            exception_id="EXC-1",
+            control_id="SSDF-PW.1",
+            approver="appsec-lead@example.com",
+            approved_at=timestamps["approved_at"],
+            expires_at=timestamps["expires_at"],
+            justification="No new trust boundary; follow-up scheduled for next quarter.",
+        )
+
+    message = str(excinfo.value)
+    assert field in message
+    assert "must carry a timezone" in message
+    assert "2026-12-31T00:00:00Z" in message

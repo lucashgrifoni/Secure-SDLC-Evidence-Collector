@@ -335,3 +335,85 @@ def test_distinct_directories_still_both_ingested(tmp_path: Path) -> None:
 
     assert len(report.evidence) == 2
     assert len({e.evidence_id for e in report.evidence}) == 2
+
+
+def _osv_bytes() -> str:
+    return (
+        '{"results": [{"packages": [{"package": {"name": "lodash", '
+        '"version": "4.17.20", "ecosystem": "npm"}, "vulnerabilities": '
+        '[{"id": "GHSA-p6mc-m468-83gw", "aliases": ["CVE-2020-8203"], '
+        '"severity": [{"type": "CVSS_V3", "score": "7.4"}]}]}]}]}'
+    )
+
+
+def _deny_scandir_for(blocked: Path) -> Any:
+    """Return an ``os.scandir`` stand-in that refuses one directory.
+
+    Permission bits are not portable enough to test this for real: `chmod 000`
+    is a no-op for the owner on Windows, and a root CI runner walks straight
+    through it on Linux. Denying at the syscall the walker actually calls
+    reproduces the same OSError on every platform.
+    """
+    real_scandir = os.scandir
+
+    def _scandir(path: Any = ".") -> Any:
+        if Path(path) == blocked:
+            raise PermissionError(13, "Permission denied", str(blocked))
+        return real_scandir(path)
+
+    return _scandir
+
+
+def test_unreadable_subdirectory_is_reported_instead_of_silently_skipped(
+    tmp_path: Path,
+) -> None:
+    """A directory the collector cannot descend into must surface as an error.
+
+    ``Path.rglob`` is built on a glob selector that catches and drops the
+    OSError ``os.scandir`` raises on an unreadable directory. The tree simply
+    came back short: the evidence inside was absent from the bundle, the run
+    reported `not_ready` citing missing critical evidence, and nothing anywhere
+    said a directory had been skipped. The scanners had run — the collector
+    could not read them and did not say so, which is the worst of both (a false
+    negative wearing the costume of a real finding).
+    """
+    artifacts_dir = tmp_path / "artifacts"
+    readable = artifacts_dir / "readable"
+    blocked = artifacts_dir / "locked"
+    readable.mkdir(parents=True)
+    blocked.mkdir()
+    (readable / "osv.json").write_text(_osv_bytes(), encoding="utf-8")
+    (blocked / "osv.json").write_text(_osv_bytes(), encoding="utf-8")
+
+    collector = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir])
+    with mock.patch("os.scandir", _deny_scandir_for(blocked)):
+        report = collector.collect()
+
+    # The readable half is still collected — one unreadable folder does not
+    # abort the run.
+    assert len(report.evidence) == 1
+    assert report.evidence[0].evidence_type == EvidenceType.SCA_SCAN
+
+    assert len(report.errors) == 1
+    error = report.errors[0]
+    assert error.path == blocked
+    assert "Could not read directory" in error.reason
+    assert "Permission denied" in error.reason
+
+
+def test_walk_order_is_deterministic_across_nested_directories(tmp_path: Path) -> None:
+    """Nested traversal must stay sorted, or two identical trees hash differently.
+
+    Bundle determinism (docs/limitations.md) depends on evidence order, and
+    ``os.walk`` yields directory entries in whatever order the filesystem hands
+    them over. Both the directory list and the file list are sorted explicitly.
+    """
+    artifacts_dir = tmp_path / "artifacts"
+    for name in ("zeta", "alpha", "middle"):
+        (artifacts_dir / name).mkdir(parents=True)
+        (artifacts_dir / name / "osv.json").write_text(_osv_bytes(), encoding="utf-8")
+
+    collector = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir])
+    walked = collector._walk_tree(artifacts_dir, mock.MagicMock(errors=[]))
+
+    assert [p.parent.name for p in walked] == ["alpha", "middle", "zeta"]

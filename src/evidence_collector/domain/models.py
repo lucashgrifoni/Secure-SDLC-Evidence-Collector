@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from evidence_collector.domain.enums import (
     ConfidenceLevel,
@@ -439,6 +439,32 @@ class EvidenceException(_BaseModel):
     )
     scope: ExceptionScope = Field(default_factory=ExceptionScope)
 
+    @field_validator("approved_at", "expires_at")
+    @classmethod
+    def _require_timezone(cls, value: datetime, info: ValidationInfo) -> datetime:
+        """Reject a waiver timestamp with no timezone.
+
+        `datetime.fromisoformat` happily accepts `2026-12-31` and
+        `2026-12-31T00:00:00`, producing a naive value. Every consumer
+        compares it against `datetime.now(tz=UTC)`, so the whole run died on
+        `TypeError: can't compare offset-naive and offset-aware datetimes` —
+        a bare traceback, exit 3, and no bundle, report or summary written at
+        all. One waiver missing a `Z` took the entire release report with it.
+
+        Validating here rather than in the parser also covers bundle
+        round-trips and waivers built programmatically. The message names the
+        field and shows the fix, because "add a timezone" is not obvious from
+        a date that looks perfectly well-formed.
+        """
+        if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+            raise ValueError(
+                f"{info.field_name} must carry a timezone (e.g. "
+                f"'2026-12-31T00:00:00Z' or '2026-12-31T00:00:00+00:00'); got a "
+                "value with none. Waiver windows are compared against UTC, and a "
+                "naive timestamp has no defined instant."
+            )
+        return value
+
     @model_validator(mode="after")
     def _expiration_after_approval(self) -> EvidenceException:
         if self.expires_at <= self.approved_at:
@@ -448,7 +474,15 @@ class EvidenceException(_BaseModel):
         return self
 
     def is_valid_for(self, application: str, release_id: str, now: datetime) -> bool:
-        if now >= self.expires_at:
+        """Whether this waiver is in force for the given release, right now.
+
+        Both ends of the window are enforced. Only the upper bound was, so a
+        waiver dated to be approved next quarter already waived a critical
+        control today: the control flipped missing -> waived and the release
+        flipped not_ready -> ready, exit 2 -> 0. An approval that has not
+        happened yet cannot excuse anything.
+        """
+        if not (self.approved_at <= now < self.expires_at):
             return False
         if self.scope.application and self.scope.application != application:
             return False

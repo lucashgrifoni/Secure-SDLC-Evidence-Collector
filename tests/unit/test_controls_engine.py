@@ -134,3 +134,58 @@ def test_full_catalog_evaluation_against_complete_evidence() -> None:
     assert len(evaluations) == len(catalog)
     assert all(e.evaluation_status == ControlEvaluationStatus.MET for e in evaluations)
     assert not gaps
+
+
+def test_met_rationale_stays_within_the_domain_cap_for_large_evidence_sets() -> None:
+    """A big-but-legitimate evidence set must not abort the whole run.
+
+    `rationale` is capped at 2000 characters by the domain model, and the MET
+    branch used to join every supporting evidence id into that sentence. Around
+    104 artifacts of a single type the string crossed the cap, pydantic raised
+    a ValidationError, and `run` exited 3 having written no bundle, report or
+    summary at all — a monorepo with one SARIF per service is not a malformed
+    input. `evidence_refs` still carries the complete list.
+    """
+    control = ControlDefinition(
+        control_id="T-MANY",
+        framework=ControlFramework.NIST_SSDF,
+        name="Static analysis",
+        description="Run SAST.",
+        criticality=ControlCriticality.HIGH,
+        required_evidence_types=[EvidenceType.SAST_SCAN],
+    )
+    evidence = []
+    for index in range(400):
+        item = _evidence(EvidenceType.SAST_SCAN)
+        evidence.append(item.model_copy(update={"evidence_id": f"ev-sast-{index:04d}"}))
+
+    evaluation, gaps = evaluate_control(control, evidence)
+
+    assert evaluation.evaluation_status == ControlEvaluationStatus.MET
+    assert not gaps
+    assert len(evaluation.rationale) <= 2000
+    assert len(evaluation.evidence_refs) == 400
+    assert "ev-sast-0000" in evaluation.rationale
+    assert "+380 more; see evidence_refs" in evaluation.rationale
+
+
+def test_small_evidence_sets_still_list_every_id_in_the_rationale() -> None:
+    """The summary must not kick in early and hide ids an auditor can read."""
+    control = ControlDefinition(
+        control_id="T-FEW",
+        framework=ControlFramework.NIST_SSDF,
+        name="Static analysis",
+        description="Run SAST.",
+        criticality=ControlCriticality.HIGH,
+        required_evidence_types=[EvidenceType.SAST_SCAN],
+    )
+    evidence = [
+        _evidence(EvidenceType.SAST_SCAN).model_copy(update={"evidence_id": f"ev-{i}"})
+        for i in range(5)
+    ]
+
+    evaluation, _ = evaluate_control(control, evidence)
+
+    assert "more; see evidence_refs" not in evaluation.rationale
+    for index in range(5):
+        assert f"ev-{index}" in evaluation.rationale

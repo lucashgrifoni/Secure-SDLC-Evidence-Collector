@@ -10,6 +10,7 @@ from __future__ import annotations
 import codecs
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -147,7 +148,7 @@ class LocalArtifactCollector:
         for directory in directories:
             if not self._usable_directory(directory, report):
                 continue
-            for file_path in sorted(p for p in directory.rglob("*") if p.is_file()):
+            for file_path in self._walk_tree(directory, report):
                 try:
                     key = file_path.resolve()
                 except OSError:
@@ -157,6 +158,35 @@ class LocalArtifactCollector:
                 seen.add(key)
                 ordered.append(file_path)
         return ordered
+
+    def _walk_tree(self, directory: Path, report: LocalCollectionReport) -> list[Path]:
+        """Return every file under ``directory``, reporting what could not be read.
+
+        This used to be ``directory.rglob("*")``. CPython's glob machinery
+        swallows the ``PermissionError`` / ``OSError`` that ``os.scandir``
+        raises on a directory it cannot descend into, so an unreadable
+        subdirectory simply produced no entries: its evidence vanished, the
+        run exited on a `not_ready` verdict citing missing critical evidence,
+        and no warning was printed anywhere. The scans had run; the collector
+        just could not see them and did not say so.
+
+        ``os.walk`` with an ``onerror`` callback turns that back into a
+        recorded failure. Sorting is preserved so ordering stays deterministic
+        (docs/limitations.md §8).
+        """
+        found: list[Path] = []
+
+        def _on_error(exc: OSError) -> None:
+            path = Path(exc.filename) if exc.filename else directory
+            reason = f"Could not read directory {path}: {exc.strerror or exc}"
+            logger.warning("%s", reason)
+            report.errors.append(LocalCollectionError(path=path, reason=reason))
+
+        for root, dir_names, file_names in os.walk(directory, onerror=_on_error):
+            dir_names.sort()
+            root_path = Path(root)
+            found.extend(root_path / name for name in sorted(file_names))
+        return found
 
     def collect(self) -> LocalCollectionReport:
         report = LocalCollectionReport()

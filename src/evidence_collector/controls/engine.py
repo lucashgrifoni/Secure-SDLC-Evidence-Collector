@@ -137,6 +137,8 @@ def _rejected_exceptions_for(
             continue
         if now >= exc.expires_at:
             why = f"expired {exc.expires_at.isoformat()}"
+        elif now < exc.approved_at:
+            why = f"not yet in effect, approved_at {exc.approved_at.isoformat()}"
         else:
             why = "out of scope for this application/release"
         reasons.append(f"{exc.exception_id} ({why})")
@@ -271,7 +273,9 @@ def evaluate_control(
         status = ControlEvaluationStatus.MET
         base_confidence = _lowest_confidence(supporting_evidence)
         confidence = _downgrade_if_manual(base_confidence, supporting_evidence)
-        rationale = f"Control {control.control_id} is met by evidence {', '.join(supporting_refs)}."
+        rationale = (
+            f"Control {control.control_id} is met by evidence {_summarize_refs(supporting_refs)}."
+        )
 
     evaluation = ControlEvaluation(
         control_id=control.control_id,
@@ -287,6 +291,23 @@ def evaluate_control(
         exception_refs=exception_refs,
     )
     return evaluation, gaps
+
+
+# `rationale` is capped at 2000 characters by the domain model. Joining every
+# supporting evidence id into the sentence blew that cap at ~104 artifacts of
+# one type: pydantic raised ValidationError, `run` exited 3 and wrote NO
+# bundle, report or summary at all. A large-but-legitimate evidence set is not
+# a malformed input, and the prose is a human sentence — `evidence_refs`
+# carries the complete, uncapped list, so nothing is lost by summarising here.
+_MAX_RATIONALE_REFS = 20
+
+
+def _summarize_refs(refs: list[str]) -> str:
+    """Render evidence ids for prose, bounded so the sentence cannot overflow."""
+    if len(refs) <= _MAX_RATIONALE_REFS:
+        return ", ".join(refs)
+    shown = ", ".join(refs[:_MAX_RATIONALE_REFS])
+    return f"{shown} (+{len(refs) - _MAX_RATIONALE_REFS} more; see evidence_refs)"
 
 
 def evaluate_controls(
