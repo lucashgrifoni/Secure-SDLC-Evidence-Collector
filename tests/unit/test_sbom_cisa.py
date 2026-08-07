@@ -170,3 +170,126 @@ def test_spdx_describes_only_is_not_a_dependency_graph(tmp_path: Path) -> None:
     ]
     elements = parse_sbom(_write(tmp_path, sbom)).cisa_minimum_elements
     assert elements["dependency_relationships"] is False
+
+
+def _nested_container_bom(inner_extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    """A container SBOM shaped the way Syft and Trivy actually emit one.
+
+    CycloneDX expresses containment through `component.components`: the OS
+    component holds its distro packages, the application component holds its
+    libraries. Nothing at the top level names them.
+    """
+    inner: dict[str, Any] = {
+        "type": "library",
+        "name": "openssl",
+        "version": "3.0.11",
+        "purl": "pkg:deb/debian/openssl@3.0.11",
+    }
+    inner.update(inner_extra or {})
+    return {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "metadata": {
+            "timestamp": "2026-06-01T00:00:00Z",
+            "tools": [{"name": "syft"}],
+            "lifecycles": [{"phase": "build"}],
+            "component": {
+                "type": "container",
+                "name": "acme/api",
+                "version": "1.0",
+                "purl": "pkg:oci/api@1.0",
+                "supplier": {"name": "Acme"},
+                "hashes": [{"alg": "SHA-256", "content": "d"}],
+                "licenses": [{"license": {"id": "Apache-2.0"}}],
+            },
+        },
+        "components": [
+            {
+                "type": "operating-system",
+                "name": "debian",
+                "version": "12",
+                "purl": "pkg:generic/debian@12",
+                "supplier": {"name": "Debian"},
+                "hashes": [{"alg": "SHA-256", "content": "d"}],
+                "licenses": [{"license": {"id": "Apache-2.0"}}],
+                "components": [inner],
+            }
+        ],
+        "dependencies": [{"ref": "pkg:oci/api@1.0", "dependsOn": []}],
+    }
+
+
+def test_nested_components_are_counted(tmp_path: Path) -> None:
+    """A container SBOM's packages live one level down and were invisible.
+
+    Reading only `components[]` counted the OS wrapper and missed every
+    package inside it, so a 400-package image was recorded as
+    `component_count: 1` — an SBOM that looks nearly empty in the bundle while
+    the file itself is complete.
+    """
+    parsed = parse_sbom(_write(tmp_path, _nested_container_bom()))
+    # The debian wrapper plus the openssl package inside it; before this the
+    # count was 1.
+    assert parsed.component_count == 2
+
+
+def test_cisa_elements_are_checked_against_nested_components_too(tmp_path: Path) -> None:
+    """Conformance must be reported over the components it actually examined.
+
+    `_all_components_have` ran over the top-level slice only. A container SBOM
+    whose nested packages carry no supplier still reported `supplier: true`,
+    because the check inspected two wrappers and never opened them. Claiming
+    CISA conformance from a sample is the one thing a conformance signal
+    cannot do.
+    """
+    complete = parse_sbom(
+        _write(
+            tmp_path,
+            _nested_container_bom(
+                {
+                    "supplier": {"name": "Debian"},
+                    "hashes": [{"alg": "SHA-256", "content": "d"}],
+                    "licenses": [{"license": {"id": "OpenSSL"}}],
+                }
+            ),
+            name="complete.json",
+        )
+    ).cisa_minimum_elements
+    assert complete["supplier"] is True
+    assert complete["hash"] is True
+    assert complete["license"] is True
+
+    # Same BOM, but the nested package has no supplier, hash or license.
+    incomplete = parse_sbom(
+        _write(tmp_path, _nested_container_bom(), name="incomplete.json")
+    ).cisa_minimum_elements
+    assert incomplete["supplier"] is False
+    assert incomplete["hash"] is False
+    assert incomplete["license"] is False
+    # The elements the nested component does satisfy stay true.
+    assert incomplete["component_name"] is True
+    assert incomplete["version"] is True
+
+
+def test_deeply_nested_components_do_not_crash_the_parser(tmp_path: Path) -> None:
+    """An SBOM is untrusted input; nesting depth must not become a crash.
+
+    A recursive walk would hit Python's recursion limit on a hostile or
+    machine-generated file and raise RecursionError, which is not a
+    `ParseError` and so escapes the collector's handling entirely.
+    """
+    deepest: dict[str, Any] = {"type": "library", "name": "leaf", "version": "1"}
+    node = deepest
+    for index in range(500):
+        node = {
+            "type": "library",
+            "name": f"level-{index}",
+            "version": "1",
+            "components": [node],
+        }
+    sbom = {"bomFormat": "CycloneDX", "specVersion": "1.6", "components": [node]}
+
+    parsed = parse_sbom(_write(tmp_path, sbom))
+
+    # Bounded, not crashed: the depth cap stops the walk without an exception.
+    assert 0 < parsed.component_count <= 501

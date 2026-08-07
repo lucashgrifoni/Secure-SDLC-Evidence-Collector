@@ -90,11 +90,43 @@ def _detect_format(data: dict[str, Any], path: Path) -> SbomFormat:
     raise ParseError(f"Unknown SBOM format in {path}")
 
 
+# CycloneDX components nest: `component.components` is how the spec expresses
+# containment, and it is what Syft and Trivy emit for a container image — the
+# OS component holds its packages, the application component holds its
+# libraries. Reading only the top level counted those two and missed every
+# package inside them, so a 400-package image SBOM was recorded as
+# `component_count: 2`. Worse, the CISA minimum-element checks ran over the
+# same top-level slice and reported "every component has a supplier" after
+# inspecting two of four hundred.
+#
+# The walk is iterative and depth-capped: nesting is attacker-influenced (an
+# SBOM is an untrusted input here) and a recursive walk would hit Python's
+# recursion limit and raise, turning a malformed file into a crash instead of
+# a parse error.
+_MAX_COMPONENT_DEPTH = 64
+
+
+def _flatten_components(components: Any, *, max_depth: int = _MAX_COMPONENT_DEPTH) -> list[Any]:
+    """Return every component in `components`, including nested children."""
+    if not isinstance(components, list):
+        return []
+    flat: list[Any] = []
+    stack: list[tuple[Any, int]] = [(c, 0) for c in reversed(components)]
+    while stack:
+        component, depth = stack.pop()
+        if not isinstance(component, dict):
+            continue
+        flat.append(component)
+        if depth >= max_depth:
+            continue
+        children = component.get("components")
+        if isinstance(children, list):
+            stack.extend((child, depth + 1) for child in reversed(children))
+    return flat
+
+
 def _cyclonedx_component_count(data: dict[str, Any]) -> int:
-    components = data.get("components")
-    if isinstance(components, list):
-        return sum(1 for c in components if isinstance(c, dict))
-    return 0
+    return len(_flatten_components(data.get("components")))
 
 
 @dataclass
@@ -118,8 +150,7 @@ def _cyclonedx_object_counts(data: dict[str, Any]) -> CycloneDxObjectCounts:
     non-zero, so a classic dependency SBOM is unaffected.
     """
     counts = CycloneDxObjectCounts()
-    raw_components = data.get("components")
-    components: list[Any] = list(raw_components) if isinstance(raw_components, list) else []
+    components: list[Any] = _flatten_components(data.get("components"))
     # A single-model ML-BOM or single-key CBOM often describes the asset as the
     # BOM subject in metadata.component with nothing under components[]; include
     # it so the subject is counted (mirrors the CISA component checks).
@@ -450,7 +481,10 @@ def _all_components_have(
 
 def _cyclonedx_cisa_elements(data: dict[str, Any]) -> dict[str, bool]:
     metadata = _as_dict(data.get("metadata"))
-    components = _as_list(data.get("components"))
+    # Nested components count too: a container SBOM keeps its packages under
+    # the OS and application components, and checking only the outer two
+    # reported conformance for a set the check never looked at.
+    components = _flatten_components(data.get("components"))
     # CISA's component-level elements apply to every component, including the
     # top-level subject in metadata.component. Without this an application
     # with no supplier/hash/license is masked by complete dependencies.
