@@ -281,3 +281,57 @@ def test_unrecognized_but_valid_json_is_still_ignored_quietly(tmp_path: Path) ->
     report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir]).collect()
     assert not report.errors
     assert not report.evidence
+
+
+# ---------------------------------------------------------------------------
+# Overlapping directories must not double-ingest
+#
+# `--artifacts-dir` is repeatable, and passing a parent plus one of its own
+# subdirectories made rglob yield the nested files under both roots. Every one
+# was ingested twice, producing duplicate evidence with COLLIDING evidence_id
+# values — the id is derived from the artifact hash and context, so the same
+# file always yields the same id — and the coverage and confidence scores were
+# computed over the inflated set.
+# ---------------------------------------------------------------------------
+
+
+def test_overlapping_artifacts_dirs_ingest_each_file_once(tmp_path: Path) -> None:
+    artifacts_dir = tmp_path / "artifacts"
+    nested = artifacts_dir / "scanners"
+    nested.mkdir(parents=True)
+    (nested / "semgrep.sarif").write_text(_sarif_bytes(), encoding="utf-8")
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir, nested]).collect()
+
+    assert len(report.evidence) == 1
+    assert report.inspected_files == 1
+    assert len({e.evidence_id for e in report.evidence}) == 1
+
+
+def test_the_same_directory_passed_twice_ingests_once(tmp_path: Path) -> None:
+    artifacts_dir = tmp_path / "artifacts"
+    artifacts_dir.mkdir()
+    (artifacts_dir / "semgrep.sarif").write_text(_sarif_bytes(), encoding="utf-8")
+
+    report = LocalArtifactCollector(
+        _release(), artifacts_dirs=[artifacts_dir, artifacts_dir]
+    ).collect()
+
+    assert len(report.evidence) == 1
+
+
+def test_distinct_directories_still_both_ingested(tmp_path: Path) -> None:
+    # De-duplication must not swallow genuinely separate inputs.
+    first = tmp_path / "a"
+    second = tmp_path / "b"
+    first.mkdir()
+    second.mkdir()
+    (first / "semgrep.sarif").write_text(_sarif_bytes(), encoding="utf-8")
+    (second / "gitleaks.sarif").write_text(
+        _sarif_bytes().replace("semgrep", "gitleaks"), encoding="utf-8"
+    )
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[first, second]).collect()
+
+    assert len(report.evidence) == 2
+    assert len({e.evidence_id for e in report.evidence}) == 2

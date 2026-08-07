@@ -124,26 +124,51 @@ class LocalArtifactCollector:
             return False
         return True
 
+    def _walk_once(self, directories: list[Path], report: LocalCollectionReport) -> list[Path]:
+        """Return every file under ``directories``, each exactly once.
+
+        ``--artifacts-dir`` is documented as repeatable, and nothing stopped
+        a caller from passing a directory and one of its own subdirectories
+        (a parent plus a scanner-specific folder, or a CI matrix that appends
+        paths). ``rglob`` then yielded the nested files under both roots, so
+        every one of them was ingested twice: the bundle carried duplicate
+        evidence with *colliding* ``evidence_id`` values — the id is derived
+        from the artifact hash and context, so the same file always produces
+        the same id — and the coverage and confidence scores were computed
+        over the inflated set.
+
+        Paths are resolved before de-duplication so a parent/child overlap,
+        a symlink, and a case difference on Windows all collapse to one
+        entry. Order stays deterministic: directories in the order given,
+        files sorted within each.
+        """
+        seen: set[Path] = set()
+        ordered: list[Path] = []
+        for directory in directories:
+            if not self._usable_directory(directory, report):
+                continue
+            for file_path in sorted(p for p in directory.rglob("*") if p.is_file()):
+                try:
+                    key = file_path.resolve()
+                except OSError:
+                    key = file_path.absolute()
+                if key in seen:
+                    continue
+                seen.add(key)
+                ordered.append(file_path)
+        return ordered
+
     def collect(self) -> LocalCollectionReport:
         report = LocalCollectionReport()
-        for directory in self._artifacts_dirs:
-            if not self._usable_directory(directory, report):
-                continue
-            for file_path in sorted(p for p in directory.rglob("*") if p.is_file()):
-                report.inspected_files += 1
-                self._ingest_artifact(file_path, report)
-        for directory in self._attestations_dirs:
-            if not self._usable_directory(directory, report):
-                continue
-            for file_path in sorted(p for p in directory.rglob("*") if p.is_file()):
-                report.inspected_files += 1
-                self._ingest_attestation(file_path, report)
-        for directory in self._exceptions_dirs:
-            if not self._usable_directory(directory, report):
-                continue
-            for file_path in sorted(p for p in directory.rglob("*") if p.is_file()):
-                report.inspected_files += 1
-                self._ingest_exception(file_path, report)
+        for file_path in self._walk_once(self._artifacts_dirs, report):
+            report.inspected_files += 1
+            self._ingest_artifact(file_path, report)
+        for file_path in self._walk_once(self._attestations_dirs, report):
+            report.inspected_files += 1
+            self._ingest_attestation(file_path, report)
+        for file_path in self._walk_once(self._exceptions_dirs, report):
+            report.inspected_files += 1
+            self._ingest_exception(file_path, report)
         return report
 
     def _ingest_exception(self, file_path: Path, report: LocalCollectionReport) -> None:
