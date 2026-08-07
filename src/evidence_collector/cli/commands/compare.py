@@ -111,3 +111,18 @@ def register(app: typer.Typer) -> None:
                 delta.category,
             )
         console.print(control_table)
+
+        # EPSS scores are not comparable across model versions: v5 re-fits
+        # the model rather than re-scoring under the old one, so exposure
+        # can appear to move when only the model changed. Saying so is the
+        # difference between a diff a reader can act on and one that
+        # quietly misleads.
+        if comparison.epss_model_drift:
+            console.print(
+                "[yellow]EPSS model drift:[/yellow] baseline used "
+                f"{', '.join(comparison.before_epss_model_versions)}; candidate used "
+                f"{', '.join(comparison.after_epss_model_versions)}. "
+                "EPSS scores are not comparable across model versions — treat any "
+                "score or risk movement as unexplained until re-enriched under a "
+                "single model."
+            )
