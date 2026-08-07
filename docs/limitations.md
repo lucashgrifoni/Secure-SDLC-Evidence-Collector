@@ -218,6 +218,12 @@ The collector checks **presence**, not correctness.
   paths before ingestion, so Linux and Windows should produce the same
   bundle — the `test_sample_release_bundle_is_stable_across_artifact_reorder`
   regression test catches drift if this ever changes.
+- Output files are written with LF line endings on every platform.
+  Before 3.0 they were written in the platform's default text mode, so
+  a bundle produced on Windows differed from the same bundle produced
+  on Linux in every single line ending. The structural hash is computed
+  over parsed JSON and was never affected, but "byte-for-byte identical
+  output" only became true across operating systems here.
 
 ## 9 · Performance envelope
 

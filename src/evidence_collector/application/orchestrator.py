@@ -33,7 +33,7 @@ from evidence_collector.domain.models import (
     NormalizedEvidence,
     ReleaseContext,
 )
-from evidence_collector.exporters import export_html, export_json, export_markdown
+from evidence_collector.exporters import export_report_set
 from evidence_collector.scoring import (
     RiskMode,
     RiskThresholds,
@@ -196,15 +196,13 @@ def run_pipeline(
     bundle = apply_profile(bundle, profile)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    json_path = export_json(bundle, output_dir / "bundle.json")
-    markdown_path = export_markdown(bundle, output_dir / "report.md")
-    html_path = export_html(bundle, output_dir / "summary.html")
+    reports = export_report_set(bundle, output_dir)
 
     return BundleBuildResult(
         bundle=bundle,
-        json_path=json_path,
-        markdown_path=markdown_path,
-        html_path=html_path,
+        json_path=reports.json_path,
+        markdown_path=reports.markdown_path,
+        html_path=reports.html_path,
         collection_report=report,
         controls_used=controls,
     )

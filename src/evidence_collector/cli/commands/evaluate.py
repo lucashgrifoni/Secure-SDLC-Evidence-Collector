@@ -15,7 +15,7 @@ from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, fail_on_exit_co
 from evidence_collector.cli._render import render_summary
 from evidence_collector.cli._state import EVIDENCE_ADAPTER, console
 from evidence_collector.domain.models import CollectionError
-from evidence_collector.exporters import export_html, export_json, export_markdown
+from evidence_collector.exporters import export_report_set
 
 
 def evaluate(
@@ -67,15 +67,13 @@ def evaluate(
     )
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    json_path = export_json(bundle, output_dir / "bundle.json")
-    markdown_path = export_markdown(bundle, output_dir / "report.md")
-    html_path = export_html(bundle, output_dir / "summary.html")
+    reports = export_report_set(bundle, output_dir)
 
     result = BundleBuildResult(
         bundle=bundle,
-        json_path=json_path,
-        markdown_path=markdown_path,
-        html_path=html_path,
+        json_path=reports.json_path,
+        markdown_path=reports.markdown_path,
+        html_path=reports.html_path,
     )
     render_summary(result)
     raise typer.Exit(code=fail_on_exit_code(bundle.summary.release_status, fail_on))

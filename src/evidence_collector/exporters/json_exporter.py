@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 from evidence_collector.domain.models import EvidenceBundle
+from evidence_collector.exporters._atomic import write_atomic
 
 
 def bundle_to_json(bundle: EvidenceBundle) -> str:
@@ -19,7 +20,4 @@ def bundle_to_json(bundle: EvidenceBundle) -> str:
 
 
 def export_json(bundle: EvidenceBundle, output_path: str | Path) -> Path:
-    target = Path(output_path).expanduser()
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(bundle_to_json(bundle) + "\n", encoding="utf-8")
-    return target
+    return write_atomic(Path(output_path).expanduser(), bundle_to_json(bundle) + "\n")
