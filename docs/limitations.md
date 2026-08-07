@@ -130,6 +130,25 @@ The collector checks **presence**, not correctness.
   `producer = "in-toto-release-attestation"` — the format that was read —
   rather than naming an organization the collector did not authenticate.
 
+## 7b · in-toto predicates the collector does not model
+
+- An in-toto Statement whose `predicateType` has no dedicated parser is
+  ingested as a `generic_attestation` with status `unknown`, and the
+  collector logs a warning naming the predicate. It is **recorded, not
+  interpreted**: no verdict is derived from it, and it satisfies no
+  control on its own. This is deliberate — before it existed, such a
+  Statement was dropped with no trace at all.
+- Predicates that *are* modelled: SLSA provenance, SLSA VSA, the release
+  predicate, `svr/v0.2`, `test-result/v0.1`, and `vulns/v0.2`.
+- **`spdx3/v0.1` is a known gap.** Its predicate is an SPDX 3 document
+  that should route to the SBOM parser, but `parse_sbom` reads from a
+  path rather than an in-memory document. Until that is reshaped, an
+  SPDX 3 Statement is ingested as a generic attestation: preserved, but
+  not parsed as an SBOM and not counted toward SBOM controls.
+- A DSSE-wrapped or Sigstore-bundled **VSA** also lands here rather than
+  in the dedicated VSA parser, which reads raw Statements only. The
+  evidence survives, but with less detail than an unwrapped VSA.
+
 ## 8 · Determinism boundaries
 
 - Bundle JSON is deterministic for a fixed set of inputs **after
