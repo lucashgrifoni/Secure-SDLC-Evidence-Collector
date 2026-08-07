@@ -6,9 +6,13 @@ import base64
 import hashlib
 import json
 
+from evidence_collector import __version__
 from evidence_collector.application.integrity import normalize_bundle
 from evidence_collector.domain.enums import (
     ConfidenceLevel,
+    ControlCriticality,
+    ControlEvaluationStatus,
+    ControlFramework,
     EvidenceStatus,
     EvidenceType,
     ReleaseStatus,
@@ -16,6 +20,7 @@ from evidence_collector.domain.enums import (
 )
 from evidence_collector.domain.models import (
     Application,
+    ControlEvaluation,
     EvidenceBundle,
     EvidenceSource,
     NormalizedEvidence,
@@ -25,8 +30,12 @@ from evidence_collector.domain.models import (
 from evidence_collector.exporters.intoto import (
     IN_TOTO_TYPE,
     PREDICATE_TYPE,
+    PREDICATE_TYPE_NAMES,
     PREDICATE_TYPE_SLSA_PROVENANCE,
+    PREDICATE_TYPE_SVR,
     PREDICATE_TYPE_WITNESS,
+    SVR_PROPERTY_RELEASE_READY,
+    VERIFIER_ID_BASE,
     build_dsse_envelope,
     build_statement,
 )
@@ -139,3 +148,138 @@ def test_build_statement_round_trip_through_dsse_preserves_predicate_type() -> N
     envelope = build_dsse_envelope(stmt)
     decoded = json.loads(base64.standard_b64decode(envelope["payload"]).decode("utf-8"))
     assert decoded["predicateType"] == PREDICATE_TYPE_WITNESS
+
+
+# ---------------------------------------------------------------------------
+# SVR (Simple Verification Result) v0.2
+# ---------------------------------------------------------------------------
+
+
+def _evaluation(
+    control_id: str,
+    status: ControlEvaluationStatus,
+) -> ControlEvaluation:
+    return ControlEvaluation(
+        control_id=control_id,
+        framework=ControlFramework.NIST_SSDF,
+        control_name=f"Control {control_id}",
+        evaluation_status=status,
+        criticality=ControlCriticality.HIGH,
+        rationale="fixture",
+    )
+
+
+def _svr_bundle(release_status: ReleaseStatus = ReleaseStatus.READY) -> EvidenceBundle:
+    """A bundle carrying one control of every evaluation status."""
+    bundle = _bundle()
+    bundle.control_evaluations = [
+        _evaluation("SSDF-PS.3", ControlEvaluationStatus.MET),
+        _evaluation("SSDF-PO.3", ControlEvaluationStatus.PARTIAL),
+        _evaluation("SSDF-PW.4", ControlEvaluationStatus.MISSING),
+        _evaluation("SSDF-RV.1", ControlEvaluationStatus.WAIVED),
+        _evaluation("SSDF-PW.7", ControlEvaluationStatus.NOT_APPLICABLE),
+        _evaluation("ORG-001", ControlEvaluationStatus.MET),
+    ]
+    bundle.summary.release_status = release_status
+    return bundle
+
+
+def test_svr_statement_advertises_the_svr_uri() -> None:
+    stmt = build_statement(_svr_bundle(), predicate_type="svr")
+    assert stmt["predicateType"] == PREDICATE_TYPE_SVR
+    assert stmt["predicateType"] == "https://in-toto.io/attestation/svr/v0.2"
+
+
+def test_svr_predicate_has_exactly_the_required_fields() -> None:
+    predicate = build_statement(_svr_bundle(), predicate_type="svr")["predicate"]
+    assert set(predicate) == {"verifier", "timeCreated", "properties"}
+    assert set(predicate["verifier"]) == {"id", "policies"}
+
+
+def test_svr_predicate_is_not_the_bundle() -> None:
+    # Every other variant embeds the bundle. Advertising svr/v0.2 with a
+    # bundle-shaped body would ship a predicate that fails its own schema.
+    predicate = build_statement(_svr_bundle(), predicate_type="svr")["predicate"]
+    assert "bundle_id" not in predicate
+    assert "control_evaluations" not in predicate
+
+
+def test_svr_properties_list_only_met_controls() -> None:
+    predicate = build_statement(_svr_bundle(), predicate_type="svr")["predicate"]
+    assert predicate["properties"] == [
+        "SDLC_EVIDENCE_ORG-001_PASSED",
+        "SDLC_EVIDENCE_SSDF-PS.3_PASSED",
+        "SDLC_EVIDENCE_RELEASE_READY",
+    ]
+
+
+def test_svr_properties_exclude_partial_missing_waived_and_na() -> None:
+    predicate = build_statement(_svr_bundle(), predicate_type="svr")["predicate"]
+    joined = " ".join(predicate["properties"])
+    for absent in ("SSDF-PO.3", "SSDF-PW.4", "SSDF-RV.1", "SSDF-PW.7"):
+        assert absent not in joined
+
+
+def test_svr_release_ready_property_tracks_the_verdict() -> None:
+    for status, expected in (
+        (ReleaseStatus.READY, True),
+        (ReleaseStatus.CONDITIONAL, False),
+        (ReleaseStatus.NOT_READY, False),
+    ):
+        predicate = build_statement(_svr_bundle(status), predicate_type="svr")["predicate"]
+        assert (SVR_PROPERTY_RELEASE_READY in predicate["properties"]) is expected
+
+
+def test_svr_time_created_comes_from_the_bundle_not_the_clock() -> None:
+    # Reusing generated_at keeps the export a pure function of its input.
+    bundle = _svr_bundle()
+    predicate = build_statement(bundle, predicate_type="svr")["predicate"]
+    assert predicate["timeCreated"].startswith(
+        bundle.generated_at.isoformat().replace("+00:00", "Z")[:19]
+    )
+
+
+def test_svr_export_is_byte_identical_across_runs() -> None:
+    bundle = _svr_bundle()
+    first = json.dumps(build_statement(bundle, predicate_type="svr"), sort_keys=True)
+    second = json.dumps(build_statement(bundle, predicate_type="svr"), sort_keys=True)
+    assert first == second
+
+
+def test_svr_policies_is_empty_rather_than_invented() -> None:
+    # The spec permits an empty array. The bundle records no resolvable
+    # identifier for the catalogue it was evaluated against, and a
+    # ResourceDescriptor needs uri/digest/content — so anything non-empty
+    # here would be fabricated.
+    predicate = build_statement(_svr_bundle(), predicate_type="svr")["predicate"]
+    assert predicate["verifier"]["policies"] == []
+
+
+def test_svr_verifier_id_is_versioned() -> None:
+    predicate = build_statement(_svr_bundle(), predicate_type="svr")["predicate"]
+    assert predicate["verifier"]["id"] == f"{VERIFIER_ID_BASE}/v{__version__}"
+
+
+def test_svr_subject_still_uses_the_structural_digest() -> None:
+    bundle = _svr_bundle()
+    stmt = build_statement(bundle, predicate_type="svr")
+    expected = hashlib.sha256(
+        normalize_bundle(json.loads(bundle.model_dump_json(exclude_none=False)))
+    ).hexdigest()
+    assert stmt["subject"][0]["digest"]["sha256"] == expected
+
+
+def test_svr_bundle_with_no_met_controls_yields_only_the_verdict() -> None:
+    bundle = _bundle()
+    bundle.summary.release_status = ReleaseStatus.READY
+    predicate = build_statement(bundle, predicate_type="svr")["predicate"]
+    assert predicate["properties"] == [SVR_PROPERTY_RELEASE_READY]
+
+
+def test_predicate_type_names_covers_every_registered_variant() -> None:
+    assert set(PREDICATE_TYPE_NAMES) == {
+        "evidence-bundle",
+        "witness",
+        "slsa-provenance",
+        "svr",
+    }

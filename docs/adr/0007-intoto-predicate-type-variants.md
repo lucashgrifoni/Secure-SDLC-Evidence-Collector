@@ -45,12 +45,54 @@ three accepted values:
 | `evidence-bundle` (default) | `https://github.com/lucashgrifoni/secure-sdlc-evidence-collector/predicate/sdlc-evidence/v1` | Project-native; current behaviour preserved as the default. |
 | `witness` | `https://witness.dev/attestations/custom/sdlc-evidence/v0.1` | Witness-compatible custom attestation. Verifiers gating on `witness.dev/*` accept it without bespoke parsers. |
 | `slsa-provenance` | `https://slsa.dev/provenance/v1` | SLSA Provenance v1 URI. Use when the bundle should travel where a SLSA predicate is expected. |
+| `svr` (added 2026-08-07) | `https://in-toto.io/attestation/svr/v0.2` | in-toto Simple Verification Result. Use where a policy engine gates on *verified properties* rather than on raw evidence. |
 
-The wire format of the in-toto Statement and the predicate payload do
-**not** change: the bundle is still embedded as `predicate` in full,
-the `subject` still carries the structural SHA-256 of the bundle, and
-the Statement type is still `https://in-toto.io/Statement/v1`. Only
-the advertised `predicateType` differs.
+For the first three variants the wire format of the in-toto Statement
+and the predicate payload do **not** change: the bundle is still
+embedded as `predicate` in full, the `subject` still carries the
+structural SHA-256 of the bundle, and the Statement type is still
+`https://in-toto.io/Statement/v1`. Only the advertised `predicateType`
+differs.
+
+### Amendment 2026-08-07 — `svr` breaks that invariant, deliberately
+
+The `svr` variant is the first whose **predicate is not the bundle**.
+
+in-toto vetted the SVR predicate for precisely what this project
+produces: "evidence that an artifact has been evaluated against one or
+more policies". Unlike `witness` and `slsa-provenance`, SVR has a
+mandatory shape of its own — `verifier` (with `id` and `policies`),
+`timeCreated`, and `properties` — and it is small enough that a
+consumer really will validate it. Embedding a bundle there, as the
+other variants do, would advertise `svr/v0.2` while shipping a body
+that fails the SVR schema. Handing a verifier a predicate that lies
+about its own type is the exact failure this project exists to expose,
+so the variant emits a real SVR predicate instead.
+
+Three decisions inside that predicate are worth recording:
+
+- **`properties` lists only what passed.** One entry per control
+  evaluated as MET, plus `SDLC_EVIDENCE_RELEASE_READY` when the
+  bundle's own verdict is `ready`. Partial, missing, waived and
+  not-applicable controls are absent. SVR states *verified* properties,
+  so "not listed" must read as "not asserted", never as "asserted to be
+  failing".
+- **`timeCreated` reuses the bundle's `generated_at`**, not the wall
+  clock, so the export stays a pure function of its input and re-running
+  it on the same bundle is byte-identical. Reading the clock here would
+  have made the one determinism guarantee the project sells untrue for
+  this output.
+- **`policies` is an empty array.** The spec permits it, and a
+  ResourceDescriptor requires at least one of `uri`, `digest` or
+  `content`. The bundle records no resolvable identifier for the control
+  catalogue it was evaluated against, so anything non-empty here would
+  be invented provenance. **Follow-up:** recording the catalogue
+  identity in the bundle would let this be populated honestly, and is
+  worth a future change.
+
+Because the bundle is not carried, a consumer who needs the underlying
+evidence should take one of the other three variants (or the bundle
+itself) alongside the SVR.
 
 ## Consequences
 

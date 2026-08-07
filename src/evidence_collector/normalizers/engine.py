@@ -36,6 +36,12 @@ from evidence_collector.parsers._common import ParsedArtifact
 from evidence_collector.parsers.attestation import ParsedAttestation
 from evidence_collector.parsers.garak import ParsedGarak
 from evidence_collector.parsers.intoto_provenance import ParsedProvenance
+from evidence_collector.parsers.intoto_statement import (
+    SVR_PREDICATE_TYPE,
+    TEST_RESULT_PREDICATE_TYPE,
+    VULNS_PREDICATE_TYPE,
+    ParsedIntotoStatement,
+)
 from evidence_collector.parsers.intoto_vsa import ParsedVsa
 from evidence_collector.parsers.junit import ParsedJUnit
 from evidence_collector.parsers.lm_eval import ParsedLmEval
@@ -550,6 +556,129 @@ def normalize_release_attestation(
             f"Release attestation ({parsed.predicate_type.rsplit('/', 1)[-1]}) "
             f"for {parsed.purl} binding {len(parsed.assets)} asset(s)"
         ),
+        metadata=metadata,
+    )
+
+
+def _intoto_statement_shape(
+    parsed: ParsedIntotoStatement,
+) -> tuple[EvidenceType, EvidenceStatus, str, str, str]:
+    """Return ``(evidence_type, status, source_kind, producer, summary)``.
+
+    Recognized predicates get a real evidence type so they flow through
+    the same lanes as natively-parsed evidence: a test-result becomes
+    ``test_result``, a vulns scan becomes ``sca_scan`` and reaches the
+    EPSS/KEV enrichment. An unknown predicate becomes a
+    ``generic_attestation`` marked UNKNOWN — recorded and visible, with
+    no verdict invented on its behalf.
+    """
+    if parsed.predicate_type == SVR_PREDICATE_TYPE:
+        producer = (parsed.verifier_id or "in-toto-svr")[:100]
+        return (
+            EvidenceType.ARTIFACT_ATTESTATION,
+            EvidenceStatus.GENERATED,
+            "in-toto-svr",
+            producer,
+            f"SVR from {producer}: {len(parsed.properties)} verified property(ies)",
+        )
+    if parsed.predicate_type == TEST_RESULT_PREDICATE_TYPE:
+        status = {
+            "PASSED": EvidenceStatus.PASSED,
+            "FAILED": EvidenceStatus.FAILED,
+            # The test ran to completion but flagged warnings. Calling that
+            # PASSED would hide the warning; calling it FAILED would block a
+            # release the attestation never said was broken.
+            "WARNED": EvidenceStatus.COMPLETED,
+        }.get(parsed.test_result or "", EvidenceStatus.UNKNOWN)
+        return (
+            EvidenceType.TEST_RESULT,
+            status,
+            "in-toto-test-result",
+            "in-toto-test-result",
+            (
+                f"in-toto test result {parsed.test_result or 'UNKNOWN'}: "
+                f"{parsed.passed_tests} passed, {parsed.warned_tests} warned, "
+                f"{parsed.failed_tests} failed"
+            ),
+        )
+    if parsed.predicate_type == VULNS_PREDICATE_TYPE:
+        blocking = parsed.findings_count.get("critical", 0) + parsed.findings_count.get("high", 0)
+        producer = (parsed.scanner_uri or "in-toto-vulns")[:100]
+        return (
+            EvidenceType.SCA_SCAN,
+            EvidenceStatus.FAILED if blocking > 0 else EvidenceStatus.PASSED,
+            "in-toto-vulns",
+            producer,
+            f"{producer} reported {len(parsed.vuln_ids)} vulnerability(ies)",
+        )
+    return (
+        EvidenceType.GENERIC_ATTESTATION,
+        EvidenceStatus.UNKNOWN,
+        "in-toto-statement",
+        "in-toto-statement",
+        f"in-toto Statement with unrecognized predicate {parsed.predicate_type}",
+    )
+
+
+def normalize_intoto_statement(
+    parsed: ParsedIntotoStatement,
+    release: ReleaseContext,
+    *,
+    artifact_root: str | None = None,
+) -> NormalizedEvidence:
+    """Build evidence from any in-toto Statement without a dedicated parser.
+
+    Recognized predicates (SVR, test-result, vulns) are mapped to their
+    natural evidence type. Anything else is preserved as a
+    ``generic_attestation`` rather than dropped — the collector records
+    that an attestation was supplied and what it claimed to be, and lets
+    a human decide what it is worth.
+
+    Confidence is MEDIUM, not HIGH: unlike the dedicated parsers, nothing
+    here validated the predicate against its schema.
+    """
+    evidence_type, status, source_kind, producer, summary = _intoto_statement_shape(parsed)
+    subject_ref = (parsed.subject_name or release.artifact_digest or release.release_id)[:500]
+    metadata: dict[str, Any] = {
+        "predicate_type": parsed.predicate_type,
+        "envelope": parsed.envelope,
+        "predicate_recognized": parsed.recognized,
+    }
+    if parsed.verifier_id:
+        metadata["verifier_id"] = parsed.verifier_id
+    if parsed.properties:
+        metadata["properties"] = list(parsed.properties)
+    if parsed.time_created:
+        metadata["time_created"] = parsed.time_created
+    if parsed.test_result:
+        metadata["test_result"] = parsed.test_result
+        metadata["passed_tests"] = parsed.passed_tests
+        metadata["warned_tests"] = parsed.warned_tests
+        metadata["failed_tests"] = parsed.failed_tests
+    if parsed.test_url:
+        metadata["test_url"] = parsed.test_url
+    if parsed.scanner_uri:
+        metadata["scanner_uri"] = parsed.scanner_uri
+    if parsed.scanner_version:
+        metadata["scanner_version"] = parsed.scanner_version
+    return NormalizedEvidence(
+        evidence_id=_new_evidence_id(
+            "stmt", parsed.artifact.integrity_hash, parsed.predicate_type, release.release_id
+        ),
+        evidence_type=evidence_type,
+        source=EvidenceSource(name=producer, kind=source_kind),
+        producer=producer,
+        subject_type=SubjectType.ARTIFACT,
+        subject_ref=subject_ref,
+        status=status,
+        confidence=ConfidenceLevel.MEDIUM,
+        release_id=release.release_id,
+        commit_sha=release.commit_sha,
+        generated_at=None,
+        raw=_raw_ref(parsed.artifact, artifact_root),
+        findings_count=dict(parsed.findings_count),
+        cve_ids=list(parsed.vuln_ids),
+        summary=summary,
         metadata=metadata,
     )
 

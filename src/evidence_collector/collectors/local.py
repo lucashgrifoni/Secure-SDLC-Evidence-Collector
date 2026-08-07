@@ -22,6 +22,7 @@ from evidence_collector.domain.models import (
 from evidence_collector.normalizers import (
     normalize_attestation,
     normalize_garak,
+    normalize_intoto_statement,
     normalize_junit,
     normalize_lm_eval,
     normalize_model_card,
@@ -37,6 +38,7 @@ from evidence_collector.parsers import (
     parse_attestation,
     parse_exception,
     parse_garak,
+    parse_intoto_statement,
     parse_junit,
     parse_lm_eval,
     parse_model_card,
@@ -50,6 +52,7 @@ from evidence_collector.parsers import (
 )
 from evidence_collector.parsers._common import MAX_INPUT_BYTES, ParseError
 from evidence_collector.parsers.intoto_provenance import file_has_provenance
+from evidence_collector.parsers.intoto_statement import file_has_ingestable_statement
 from evidence_collector.parsers.intoto_vsa import VSA_PREDICATE_TYPE
 from evidence_collector.parsers.release_attestation import file_has_release_attestation
 from evidence_collector.parsers.sbom import is_spdx3
@@ -190,6 +193,26 @@ class LocalArtifactCollector:
                     )
                 )
                 intoto_found = True
+            # Anything else that is still a valid in-toto Statement. Known
+            # predicates (SVR, test-result, vulns) map to a real evidence
+            # type; an unknown one is recorded as a generic attestation with
+            # a warning. Before this route existed such a Statement was
+            # dropped silently — the user got a bundle with no trace of a
+            # file they believed they had supplied.
+            if _looks_like_intoto_statement(file_path):
+                parsed_stmt = parse_intoto_statement(file_path)
+                if not parsed_stmt.recognized:
+                    logger.warning(
+                        "Ingesting %s as a generic attestation: unrecognized in-toto predicate %s",
+                        file_path,
+                        parsed_stmt.predicate_type,
+                    )
+                report.evidence.append(
+                    normalize_intoto_statement(
+                        parsed_stmt, self._release, artifact_root=self._artifact_root
+                    )
+                )
+                intoto_found = True
             if intoto_found:
                 return
             if _looks_like_sbom(file_path):
@@ -314,6 +337,15 @@ def _looks_like_provenance(path: Path) -> bool:
     if path.suffix.lower() not in {".json", ".jsonl"}:
         return False
     return file_has_provenance(path)
+
+
+def _looks_like_intoto_statement(path: Path) -> bool:
+    """Detect any in-toto Statement no dedicated parser already claims —
+    in a raw Statement, a DSSE envelope, a Sigstore bundle, or a JSONL
+    record."""
+    if path.suffix.lower() not in {".json", ".jsonl"}:
+        return False
+    return file_has_ingestable_statement(path)
 
 
 def _looks_like_release_attestation(path: Path) -> bool:
