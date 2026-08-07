@@ -1,9 +1,20 @@
 # Bundle schema reference
 
-Bundle schema version: **`1.0.0`**
+Bundle schema version: **`2.0.0`**
 
 Top-level document produced by every `run` / `evaluate` invocation. All
 timestamps are ISO 8601 UTC. All enum values serialize as their string form.
+
+`bundle_version` versions the *contract*, not the tool, and it moves whenever
+a bundle can no longer validate against the previous version. Because the
+schema sets `additionalProperties: false` at every level, adding a field is
+breaking even though it is additive: a validator pinned to `1.0.0` rejects a
+bundle that carries anything it does not know.
+
+`2.0.0` adds `collection_errors`. A bundle that hit no collection problem
+omits the field entirely rather than emitting an empty list, so a clean run
+still validates against `1.0.0` and only bundles that genuinely report a
+failed input require the newer contract.
 
 ## Machine-readable schema
 
@@ -45,7 +56,7 @@ configuration, once the contract is registered there.
 
 ```jsonc
 {
-  "bundle_version": "1.0.0",
+  "bundle_version": "2.0.0",
   "bundle_id": "bundle-20260410-payments-api-2026.04.10-ab12cd34",
   "generated_at": "2026-04-10T12:20:00Z",
   "application": {

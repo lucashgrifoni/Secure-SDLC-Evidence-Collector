@@ -10,7 +10,16 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    ValidationInfo,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from evidence_collector.domain.enums import (
     ConfidenceLevel,
@@ -23,7 +32,21 @@ from evidence_collector.domain.enums import (
     SubjectType,
 )
 
-BUNDLE_SCHEMA_VERSION = "1.0.0"
+# Versions the *bundle contract*, not the tool. It moves when the shape of a
+# bundle changes in a way a consumer must know about, which is why the
+# published schema sets `additionalProperties: false` at every level: a
+# consumer pinning a version is told when a bundle no longer matches it.
+#
+# 2.0.0 adds `collection_errors`. That field is additive, but a strict
+# validator pinned to 1.0.0 rejects any bundle carrying it, so by this
+# contract's own rules it is a breaking change and the version has to say so.
+# It stayed at 1.0.0 while the shape changed underneath it, which is the one
+# thing a version field must never do — a consumer got a validation failure
+# with no way to learn that a newer schema existed.
+#
+# Bundles without collection problems do not carry the field at all (see
+# `_omit_empty_collection_errors`), so they still validate against 1.0.0.
+BUNDLE_SCHEMA_VERSION = "2.0.0"
 
 
 class _BaseModel(BaseModel):
@@ -530,6 +553,29 @@ class EvidenceBundle(_BaseModel):
         ),
     )
     summary: Summary
+
+    @model_serializer(mode="wrap")
+    def _omit_empty_collection_errors(
+        self, handler: SerializerFunctionWrapHandler
+    ) -> dict[str, Any]:
+        """Leave `collection_errors` out entirely when nothing failed.
+
+        The published schema is `additionalProperties: false` at every level,
+        so a consumer validating against the 1.0.0 contract they pinned
+        rejects any bundle carrying a field that contract does not know. With
+        the key always present, *every* bundle broke those consumers —
+        including the overwhelming majority where nothing went wrong and there
+        was nothing to report.
+
+        Omitting the empty case keeps a clean run byte-identical to what it
+        produced before the field existed, which is what the field's own
+        description already promised, and narrows the breaking change to the
+        bundles that genuinely carry new information.
+        """
+        data: dict[str, Any] = handler(self)
+        if not data.get("collection_errors"):
+            data.pop("collection_errors", None)
+        return data
 
     @model_validator(mode="after")
     def _evidence_ids_are_unique(self) -> EvidenceBundle:

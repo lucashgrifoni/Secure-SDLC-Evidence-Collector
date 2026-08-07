@@ -102,11 +102,11 @@ def test_a_failed_render_leaves_the_previous_run_untouched(tmp_path: Path) -> No
         ),
         pytest.raises(RuntimeError),
     ):
-        export_report_set(_bundle("2.0.0", ReleaseStatus.NOT_READY), tmp_path)
+        export_report_set(_bundle("9.9.9", ReleaseStatus.NOT_READY), tmp_path)
 
     for name in _REPORT_FILES:
         assert (tmp_path / name).read_text(encoding="utf-8") == before[name]
-    assert "2.0.0" not in before["bundle.json"]
+    assert "9.9.9" not in before["bundle.json"]
 
 
 def test_a_failed_write_leaves_the_previous_run_untouched(tmp_path: Path) -> None:
@@ -133,7 +133,7 @@ def test_a_failed_write_leaves_the_previous_run_untouched(tmp_path: Path) -> Non
         mock.patch.object(Path, "open", _fail_on_second_stage),
         pytest.raises(OSError, match="No space left on device"),
     ):
-        export_report_set(_bundle("2.0.0", ReleaseStatus.NOT_READY), tmp_path)
+        export_report_set(_bundle("9.9.9", ReleaseStatus.NOT_READY), tmp_path)
 
     for name in _REPORT_FILES:
         assert (tmp_path / name).read_text(encoding="utf-8") == before[name]

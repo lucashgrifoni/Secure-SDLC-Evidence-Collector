@@ -79,11 +79,18 @@ def test_the_broken_input_reaches_report_and_summary(tmp_path: Path) -> None:
 
 
 def test_a_clean_run_records_no_errors_and_stays_byte_stable(tmp_path: Path) -> None:
-    """The field must not change the structural hash of a clean bundle.
+    """A clean bundle must not carry the field at all.
 
-    Adding an always-present empty list would have re-hashed every existing
-    bundle for nothing. The normaliser strips it when empty, exactly as it
-    already does for a null `risk_assessment`.
+    Two separate guarantees, and the first was missing. The published schema
+    is `additionalProperties: false` at every level, so a consumer validating
+    against the 1.0.0 contract they pinned rejects any bundle carrying a field
+    that contract does not know — and with the key always present, *every*
+    bundle broke them, including the overwhelming majority where nothing had
+    gone wrong. Serialization now omits it when empty, so a clean run stays
+    byte-identical to what it produced before the field existed.
+
+    The normaliser strips it too, so the structural hash is unaffected either
+    way — the same treatment a null `risk_assessment` gets.
     """
     artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
@@ -93,7 +100,7 @@ def test_a_clean_run_records_no_errors_and_stays_byte_stable(tmp_path: Path) -> 
     assert result.bundle.collection_errors == []
 
     payload = json.loads(result.bundle.model_dump_json(exclude_none=False))
-    assert "collection_errors" in payload
+    assert "collection_errors" not in payload
     normalized = normalize_bundle(payload)
     assert b"collection_errors" not in normalized
 

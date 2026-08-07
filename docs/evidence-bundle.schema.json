@@ -1188,7 +1188,7 @@
       "type": "string"
     },
     "bundle_version": {
-      "default": "1.0.0",
+      "default": "2.0.0",
       "title": "Bundle Version",
       "type": "string"
     },

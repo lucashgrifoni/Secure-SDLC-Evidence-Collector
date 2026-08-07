@@ -123,7 +123,10 @@ def test_a_clean_collect_reports_nothing(runner: CliRunner, tmp_path: Path) -> N
 
     _evaluate(runner, evidence, tmp_path / "out")
     bundle = json.loads((tmp_path / "out" / "bundle.json").read_text(encoding="utf-8"))
-    assert bundle["collection_errors"] == []
+    # The bundle is the published contract and its schema is
+    # `additionalProperties: false`, so a clean run omits the key entirely
+    # rather than shipping an empty list a 1.0.0 consumer would reject.
+    assert "collection_errors" not in bundle
 
 
 @pytest.mark.integration
@@ -143,4 +146,4 @@ def test_a_legacy_bare_list_evidence_file_still_evaluates(
     _evaluate(runner, evidence, tmp_path / "out")
     bundle = json.loads((tmp_path / "out" / "bundle.json").read_text(encoding="utf-8"))
     assert len(bundle["evidence"]) == 1
-    assert bundle["collection_errors"] == []
+    assert "collection_errors" not in bundle
