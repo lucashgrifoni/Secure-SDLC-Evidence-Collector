@@ -55,6 +55,7 @@ from evidence_collector.parsers import (
     parse_zap,
 )
 from evidence_collector.parsers._common import MAX_INPUT_BYTES, ParseError
+from evidence_collector.parsers._intoto import read_records
 from evidence_collector.parsers.intoto_provenance import file_has_provenance
 from evidence_collector.parsers.intoto_statement import file_has_ingestable_statement
 from evidence_collector.parsers.intoto_vsa import VSA_PREDICATE_TYPE
@@ -305,6 +306,20 @@ class LocalArtifactCollector:
                 logger.warning("Failed to ingest %s: %s", file_path, encoding_error)
                 report.errors.append(LocalCollectionError(path=file_path, reason=encoding_error))
                 return
+            # A .json/.jsonl file that is not valid JSON is a THIRD case: not
+            # an unknown format, not an unreadable byte stream, but a file the
+            # caller plainly meant as evidence and which is broken. It used to
+            # fall through to the debug line below and vanish — while a file
+            # with byte-identical content named .sarif produced a warning,
+            # purely because the SARIF branch parses eagerly and raises.
+            # Truncated scanner output is exactly how this happens in a
+            # pipeline, and a report that silently understates coverage is
+            # worse than one that errors.
+            json_error = _malformed_json_reason(file_path)
+            if json_error is not None:
+                logger.warning("Failed to ingest %s: %s", file_path, json_error)
+                report.errors.append(LocalCollectionError(path=file_path, reason=json_error))
+                return
             logger.debug("Ignoring unrecognized artifact: %s", file_path)
         except (ParseError, OSError) as exc:
             logger.warning("Failed to ingest %s: %s", file_path, exc)
@@ -493,6 +508,48 @@ _TEXT_EVIDENCE_SUFFIXES = frozenset({".json", ".jsonl", ".sarif", ".xml", ".yaml
 # Enough bytes to catch a wrong-encoding file (a UTF-16 BOM is in the first
 # two) without reading a large artifact twice.
 _ENCODING_PROBE_BYTES = 8192
+
+
+def _malformed_json_reason(path: Path) -> str | None:
+    """Return why a ``.json``/``.jsonl`` artifact is not valid JSON, or None.
+
+    Called only on the fallthrough, after every detector has declined the
+    file. A caller who drops `report.json` into the artifacts directory means
+    it as evidence; if it does not parse, saying so is the difference between
+    a report that understates coverage and one that explains why.
+
+    A ``.jsonl`` is valid when *any* line parses as a JSON object — that is
+    the shape the in-toto detectors accept — so a partially written JSONL is
+    only reported when nothing at all could be read from it.
+    """
+    suffix = path.suffix.lower()
+    if suffix not in {".json", ".jsonl"}:
+        return None
+
+    # Both lookups below are memoized and were already populated by the
+    # detectors, so the common case costs no extra read. Doing the parse
+    # unconditionally here added a fourth open to every candidate file and
+    # broke the detection-read bound.
+    if suffix == ".jsonl":
+        return None if read_records(path) else f"No JSON records could be read from {path}."
+    if _peek_json(path) is not None:
+        return None
+
+    # Only now, on a file we are already about to call broken, is a re-read
+    # worth it: the caller deserves the parse position, and this path is by
+    # definition rare.
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        # Reported by the encoding probe and the size check, which run first.
+        return None
+    if not text.strip():
+        return f"File {path} is empty."
+    try:
+        json.loads(text)
+    except json.JSONDecodeError as exc:
+        return f"Invalid JSON in {path}: {exc}"
+    return None
 
 
 def _undecodable_text_reason(path: Path) -> str | None:

@@ -230,3 +230,54 @@ def test_detection_does_not_reread_the_same_file_for_every_probe(tmp_path: Path)
     # full deserializations. Adding an in-toto predicate must reuse the record
     # memo rather than raise this bound.
     assert opens <= 3, f"detection opened the file {opens} times"
+
+
+def test_malformed_json_artifact_is_reported_not_dropped(tmp_path: Path) -> None:
+    """A .json file that no detector claims and that is not valid JSON must be
+    reported. It used to vanish while byte-identical content named .sarif
+    produced a warning — purely because the SARIF branch parses eagerly.
+    Truncated scanner output is exactly how this happens in a pipeline, and a
+    report that silently understates coverage is worse than one that errors.
+    """
+    artifacts_dir = tmp_path / "artifacts"
+    artifacts_dir.mkdir()
+    (artifacts_dir / "broken.json").write_text('{ "runs": [ truncated', encoding="utf-8")
+    (artifacts_dir / "broken.sarif").write_text('{ "runs": [ truncated', encoding="utf-8")
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir]).collect()
+
+    reported = {error.path.name for error in report.errors}
+    assert reported == {"broken.json", "broken.sarif"}
+    assert not report.evidence
+
+
+def test_empty_json_artifact_is_reported(tmp_path: Path) -> None:
+    artifacts_dir = tmp_path / "artifacts"
+    artifacts_dir.mkdir()
+    (artifacts_dir / "empty.json").write_text("", encoding="utf-8")
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir]).collect()
+    assert [e.path.name for e in report.errors] == ["empty.json"]
+    assert "empty" in report.errors[0].reason.lower()
+
+
+def test_partially_written_jsonl_with_one_good_line_is_not_reported(tmp_path: Path) -> None:
+    # A JSONL is valid when any line parses as an object — that is the shape
+    # the in-toto detectors accept — so a truncated tail must not be flagged
+    # as a broken file when usable records were read.
+    artifacts_dir = tmp_path / "artifacts"
+    artifacts_dir.mkdir()
+    (artifacts_dir / "partial.jsonl").write_text(
+        '{"hello": "world"}\n{"truncated": ', encoding="utf-8"
+    )
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir]).collect()
+    assert not report.errors
+
+
+def test_unrecognized_but_valid_json_is_still_ignored_quietly(tmp_path: Path) -> None:
+    # The fix must not turn "format we do not model" into an error.
+    artifacts_dir = tmp_path / "artifacts"
+    artifacts_dir.mkdir()
+    (artifacts_dir / "unknown.json").write_text('{"hello": "world"}', encoding="utf-8")
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir]).collect()
+    assert not report.errors
+    assert not report.evidence
