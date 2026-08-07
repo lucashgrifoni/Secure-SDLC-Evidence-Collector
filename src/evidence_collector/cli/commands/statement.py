@@ -39,7 +39,10 @@ def register(app: typer.Typer) -> None:
         bundle_path: Annotated[
             Path,
             typer.Argument(
-                exists=True,
+                # No exists=True: Click validates it BEFORE the command body and
+                # raises UsageError -> exit 2, the not_ready code. The body below
+                # already catches OSError and exits EXIT_INPUT_ERROR, which is what
+                # the README promises for every input failure.
                 file_okay=True,
                 dir_okay=False,
                 readable=True,

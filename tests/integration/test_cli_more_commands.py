@@ -21,6 +21,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli.main import app
 
 
@@ -267,7 +268,12 @@ def test_exceptions_validate_one_invalid_among_many_exits_nonzero(
         encoding="utf-8",
     )
     result = runner.invoke(app, ["exceptions", "validate", str(good), str(bad)])
-    assert result.exit_code == 1, result.output
+    # Non-zero is what the pre-commit gate needs, and the taxonomy decides
+    # *which* non-zero: the README reserves 1 for the `conditional` verdict
+    # and nothing else, while 3 covers "bad input, unreadable file, failed
+    # validation" on every command. This assertion used to pin 1, which is
+    # the code a caller reads as "the release is conditional".
+    assert result.exit_code == EXIT_INPUT_ERROR, result.output
     # The valid one is still reported, and the invalid one is named.
     assert "EXC-2026-DEMO-001" in result.output
     assert "broken.yaml" in result.output

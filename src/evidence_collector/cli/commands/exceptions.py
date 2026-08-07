@@ -38,7 +38,15 @@ def register(app: typer.Typer) -> None:
         Accepts multiple paths so it can be wired as a ``pre-commit`` hook:
         pre-commit passes every matched, staged file in a single
         invocation. Each file is reported individually; the command exits
-        1 if *any* file is invalid, 0 when all are valid.
+        ``EXIT_INPUT_ERROR`` if *any* file is missing or invalid, 0 when all
+        are valid.
+
+        It used to exit 1 here, which the README reserves for the
+        ``conditional`` verdict and nothing else — and a waiver file that
+        does not exist is a bad input, not a softer release outcome. It also
+        disagreed with its sibling ``exceptions list``. Any exit code works
+        for a pre-commit hook, which only distinguishes zero from non-zero,
+        so the taxonomy wins.
         """
         if not paths:
             console.print("[red]No exception files given.[/red]")
@@ -66,7 +74,7 @@ def register(app: typer.Typer) -> None:
                 f"· expires_at={exception.expires_at.isoformat()}{expiry_note}"
             )
         if invalid:
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=EXIT_INPUT_ERROR)
 
     @exceptions_app.command("list")
     def cmd_exceptions_list(
