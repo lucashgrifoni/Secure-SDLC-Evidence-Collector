@@ -27,6 +27,15 @@ publisher type.
 each ``bundle`` is a Sigstore bundle carrying a ``dsseEnvelope`` — the
 shape :mod:`evidence_collector.parsers._intoto` already unwraps.
 
+That envelope is **not unique to npm**: GitHub's
+``GET /repos/{owner}/{repo}/attestations/{digest}`` returns the same
+``attestations[]`` array. npm states ``predicateType`` beside each bundle
+and GitHub does not, so that key is the discriminator. Without it the
+registry is recorded as ``unspecified-registry`` rather than guessed —
+``producer`` is what a reviewer reads to answer "who asserted this", and
+naming the wrong registry there is worse than declining to name one. The
+embedded predicate types are surfaced either way.
+
 **No network access.** The collector never calls a registry. The user
 saves the JSON — ``curl`` from the Integrity API, or the npm attestations
 endpoint — exactly as they already do for ``gh attestation download``.
@@ -57,6 +66,10 @@ from evidence_collector.parsers._intoto import decode_b64_statement, first_subje
 
 REGISTRY_PYPI = "pypi"
 REGISTRY_NPM = "npm"
+# An ``attestations[]`` envelope whose producer we cannot identify from the
+# document itself. Recorded as-is rather than guessed: naming the wrong
+# registry in the evidence is worse than admitting the source is unstated.
+REGISTRY_UNSPECIFIED = "unspecified-registry"
 
 
 @dataclass(frozen=True)
@@ -112,11 +125,32 @@ def _is_pypi_attestation(data: dict[str, Any]) -> bool:
     return isinstance(envelope, dict) and isinstance(envelope.get("statement"), str)
 
 
-def _is_npm_attestations(data: dict[str, Any]) -> bool:
+def _attestation_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return the ``attestations[]`` entries that carry a ``bundle``."""
     entries = data.get("attestations")
-    if not isinstance(entries, list) or not entries:
-        return False
-    return any(isinstance(entry, dict) and "bundle" in entry for entry in entries)
+    if not isinstance(entries, list):
+        return []
+    return [entry for entry in entries if isinstance(entry, dict) and "bundle" in entry]
+
+
+def _is_npm_attestations(data: dict[str, Any]) -> bool:
+    """True only for npm's shape, which states ``predicateType`` per entry.
+
+    ``{"attestations": [{"bundle": …}]}`` is **not** unique to npm: GitHub's
+    ``GET /repos/{owner}/{repo}/attestations/{digest}`` returns the same
+    envelope. Matching on the envelope alone stamped a GitHub Actions
+    attestation with ``producer: "npm"`` — and ``producer`` is exactly the
+    field a reviewer reads to answer "who asserted this". Being wrong there
+    is worse than being unspecific.
+
+    npm states the predicate type alongside each bundle; GitHub does not.
+    """
+    return any("predicateType" in entry for entry in _attestation_entries(data))
+
+
+def _is_attestation_envelope(data: dict[str, Any]) -> bool:
+    """True for any ``attestations[]`` envelope, npm-shaped or not."""
+    return bool(_attestation_entries(data))
 
 
 def looks_like_registry_attestation(data: Any) -> bool:
@@ -130,7 +164,7 @@ def looks_like_registry_attestation(data: Any) -> bool:
     """
     if not isinstance(data, dict):
         return False
-    return _is_pypi_provenance(data) or _is_pypi_attestation(data) or _is_npm_attestations(data)
+    return _is_pypi_provenance(data) or _is_pypi_attestation(data) or _is_attestation_envelope(data)
 
 
 def _parse_pypi_provenance(data: dict[str, Any], parsed: ParsedRegistryAttestation) -> None:
@@ -189,6 +223,8 @@ def parse_registry_attestation(path: str | Path) -> ParsedRegistryAttestation:
         registry = REGISTRY_NPM
     elif _is_pypi_provenance(data) or _is_pypi_attestation(data):
         registry = REGISTRY_PYPI
+    elif _is_attestation_envelope(data):
+        registry = REGISTRY_UNSPECIFIED
     else:
         raise ParseError(f"File {resolved} is not a PyPI (PEP 740) or npm registry attestation.")
 
@@ -198,7 +234,7 @@ def parse_registry_attestation(path: str | Path) -> ParsedRegistryAttestation:
         raw=data,
     )
 
-    if registry == REGISTRY_NPM:
+    if registry in (REGISTRY_NPM, REGISTRY_UNSPECIFIED):
         _parse_npm(data, parsed)
     elif _is_pypi_provenance(data):
         _parse_pypi_provenance(data, parsed)

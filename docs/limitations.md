@@ -191,6 +191,18 @@ The collector checks **presence**, not correctness.
   the signed DSSE payload, the **payload wins**. The declared field sits
   outside the signature, so trusting it would let unsigned registry
   metadata relabel an attestation.
+- The `attestations[]` envelope is **not unique to npm** — GitHub's
+  `GET /repos/{owner}/{repo}/attestations/{digest}` returns the same shape.
+  npm states `predicateType` beside each bundle and GitHub does not, so
+  that is the discriminator. Without it the evidence records
+  `registry: unspecified-registry` rather than guessing: `producer` is what
+  a reviewer reads to answer "who asserted this", and naming the wrong
+  registry there is worse than declining to name one. The embedded
+  predicate types are surfaced either way.
+- A GitHub attestation saved this way is therefore recorded as a
+  *publication envelope*, not as full SLSA provenance. To get the builder
+  identity, build type and invocation extracted, save the bundle with
+  `gh attestation download` — that shape routes to the provenance parser.
 
 ## 8 · Determinism boundaries
 
