@@ -32,6 +32,7 @@ from evidence_collector.normalizers import (
     normalize_release_attestation,
     normalize_sarif,
     normalize_sbom,
+    normalize_trivy_json,
     normalize_vsa,
     normalize_zap,
 )
@@ -49,6 +50,7 @@ from evidence_collector.parsers import (
     parse_release_attestation,
     parse_sarif,
     parse_sbom,
+    parse_trivy_json,
     parse_vsa,
     parse_zap,
 )
@@ -59,6 +61,7 @@ from evidence_collector.parsers.intoto_vsa import VSA_PREDICATE_TYPE
 from evidence_collector.parsers.registry_attestation import looks_like_registry_attestation
 from evidence_collector.parsers.release_attestation import file_has_release_attestation
 from evidence_collector.parsers.sbom import is_spdx3
+from evidence_collector.parsers.trivy_json import looks_like_trivy_json
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +162,18 @@ class LocalArtifactCollector:
                 parsed = parse_sarif(file_path)
                 evidence = normalize_sarif(parsed, self._release, artifact_root=self._artifact_root)
                 report.evidence.append(evidence)
+                return
+            # Native Trivy JSON. Checked early because it is the only
+            # artifact that yields SEVERAL evidences from one file: Trivy
+            # separates dependency, secret and IaC findings by
+            # ``Results[].Class`` and each becomes its own evidence.
+            if _looks_like_trivy_json(file_path):
+                parsed_trivy = parse_trivy_json(file_path)
+                report.evidence.extend(
+                    normalize_trivy_json(
+                        parsed_trivy, self._release, artifact_root=self._artifact_root
+                    )
+                )
                 return
             # in-toto SLSA VSA detection runs before SBOM/OSV: a VSA is a
             # JSON Statement keyed by its ``predicateType``, with none of the
@@ -352,6 +367,13 @@ def _looks_like_provenance(path: Path) -> bool:
     if path.suffix.lower() not in {".json", ".jsonl"}:
         return False
     return file_has_provenance(path)
+
+
+def _looks_like_trivy_json(path: Path) -> bool:
+    """Detect a native Trivy JSON report. Reuses the memoized peek."""
+    if path.suffix.lower() != ".json":
+        return False
+    return looks_like_trivy_json(_peek_json(path))
 
 
 def _looks_like_registry_attestation(path: Path) -> bool:

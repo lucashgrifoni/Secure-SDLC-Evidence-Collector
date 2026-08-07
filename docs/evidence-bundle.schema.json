@@ -339,6 +339,7 @@
         "sca_scan",
         "secrets_scan",
         "dast_scan",
+        "iac_scan",
         "sbom",
         "test_result",
         "code_review",

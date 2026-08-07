@@ -149,6 +149,28 @@ The collector checks **presence**, not correctness.
   in the dedicated VSA parser, which reads raw Statements only. The
   evidence survives, but with less detail than an unwrapped VSA.
 
+## 6b · Native Trivy JSON
+
+- Pinned to `SchemaVersion: 2`. Trivy publishes **no JSON Schema** for
+  this format (aquasecurity/trivy discussion #7552), so the version field
+  is the only compatibility signal there is. Another version fails with a
+  diagnostic rather than being parsed under version-2 assumptions.
+- `Results[].Class` drives the mapping: `os-pkgs` and `lang-pkgs` become
+  `sca_scan`, `secret` becomes `secrets_scan`, `config` becomes
+  `iac_scan`. Note the class is literally **`config`** — "misconfiguration"
+  is what the format is called in prose, not in the report.
+- `license`, `license-file`, `custom` and `unknown` classes are read past.
+  No evidence type in the bundle means what they mean, and inventing one
+  would be worse than declining.
+- An **empty** result class produces no evidence at all, rather than a
+  passing one. "Trivy found no secrets" and "Trivy was not asked about
+  secrets" are different claims, and the report cannot tell them apart.
+- Misconfigurations whose `Status` is `PASS` (present when Trivy runs with
+  `--include-non-failures`) are not counted as findings.
+- Only the dependency lane carries `cve_ids`. Secret rule ids and
+  misconfiguration check ids are not CVEs and are never fed to EPSS/KEV
+  enrichment as if they were.
+
 ## 7c · Package-registry attestations
 
 - PyPI (PEP 740) and npm attestations are read **from a file you saved**.

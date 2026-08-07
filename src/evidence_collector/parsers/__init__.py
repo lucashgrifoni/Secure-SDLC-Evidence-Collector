@@ -16,6 +16,7 @@ from evidence_collector.parsers.registry_attestation import parse_registry_attes
 from evidence_collector.parsers.release_attestation import parse_release_attestation
 from evidence_collector.parsers.sarif import parse_sarif
 from evidence_collector.parsers.sbom import parse_sbom
+from evidence_collector.parsers.trivy_json import parse_trivy_json
 from evidence_collector.parsers.zap import parse_zap
 
 __all__ = [
@@ -32,6 +33,7 @@ __all__ = [
     "parse_release_attestation",
     "parse_sarif",
     "parse_sbom",
+    "parse_trivy_json",
     "parse_vsa",
     "parse_zap",
 ]
