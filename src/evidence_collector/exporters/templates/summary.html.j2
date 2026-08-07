@@ -134,6 +134,32 @@
   </div>
 </section>
 
+{% if bundle.collection_errors %}
+<h2>Inputs that could not be read</h2>
+<p>
+  <strong>{{ bundle.collection_errors | length }} supplied input(s) failed to
+  parse.</strong> A control below may read as <em>missing evidence</em> when the
+  evidence was in fact provided and could not be ingested. Fix the inputs and
+  re-run before treating any gap here as a real one.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>Input</th>
+      <th>Why it was not ingested</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for error in bundle.collection_errors %}
+    <tr>
+      <td><code>{{ error.path }}</code></td>
+      <td>{{ error.reason }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
 <h2>Controls</h2>
 <table>
   <thead>

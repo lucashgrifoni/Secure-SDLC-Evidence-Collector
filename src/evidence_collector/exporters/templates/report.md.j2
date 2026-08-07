@@ -36,6 +36,19 @@
 {% else %}
 - **Missing critical evidence:** none
 {% endif %}
+{% if bundle.collection_errors %}
+
+> **{{ bundle.collection_errors | length }} supplied input(s) could not be read.**
+> A control below may read as *missing evidence* when the evidence was in fact
+> provided and failed to parse. Fix the inputs and re-run before treating any
+> gap here as a real one.
+
+| Input | Why it was not ingested |
+|-------|-------------------------|
+{% for error in bundle.collection_errors %}
+| `{{ error.path }}` | {{ error.reason }} |
+{% endfor %}
+{% endif %}
 
 ## Control evaluations
 

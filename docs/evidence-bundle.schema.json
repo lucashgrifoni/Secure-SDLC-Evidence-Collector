@@ -44,6 +44,30 @@
       "title": "Application",
       "type": "object"
     },
+    "CollectionError": {
+      "additionalProperties": false,
+      "description": "An input that was supplied but could not be ingested.\n\n\"No evidence was supplied\" and \"evidence was supplied and is broken\" are\nmaterially different states, and only the first was ever recorded. The\ncollector warned on the console and the warning died there: the bundle,\nthe report and the HTML summary all showed the affected control as\nplainly *missing evidence*, telling the engineer to re-run a scan that\nhad in fact already run and whose output was sitting on disk, truncated.\n\nCI logs rotate; the bundle is the durable, signable artifact that\n``verify``, ``compare``, ``statement``, ``vex`` and ``oscal`` all\nconsume. The distinction has to live here to survive.",
+      "properties": {
+        "path": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "reason"
+      ],
+      "title": "CollectionError",
+      "type": "object"
+    },
     "ConfidenceLevel": {
       "description": "Confidence of an evidence or an evaluation.\n\nManual attestations default to `medium` at best; automated signals from\ntrusted sources can reach `high`. `low` signals data that is inconsistent\nor derived from weakly authenticated sources.",
       "enum": [
@@ -1167,6 +1191,14 @@
       "default": "1.0.0",
       "title": "Bundle Version",
       "type": "string"
+    },
+    "collection_errors": {
+      "description": "Inputs that were supplied but could not be ingested (unreadable, malformed, oversized). Empty for a clean run, and stripped by the structural-hash normaliser when empty, so a bundle with no collection problems stays byte-identical to pre-3.x outputs.",
+      "items": {
+        "$ref": "#/$defs/CollectionError"
+      },
+      "title": "Collection Errors",
+      "type": "array"
     },
     "control_evaluations": {
       "items": {

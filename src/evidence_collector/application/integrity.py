@@ -163,6 +163,12 @@ def normalize_bundle(data: dict[str, object]) -> bytes:
     # bundles. When risk-mode is explicitly engaged the structural hash
     # changes by design (the verdict has different inputs).
     _strip_null_optional_field(data.get("summary"), "risk_assessment")
+    # Drop ``collection_errors`` when empty so a clean run stays byte-stable
+    # with bundles produced before the field existed. A run that DID hit a
+    # collection problem hashes differently by design: the bundle records a
+    # materially different state.
+    if not data.get("collection_errors"):
+        data.pop("collection_errors", None)
     return json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
 
 

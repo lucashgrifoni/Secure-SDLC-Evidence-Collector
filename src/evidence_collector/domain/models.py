@@ -455,6 +455,25 @@ class EvidenceException(_BaseModel):
         return not (self.scope.release_id and self.scope.release_id != release_id)
 
 
+class CollectionError(_BaseModel):
+    """An input that was supplied but could not be ingested.
+
+    "No evidence was supplied" and "evidence was supplied and is broken" are
+    materially different states, and only the first was ever recorded. The
+    collector warned on the console and the warning died there: the bundle,
+    the report and the HTML summary all showed the affected control as
+    plainly *missing evidence*, telling the engineer to re-run a scan that
+    had in fact already run and whose output was sitting on disk, truncated.
+
+    CI logs rotate; the bundle is the durable, signable artifact that
+    ``verify``, ``compare``, ``statement``, ``vex`` and ``oscal`` all
+    consume. The distinction has to live here to survive.
+    """
+
+    path: Annotated[str, Field(min_length=1, max_length=500)]
+    reason: Annotated[str, Field(min_length=1, max_length=1000)]
+
+
 class EvidenceBundle(_BaseModel):
     """Top-level, serializable container produced by the collector."""
 
@@ -467,6 +486,15 @@ class EvidenceBundle(_BaseModel):
     control_evaluations: list[ControlEvaluation] = Field(default_factory=list)
     gaps: list[Gap] = Field(default_factory=list)
     exceptions: list[EvidenceException] = Field(default_factory=list)
+    collection_errors: list[CollectionError] = Field(
+        default_factory=list,
+        description=(
+            "Inputs that were supplied but could not be ingested (unreadable, "
+            "malformed, oversized). Empty for a clean run, and stripped by the "
+            "structural-hash normaliser when empty, so a bundle with no "
+            "collection problems stays byte-identical to pre-3.x outputs."
+        ),
+    )
     summary: Summary
 
     @model_validator(mode="after")

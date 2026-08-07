@@ -25,6 +25,7 @@ from evidence_collector.collectors.local import (
 from evidence_collector.controls import default_catalog, evaluate_controls, load_catalog
 from evidence_collector.domain.models import (
     Application,
+    CollectionError,
     ControlDefinition,
     EvidenceBundle,
     EvidenceException,
@@ -65,6 +66,7 @@ def build_bundle(
     exceptions: list[EvidenceException] | None = None,
     risk_mode: RiskMode = RiskMode.OFF,
     risk_thresholds: RiskThresholds | None = None,
+    collection_errors: list[CollectionError] | None = None,
 ) -> tuple[EvidenceBundle, list[ControlDefinition]]:
     """Build an EvidenceBundle from an already-normalized evidence set."""
     controls = load_catalog(catalog_path) if catalog_path else list(default_catalog())
@@ -86,6 +88,7 @@ def build_bundle(
         control_evaluations=evaluations,
         gaps=gaps,
         exceptions=exception_list,
+        collection_errors=collection_errors or [],
         summary=summary,
     )
     return bundle, controls
@@ -131,6 +134,12 @@ def run_pipeline(
         exceptions=exception_records,
         risk_mode=risk_mode,
         risk_thresholds=risk_thresholds,
+        # A file the caller supplied and the collector could not read is a
+        # different state from a file that was never supplied. The console
+        # warning dies with the CI log; the bundle is what survives.
+        collection_errors=[
+            CollectionError(path=str(error.path), reason=error.reason) for error in report.errors
+        ],
     )
     bundle = apply_profile(bundle, profile)
 

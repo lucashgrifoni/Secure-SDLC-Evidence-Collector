@@ -1,0 +1,120 @@
+"""A supplied input that could not be read must survive into the bundle.
+
+"No evidence was supplied" and "evidence was supplied and is broken" are
+materially different states, and only the first was ever recorded. The
+collector warned on the console and the warning died there: bundle.json,
+report.md and summary.html all showed the affected control as plainly
+*missing evidence*, telling the engineer to re-run a scan that had already
+run and whose truncated output was sitting on disk.
+
+CI logs rotate. The bundle is the durable, signable artifact that `verify`,
+`compare`, `statement`, `vex` and `oscal` consume, so the distinction has to
+live there to survive.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from evidence_collector.application.integrity import normalize_bundle
+from evidence_collector.application.orchestrator import run_pipeline
+from evidence_collector.domain.models import Application, ReleaseContext
+
+
+def _run(tmp_path: Path, artifacts: Path):
+    return run_pipeline(
+        Application(name="demo", repository="acme/demo"),
+        ReleaseContext(release_id="1.0.0", commit_sha="abcdef1234567890", branch="main"),
+        artifacts_dirs=[artifacts],
+        output_dir=tmp_path / "out",
+    )
+
+
+def _sarif() -> str:
+    return json.dumps(
+        {
+            "version": "2.1.0",
+            "runs": [
+                {
+                    "tool": {"driver": {"name": "semgrep", "version": "1.0.0", "rules": []}},
+                    "results": [],
+                }
+            ],
+        }
+    )
+
+
+def test_broken_input_is_recorded_in_the_bundle(tmp_path: Path) -> None:
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "good.sarif").write_text(_sarif(), encoding="utf-8")
+    (artifacts / "truncated.sarif").write_text('{"runs": [ trunc', encoding="utf-8")
+
+    result = _run(tmp_path, artifacts)
+
+    assert len(result.bundle.collection_errors) == 1
+    error = result.bundle.collection_errors[0]
+    assert error.path.endswith("truncated.sarif")
+    assert "Invalid JSON" in error.reason
+    # The good artifact still lands, so a broken sibling costs nothing.
+    assert len(result.bundle.evidence) == 1
+
+
+def test_the_broken_input_reaches_report_and_summary(tmp_path: Path) -> None:
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "truncated.sarif").write_text('{"runs": [ trunc', encoding="utf-8")
+
+    result = _run(tmp_path, artifacts)
+
+    assert result.markdown_path is not None
+    assert result.html_path is not None
+    markdown = result.markdown_path.read_text(encoding="utf-8")
+    html = result.html_path.read_text(encoding="utf-8")
+    for rendered in (markdown, html):
+        assert "truncated.sarif" in rendered
+        # The reader must be told not to trust the gaps below at face value.
+        assert "could not be read" in rendered or "could not be read" in rendered.lower()
+
+
+def test_a_clean_run_records_no_errors_and_stays_byte_stable(tmp_path: Path) -> None:
+    """The field must not change the structural hash of a clean bundle.
+
+    Adding an always-present empty list would have re-hashed every existing
+    bundle for nothing. The normaliser strips it when empty, exactly as it
+    already does for a null `risk_assessment`.
+    """
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "good.sarif").write_text(_sarif(), encoding="utf-8")
+
+    result = _run(tmp_path, artifacts)
+    assert result.bundle.collection_errors == []
+
+    payload = json.loads(result.bundle.model_dump_json(exclude_none=False))
+    assert "collection_errors" in payload
+    normalized = normalize_bundle(payload)
+    assert b"collection_errors" not in normalized
+
+
+def test_a_run_with_errors_does_change_the_structural_hash(tmp_path: Path) -> None:
+    """...but a bundle that DID record a broken input must hash differently.
+
+    That is the point: the two runs describe different states of the world.
+    """
+    clean = tmp_path / "clean"
+    clean.mkdir()
+    (clean / "good.sarif").write_text(_sarif(), encoding="utf-8")
+    broken = tmp_path / "broken"
+    broken.mkdir()
+    (broken / "good.sarif").write_text(_sarif(), encoding="utf-8")
+    (broken / "truncated.sarif").write_text('{"runs": [ trunc', encoding="utf-8")
+
+    clean_bundle = _run(tmp_path / "a", clean).bundle
+    broken_bundle = _run(tmp_path / "b", broken).bundle
+
+    clean_norm = normalize_bundle(json.loads(clean_bundle.model_dump_json(exclude_none=False)))
+    broken_norm = normalize_bundle(json.loads(broken_bundle.model_dump_json(exclude_none=False)))
+    assert b"collection_errors" in broken_norm
+    assert clean_norm != broken_norm
