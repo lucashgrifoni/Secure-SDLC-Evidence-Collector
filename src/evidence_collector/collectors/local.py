@@ -27,6 +27,7 @@ from evidence_collector.normalizers import (
     normalize_model_card,
     normalize_osv,
     normalize_provenance,
+    normalize_release_attestation,
     normalize_sarif,
     normalize_sbom,
     normalize_vsa,
@@ -41,6 +42,7 @@ from evidence_collector.parsers import (
     parse_model_card,
     parse_osv,
     parse_provenance,
+    parse_release_attestation,
     parse_sarif,
     parse_sbom,
     parse_vsa,
@@ -49,6 +51,7 @@ from evidence_collector.parsers import (
 from evidence_collector.parsers._common import MAX_INPUT_BYTES, ParseError
 from evidence_collector.parsers.intoto_provenance import file_has_provenance
 from evidence_collector.parsers.intoto_vsa import VSA_PREDICATE_TYPE
+from evidence_collector.parsers.release_attestation import file_has_release_attestation
 from evidence_collector.parsers.sbom import is_spdx3
 
 logger = logging.getLogger(__name__)
@@ -161,9 +164,16 @@ class LocalArtifactCollector:
                     normalize_vsa(parsed_vsa, self._release, artifact_root=self._artifact_root)
                 )
                 return
-            # SLSA build provenance (incl. GitHub Artifact Attestations): a raw
-            # in-toto Statement, a DSSE envelope, or a Sigstore bundle. Detected
-            # by the unwrapped provenance predicateType.
+            # in-toto attestations beyond the VSA: SLSA build provenance
+            # (incl. GitHub Artifact Attestations) and the release predicate.
+            # Both arrive as a raw Statement, a DSSE envelope, or a Sigstore
+            # bundle, and detection is by the unwrapped predicateType.
+            #
+            # A single file — notably the JSONL that `gh attestation download`
+            # writes — can carry BOTH predicates. Each detector is therefore
+            # offered the file independently and both evidences are appended;
+            # returning on the first match would silently drop the other.
+            intoto_found = False
             if _looks_like_provenance(file_path):
                 parsed_prov = parse_provenance(file_path)
                 report.evidence.append(
@@ -171,6 +181,16 @@ class LocalArtifactCollector:
                         parsed_prov, self._release, artifact_root=self._artifact_root
                     )
                 )
+                intoto_found = True
+            if _looks_like_release_attestation(file_path):
+                parsed_rel = parse_release_attestation(file_path)
+                report.evidence.append(
+                    normalize_release_attestation(
+                        parsed_rel, self._release, artifact_root=self._artifact_root
+                    )
+                )
+                intoto_found = True
+            if intoto_found:
                 return
             if _looks_like_sbom(file_path):
                 parsed_sbom = parse_sbom(file_path)
@@ -294,6 +314,15 @@ def _looks_like_provenance(path: Path) -> bool:
     if path.suffix.lower() not in {".json", ".jsonl"}:
         return False
     return file_has_provenance(path)
+
+
+def _looks_like_release_attestation(path: Path) -> bool:
+    """Detect an in-toto release attestation in a raw Statement, a DSSE
+    envelope, or a Sigstore bundle — including any record of a ``.jsonl``
+    such as ``gh attestation download`` writes."""
+    if path.suffix.lower() not in {".json", ".jsonl"}:
+        return False
+    return file_has_release_attestation(path)
 
 
 def _looks_like_garak(path: Path) -> bool:

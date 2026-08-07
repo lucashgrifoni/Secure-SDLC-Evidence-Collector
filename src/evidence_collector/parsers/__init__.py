@@ -11,6 +11,7 @@ from evidence_collector.parsers.junit import parse_junit
 from evidence_collector.parsers.lm_eval import parse_lm_eval
 from evidence_collector.parsers.model_card import parse_model_card
 from evidence_collector.parsers.osv import parse_osv
+from evidence_collector.parsers.release_attestation import parse_release_attestation
 from evidence_collector.parsers.sarif import parse_sarif
 from evidence_collector.parsers.sbom import parse_sbom
 from evidence_collector.parsers.zap import parse_zap
@@ -24,6 +25,7 @@ __all__ = [
     "parse_model_card",
     "parse_osv",
     "parse_provenance",
+    "parse_release_attestation",
     "parse_sarif",
     "parse_sbom",
     "parse_vsa",
