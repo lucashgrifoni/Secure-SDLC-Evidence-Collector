@@ -99,15 +99,31 @@ def _detect_format(data: dict[str, Any], path: Path) -> SbomFormat:
 # same top-level slice and reported "every component has a supplier" after
 # inspecting two of four hundred.
 #
-# The walk is iterative and depth-capped: nesting is attacker-influenced (an
-# SBOM is an untrusted input here) and a recursive walk would hit Python's
-# recursion limit and raise, turning a malformed file into a crash instead of
-# a parse error.
-_MAX_COMPONENT_DEPTH = 64
+# The walk is iterative because an SBOM is untrusted input here and a recursive
+# walk would raise RecursionError on a deeply nested file — which is not a
+# ParseError, so it would escape the collector's handling entirely.
+#
+# The depth cap used to truncate silently, which is worse than either
+# alternative. `docs/limitations.md` promises a component-level element is
+# reported present only when *every* component carries it, and a walk that
+# quietly stops at depth 65 turns that guarantee into a claim made from a
+# sample: a 71-component SBOM whose deepest component had no supplier still
+# reported `cisa_2025_conformant: true`, exit 0, no warning, no truncation
+# flag anywhere. Exceeding the cap is now a parse error, so the file is
+# reported as unreadable rather than half-inspected. The limit is far above
+# anything a real toolchain emits — Syft and Trivy nest two or three deep.
+_MAX_COMPONENT_DEPTH = 1000
 
 
-def _flatten_components(components: Any, *, max_depth: int = _MAX_COMPONENT_DEPTH) -> list[Any]:
-    """Return every component in `components`, including nested children."""
+def _flatten_components(
+    components: Any, *, max_depth: int = _MAX_COMPONENT_DEPTH, path: str | Path | None = None
+) -> list[Any]:
+    """Return every component in `components`, including nested children.
+
+    Raises `ParseError` if nesting goes deeper than `max_depth`, because
+    silently returning a partial list would let every downstream check report
+    conformance over components it never saw.
+    """
     if not isinstance(components, list):
         return []
     flat: list[Any] = []
@@ -117,16 +133,52 @@ def _flatten_components(components: Any, *, max_depth: int = _MAX_COMPONENT_DEPT
         if not isinstance(component, dict):
             continue
         flat.append(component)
-        if depth >= max_depth:
-            continue
         children = component.get("components")
-        if isinstance(children, list):
-            stack.extend((child, depth + 1) for child in reversed(children))
+        if not isinstance(children, list) or not children:
+            continue
+        if depth >= max_depth:
+            where = f" in {path}" if path else ""
+            raise ParseError(
+                f"CycloneDX components{where} nest deeper than {max_depth} levels. "
+                "Refusing to report on a partially inspected SBOM."
+            )
+        stack.extend((child, depth + 1) for child in reversed(children))
     return flat
 
 
-def _cyclonedx_component_count(data: dict[str, Any]) -> int:
-    return len(_flatten_components(data.get("components")))
+def _subject_component(data: dict[str, Any]) -> dict[str, Any] | None:
+    """Return `metadata.component`, the artifact the BOM describes."""
+    metadata = data.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+    subject = metadata.get("component")
+    return subject if isinstance(subject, dict) else None
+
+
+def _cyclonedx_components(data: dict[str, Any], *, path: str | Path | None = None) -> list[Any]:
+    """Every component the BOM describes, wherever the spec allows one to live.
+
+    `metadata.component` is a component like any other, and the spec lets it
+    nest exactly like any other — so a BOM whose subject holds its packages
+    kept them out of every count and every check. The subject was reached in
+    two places but treated as a *leaf*, which is how an SBOM with a
+    supplier-less, hash-less, licence-less component still reported full CISA
+    conformance while its summary said "0 components".
+
+    The subject itself is not counted here: it is the thing being described,
+    not a component of itself. The CISA checks add it back deliberately, so
+    that an application with no supplier is not masked by its own complete
+    dependencies.
+    """
+    components = _flatten_components(data.get("components"), path=path)
+    subject = _subject_component(data)
+    if subject is not None:
+        components.extend(_flatten_components(subject.get("components"), path=path))
+    return components
+
+
+def _cyclonedx_component_count(data: dict[str, Any], *, path: str | Path | None = None) -> int:
+    return len(_cyclonedx_components(data, path=path))
 
 
 @dataclass
@@ -139,7 +191,9 @@ class CycloneDxObjectCounts:
     attestation_count: int = 0
 
 
-def _cyclonedx_object_counts(data: dict[str, Any]) -> CycloneDxObjectCounts:
+def _cyclonedx_object_counts(
+    data: dict[str, Any], *, path: str | Path | None = None
+) -> CycloneDxObjectCounts:
     """Count CycloneDX 1.6/1.7 evidence-bearing objects.
 
     ML-BOM models (``type: machine-learning-model``) and datasets
@@ -150,15 +204,13 @@ def _cyclonedx_object_counts(data: dict[str, Any]) -> CycloneDxObjectCounts:
     non-zero, so a classic dependency SBOM is unaffected.
     """
     counts = CycloneDxObjectCounts()
-    components: list[Any] = _flatten_components(data.get("components"))
+    components: list[Any] = _cyclonedx_components(data, path=path)
     # A single-model ML-BOM or single-key CBOM often describes the asset as the
     # BOM subject in metadata.component with nothing under components[]; include
     # it so the subject is counted (mirrors the CISA component checks).
-    metadata = data.get("metadata")
-    if isinstance(metadata, dict):
-        subject = metadata.get("component")
-        if isinstance(subject, dict):
-            components.insert(0, subject)
+    subject = _subject_component(data)
+    if subject is not None:
+        components.insert(0, subject)
     for component in components:
         if not isinstance(component, dict):
             continue
@@ -479,17 +531,19 @@ def _all_components_have(
     return bool(real) and all(predicate(c) for c in real)
 
 
-def _cyclonedx_cisa_elements(data: dict[str, Any]) -> dict[str, bool]:
+def _cyclonedx_cisa_elements(
+    data: dict[str, Any], *, path: str | Path | None = None
+) -> dict[str, bool]:
     metadata = _as_dict(data.get("metadata"))
-    # Nested components count too: a container SBOM keeps its packages under
-    # the OS and application components, and checking only the outer two
-    # reported conformance for a set the check never looked at.
-    components = _flatten_components(data.get("components"))
+    # Every component the BOM describes, at any nesting depth and wherever the
+    # spec allows one to live. Checking only the top-level slice reported
+    # conformance for a set the check never opened.
+    components = _cyclonedx_components(data, path=path)
     # CISA's component-level elements apply to every component, including the
     # top-level subject in metadata.component. Without this an application
     # with no supplier/hash/license is masked by complete dependencies.
-    subject = metadata.get("component")
-    if isinstance(subject, dict):
+    subject = _subject_component(data)
+    if subject is not None:
         components = [subject, *components]
     tools = metadata.get("tools")
     has_tool = (
@@ -579,14 +633,14 @@ def parse_sbom(path: str | Path) -> ParsedSbom:
     if sbom_format == "cyclonedx":
         spec_version = data.get("specVersion")
         serial_number = data.get("serialNumber")
-        component_count = _cyclonedx_component_count(data)
+        component_count = _cyclonedx_component_count(data, path=path)
         subject_ref = _cyclonedx_subject(data)
         content_type = "application/vnd.cyclonedx+json"
         cve_ids = _cyclonedx_cve_ids(data)
         lifecycle_phases = _cyclonedx_lifecycle_phases(data)
         vulnerability_analyses = _cyclonedx_vulnerability_analyses(data)
-        cisa_elements = _cyclonedx_cisa_elements(data)
-        object_counts = _cyclonedx_object_counts(data)
+        cisa_elements = _cyclonedx_cisa_elements(data, path=path)
+        object_counts = _cyclonedx_object_counts(data, path=path)
     elif is_spdx3(data):
         # SPDX 3.0 is a @graph of typed elements, not the 2.x packages[] shape.
         # The 2.x CISA presence check does not apply, so cisa_elements stays {}.

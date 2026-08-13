@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from evidence_collector.domain.models import ReleaseContext
 from evidence_collector.normalizers import normalize_sbom
 from evidence_collector.parsers.sbom import _CISA_2025_ELEMENT_KEYS, parse_sbom
@@ -271,16 +273,128 @@ def test_cisa_elements_are_checked_against_nested_components_too(tmp_path: Path)
     assert incomplete["version"] is True
 
 
-def test_deeply_nested_components_do_not_crash_the_parser(tmp_path: Path) -> None:
-    """An SBOM is untrusted input; nesting depth must not become a crash.
+def test_components_nested_under_the_bom_subject_are_counted(tmp_path: Path) -> None:
+    """`metadata.component` is a component, and the spec lets it nest too.
 
-    A recursive walk would hit Python's recursion limit on a hostile or
-    machine-generated file and raise RecursionError, which is not a
-    `ParseError` and so escapes the collector's handling entirely.
+    The first pass flattened every sibling under `components[]` but reached the
+    BOM subject in two places and treated it as a *leaf*. A BOM whose subject
+    holds its packages — a legal, ordinary shape — therefore reported
+    `component_count: 0` for a file with four components in it.
     """
+    sbom: dict[str, Any] = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "metadata": {
+            "timestamp": "2026-06-01T00:00:00Z",
+            "tools": [{"name": "syft"}],
+            "lifecycles": [{"phase": "build"}],
+            "component": {
+                "type": "application",
+                "name": "api",
+                "version": "1.0",
+                "purl": "pkg:pypi/api@1.0",
+                "supplier": {"name": "Acme"},
+                "hashes": [{"alg": "SHA-256", "content": "d"}],
+                "licenses": [{"license": {"id": "Apache-2.0"}}],
+                "components": [
+                    {
+                        "type": "library",
+                        "name": "flask",
+                        "version": "3.0.0",
+                        "purl": "pkg:pypi/flask@3.0.0",
+                        "supplier": {"name": "Pallets"},
+                        "hashes": [{"alg": "SHA-256", "content": "d"}],
+                        "licenses": [{"license": {"id": "BSD-3-Clause"}}],
+                    }
+                ],
+            },
+        },
+        "dependencies": [{"ref": "pkg:pypi/api@1.0", "dependsOn": []}],
+    }
+
+    parsed = parse_sbom(_write(tmp_path, sbom))
+
+    assert parsed.component_count == 1
+    assert all(parsed.cisa_minimum_elements.values())
+
+
+def test_a_supplier_less_component_under_the_subject_breaks_conformance(
+    tmp_path: Path,
+) -> None:
+    """The claim that broke: full conformance over a component never inspected."""
+    sbom: dict[str, Any] = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "metadata": {
+            "timestamp": "2026-06-01T00:00:00Z",
+            "tools": [{"name": "syft"}],
+            "lifecycles": [{"phase": "build"}],
+            "component": {
+                "type": "application",
+                "name": "api",
+                "version": "1.0",
+                "purl": "pkg:pypi/api@1.0",
+                "supplier": {"name": "Acme"},
+                "hashes": [{"alg": "SHA-256", "content": "d"}],
+                "licenses": [{"license": {"id": "Apache-2.0"}}],
+                # No supplier, no hashes, no licenses, no purl.
+                "components": [{"type": "library", "name": "vendored", "version": "0.1"}],
+            },
+        },
+        "dependencies": [{"ref": "pkg:pypi/api@1.0", "dependsOn": []}],
+    }
+
+    elements = parse_sbom(_write(tmp_path, sbom)).cisa_minimum_elements
+
+    assert elements["supplier"] is False
+    assert elements["hash"] is False
+    assert elements["license"] is False
+    assert elements["unique_identifier"] is False
+
+
+def test_ml_and_crypto_objects_under_the_subject_are_counted(tmp_path: Path) -> None:
+    """A CBOM or ML-BOM whose subject holds the assets reported zero of them."""
+    sbom: dict[str, Any] = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "metadata": {
+            "component": {
+                "type": "application",
+                "name": "api",
+                "version": "1.0",
+                "components": [
+                    {"type": "machine-learning-model", "name": "m", "version": "1"},
+                    {"type": "cryptographic-asset", "name": "rsa-key", "version": "1"},
+                    {"type": "data", "name": "training-set", "version": "1"},
+                ],
+            }
+        },
+    }
+
+    parsed = parse_sbom(_write(tmp_path, sbom))
+
+    assert parsed.ml_model_count == 1
+    assert parsed.crypto_asset_count == 1
+    assert parsed.dataset_count == 1
+
+
+def test_nesting_past_the_depth_cap_is_reported_not_silently_truncated(
+    tmp_path: Path,
+) -> None:
+    """A partially inspected SBOM must not be reported on at all.
+
+    The walk used to stop at the cap and return what it had, so every
+    downstream check ran over a prefix and reported conformance for components
+    it never opened: exit 0, `cisa_2025_conformant: true`, no warning and no
+    truncation flag anywhere. `docs/limitations.md` promises an element is
+    reported present only when *every* component carries it, and a claim made
+    from a sample is exactly what this tool must not produce.
+    """
+    from evidence_collector.parsers._common import ParseError
+
     deepest: dict[str, Any] = {"type": "library", "name": "leaf", "version": "1"}
     node = deepest
-    for index in range(500):
+    for index in range(1200):
         node = {
             "type": "library",
             "name": f"level-{index}",
@@ -289,7 +403,19 @@ def test_deeply_nested_components_do_not_crash_the_parser(tmp_path: Path) -> Non
         }
     sbom = {"bomFormat": "CycloneDX", "specVersion": "1.6", "components": [node]}
 
-    parsed = parse_sbom(_write(tmp_path, sbom))
+    with pytest.raises(ParseError) as excinfo:
+        parse_sbom(_write(tmp_path, sbom))
 
-    # Bounded, not crashed: the depth cap stops the walk without an exception.
-    assert 0 < parsed.component_count <= 501
+    message = str(excinfo.value)
+    assert "nest deeper than" in message
+    assert "partially inspected" in message
+
+
+def test_ordinary_nesting_depth_is_nowhere_near_the_cap(tmp_path: Path) -> None:
+    """Real toolchains nest two or three deep; the cap must never fire on them."""
+    node: dict[str, Any] = {"type": "library", "name": "leaf", "version": "1"}
+    for index in range(20):
+        node = {"type": "library", "name": f"l{index}", "version": "1", "components": [node]}
+    sbom = {"bomFormat": "CycloneDX", "specVersion": "1.6", "components": [node]}
+
+    assert parse_sbom(_write(tmp_path, sbom)).component_count == 21
