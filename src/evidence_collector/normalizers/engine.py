@@ -1035,7 +1035,26 @@ def normalize_junit(
     artifact_root: str | None = None,
 ) -> NormalizedEvidence:
     failed = parsed.failures + parsed.errors
-    status = EvidenceStatus.PASSED if failed == 0 else EvidenceStatus.FAILED
+    executed = parsed.total - parsed.skipped
+    if failed:
+        status = EvidenceStatus.FAILED
+    elif executed <= 0:
+        # Zero failures out of zero tests is not a passing test run, and it
+        # used to be recorded as `passed` at HIGH confidence — satisfying the
+        # test-result control outright. The realistic trigger is not a hostile
+        # file: a test job whose glob matched nothing, a build that failed
+        # before the suite ran, a runner that wrote an empty report. All of
+        # those produce a release certified as tested on the strength of a
+        # suite that never executed, which is the failure mode this tool
+        # exists to make impossible.
+        #
+        # `invalid` is the enum's documented value for "present but does not
+        # demonstrate what it claims", and the control engine does not count
+        # it as satisfying, so the control comes out MISSING with the file
+        # still visible in the bundle for the auditor.
+        status = EvidenceStatus.INVALID
+    else:
+        status = EvidenceStatus.PASSED
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
             "test",
@@ -1061,9 +1080,10 @@ def normalize_junit(
             "skipped": parsed.skipped,
         },
         summary=(
-            f"{parsed.total} tests executed, {parsed.failures} failures, "
-            f"{parsed.errors} errors, {parsed.skipped} skipped, "
-            f"duration {parsed.time_seconds:.2f}s"
+            f"{parsed.total} tests reported, {executed} executed, "
+            f"{parsed.failures} failures, {parsed.errors} errors, "
+            f"{parsed.skipped} skipped, duration {parsed.time_seconds:.2f}s"
+            + (" — no test actually ran, so this proves nothing" if executed <= 0 else "")
         ),
     )
 

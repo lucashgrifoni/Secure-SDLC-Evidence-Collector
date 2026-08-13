@@ -76,4 +76,18 @@
 # — the digest computed locally then disagrees with CI. Write fixture bytes
 # with LF explicitly, or read the digest off the CI failure. This is the same
 # trap that caused the 2026-05-18 bump above.
-17fb007e34a1c481aa245ef9fda7e413824e5d6bcb1f8aae392c893150165ef0
+#
+# 2026-08-07 (3.0.0, same release - JUnit summary precision): bumped from
+# 17fb007e... to 97273d00... after the test-result summary stopped reporting
+# reported-vs-executed as one number. `42 tests executed, ... 1 skipped`
+# became `42 tests reported, 41 executed, ... 1 skipped`, which is what the
+# file actually says - 42 were not executed, 41 were.
+#
+# The reword rides along with a substantive fix in the same normalizer: a
+# suite where nothing ran (tests="0", or every test skipped) used to be
+# recorded as `passed` at HIGH confidence and satisfied the test-result
+# control outright. A test job whose glob matched nothing now yields
+# `invalid`, so the control comes out MISSING with the file still visible to
+# the auditor. The canonical sample has 41 executed tests, so its status is
+# unchanged; only the summary text moved the digest.
+97273d00c233fd100dadf93d595640b50b3b0c6a88f86e9f605991e4a1f6e9eb
