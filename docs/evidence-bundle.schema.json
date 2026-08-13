@@ -1193,7 +1193,7 @@
       "type": "string"
     },
     "collection_errors": {
-      "description": "Inputs that were supplied but could not be ingested (unreadable, malformed, oversized). Empty for a clean run, and stripped by the structural-hash normaliser when empty, so a bundle with no collection problems stays byte-identical to pre-3.x outputs.",
+      "description": "Inputs that were supplied but could not be ingested (unreadable, malformed, oversized). Omitted entirely for a clean run, so a bundle with no collection problems still validates against a pinned pre-3.x schema. It is not byte-identical to a pre-3.x bundle: bundle_version moved to 2.0.0 in the same release, and that field is inside the structural hash.",
       "items": {
         "$ref": "#/$defs/CollectionError"
       },

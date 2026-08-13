@@ -138,3 +138,29 @@ def test_a_bundle_that_records_a_failure_carries_the_field(
     assert EvidenceBundle(**json.loads(bundle.model_dump_json())).collection_errors == (
         bundle.collection_errors
     )
+
+
+def test_the_serialization_schema_is_the_full_contract_too() -> None:
+    """Both schema modes must describe the bundle, not just the validation one.
+
+    Pydantic builds the serialization schema from a wrap serializer's annotated
+    return type. Declaring `-> dict[str, Any]` on `_omit_empty_collection_errors`
+    replaced the whole contract with `{"additionalProperties": true, "type":
+    "object"}` — no properties, no $defs — while validation mode stayed
+    complete, so nothing in the suite noticed.
+
+    Serialization mode is the semantically correct one for a schema describing
+    *produced* bundles, and it is the mode FastAPI uses for `response_model`.
+    A downstream service exposing `response_model=EvidenceBundle` therefore
+    published an untyped object in its OpenAPI, from a package that ships
+    `py.typed`. `-> Any` collapses it the same way, so the annotation has to
+    stay absent.
+    """
+    validation = EvidenceBundle.model_json_schema(mode="validation")
+    serialization = EvidenceBundle.model_json_schema(mode="serialization")
+
+    for mode, schema in (("validation", validation), ("serialization", serialization)):
+        assert schema.get("additionalProperties") is False, mode
+        assert len(schema.get("properties", {})) == len(validation["properties"]), mode
+        assert schema.get("$defs"), mode
+    assert "collection_errors" in serialization["properties"]

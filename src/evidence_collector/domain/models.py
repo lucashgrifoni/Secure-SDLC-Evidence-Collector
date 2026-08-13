@@ -547,17 +547,30 @@ class EvidenceBundle(_BaseModel):
         default_factory=list,
         description=(
             "Inputs that were supplied but could not be ingested (unreadable, "
-            "malformed, oversized). Empty for a clean run, and stripped by the "
-            "structural-hash normaliser when empty, so a bundle with no "
-            "collection problems stays byte-identical to pre-3.x outputs."
+            "malformed, oversized). Omitted entirely for a clean run, so a "
+            "bundle with no collection problems still validates against a "
+            "pinned pre-3.x schema. It is not byte-identical to a pre-3.x "
+            "bundle: bundle_version moved to 2.0.0 in the same release, and "
+            "that field is inside the structural hash."
         ),
     )
     summary: Summary
 
+    # No return annotation, deliberately. Pydantic builds the serialization
+    # schema from a wrap serializer's annotated return type, so declaring
+    # `-> dict[str, Any]` replaced the entire contract:
+    # `model_json_schema(mode="serialization")` collapsed from 11 properties,
+    # 24 $defs and `additionalProperties: false` to a bare
+    # `{"additionalProperties": true, "type": "object"}`. Serialization mode is
+    # the semantically correct mode for a schema describing *produced* bundles
+    # and the one FastAPI uses for `response_model`, so a downstream service
+    # exposing `response_model=EvidenceBundle` published an untyped object in
+    # its OpenAPI — from a package that ships `py.typed`. Nothing in the suite
+    # covered that mode, so it stayed green.
+    # `-> Any` collapses it too, so the annotation has to be absent rather than
+    # widened, and mypy is silenced at exactly this line.
     @model_serializer(mode="wrap")
-    def _omit_empty_collection_errors(
-        self, handler: SerializerFunctionWrapHandler
-    ) -> dict[str, Any]:
+    def _omit_empty_collection_errors(self, handler: SerializerFunctionWrapHandler):  # type: ignore[no-untyped-def]
         """Leave `collection_errors` out entirely when nothing failed.
 
         The published schema is `additionalProperties: false` at every level,
