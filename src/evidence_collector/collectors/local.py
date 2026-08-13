@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 from evidence_collector.domain.models import (
     EvidenceException,
     NormalizedEvidence,
@@ -67,6 +69,18 @@ from evidence_collector.parsers.trivy_json import looks_like_trivy_json
 from evidence_collector.paths import redact_path_in, relative_to_root
 
 logger = logging.getLogger(__name__)
+
+# What "this input could not be turned into evidence" looks like at the
+# ingestion boundary.
+#
+# `ValidationError` belongs here because the normalizers build pydantic models
+# out of scanner-supplied strings, and those fields carry length caps. A SARIF
+# whose `tool.driver.name` is 5000 characters is a bad input, not a bug — but
+# the exception it raised was neither a ParseError nor an OSError, so it
+# escaped every frame up to `main()` and ended the run, discarding every other
+# artifact in the directory. Recording it names the offending file and lets the
+# rest of the collection finish.
+_INGEST_FAILURES = (ParseError, OSError, ValidationError)
 
 
 @dataclass
@@ -379,7 +393,7 @@ class LocalArtifactCollector:
             return
         try:
             report.exceptions.append(parse_exception(file_path))
-        except (ParseError, OSError) as exc:
+        except _INGEST_FAILURES as exc:
             logger.warning("Failed to ingest exception %s: %s", file_path, exc)
             self._record_error(report, file_path, str(exc))
 
@@ -557,7 +571,7 @@ class LocalArtifactCollector:
                 self._record_error(report, file_path, json_error)
                 return
             logger.debug("Ignoring unrecognized artifact: %s", file_path)
-        except (ParseError, OSError) as exc:
+        except _INGEST_FAILURES as exc:
             logger.warning("Failed to ingest %s: %s", file_path, exc)
             self._record_error(report, file_path, str(exc))
 
@@ -570,7 +584,7 @@ class LocalArtifactCollector:
             report.evidence.append(
                 normalize_attestation(parsed, self._release, artifact_root=self._artifact_root)
             )
-        except (ParseError, OSError) as exc:
+        except _INGEST_FAILURES as exc:
             logger.warning("Failed to ingest attestation %s: %s", file_path, exc)
             self._record_error(report, file_path, str(exc))
 

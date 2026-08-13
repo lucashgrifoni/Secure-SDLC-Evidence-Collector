@@ -87,6 +87,15 @@ def parse_zap(path: str | Path) -> ParsedZap:
                 instance_count = max(1, int(alert.get("count", 1)))
             except (TypeError, ValueError):
                 instance_count = 1
+            except OverflowError:
+                # `int(float("inf"))` raises OverflowError, which is neither a
+                # TypeError nor a ValueError, so a non-finite `count` escaped
+                # this guard and aborted the whole collection run. Python's
+                # `json` accepts the bare `Infinity` and `NaN` literals, so a
+                # report only has to contain one. A count that is not a finite
+                # number tells us nothing about how many instances there were;
+                # the alert itself is still real, so it counts as one.
+                instance_count = 1
             severity = _severity_for(alert)
             findings_count[severity] = findings_count.get(severity, 0) + instance_count
             total += instance_count

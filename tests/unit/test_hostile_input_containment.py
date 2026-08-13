@@ -42,6 +42,24 @@ _DEEPLY_NESTED_JSON = "[" * 60_000 + "]" * 60_000
 # a bare ValueError — not a JSONDecodeError — for a longer numeric literal.
 _OVERLONG_INT_JSON = '{"runs": [], "n": ' + "9" * 5000 + "}"
 
+# Python's `json` accepts the bare `Infinity` / `NaN` literals, so a report only
+# has to contain one. `int(float("inf"))` raises OverflowError, which is neither
+# a TypeError nor a ValueError and so escaped the ZAP parser's guard.
+_NON_FINITE_ZAP = (
+    '{"site": [{"@name": "http://x", "alerts": [{"alertRef": "1", '
+    '"riskcode": "3", "confidence": "2", "count": Infinity, "name": "a"}]}]}'
+)
+
+# The normalizers build pydantic models out of scanner-supplied strings, and
+# those fields carry length caps. A driver name this long is a bad input, not a
+# bug — but the ValidationError it raised was neither a ParseError nor an
+# OSError.
+_OVERLONG_DRIVER_SARIF = (
+    '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "'
+    + "x" * 5000
+    + '", "rules": []}}, "results": []}]}'
+)
+
 
 def _release() -> ReleaseContext:
     return ReleaseContext(release_id="1.0.0", commit_sha="abcdef1234567890")
@@ -56,8 +74,14 @@ def _release() -> ReleaseContext:
         ("hostile.xml", _XXE_JUNIT, "Unsafe XML construct rejected"),
         ("deep.json", _DEEPLY_NESTED_JSON, "nested too deeply"),
         ("bigint.json", _OVERLONG_INT_JSON, "Invalid JSON value"),
+        ("long.sarif", _OVERLONG_DRIVER_SARIF, "validation error"),
     ],
-    ids=["xxe-entity", "deeply-nested-json", "overlong-int-literal"],
+    ids=[
+        "xxe-entity",
+        "deeply-nested-json",
+        "overlong-int-literal",
+        "overlong-scanner-string",
+    ],
 )
 def test_one_hostile_artifact_does_not_discard_the_others(
     tmp_path: Path,
@@ -98,3 +122,27 @@ def test_a_directory_of_only_hostile_files_still_returns_a_report(
 
     assert report.evidence == []
     assert len(report.errors) == 3
+
+
+def test_a_non_finite_alert_count_is_absorbed_not_fatal(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A `count` that is not a finite number aborted the whole collection.
+
+    `int(float("inf"))` raises OverflowError, which the ZAP parser's
+    `(TypeError, ValueError)` guard does not catch. The alert itself is still a
+    real finding, so it is counted once rather than discarded — the count told
+    us nothing, the alert did.
+    """
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "osv.json").write_text(_GOOD_OSV, encoding="utf-8")
+    (artifacts / "zap.json").write_text(_NON_FINITE_ZAP, encoding="utf-8")
+
+    with caplog.at_level(logging.CRITICAL):
+        report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
+
+    assert len(report.evidence) == 2
+    dast = [e for e in report.evidence if e.evidence_type.value == "dast_scan"]
+    assert dast, "the ZAP report should still have produced evidence"
+    assert sum(dast[0].findings_count.values()) == 1
