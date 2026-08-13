@@ -24,6 +24,7 @@ from xml.etree.ElementTree import (  # nosemgrep: python.lang.security.use-defus
 )
 
 from defusedxml import ElementTree as SafeET
+from defusedxml.common import DefusedXmlException
 
 from evidence_collector.parsers._common import (
     ParsedArtifact,
@@ -76,6 +77,17 @@ def _parse_tree(path: Path) -> Element:
         tree = SafeET.parse(path)
     except StdParseError as exc:
         raise ParseError(f"Invalid JUnit XML in {path}: {exc}") from exc
+    except DefusedXmlException as exc:
+        # This is the XXE guard doing its job — and it took the whole run down
+        # with it. `defusedxml` raises EntitiesForbidden / DTDForbidden /
+        # ExternalReferenceForbidden, none of which is a ParseError or an
+        # OSError, so it escaped the collector's guard: one hostile or merely
+        # DTD-using JUnit file discarded every other artifact in the directory.
+        # A blocked document is a rejected input, which is exactly what
+        # ParseError means.
+        raise ParseError(f"Unsafe XML construct rejected in {path}: {exc}") from exc
+    except RecursionError as exc:
+        raise ParseError(f"XML in {path} is nested too deeply to parse") from exc
     root = tree.getroot()
     if not isinstance(root, Element):
         raise ParseError(f"Unexpected XML root object in {path}: {type(root).__name__}")

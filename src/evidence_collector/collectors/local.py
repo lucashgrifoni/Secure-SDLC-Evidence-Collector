@@ -785,6 +785,10 @@ def _malformed_json_reason(path: Path) -> str | None:
         json.loads(text)
     except json.JSONDecodeError as exc:
         return f"Invalid JSON in {path}: {exc}"
+    except RecursionError:
+        return f"JSON in {path} is nested too deeply to parse."
+    except ValueError as exc:
+        return f"Invalid JSON value in {path}: {exc}"
     return None
 
 
@@ -856,7 +860,16 @@ def _peek_json(path: Path) -> Any:
         try:
             with path.open("r", encoding="utf-8") as handle:
                 value = json.load(handle)
-        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        # Detection reads every candidate file before any parser sees it, so
+        # this is where a hostile document actually lands. `RecursionError`
+        # (deep nesting blows `json.load`'s stack) and the bare `ValueError`
+        # CPython raises for a numeric literal past its 4300-digit int
+        # conversion cap are neither OSError nor JSONDecodeError, so they
+        # escaped and aborted the whole run — every sibling artifact discarded
+        # because one file was malformed. Detection failing means "not a
+        # recognisable JSON artifact", which is exactly `None`; the reason is
+        # reported by `_malformed_json_reason`.
+        except (OSError, UnicodeDecodeError, RecursionError, ValueError):
             value = None
     _LAST_PEEK["key"] = key
     _LAST_PEEK["value"] = value

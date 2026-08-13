@@ -88,7 +88,14 @@ def iter_record_dicts(text: str) -> list[dict[str, Any]]:
     of a JSONL document. Blank and non-JSON lines are skipped."""
     try:
         whole = json.loads(text)
-    except json.JSONDecodeError:
+    # `json.loads` does not only raise JSONDecodeError. Deep nesting exhausts
+    # the stack (RecursionError) and a numeric literal past CPython's
+    # 4300-digit int conversion cap raises a bare ValueError. Neither is an
+    # OSError or a ParseError, so both escaped every guard between here and
+    # `main()` and aborted the entire run — discarding every other artifact in
+    # the directory because one file was malformed. Here, all three mean the
+    # same thing: this text is not a readable record.
+    except (json.JSONDecodeError, RecursionError, ValueError):
         whole = None
     if isinstance(whole, dict):
         return [whole]
@@ -99,7 +106,7 @@ def iter_record_dicts(text: str) -> list[dict[str, Any]]:
             continue
         try:
             candidate = json.loads(stripped)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, RecursionError, ValueError):
             continue
         if isinstance(candidate, dict):
             records.append(candidate)
@@ -186,7 +193,7 @@ def read_records(path: Path) -> list[dict[str, Any]] | None:
     if key[2] <= MAX_INPUT_BYTES:
         try:
             value = iter_record_dicts(path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeDecodeError):
+        except (OSError, UnicodeDecodeError, RecursionError, ValueError):
             value = None
     _LAST_RECORDS["key"] = key
     _LAST_RECORDS["value"] = value

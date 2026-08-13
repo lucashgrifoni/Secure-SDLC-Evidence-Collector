@@ -63,6 +63,18 @@ def load_json(path: Path) -> dict[str, Any]:
         # PowerShell) or any non-UTF-8 byte would otherwise escape as a raw
         # UnicodeDecodeError and abort the whole collection run.
         raise ParseError(f"Invalid text encoding in {path}: {exc}") from exc
+    except RecursionError as exc:
+        # `json.load` recurses per nesting level, so a deeply nested document
+        # blows the interpreter's stack. RecursionError is not an OSError and
+        # not a ParseError, so it escaped the collector's guard and took the
+        # entire run with it — every sibling artifact discarded because one
+        # file was malformed.
+        raise ParseError(f"JSON in {path} is nested too deeply to parse") from exc
+    except ValueError as exc:
+        # CPython caps int(str) at 4300 digits (CVE-2020-10735), and `json.load`
+        # raises a bare ValueError — not a JSONDecodeError — for a longer
+        # numeric literal. Same escape, same blast radius.
+        raise ParseError(f"Invalid JSON value in {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise ParseError(f"Expected top-level JSON object in {path}, got {type(data).__name__}")
     return data
@@ -76,6 +88,8 @@ def load_yaml_or_json(path: Path) -> dict[str, Any]:
         raise ParseError(f"Invalid YAML in {path}: {exc}") from exc
     except UnicodeDecodeError as exc:
         raise ParseError(f"Invalid text encoding in {path}: {exc}") from exc
+    except RecursionError as exc:
+        raise ParseError(f"YAML in {path} is nested too deeply to parse") from exc
     if not isinstance(data, dict):
         raise ParseError(
             f"Expected top-level mapping in {path}, got {type(data).__name__ if data else 'empty'}"
