@@ -175,11 +175,10 @@ class TopRiskCve(_BaseModel):
 class VulnerabilityIntelligence(_BaseModel):
     """EPSS + CISA KEV enrichment aggregated for a single evidence record.
 
-    Computed by the optional ``enrich`` step (CLI flag ``--enrich`` on
-    ``run``, or the standalone ``sdlc-evidence enrich`` command). When the
-    enrichment step is skipped the field stays ``None`` and the bundle
-    behaves exactly like it did pre-enrichment, so consumers that never
-    opt in are unaffected.
+    Computed by the optional ``sdlc-evidence enrich`` command, run against an
+    existing ``bundle.json``. When the enrichment step is skipped the field
+    stays ``None`` and the bundle behaves exactly like it did
+    pre-enrichment, so consumers that never opt in are unaffected.
 
     Source feeds:
 
@@ -316,10 +315,10 @@ class NormalizedEvidence(_BaseModel):
         default=None,
         description=(
             "Optional EPSS/KEV enrichment summary for the CVEs in ``cve_ids``. "
-            "Stays ``None`` unless the user opted into enrichment via the "
-            "``run --enrich`` flag or the standalone ``sdlc-evidence enrich`` "
-            "command. The bundle remains schema-compatible with pre-enrichment "
-            "consumers when this field is absent."
+            "Stays ``None`` unless the user opted into enrichment by running "
+            "``sdlc-evidence enrich`` against the bundle. The bundle remains "
+            "schema-compatible with pre-enrichment consumers when this field "
+            "is absent."
         ),
     )
     reachability: Reachability | None = Field(

@@ -30,8 +30,17 @@ def evaluate(
     owner_team: str | None,
     catalog_path: Path | None,
     fail_on: str,
+    exceptions_dir: list[Path] | None = None,
 ) -> None:
-    """Reusable core for ``evaluate`` and the legacy ``bundle`` alias."""
+    """Reusable core for ``evaluate`` and the legacy ``bundle`` alias.
+
+    `--exceptions-dir` exists here because this is where controls are
+    evaluated, and it existed only on `run`. The documented `collect` →
+    `evaluate` split therefore could not apply a waiver at all: a control that
+    `run` reports as WAIVED came out MISSING through the two-step flow, so the
+    same evidence and the same approved, in-force exception produced two
+    different release verdicts depending on which documented path was used.
+    """
     fail_on = validate_fail_on(fail_on)
     try:
         data = json.loads(evidence_path.read_text(encoding="utf-8"))
@@ -58,11 +67,34 @@ def evaluate(
 
     app_ = build_application(application, repository, environment, owner_team)
     release = build_release(release_id, commit_sha, branch)
+
+    exceptions = []
+    if exceptions_dir:
+        # Reuse the collector rather than parsing waiver files here: it already
+        # de-duplicates a waiver supplied through two directories, records an
+        # unreadable one as a collection error instead of crashing, and strips
+        # paths. Only the exceptions directories are handed to it.
+        from evidence_collector.collectors.local import LocalArtifactCollector
+
+        waiver_report = LocalArtifactCollector(
+            release=release, exceptions_dirs=list(exceptions_dir)
+        ).collect()
+        exceptions = waiver_report.exceptions
+        for waiver_error in waiver_report.errors:
+            console.print(
+                f"[yellow]Exception input skipped:[/yellow] "
+                f"{waiver_error.path}: {waiver_error.reason}"
+            )
+            collection_errors.append(
+                CollectionError(path=str(waiver_error.path), reason=waiver_error.reason)
+            )
+
     bundle, _ = build_bundle(
         app_,
         release,
         list(evidence),
         catalog_path=catalog_path,
+        exceptions=exceptions,
         collection_errors=collection_errors,
     )
 
@@ -114,6 +146,15 @@ def register(app: typer.Typer) -> None:
                 help="Exit non-zero when release_status reaches this severity: ready|conditional|not_ready",
             ),
         ] = "not_ready",
+        exceptions_dir: Annotated[
+            list[Path] | None,
+            typer.Option(
+                "--exceptions-dir",
+                help=(
+                    "Directory with approved exception (waiver) files (can be given multiple times)"
+                ),
+            ),
+        ] = None,
     ) -> None:
         """Evaluate an existing evidence list and produce the full bundle outputs."""
         evaluate(
@@ -128,4 +169,5 @@ def register(app: typer.Typer) -> None:
             owner_team=owner_team,
             catalog_path=catalog_path,
             fail_on=fail_on,
+            exceptions_dir=exceptions_dir,
         )

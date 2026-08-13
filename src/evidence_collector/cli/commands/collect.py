@@ -38,8 +38,28 @@ def register(app: typer.Typer) -> None:
                 help="Directory with YAML/JSON attestations (can be given multiple times)",
             ),
         ] = None,
+        artifact_root: Annotated[
+            Path | None,
+            typer.Option(
+                "--artifact-root",
+                help=(
+                    "Base directory that absolute artifact paths are rewritten against. "
+                    "Set this (e.g. to the repository root) so the evidence records "
+                    "repo-relative paths instead of leaking local filesystem "
+                    "locations."
+                ),
+            ),
+        ] = None,
     ) -> None:
-        """Collect evidence from local directories and write the normalized list."""
+        """Collect evidence from local directories and write the normalized list.
+
+        `--artifact-root` exists here as well as on `run` because this is where
+        the paths are recorded. Without it the documented `collect` → `evaluate`
+        split had no way to strip them at all: the flag was on `run` only, so
+        the two-step flow — a first-class, documented alternative — always wrote
+        absolute local paths into the evidence list and from there into the
+        published bundle.
+        """
         release = build_release(release_id, commit_sha, branch)
         from evidence_collector.collectors.local import LocalArtifactCollector
 
@@ -47,6 +67,7 @@ def register(app: typer.Typer) -> None:
             release=release,
             artifacts_dirs=list(artifacts_dir) if artifacts_dir else [],
             attestations_dirs=list(attestations_dir) if attestations_dir else [],
+            artifact_root=artifact_root,
         )
         report = collector.collect()
         # Envelope, not a bare list. The bare list had nowhere to carry the

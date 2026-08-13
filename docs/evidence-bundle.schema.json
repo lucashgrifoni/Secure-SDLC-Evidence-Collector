@@ -621,7 +621,7 @@
             }
           ],
           "default": null,
-          "description": "Optional EPSS/KEV enrichment summary for the CVEs in ``cve_ids``. Stays ``None`` unless the user opted into enrichment via the ``run --enrich`` flag or the standalone ``sdlc-evidence enrich`` command. The bundle remains schema-compatible with pre-enrichment consumers when this field is absent."
+          "description": "Optional EPSS/KEV enrichment summary for the CVEs in ``cve_ids``. Stays ``None`` unless the user opted into enrichment by running ``sdlc-evidence enrich`` against the bundle. The bundle remains schema-compatible with pre-enrichment consumers when this field is absent."
         }
       },
       "required": [
@@ -1056,7 +1056,7 @@
     },
     "VulnerabilityIntelligence": {
       "additionalProperties": false,
-      "description": "EPSS + CISA KEV enrichment aggregated for a single evidence record.\n\nComputed by the optional ``enrich`` step (CLI flag ``--enrich`` on\n``run``, or the standalone ``sdlc-evidence enrich`` command). When the\nenrichment step is skipped the field stays ``None`` and the bundle\nbehaves exactly like it did pre-enrichment, so consumers that never\nopt in are unaffected.\n\nSource feeds:\n\n* EPSS — https://epss.cyentia.com/ (FIRST.org, public CSV, refreshed\n  daily). ``epss_score`` is the probability of exploitation in the\n  next 30 days; ``epss_percentile`` is the position within the day's\n  distribution.\n* CISA KEV — https://www.cisa.gov/known-exploited-vulnerabilities-catalog\n  (JSON catalog of vulnerabilities confirmed exploited in the wild).",
+      "description": "EPSS + CISA KEV enrichment aggregated for a single evidence record.\n\nComputed by the optional ``sdlc-evidence enrich`` command, run against an\nexisting ``bundle.json``. When the enrichment step is skipped the field\nstays ``None`` and the bundle behaves exactly like it did\npre-enrichment, so consumers that never opt in are unaffected.\n\nSource feeds:\n\n* EPSS — https://epss.cyentia.com/ (FIRST.org, public CSV, refreshed\n  daily). ``epss_score`` is the probability of exploitation in the\n  next 30 days; ``epss_percentile`` is the position within the day's\n  distribution.\n* CISA KEV — https://www.cisa.gov/known-exploited-vulnerabilities-catalog\n  (JSON catalog of vulnerabilities confirmed exploited in the wild).",
       "properties": {
         "cve_count": {
           "default": 0,

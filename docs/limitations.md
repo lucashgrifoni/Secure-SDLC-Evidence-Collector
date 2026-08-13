@@ -269,8 +269,9 @@ These are explicitly out of scope for security reports (see
 
 ## 13 · Enriched bundles are not byte-stable across EPSS / KEV feed refreshes
 
-- `sdlc-evidence enrich` and `sdlc-evidence run --enrich` write
-  EPSS / KEV signal into evidence. The structural-hash gate
+- `sdlc-evidence enrich` writes EPSS / KEV signal into evidence.
+  (There is no `run --enrich`; enrichment is a separate command run
+  against an existing `bundle.json`.) The structural-hash gate
   deliberately captures `epss_feed_date`, `epss_model_version`, and
   `kev_feed_date` so a feed bump (or an EPSS model-version change)
   surfaces as drift.
