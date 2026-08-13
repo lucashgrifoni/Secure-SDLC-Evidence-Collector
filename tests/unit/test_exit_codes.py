@@ -13,9 +13,17 @@ drift apart again.
 
 from __future__ import annotations
 
-import pytest
+from pathlib import Path
 
-from evidence_collector.cli._exit_codes import exit_code_for_status, fail_on_exit_code
+import pytest
+from typer.testing import CliRunner
+
+from evidence_collector.cli._exit_codes import (
+    EXIT_INPUT_ERROR,
+    exit_code_for_status,
+    fail_on_exit_code,
+)
+from evidence_collector.cli.main import app
 from evidence_collector.domain.enums import ReleaseStatus
 
 # (status, --fail-on, expected exit code) — mirrors the README "Exit codes" table.
@@ -99,3 +107,58 @@ def test_validate_fail_on_accepts_and_normalizes(value: str) -> None:
     from evidence_collector.cli._exit_codes import validate_fail_on
 
     assert validate_fail_on(value) == value.lower()
+
+
+@pytest.mark.parametrize(
+    ("label", "argv"),
+    [
+        ("rejected --fail-on value", ["run", "--fail-on", "bogus"]),
+        ("rejected --predicate-type", ["statement", "--predicate-type", "bogus", "b.json"]),
+        ("unknown flag", ["run", "--no-such-flag"]),
+        ("missing required argument", ["verify"]),
+    ],
+    ids=["fail-on", "predicate-type", "unknown-flag", "missing-argument"],
+)
+def test_usage_errors_exit_with_the_input_error_code(
+    label: str, argv: list[str], tmp_path: Path
+) -> None:
+    """Click exits 2 for a usage error; in this CLI 2 means `not_ready`.
+
+    So a typo in `--fail-on`, or a directory passed where a bundle was
+    expected, came back as a release verdict the tool never actually reached —
+    and a pipeline gating on the documented codes acted on it. The README is
+    explicit: every failure that is not a release verdict exits 3, and it names
+    a rejected `--predicate-type` as an example.
+    """
+    result = CliRunner().invoke(app, argv)
+
+    assert result.exit_code == EXIT_INPUT_ERROR, f"{label}: {result.output}"
+
+
+def test_a_directory_where_a_bundle_is_expected_is_an_input_error(tmp_path: Path) -> None:
+    """`verify <dir>` is a bad input, not a `not_ready` release."""
+    for command in ("verify", "vex", "statement", "guac", "enrich"):
+        result = CliRunner().invoke(app, [command, str(tmp_path)])
+        assert result.exit_code == EXIT_INPUT_ERROR, f"{command}: {result.output}"
+
+
+def test_a_real_not_ready_verdict_still_exits_two(tmp_path: Path) -> None:
+    """The point of the change is to stop 2 being ambiguous, not to retire it."""
+    result = CliRunner().invoke(
+        app,
+        [
+            "run",
+            "--application",
+            "payments-api",
+            "--repository",
+            "acme/payments-api",
+            "--release-id",
+            "1.0.0",
+            "--commit-sha",
+            "abcdef1234567890",
+            "--output-dir",
+            str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 2, result.output

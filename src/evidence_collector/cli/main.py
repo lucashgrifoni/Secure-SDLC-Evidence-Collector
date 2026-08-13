@@ -19,9 +19,11 @@ import sys
 from datetime import UTC, datetime
 from typing import Annotated
 
+import click
 import typer
 
 from evidence_collector import __version__
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli._logging import configure_logging, emit_event
 from evidence_collector.cli._state import console, is_json_logs, set_json_logs
 from evidence_collector.cli.commands import register_all
@@ -88,6 +90,24 @@ def _force_utf8_std_streams() -> None:
 # already the input/IO failure code used by verify, compare and evaluate.
 EXIT_COMMAND_FAILED = 3
 
+# Click exits 2 for every usage error: a rejected option value, an unknown
+# flag, a missing argument, a path failing its `exists=` / `file_okay=` check.
+# In this CLI 2 is a release verdict — `not_ready` — so a typo in `--fail-on`,
+# or a directory passed where a bundle was expected, came back as "this release
+# is not ready" and a pipeline gating on the documented codes acted on a verdict
+# the tool never reached. The README states the contract plainly: every failure
+# that is not a release verdict exits 3, and it names a rejected
+# `--predicate-type` as an example.
+#
+# It has to be corrected here rather than around `app()`. Click's standalone
+# mode catches `UsageError` itself, prints it, and calls `sys.exit(exit_code)`,
+# so nothing distinguishable propagates — by the time the caller sees
+# `SystemExit(2)` it is indistinguishable from a genuine `not_ready`. Rebinding
+# the class attribute changes the code at its source, and covers every
+# `UsageError` subclass (`BadParameter`, `MissingParameter`, `NoSuchOption`)
+# since they all inherit it.
+click.UsageError.exit_code = EXIT_INPUT_ERROR
+
 
 def _report_command_failure(exc: BaseException) -> None:
     """Print one actionable line for an unhandled exception, no raw traceback.
@@ -120,8 +140,8 @@ def main() -> None:
         app()
     except Exception as exc:
         # SystemExit derives from BaseException, so every deliberate exit —
-        # including typer.Exit and Click's usage errors — passes through
-        # untouched. Only genuinely unhandled exceptions land here.
+        # including typer.Exit — passes through untouched. Only genuinely
+        # unhandled exceptions land here.
         _report_command_failure(exc)
         raise SystemExit(EXIT_COMMAND_FAILED) from exc
 
