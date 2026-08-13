@@ -64,7 +64,7 @@ from evidence_collector.parsers.registry_attestation import looks_like_registry_
 from evidence_collector.parsers.release_attestation import file_has_release_attestation
 from evidence_collector.parsers.sbom import is_spdx3
 from evidence_collector.parsers.trivy_json import looks_like_trivy_json
-from evidence_collector.paths import relative_to_root
+from evidence_collector.paths import redact_path_in, relative_to_root
 
 logger = logging.getLogger(__name__)
 
@@ -150,9 +150,9 @@ class LocalArtifactCollector:
         had already gone wrong.
         """
         relative = relative_to_root(path, self._artifact_root)
-        if relative != path:
-            reason = reason.replace(str(path), str(relative))
-        report.errors.append(LocalCollectionError(path=relative, reason=reason))
+        report.errors.append(
+            LocalCollectionError(path=relative, reason=redact_path_in(reason, path, relative))
+        )
 
     def _usable_directory(self, directory: Path, report: LocalCollectionReport) -> bool:
         """Return whether ``directory`` can be walked, recording why when it cannot.

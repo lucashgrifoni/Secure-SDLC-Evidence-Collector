@@ -16,7 +16,9 @@ A privacy control that fails open and stays quiet is worse than no control.
 
 from __future__ import annotations
 
+import json
 import os
+import subprocess
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -24,7 +26,7 @@ import pytest
 
 from evidence_collector.collectors.local import LocalArtifactCollector
 from evidence_collector.domain.models import ReleaseContext
-from evidence_collector.paths import relative_to_root
+from evidence_collector.paths import redact_path_in, relative_to_root
 
 _SARIF = (
     '{"version": "2.1.0", "runs": [{"tool": {"driver": '
@@ -124,3 +126,163 @@ def test_a_path_outside_the_root_is_returned_unchanged(tmp_path: Path) -> None:
 
 def test_relative_to_root_is_a_no_op_without_a_root(tmp_path: Path) -> None:
     assert relative_to_root(tmp_path / "x.json", None) == tmp_path / "x.json"
+
+
+def _link_directory(link: Path, target: Path) -> bool:
+    """Create a directory link, or report that this machine will not allow it."""
+    try:
+        link.symlink_to(target, target_is_directory=True)
+        return True
+    except (OSError, NotImplementedError):
+        pass
+    # Windows without Developer Mode refuses symlinks but allows junctions,
+    # which is the shape a CI checkout actually uses there.
+    result = subprocess.run(
+        ["cmd", "/c", "mklink", "/J", str(link), str(target)],
+        capture_output=True,
+        check=False,
+    )
+    return result.returncode == 0 and link.exists()
+
+
+def test_a_symlinked_artifacts_directory_is_still_stripped(tmp_path: Path) -> None:
+    """Resolving both sides made the flag fail OPEN through a link.
+
+    An `artifacts/` directory that is a symlink or junction into a shared cache
+    is a standard CI layout. `resolve()` follows the link out from under the
+    root, `relative_to` raises, and the "outside the root" branch hands back
+    the full absolute path — publishing exactly what the flag exists to hide.
+    The lexical comparison the fix replaced got this case right, so trying it
+    first is not a nicety.
+    """
+    repo = (tmp_path / "repo").resolve()
+    cache = (tmp_path / "shared-cache").resolve()
+    repo.mkdir()
+    cache.mkdir()
+    (cache / "semgrep.sarif").write_text(_SARIF, encoding="utf-8")
+
+    if not _link_directory(repo / "artifacts", cache):
+        pytest.skip("this machine does not allow creating directory links")
+
+    report = LocalArtifactCollector(
+        _release(), artifacts_dirs=[repo / "artifacts"], artifact_root=repo
+    ).collect()
+
+    raw = report.evidence[0].raw
+    assert raw is not None and raw.artifact_path is not None
+    assert not Path(raw.artifact_path).is_absolute()
+    assert str(cache) not in raw.artifact_path
+    assert str(tmp_path) not in raw.artifact_path
+
+
+def test_a_link_does_not_publish_the_directory_name_it_hides(tmp_path: Path) -> None:
+    """Resolving leaked the target's name even when it was inside the root.
+
+    A neutral `artifacts` link over `.internal-clientA-staging` is a deliberate
+    choice; recording the target's real directory name publishes precisely the
+    thing the link was covering.
+    """
+    repo = (tmp_path / "repo").resolve()
+    hidden = repo / ".internal-clientA-staging"
+    hidden.mkdir(parents=True)
+    (hidden / "semgrep.sarif").write_text(_SARIF, encoding="utf-8")
+
+    if not _link_directory(repo / "artifacts", hidden):
+        pytest.skip("this machine does not allow creating directory links")
+
+    report = LocalArtifactCollector(
+        _release(), artifacts_dirs=[repo / "artifacts"], artifact_root=repo
+    ).collect()
+
+    raw = report.evidence[0].raw
+    assert raw is not None and raw.artifact_path is not None
+    assert "internal-clientA-staging" not in raw.artifact_path
+    assert raw.artifact_path == str(Path("artifacts") / "semgrep.sarif")
+
+
+def test_the_reason_is_redacted_even_when_the_error_escapes_its_backslashes(
+    workspace: Path,
+) -> None:
+    """`str(OSError)` renders the filename through `repr()`, doubling backslashes.
+
+    So a plain `str.replace(str(path), ...)` never matched on Windows, and the
+    `reason` shipped the absolute path — including the username — while the
+    `path` field beside it was correctly stripped.
+    """
+    absolute = workspace / "artifacts" / "broken.json"
+    doubled = str(absolute).replace("\\", "\\\\")
+    message = f"[Errno 13] Permission denied: {doubled!s} while reading {absolute}"
+
+    redacted = redact_path_in(message, absolute, Path("artifacts") / "broken.json")
+
+    assert str(workspace) not in redacted
+    assert doubled not in redacted
+    assert "broken.json" in redacted
+
+
+def test_redaction_is_a_no_op_when_nothing_was_rewritten(tmp_path: Path) -> None:
+    path = tmp_path / "a.json"
+    message = f"Invalid JSON in {path}"
+    assert redact_path_in(message, path, path) == message
+
+
+_TRIVY = """{
+  "SchemaVersion": 2,
+  "ArtifactName": "%(root)s/services/api",
+  "ArtifactType": "filesystem",
+  "Results": [
+    {
+      "Target": "%(root)s/services/api/requirements.txt",
+      "Class": "lang-pkgs",
+      "Type": "pip",
+      "Vulnerabilities": [
+        {"VulnerabilityID": "CVE-2024-1", "PkgName": "flask",
+         "InstalledVersion": "2.0.0", "Severity": "HIGH"}
+      ]
+    }
+  ]
+}"""
+
+
+def test_scanner_reported_paths_in_metadata_are_stripped_too(tmp_path: Path) -> None:
+    """Trivy's own ArtifactName and Target carried the full local path.
+
+    `raw.artifact_path` was correctly rewritten while
+    `metadata.artifact_name` and `metadata.targets` beside it still read
+    `/home/alice/clients/acme/...`. The flag promises the *bundle* records
+    repo-relative paths, and metadata is in the bundle.
+    """
+    repo = (tmp_path / "repo").resolve()
+    artifacts = repo / "artifacts"
+    artifacts.mkdir(parents=True)
+    (artifacts / "trivy.json").write_text(_TRIVY % {"root": repo.as_posix()}, encoding="utf-8")
+
+    report = LocalArtifactCollector(
+        _release(), artifacts_dirs=[artifacts], artifact_root=repo
+    ).collect()
+
+    assert report.evidence, "the Trivy report should have produced evidence"
+    for evidence in report.evidence:
+        blob = json.dumps(evidence.model_dump(mode="json"))
+        assert str(repo) not in blob
+        assert repo.as_posix() not in blob
+
+
+def test_a_scanner_target_that_is_not_a_local_path_is_left_alone(tmp_path: Path) -> None:
+    """An image reference is not a path; rewriting it would corrupt the record."""
+    repo = (tmp_path / "repo").resolve()
+    artifacts = repo / "artifacts"
+    artifacts.mkdir(parents=True)
+    # Longest pattern first: the shorter one is a prefix of it.
+    image = _TRIVY.replace(
+        "%(root)s/services/api/requirements.txt", "acme/api:1.0 (debian 12)"
+    ).replace("%(root)s/services/api", "acme/api:1.0")
+    (artifacts / "trivy.json").write_text(image, encoding="utf-8")
+
+    report = LocalArtifactCollector(
+        _release(), artifacts_dirs=[artifacts], artifact_root=repo
+    ).collect()
+
+    metadata = report.evidence[0].metadata
+    assert metadata["artifact_name"] == "acme/api:1.0"
+    assert metadata["targets"] == ["acme/api:1.0 (debian 12)"]

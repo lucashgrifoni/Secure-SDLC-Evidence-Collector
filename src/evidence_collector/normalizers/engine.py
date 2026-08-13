@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from evidence_collector.domain.enums import (
@@ -103,6 +104,24 @@ def _new_evidence_id(prefix: str, *parts: str) -> str:
     """
     digest = hashlib.sha256("||".join(parts).encode("utf-8")).hexdigest()[:12]
     return f"{prefix}-{digest}"
+
+
+def _strip_root(value: str, root: str | None) -> str:
+    """Rewrite a scanner-reported location against the artifact root.
+
+    Scanners report where *they* looked, which on a filesystem scan is a local
+    absolute path. Values that are not paths under the root — image references,
+    remote targets, package coordinates — come back **verbatim**, not
+    round-tripped through `Path`: on Windows that would rewrite the separator
+    in `acme/api:1.0` and corrupt a value that was never a path.
+    """
+    if not root or not value:
+        return value
+    candidate = Path(value)
+    relative = relative_to_root(candidate, root)
+    if relative == candidate:
+        return value
+    return str(relative)
 
 
 def _raw_ref(artifact: ParsedArtifact, root: str | None = None) -> RawEvidenceRef:
@@ -610,12 +629,19 @@ def normalize_trivy_json(
             "trivy_schema_version": parsed.schema_version,
             "result_class": group.kind,
         }
+        # Trivy's `ArtifactName` and per-result `Target` are filesystem paths
+        # when it scanned a directory, and they carried the full local path
+        # into the bundle even when `--artifact-root` had correctly stripped
+        # `raw.artifact_path` beside them. The flag promises the *bundle*
+        # records repo-relative paths, so these are held to it too. A value
+        # that is not a path under the root — an image reference like
+        # `acme/api:1.0`, a remote target — is left exactly as Trivy wrote it.
         if parsed.artifact_name:
-            metadata["artifact_name"] = parsed.artifact_name
+            metadata["artifact_name"] = _strip_root(parsed.artifact_name, artifact_root)
         if parsed.artifact_type:
             metadata["artifact_type"] = parsed.artifact_type
         if group.targets:
-            metadata["targets"] = list(group.targets)
+            metadata["targets"] = [_strip_root(target, artifact_root) for target in group.targets]
         evidences.append(
             NormalizedEvidence(
                 evidence_id=_new_evidence_id(
