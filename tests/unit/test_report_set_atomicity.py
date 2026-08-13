@@ -12,6 +12,7 @@ hold.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -33,7 +34,7 @@ from evidence_collector.domain.models import (
     ReleaseContext,
     Summary,
 )
-from evidence_collector.exporters import export_report_set
+from evidence_collector.exporters import _atomic, export_report_set
 from evidence_collector.exporters._atomic import write_all_or_nothing, write_atomic
 
 _REPORT_FILES = ("bundle.json", "report.md", "summary.html")
@@ -200,3 +201,132 @@ def test_output_uses_lf_line_endings_on_every_platform(tmp_path: Path) -> None:
     for name in _REPORT_FILES:
         raw = (tmp_path / name).read_bytes()
         assert b"\r\n" not in raw, f"{name} was written with CRLF line endings"
+
+
+def test_a_failure_during_the_replace_phase_rolls_the_whole_set_back(
+    tmp_path: Path,
+) -> None:
+    """The staging phase was hardened; the replace phase had no handling at all.
+
+    `write_all_or_nothing` ended in a bare `for target, temp: os.replace(...)`.
+    Payloads are ordered bundle.json, report.md, summary.html, so a failure on
+    the second replace published the NEW bundle.json beside the PREVIOUS run's
+    report.md and summary.html — precisely the half-updated state this module's
+    docstring claims is unreachable. On Windows that is not exotic: a read-only
+    destination, another process holding the file open, or a target that exists
+    as a directory all raise there.
+    """
+    export_report_set(_bundle("1.0.0", ReleaseStatus.READY), tmp_path)
+    before = {name: (tmp_path / name).read_text(encoding="utf-8") for name in _REPORT_FILES}
+
+    real_replace = os.replace
+    calls = {"n": 0}
+
+    def _fail_on_the_second_move_into_place(src: Any, dst: Any, **kwargs: Any) -> None:
+        # Only count moves INTO place (the source is a scratch file).
+        if str(src).endswith(".tmp") and not str(dst).endswith(".tmp"):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                raise OSError(13, "Permission denied")
+        real_replace(src, dst, **kwargs)
+
+    with (
+        mock.patch("os.replace", _fail_on_the_second_move_into_place),
+        pytest.raises(OSError, match="Permission denied"),
+    ):
+        export_report_set(_bundle("2.0.0", ReleaseStatus.NOT_READY), tmp_path)
+
+    for name in _REPORT_FILES:
+        assert (tmp_path / name).read_text(encoding="utf-8") == before[name], (
+            f"{name} was left holding the wrong run's content"
+        )
+
+
+def test_no_scratch_files_survive_a_replace_phase_failure(tmp_path: Path) -> None:
+    """A failed run must not leave debris the next run has to reason about.
+
+    `write_atomic` cleaned up its temp on failure; `write_all_or_nothing` did
+    not, so a real CLI run left `.report.md.<pid>.tmp` and
+    `.summary.html.<pid>.tmp` in the output directory permanently.
+    """
+    export_report_set(_bundle("1.0.0", ReleaseStatus.READY), tmp_path)
+
+    real_replace = os.replace
+    calls = {"n": 0}
+
+    def _fail_on_the_second_move_into_place(src: Any, dst: Any, **kwargs: Any) -> None:
+        if str(src).endswith(".tmp") and not str(dst).endswith(".tmp"):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                raise OSError(13, "Permission denied")
+        real_replace(src, dst, **kwargs)
+
+    with (
+        mock.patch("os.replace", _fail_on_the_second_move_into_place),
+        pytest.raises(OSError),
+    ):
+        export_report_set(_bundle("2.0.0", ReleaseStatus.NOT_READY), tmp_path)
+
+    leftovers = sorted(p.name for p in tmp_path.iterdir() if p.name.startswith("."))
+    assert leftovers == [], f"scratch files left behind: {leftovers}"
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted(_REPORT_FILES)
+
+
+def test_a_successful_write_leaves_only_the_report_set(tmp_path: Path) -> None:
+    """Backups are scratch too: they must not survive a run that succeeded."""
+    export_report_set(_bundle("1.0.0", ReleaseStatus.READY), tmp_path)
+    export_report_set(_bundle("2.0.0", ReleaseStatus.NOT_READY), tmp_path)
+
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted(_REPORT_FILES)
+    for name in _REPORT_FILES:
+        assert "2.0.0" in (tmp_path / name).read_text(encoding="utf-8")
+
+
+def test_two_exports_from_one_process_do_not_collide(tmp_path: Path) -> None:
+    """Scratch names were unique per process, not per call.
+
+    `.{name}.{pid}.tmp` meant two `export_report_set` calls in one process
+    against one output directory raced on the same scratch paths: one run
+    replaced the other's staged file mid-flight, and in one observed case
+    `summary.html` ended up missing entirely.
+    """
+    seen: list[str] = []
+    real_stage = _atomic._stage
+
+    def _record(target: Path, content: str) -> Path:
+        staged = real_stage(target, content)
+        seen.append(staged.name)
+        return staged
+
+    with mock.patch.object(_atomic, "_stage", _record):
+        export_report_set(_bundle("1.0.0", ReleaseStatus.READY), tmp_path)
+        export_report_set(_bundle("2.0.0", ReleaseStatus.NOT_READY), tmp_path)
+
+    assert len(seen) == len(set(seen)), f"scratch names repeated across calls: {seen}"
+    for name in _REPORT_FILES:
+        assert "2.0.0" in (tmp_path / name).read_text(encoding="utf-8")
+
+
+def test_every_command_that_writes_a_json_artifact_uses_the_atomic_writer() -> None:
+    """`enrich` rewrote bundle.json in place with `Path.write_text`.
+
+    That is the truncating, line-ending-translating call this module exists to
+    replace, applied to the one file the whole tool protects — and `--output`
+    defaults to overwriting BUNDLE_PATH in place, so a crash mid-write
+    destroyed the bundle. It also rewrote it with CRLF, silently undoing the LF
+    invariant the exporters pin.
+
+    The same call was in `collect`, `guac`, `oscal`, `statement` and `vex`,
+    each writing a file a later command reads back.
+    """
+    commands = Path("src/evidence_collector/cli/commands")
+    offenders = [
+        f"{path.name}:{number}"
+        for path in sorted(commands.glob("*.py"))
+        # `schema` writes with an explicit newline="\n" and is a plain dump of
+        # a constant, not a protected artifact.
+        if path.name != "schema.py"
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
+        if ".write_text(" in line
+    ]
+    assert offenders == [], f"non-atomic writes remain: {offenders}"

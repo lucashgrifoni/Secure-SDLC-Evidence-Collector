@@ -12,6 +12,7 @@ from pydantic import ValidationError
 
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli._state import console
+from evidence_collector.exporters._atomic import write_atomic
 
 
 class OscalKind(StrEnum):
@@ -123,6 +124,5 @@ def _write_or_echo(payload: str, output_path: Path | None, *, label: str) -> Non
     if output_path is None:
         typer.echo(payload)
         return
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(payload + "\n", encoding="utf-8")
+    write_atomic(output_path, payload + "\n")
     console.print(f"[green]{label}[/green] → {output_path}")

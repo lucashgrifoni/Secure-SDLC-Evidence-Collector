@@ -22,6 +22,7 @@ from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
+from evidence_collector.exporters._atomic import write_atomic
 from evidence_collector.exporters.intoto import (
     PREDICATE_TYPE_NAMES,
     PredicateType,
@@ -114,16 +115,13 @@ def register(app: typer.Typer) -> None:
         # set above; mypy needs the explicit narrowing.
         predicate_type_literal = cast(PredicateType, predicate_type)
         statement = build_statement(bundle, predicate_type=predicate_type_literal)
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps(statement, indent=2, sort_keys=False), encoding="utf-8")
+        write_atomic(output, json.dumps(statement, indent=2, sort_keys=False))
 
         envelope_path: Path | None = None
         if dsse_envelope:
             envelope = build_dsse_envelope(statement)
             envelope_path = output.with_suffix(".dsse.json")
-            envelope_path.write_text(
-                json.dumps(envelope, indent=2, sort_keys=False), encoding="utf-8"
-            )
+            write_atomic(envelope_path, json.dumps(envelope, indent=2, sort_keys=False))
 
         emitted_predicate_url = predicate_type_url(predicate_type_literal)
         if is_json_logs():

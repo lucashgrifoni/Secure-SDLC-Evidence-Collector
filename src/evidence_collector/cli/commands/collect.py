@@ -10,6 +10,7 @@ import typer
 
 from evidence_collector.cli._builders import build_release
 from evidence_collector.cli._state import EVIDENCE_ADAPTER, console
+from evidence_collector.exporters._atomic import write_atomic
 
 
 def register(app: typer.Typer) -> None:
@@ -62,10 +63,7 @@ def register(app: typer.Typer) -> None:
                 {"path": str(error.path), "reason": error.reason} for error in report.errors
             ],
         }
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(
-            json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-        )
+        write_atomic(output_path, json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
         console.print(
             f"[green]Collected[/green] {len(report.evidence)} evidence records → {output_path}"
         )

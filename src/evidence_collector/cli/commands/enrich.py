@@ -27,6 +27,7 @@ from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
+from evidence_collector.exporters._atomic import write_atomic
 from evidence_collector.intelligence import (
     EpssFeed,
     KevFeed,
@@ -118,10 +119,7 @@ def register(app: typer.Typer) -> None:
 
         enriched, report = enrich_bundle(bundle, epss, kev, top_risk_limit=top_risk_limit)
         destination = output or bundle_path
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(
-            enriched.model_dump_json(indent=2, exclude_none=False), encoding="utf-8"
-        )
+        write_atomic(destination, enriched.model_dump_json(indent=2, exclude_none=False))
 
         if is_json_logs():
             emit_event(
