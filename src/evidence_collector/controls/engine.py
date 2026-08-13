@@ -181,10 +181,11 @@ def evaluate_control(
                     control_id=control.control_id,
                     evidence_type=evidence_type,
                     criticality=control.criticality,
-                    description=(
+                    description=_fit(
                         f"Required evidence `{evidence_type.value}` for control "
                         f"{control.control_id} ({control.name}) is missing or "
-                        f"failed validation."
+                        f"failed validation.",
+                        _GAP_DESCRIPTION_LIMIT,
                     ),
                     remediation=_remediation_hint(control, evidence_type),
                 )
@@ -204,10 +205,11 @@ def evaluate_control(
                     control_id=control.control_id,
                     evidence_type=evidence_type,
                     criticality=ControlCriticality.LOW,
-                    description=(
+                    description=_fit(
                         f"Recommended evidence `{evidence_type.value}` for control "
                         f"{control.control_id} is missing. Control is still "
-                        f"considered partial."
+                        f"considered partial.",
+                        _GAP_DESCRIPTION_LIMIT,
                     ),
                     remediation=_remediation_hint(control, evidence_type),
                 )
@@ -227,19 +229,22 @@ def evaluate_control(
         confidence = ConfidenceLevel.LOW
         rationale = (
             f"Control {control.control_id} is waived by "
-            f"{', '.join(exc.exception_id for exc in applicable_exceptions)} "
+            f"{_summarize(exception_refs)} "
             f"(approver={applicable_exceptions[0].approver}, "
             f"expires_at={applicable_exceptions[0].expires_at.isoformat()}). "
             f"Missing evidence would otherwise have been "
-            f"{', '.join(t.value for t in missing_required)}."
+            f"{_summarize([t.value for t in missing_required])}."
         )
         # Waived gaps must not block the release; downgrade criticality.
+        waived_by = _summarize(exception_refs)
         gaps = [
             Gap(
                 control_id=gap.control_id,
                 evidence_type=gap.evidence_type,
                 criticality=ControlCriticality.LOW,
-                description=f"{gap.description} (waived by {', '.join(exception_refs)}).",
+                description=_fit(
+                    f"{gap.description} (waived by {waived_by}).", _GAP_DESCRIPTION_LIMIT
+                ),
                 remediation=gap.remediation,
             )
             for gap in gaps
@@ -249,7 +254,7 @@ def evaluate_control(
         rationale = (
             f"Control {control.control_id} is not satisfied: missing required "
             f"evidence types "
-            f"{', '.join(t.value for t in missing_required)}."
+            f"{_summarize([t.value for t in missing_required])}."
         )
         rejected = _rejected_exceptions_for(
             control.control_id, exceptions, application, release_id, now
@@ -257,7 +262,7 @@ def evaluate_control(
         if rejected:
             rationale += (
                 f" An exception was supplied for this control but did not apply: "
-                f"{'; '.join(rejected)}."
+                f"{_summarize(rejected, separator='; ')}."
             )
         confidence = ConfidenceLevel.LOW
     elif missing_recommended:
@@ -267,14 +272,14 @@ def evaluate_control(
         rationale = (
             f"Control {control.control_id} is partially satisfied: required "
             f"evidence is present, but recommended evidence "
-            f"{', '.join(t.value for t in missing_recommended)} is missing."
+            f"{_summarize([t.value for t in missing_recommended])} is missing."
         )
     else:
         status = ControlEvaluationStatus.MET
         base_confidence = _lowest_confidence(supporting_evidence)
         confidence = _downgrade_if_manual(base_confidence, supporting_evidence)
         rationale = (
-            f"Control {control.control_id} is met by evidence {_summarize_refs(supporting_refs)}."
+            f"Control {control.control_id} is met by evidence {_summarize(supporting_refs)}."
         )
 
     evaluation = ControlEvaluation(
@@ -287,27 +292,67 @@ def evaluate_control(
         missing_required_evidence_types=missing_required,
         missing_recommended_evidence_types=missing_recommended,
         confidence=confidence,
-        rationale=rationale,
+        # `_summarize` keeps each list within its own budget; `_fit` makes the
+        # bound unconditional, so no future edit to the prose above can
+        # reintroduce a run that exits 3 with nothing written.
+        rationale=_fit(rationale, _RATIONALE_LIMIT),
         exception_refs=exception_refs,
     )
     return evaluation, gaps
 
 
-# `rationale` is capped at 2000 characters by the domain model. Joining every
-# supporting evidence id into the sentence blew that cap at ~104 artifacts of
-# one type: pydantic raised ValidationError, `run` exited 3 and wrote NO
-# bundle, report or summary at all. A large-but-legitimate evidence set is not
-# a malformed input, and the prose is a human sentence — `evidence_refs`
-# carries the complete, uncapped list, so nothing is lost by summarising here.
-_MAX_RATIONALE_REFS = 20
+# The domain model caps these prose fields. Every branch below renders a list
+# of ids or types into a sentence, and any of those lists can be long for
+# perfectly ordinary reasons: a monorepo with one SARIF per service, a shared
+# org-wide `--exceptions-dir` where every application has its own scoped waiver
+# for the same control, a custom catalog. When the sentence crossed its cap,
+# pydantic raised a ValidationError at the very end of the run and `run` exited
+# 3 having written no bundle, no report and no summary at all.
+#
+# An earlier attempt capped the number of ids in one branch. That was the wrong
+# unit and the wrong scope: `evidence_id` is `max_length=200` in the model, so
+# even twenty of them can overflow, and six other joins were left unbounded.
+# The budget is therefore in CHARACTERS, and `_fit` is applied to every string
+# that a capped field receives — so the guarantee holds whatever new prose is
+# added later. The structured fields (`evidence_refs`,
+# `missing_required_evidence_types`, `exception_refs`) carry the complete,
+# uncapped lists, so summarising the sentence loses nothing.
+_RATIONALE_LIMIT = 2000
+_GAP_DESCRIPTION_LIMIT = 1000
+
+#: Characters of a capped field the list may occupy, leaving room for the
+#: sentence built around it.
+_LIST_BUDGET = 900
+
+_ELLIPSIS = "…"
 
 
-def _summarize_refs(refs: list[str]) -> str:
-    """Render evidence ids for prose, bounded so the sentence cannot overflow."""
-    if len(refs) <= _MAX_RATIONALE_REFS:
-        return ", ".join(refs)
-    shown = ", ".join(refs[:_MAX_RATIONALE_REFS])
-    return f"{shown} (+{len(refs) - _MAX_RATIONALE_REFS} more; see evidence_refs)"
+def _fit(text: str, limit: int) -> str:
+    """Return `text` guaranteed to fit `limit` characters, marked if shortened.
+
+    The last line of defence. `_summarize` keeps the prose readable; this makes
+    the bound true no matter what is interpolated around it.
+    """
+    if len(text) <= limit:
+        return text
+    marker = f"{_ELLIPSIS} (truncated)"
+    return text[: limit - len(marker)] + marker
+
+
+def _summarize(items: Sequence[str], *, budget: int = _LIST_BUDGET, separator: str = ", ") -> str:
+    """Join `items` within a character budget, naming how many were dropped."""
+    shown: list[str] = []
+    used = 0
+    for index, item in enumerate(items):
+        cost = len(item) + (len(separator) if index else 0)
+        if used + cost > budget:
+            break
+        shown.append(item)
+        used += cost
+    if len(shown) == len(items):
+        return separator.join(items)
+    dropped = len(items) - len(shown)
+    return f"{separator.join(shown)} (+{dropped} more; see the structured fields)"
 
 
 def evaluate_controls(
