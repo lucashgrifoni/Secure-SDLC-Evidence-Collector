@@ -64,6 +64,21 @@ def _utcnow() -> datetime:
     return datetime.now(tz=UTC)
 
 
+def _reject_duplicates(ids: list[str], *, label: str, refs: str) -> None:
+    """Raise if any id appears twice, naming the offenders and what breaks."""
+    seen: set[str] = set()
+    duplicates: list[str] = []
+    for value in ids:
+        if value in seen and value not in duplicates:
+            duplicates.append(value)
+        seen.add(value)
+    if duplicates:
+        raise ValueError(
+            f"Duplicate {label}: {duplicates}. Each id must identify exactly "
+            f"one record, otherwise {refs} are ambiguous."
+        )
+
+
 class Application(_BaseModel):
     """Product or service under evaluation."""
 
@@ -591,28 +606,33 @@ class EvidenceBundle(_BaseModel):
         return data
 
     @model_validator(mode="after")
-    def _evidence_ids_are_unique(self) -> EvidenceBundle:
-        """An `evidence_id` must identify exactly one record.
+    def _ids_are_unique(self) -> EvidenceBundle:
+        """An id must identify exactly one record, for evidence and waivers alike.
 
-        The validator below already checks that every `evidence_refs` entry
-        points at a known id. That is only half the guarantee: if two records
-        share an id, the reference resolves to two things, and a consumer
-        doing the obvious `{e.evidence_id: e for e in bundle.evidence}` keeps
-        whichever came last without noticing. For a tool whose product is the
-        audit trail, an ambiguous reference is not a bundle worth signing.
+        The validator below already checks that every `evidence_refs` and
+        `exception_refs` entry points at a known id. That is only half the
+        guarantee: if two records share an id, the reference resolves to two
+        things, and a consumer doing the obvious
+        `{e.evidence_id: e for e in bundle.evidence}` keeps whichever came last
+        without noticing. For a tool whose product is the audit trail, an
+        ambiguous reference is not a bundle worth signing.
         """
-        seen: set[str] = set()
-        duplicates: list[str] = []
-        for item in self.evidence:
-            if item.evidence_id in seen and item.evidence_id not in duplicates:
-                duplicates.append(item.evidence_id)
-            seen.add(item.evidence_id)
-        if duplicates:
-            raise ValueError(
-                f"Duplicate evidence ids: {duplicates}. Each id must identify "
-                "exactly one evidence record, otherwise control evidence_refs "
-                "are ambiguous."
-            )
+        _reject_duplicates(
+            [item.evidence_id for item in self.evidence],
+            label="evidence ids",
+            refs="control evidence_refs",
+        )
+        # A waiver is what lets a control pass *without* evidence, so an
+        # ambiguous `exception_id` matters more here than anywhere else. The
+        # uniqueness guarantee was added for evidence and skipped for
+        # exceptions, while `_evaluations_reference_existing_evidence` below
+        # already checks `exception_refs` against known ids — the same half a
+        # guarantee that check had before.
+        _reject_duplicates(
+            [item.exception_id for item in self.exceptions],
+            label="exception ids",
+            refs="control exception_refs",
+        )
         return self
 
     @model_validator(mode="after")

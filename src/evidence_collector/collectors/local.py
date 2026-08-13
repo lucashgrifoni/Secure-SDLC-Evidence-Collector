@@ -150,9 +150,19 @@ class LocalArtifactCollector:
         had already gone wrong.
         """
         relative = relative_to_root(path, self._artifact_root)
-        report.errors.append(
-            LocalCollectionError(path=relative, reason=redact_path_in(reason, path, relative))
-        )
+        error = LocalCollectionError(path=relative, reason=redact_path_in(reason, path, relative))
+        # `_walk_once` de-duplicates *files* through a resolved-path set, but
+        # nothing guarded the errors: passing a parent directory and one of its
+        # own subdirectories — the documented-repeatable flag, trivial in a CI
+        # matrix — produced one evidence record and two identical entries for a
+        # single unreadable folder. The bundle is the durable signed artifact,
+        # so overstating how many inputs failed is a defect in it.
+        if any(
+            existing.path == error.path and existing.reason == error.reason
+            for existing in report.errors
+        ):
+            return
+        report.errors.append(error)
 
     def _usable_directory(self, directory: Path, report: LocalCollectionReport) -> bool:
         """Return whether ``directory`` can be walked, recording why when it cannot.
@@ -238,7 +248,17 @@ class LocalArtifactCollector:
         for root, dir_names, file_names in os.walk(directory, onerror=_on_error):
             dir_names.sort()
             root_path = Path(root)
-            found.extend(root_path / name for name in sorted(file_names))
+            # `os.walk` reports every *non-directory* entry, a wider set than
+            # the `rglob(...) if p.is_file()` this replaced: broken symlinks,
+            # dangling reparse points, and on POSIX FIFOs, sockets and device
+            # nodes. Opening those produces noise at best and blocks forever at
+            # worst — a FIFO named `*.json` would hang the JSON probe — so the
+            # filter is restored rather than left to the parsers.
+            found.extend(
+                candidate
+                for name in sorted(file_names)
+                if (candidate := root_path / name).is_file()
+            )
         return found
 
     def collect(self) -> LocalCollectionReport:
@@ -253,7 +273,52 @@ class LocalArtifactCollector:
             report.inspected_files += 1
             self._ingest_exception(file_path, report)
         report.evidence = self._deduplicate_evidence(report.evidence, report)
+        report.exceptions = self._deduplicate_exceptions(report.exceptions, report)
         return report
+
+    def _deduplicate_exceptions(
+        self, exceptions: list[EvidenceException], report: LocalCollectionReport
+    ) -> list[EvidenceException]:
+        """Collapse waivers supplied twice, for the same reasons as evidence.
+
+        `--exceptions-dir` is repeatable, and the same waiver file reaching the
+        run through two of them is the identical duplicate-supply case that was
+        fixed for evidence and skipped here. The result was an accepted bundle
+        carrying two `EvidenceException` records under one `exception_id`, with
+        `exception_refs: ['EXC-1', 'EXC-1']` on the control and a rationale
+        naming the waiver twice.
+
+        A waiver is the object that lets a control pass *without* evidence, so
+        an ambiguous reference matters more here than anywhere else in the
+        bundle. As with evidence, two records sharing an id are merged only
+        when they are the same waiver; if they differ in substance the id
+        collision is reported instead, because discarding either would drop a
+        real approval decision.
+        """
+        kept: dict[str, EvidenceException] = {}
+        order: list[str] = []
+        collisions: list[EvidenceException] = []
+        for exception in exceptions:
+            first = kept.get(exception.exception_id)
+            if first is None:
+                kept[exception.exception_id] = exception
+                order.append(exception.exception_id)
+                continue
+            if first == exception:
+                logger.info(
+                    "Ignoring duplicate exception %s: the same waiver was supplied twice",
+                    exception.exception_id,
+                )
+                continue
+            reason = (
+                f"exception id {exception.exception_id} was supplied twice with "
+                "different content; the bundle cannot reference either one "
+                "unambiguously"
+            )
+            logger.error("%s", reason)
+            self._record_error(report, Path(exception.exception_id), reason)
+            collisions.append(exception)
+        return [kept[key] for key in order] + collisions
 
     @staticmethod
     def _deduplicate_evidence(

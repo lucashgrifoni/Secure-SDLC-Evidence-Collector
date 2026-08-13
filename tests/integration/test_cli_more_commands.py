@@ -305,7 +305,7 @@ def test_exceptions_list_walks_directory_and_counts_validity(
     # pre-commit hook. The counters now separate the two, and expiry has its own
     # column. The demo fixture is in-date, so it counts as active.
     assert "1 active" in result.output
-    assert "0 expired" in result.output
+    assert "0 not in force" in result.output
     assert "0 unparseable" in result.output
     # The Rich table truncates long IDs to fit terminal width (`EXC-2026-DEM…`),
     # so assert on a stable prefix instead of the full ID.

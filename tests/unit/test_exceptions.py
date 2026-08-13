@@ -361,3 +361,32 @@ def test_naive_waiver_timestamps_are_rejected_with_an_actionable_message(field: 
     assert field in message
     assert "must carry a timezone" in message
     assert "2026-12-31T00:00:00Z" in message
+
+
+def test_cli_helpers_agree_with_the_engine_about_which_waivers_are_live() -> None:
+    """`exceptions list` called a future-dated waiver "active"; the gate refuses it.
+
+    Both commands tested only the upper bound, so a waiver approved for 2099
+    printed "valid" with exit 0 and was counted "1 active", while `run` and
+    `evaluate` reported the same file as not yet in effect. A reporting command
+    that disagrees with the release gate about which waivers are live is worse
+    than one that says nothing at all.
+    """
+    from evidence_collector.cli.commands.exceptions import _in_force, _window_note
+
+    waiver = _exception()
+    inside = waiver.approved_at + timedelta(days=1)
+    before = waiver.approved_at - timedelta(days=1)
+    after = waiver.expires_at + timedelta(days=1)
+
+    assert _in_force(waiver, inside) is True
+    assert _in_force(waiver, before) is False
+    assert _in_force(waiver, after) is False
+
+    # Whatever the engine decides, the note explains it.
+    for now in (inside, before, after):
+        assert bool(_window_note(waiver, now)) is not _in_force(waiver, now)
+        assert waiver.is_valid_for(application="", release_id="", now=now) == _in_force(waiver, now)
+
+    assert "NOT YET IN EFFECT" in _window_note(waiver, before)
+    assert "EXPIRED" in _window_note(waiver, after)

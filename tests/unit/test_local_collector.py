@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
+import pytest
+
 from evidence_collector.collectors.local import LocalArtifactCollector
 from evidence_collector.domain.enums import EvidenceType
 from evidence_collector.domain.models import ReleaseContext
@@ -168,16 +170,24 @@ def test_missing_directory_is_still_reported_distinctly(tmp_path: Path) -> None:
 
 
 def test_file_passed_as_attestations_or_exceptions_dir_is_reported(tmp_path: Path) -> None:
-    """All three directory inputs share the guard, not just artifacts."""
-    stray = tmp_path / "stray.yaml"
-    stray.write_text("kind: attestation\n", encoding="utf-8")
+    """All three directory inputs share the guard, not just artifacts.
+
+    Two distinct files rather than one passed twice: identical (path, reason)
+    pairs are de-duplicated, since the same input failing for the same reason
+    is one fact however many flags pointed at it.
+    """
+    attestation = tmp_path / "stray-attestation.yaml"
+    exception = tmp_path / "stray-exception.yaml"
+    attestation.write_text("kind: attestation\n", encoding="utf-8")
+    exception.write_text("kind: exception\n", encoding="utf-8")
 
     report = LocalArtifactCollector(
-        _release(), attestations_dirs=[stray], exceptions_dirs=[stray]
+        _release(), attestations_dirs=[attestation], exceptions_dirs=[exception]
     ).collect()
 
     assert len(report.errors) == 2
     assert all("not a directory" in e.reason for e in report.errors)
+    assert {e.path for e in report.errors} == {attestation, exception}
 
 
 def test_oversized_artifact_is_reported_not_dropped(tmp_path: Path) -> None:
@@ -495,3 +505,105 @@ def test_dedup_ignores_exactly_the_fields_the_structural_hash_calls_volatile() -
     from evidence_collector.collectors.local import _VOLATILE_EVIDENCE_FIELDS
 
     assert _VOLATILE_EVIDENCE_FIELDS == VOLATILE_EVIDENCE
+
+
+_WAIVER = """exception_id: EXC-2026-DEMO-001
+control_id: SSDF-PW.1
+approver: appsec-lead@example.com
+approved_at: "2026-01-01T00:00:00Z"
+expires_at: "2036-01-01T00:00:00Z"
+justification: No new trust boundary; follow-up scheduled for next quarter.
+"""
+
+
+def test_the_same_waiver_supplied_twice_yields_one_exception(tmp_path: Path) -> None:
+    """`--exceptions-dir` is repeatable, and dedup was only done for evidence.
+
+    The same waiver reaching a run through two directories produced an ACCEPTED
+    bundle carrying two `EvidenceException` records under one `exception_id`,
+    with `exception_refs: ['EXC-1', 'EXC-1']` on the control and a rationale
+    naming the waiver twice. A waiver is the object that lets a control pass
+    *without* evidence, so an ambiguous reference matters more here than
+    anywhere else in the bundle.
+    """
+    for job in ("job-a", "job-b"):
+        (tmp_path / job).mkdir()
+        (tmp_path / job / "waiver.yaml").write_text(_WAIVER, encoding="utf-8")
+
+    report = LocalArtifactCollector(
+        _release(), exceptions_dirs=[tmp_path / "job-a", tmp_path / "job-b"]
+    ).collect()
+
+    assert len(report.exceptions) == 1
+    assert report.errors == []
+
+
+def test_two_different_waivers_sharing_an_id_are_reported_not_merged(
+    tmp_path: Path,
+) -> None:
+    """Merging there would silently drop one of two real approval decisions."""
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    (tmp_path / "a" / "waiver.yaml").write_text(_WAIVER, encoding="utf-8")
+    (tmp_path / "b" / "waiver.yaml").write_text(
+        _WAIVER.replace("appsec-lead@example.com", "someone-else@example.com"),
+        encoding="utf-8",
+    )
+
+    report = LocalArtifactCollector(
+        _release(), exceptions_dirs=[tmp_path / "a", tmp_path / "b"]
+    ).collect()
+
+    assert len(report.exceptions) == 2
+    assert len(report.errors) == 1
+    assert "supplied twice with different content" in report.errors[0].reason
+
+
+def test_overlapping_artifact_dirs_do_not_double_report_one_failure(
+    tmp_path: Path,
+) -> None:
+    """`_walk_once` de-duplicated files but not the errors beside them.
+
+    `--artifacts-dir` is documented as repeatable, and passing a parent plus
+    one of its own subdirectories is trivial in a CI matrix. One unreadable
+    folder underneath then produced a single evidence record and *two*
+    identical `collection_errors` entries. The bundle is the durable signed
+    artifact, so overstating how many inputs failed is a defect in it.
+    """
+    artifacts = tmp_path / "artifacts"
+    nested = artifacts / "nested"
+    blocked = nested / "locked"
+    nested.mkdir(parents=True)
+    blocked.mkdir()
+    (nested / "osv.json").write_text(_osv_bytes(), encoding="utf-8")
+
+    collector = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts, nested])
+    with mock.patch("os.scandir", _deny_scandir_for(blocked)):
+        report = collector.collect()
+
+    assert len(report.evidence) == 1
+    assert len(report.errors) == 1, [f"{e.path}: {e.reason}" for e in report.errors]
+
+
+def test_non_regular_files_are_not_handed_to_the_parsers(tmp_path: Path) -> None:
+    """`os.walk` lists every non-directory entry, a wider set than files.
+
+    Moving from `rglob(...) if p.is_file()` to `os.walk` silently dropped that
+    filter, so broken symlinks and dangling reparse points reached ingestion.
+    Worst case is not noise: on POSIX a FIFO named `*.json` blocks the JSON
+    probe's `open()` forever, which the old filter made unreachable.
+    """
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "osv.json").write_text(_osv_bytes(), encoding="utf-8")
+
+    dangling = artifacts / "dangling.json"
+    try:
+        dangling.symlink_to(tmp_path / "no-such-target.json")
+    except (OSError, NotImplementedError):
+        pytest.skip("this machine does not allow creating symlinks")
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
+
+    assert len(report.evidence) == 1
+    assert report.errors == []
