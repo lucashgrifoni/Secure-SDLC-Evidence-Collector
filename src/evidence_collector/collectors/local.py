@@ -262,18 +262,53 @@ class LocalArtifactCollector:
         for root, dir_names, file_names in os.walk(directory, onerror=_on_error):
             dir_names.sort()
             root_path = Path(root)
-            # `os.walk` reports every *non-directory* entry, a wider set than
-            # the `rglob(...) if p.is_file()` this replaced: broken symlinks,
-            # dangling reparse points, and on POSIX FIFOs, sockets and device
-            # nodes. Opening those produces noise at best and blocks forever at
-            # worst — a FIFO named `*.json` would hang the JSON probe — so the
-            # filter is restored rather than left to the parsers.
-            found.extend(
-                candidate
-                for name in sorted(file_names)
-                if (candidate := root_path / name).is_file()
-            )
+            for name in sorted(file_names):
+                candidate = root_path / name
+                if self._is_ingestable_file(candidate, report):
+                    found.append(candidate)
         return found
+
+    def _is_ingestable_file(self, candidate: Path, report: LocalCollectionReport) -> bool:
+        """Whether ``candidate`` is a regular file worth handing to the parsers.
+
+        ``os.walk`` reports every *non-directory* entry, a wider set than the
+        ``rglob(...) if p.is_file()`` it replaced: broken symlinks, dangling
+        reparse points, and on POSIX FIFOs, sockets and device nodes. Opening
+        those is noise at best and a hang at worst — a FIFO named ``*.json``
+        blocks the JSON probe's ``open()`` forever.
+
+        The filter has to sit inside the error handling, not beside it.
+        ``Path.is_file`` only swallows ENOENT/ENOTDIR/EBADF/ELOOP; EACCES,
+        EPERM, EIO and Windows' ERROR_ACCESS_DENIED all propagate, and this
+        call runs outside ``os.walk``'s ``onerror`` hook. So an unreadable
+        *file* — a directory with mode 0444 lists its children but cannot stat
+        them — aborted the whole collection with a bare PermissionError, taking
+        every other artifact with it and leaking the absolute path in the crash
+        text, past the ``--artifact-root`` redaction.
+
+        A broken symlink is reported rather than dropped: a dangling
+        ``sast.sarif`` from a failed CI artifact download is evidence that was
+        supplied and could not be read, and silently omitting it reads as
+        "never supplied" — the false negative `_usable_directory` calls worse
+        than an error.
+        """
+        try:
+            if candidate.is_file():
+                return True
+        except OSError as exc:
+            self._record_error(
+                report, candidate, f"Could not read {candidate}: {exc.strerror or exc}"
+            )
+            return False
+        if not candidate.exists():
+            self._record_error(
+                report,
+                candidate,
+                f"{candidate} is a link whose target does not exist, so it could not be read",
+            )
+            return False
+        logger.debug("Skipping %s: not a regular file", candidate)
+        return False
 
     def collect(self) -> LocalCollectionReport:
         report = LocalCollectionReport()
@@ -311,7 +346,6 @@ class LocalArtifactCollector:
         """
         kept: dict[str, EvidenceException] = {}
         order: list[str] = []
-        collisions: list[EvidenceException] = []
         for exception in exceptions:
             first = kept.get(exception.exception_id)
             if first is None:
@@ -324,15 +358,26 @@ class LocalArtifactCollector:
                     exception.exception_id,
                 )
                 continue
+            # Unlike `evidence_id`, which is a digest of the artifact's own
+            # content, `exception_id` is chosen by whoever wrote the waiver — a
+            # duplicate is one typo away. Keeping both so the model would reject
+            # the bundle turned that typo into a dead run: exit 3, no bundle, no
+            # report, no summary, and a raw pydantic dump. That is the failure
+            # this codebase already treats as a bug elsewhere ("one waiver
+            # missing a `Z` took the entire release report with it").
+            #
+            # So the first one wins and the conflict is recorded where it
+            # survives — in `collection_errors`, in the bundle, in the report.
+            # The operator sees exactly which id was supplied twice and that
+            # only one of them was applied.
             reason = (
                 f"exception id {exception.exception_id} was supplied twice with "
-                "different content; the bundle cannot reference either one "
-                "unambiguously"
+                "different content. Only the first was applied; fix the "
+                "duplicate id so the waiver that should apply is unambiguous."
             )
             logger.error("%s", reason)
             self._record_error(report, Path(exception.exception_id), reason)
-            collisions.append(exception)
-        return [kept[key] for key in order] + collisions
+        return [kept[key] for key in order]
 
     @staticmethod
     def _deduplicate_evidence(

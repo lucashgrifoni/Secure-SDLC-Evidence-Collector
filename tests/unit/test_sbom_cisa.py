@@ -419,3 +419,37 @@ def test_ordinary_nesting_depth_is_nowhere_near_the_cap(tmp_path: Path) -> None:
     sbom = {"bomFormat": "CycloneDX", "specVersion": "1.6", "components": [node]}
 
     assert parse_sbom(_write(tmp_path, sbom)).component_count == 21
+
+
+def test_a_subject_repeated_in_components_is_not_counted_twice(tmp_path: Path) -> None:
+    """BOM merge tools emit the subject in both places; the spec allows it.
+
+    The subject's subtree was walked unconditionally on top of the top-level
+    walk, so everything under it was counted once through each route:
+    `component_count` went 3 to 5 on the same file, and a CBOM's
+    `crypto_asset_count` doubled. Identity is the right test — the same object
+    reached by two routes is one component.
+    """
+    subject: dict[str, Any] = {
+        "type": "application",
+        "name": "api",
+        "version": "1.0",
+        "purl": "pkg:pypi/api@1.0",
+        "components": [
+            {"type": "cryptographic-asset", "name": "rsa-key", "version": "1"},
+            {"type": "library", "name": "flask", "version": "3.0.0"},
+        ],
+    }
+    sbom: dict[str, Any] = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        # The very same object, reachable through both routes.
+        "metadata": {"component": subject},
+        "components": [subject],
+    }
+
+    parsed = parse_sbom(_write(tmp_path, sbom))
+
+    # subject + its two children, each counted once.
+    assert parsed.component_count == 3
+    assert parsed.crypto_asset_count == 1

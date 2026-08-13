@@ -110,14 +110,29 @@ def _strip_root(value: str, root: str | None) -> str:
     """Rewrite a scanner-reported location against the artifact root.
 
     Scanners report where *they* looked, which on a filesystem scan is a local
-    absolute path. Values that are not paths under the root — image references,
+    *absolute* path. Only absolute values are considered, and that restriction
+    is the whole correctness argument.
+
+    Passing relative values through `relative_to_root` resolved them against
+    the process working directory. Whenever that directory was inside the
+    artifact root — running from `<repo>/services/api` with
+    `--artifact-root <repo>` — a container-image reference matched and was
+    rewritten: `acme/api:1.0` became `services\\api\\acme\\api:1.0`, and a
+    Trivy target of `Java` became `services\\api\\Java`. That inserts the
+    collector's own directory layout into fields that never held a path, and
+    makes bundle content depend on where the command happened to be run from,
+    which nothing else in this codebase does.
+
+    Values that are not absolute paths under the root — image references,
     remote targets, package coordinates — come back **verbatim**, not
-    round-tripped through `Path`: on Windows that would rewrite the separator
-    in `acme/api:1.0` and corrupt a value that was never a path.
+    round-tripped through `Path`: on Windows that alone would rewrite the
+    separator in `acme/api:1.0`.
     """
     if not root or not value:
         return value
     candidate = Path(value)
+    if not candidate.is_absolute():
+        return value
     relative = relative_to_root(candidate, root)
     if relative == candidate:
         return value

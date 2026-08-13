@@ -44,6 +44,7 @@ def get_environment() -> Environment:
     )
     env.filters["upper_or_dash"] = _upper_or_dash
     env.filters["md"] = md_escape
+    env.filters["md_code"] = md_code
     return env
 
 
@@ -99,6 +100,34 @@ def md_escape(value: object) -> str:
         return ""
     text = str(value).translate(_MD_CONTROL_CHARS)
     return text.replace("\\", "\\\\").replace("|", "\\|")
+
+
+def md_code(value: object) -> str:
+    """Neutralise a value that will be rendered inside a backtick code span.
+
+    A code span is a different escaping context and needs a different filter.
+    CommonMark does *not* process backslash escapes inside one, so `md_escape`'s
+    doubling — correct and necessary in prose and plain table cells — is
+    rendered literally here. `report.md.j2` backticks nearly every identifier
+    and path, so on Windows every artifact path in the human-facing audit
+    deliverable read `C:\\\\Users\\\\...` instead of `C:\\Users\\...`. Applying
+    an escape where it is not processed does not make the value safer, only
+    wrong.
+
+    Three things still need handling:
+
+    - a backtick would close the span and let the rest of the value out into
+      Markdown, so runs of backticks are replaced with a visible marker;
+    - a pipe still splits a GFM table cell even inside a code span, because
+      the table is divided before inline code is parsed. It has to be
+      escaped, and CommonMark renders that as a literal `\\|` here — ugly,
+      unavoidable, and vastly better than a shifted row;
+    - line breaks end the row, exactly as in prose.
+    """
+    if value is None:
+        return ""
+    text = str(value).translate(_MD_CONTROL_CHARS)
+    return text.replace("`", "'").replace("|", "\\|")
 
 
 def template_root_exists() -> bool:

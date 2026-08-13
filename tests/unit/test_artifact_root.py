@@ -286,3 +286,47 @@ def test_a_scanner_target_that_is_not_a_local_path_is_left_alone(tmp_path: Path)
     metadata = report.evidence[0].metadata
     assert metadata["artifact_name"] == "acme/api:1.0"
     assert metadata["targets"] == ["acme/api:1.0 (debian 12)"]
+
+
+def test_scanner_values_do_not_depend_on_the_working_directory(tmp_path: Path) -> None:
+    r"""`_strip_root` resolved relative values against the process cwd.
+
+    Whenever that directory was inside the artifact root — running from
+    `<repo>/services/api` with `--artifact-root <repo>` — a container-image
+    reference matched and was rewritten: `acme/api:1.0` became
+    `services\api\acme\api:1.0`, and a Trivy target of `Java` became
+    `services\api\Java`. That inserts the collector's own directory layout
+    into fields that never held a path, and makes bundle content depend on
+    where the command was run from.
+    """
+    repo = (tmp_path / "repo").resolve()
+    artifacts = repo / "artifacts"
+    nested = repo / "services" / "api"
+    artifacts.mkdir(parents=True)
+    nested.mkdir(parents=True)
+    (artifacts / "trivy.json").write_text(
+        _TRIVY.replace(
+            "%(root)s/services/api/requirements.txt", "acme/api:1.0 (debian 12)"
+        ).replace("%(root)s/services/api", "acme/api:1.0"),
+        encoding="utf-8",
+    )
+
+    def _collect() -> dict[str, object]:
+        report = LocalArtifactCollector(
+            _release(), artifacts_dirs=[artifacts], artifact_root=repo
+        ).collect()
+        return dict(report.evidence[0].metadata)
+
+    previous = Path.cwd()
+    try:
+        os.chdir(repo)
+        from_root = _collect()
+        os.chdir(nested)
+        from_subdirectory = _collect()
+    finally:
+        os.chdir(previous)
+
+    assert from_root["artifact_name"] == "acme/api:1.0"
+    assert from_subdirectory == from_root, (
+        "the bundle changed because of the process working directory"
+    )

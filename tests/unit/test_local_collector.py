@@ -538,10 +538,19 @@ def test_the_same_waiver_supplied_twice_yields_one_exception(tmp_path: Path) -> 
     assert report.errors == []
 
 
-def test_two_different_waivers_sharing_an_id_are_reported_not_merged(
+def test_two_different_waivers_sharing_an_id_are_reported_in_the_bundle(
     tmp_path: Path,
 ) -> None:
-    """Merging there would silently drop one of two real approval decisions."""
+    """A duplicate waiver id must not end the run.
+
+    Unlike `evidence_id`, which is a digest of the artifact's own content,
+    `exception_id` is chosen by whoever wrote the waiver — a duplicate is one
+    typo away. Keeping both records so the bundle model would reject them
+    turned that typo into a dead run: exit 3, no bundle, no report, no summary,
+    and a raw pydantic dump. The first one wins and the conflict is recorded
+    where it survives — in `collection_errors`, and from there in the bundle
+    and the report.
+    """
     (tmp_path / "a").mkdir()
     (tmp_path / "b").mkdir()
     (tmp_path / "a" / "waiver.yaml").write_text(_WAIVER, encoding="utf-8")
@@ -554,9 +563,13 @@ def test_two_different_waivers_sharing_an_id_are_reported_not_merged(
         _release(), exceptions_dirs=[tmp_path / "a", tmp_path / "b"]
     ).collect()
 
-    assert len(report.exceptions) == 2
+    # One waiver applied, and the bundle can still be built.
+    assert len(report.exceptions) == 1
+    assert report.exceptions[0].approver == "appsec-lead@example.com"
+    # The conflict is durable, not just a log line.
     assert len(report.errors) == 1
     assert "supplied twice with different content" in report.errors[0].reason
+    assert "Only the first was applied" in report.errors[0].reason
 
 
 def test_overlapping_artifact_dirs_do_not_double_report_one_failure(
@@ -607,3 +620,59 @@ def test_non_regular_files_are_not_handed_to_the_parsers(tmp_path: Path) -> None
 
     assert len(report.evidence) == 1
     assert report.errors == []
+
+
+def test_an_unreadable_file_is_reported_not_fatal(tmp_path: Path) -> None:
+    """`Path.is_file()` does not swallow EACCES, and it ran outside `onerror`.
+
+    `os.walk`'s error hook only covers the directory scan; the regular-file
+    filter added after it sits outside. `is_file()` swallows only
+    ENOENT/ENOTDIR/EBADF/ELOOP, so EACCES, EPERM, EIO and Windows'
+    ERROR_ACCESS_DENIED propagated — an unreadable *file* aborted the whole
+    collection with a bare PermissionError, took every other artifact with it,
+    and leaked the absolute path in the crash text past the `--artifact-root`
+    redaction.
+    """
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "osv.json").write_text(_osv_bytes(), encoding="utf-8")
+    blocked = artifacts / "locked.sarif"
+    blocked.write_text(_sarif_bytes(), encoding="utf-8")
+
+    real_is_file = Path.is_file
+
+    def _deny(self: Path) -> bool:
+        if self == blocked:
+            raise PermissionError(13, "Permission denied", str(blocked))
+        return real_is_file(self)
+
+    with mock.patch.object(Path, "is_file", _deny):
+        report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
+
+    assert len(report.evidence) == 1
+    assert len(report.errors) == 1
+    assert report.errors[0].path == blocked
+    assert "Permission denied" in report.errors[0].reason
+
+
+def test_a_broken_link_is_reported_rather_than_silently_dropped(tmp_path: Path) -> None:
+    """A dangling `sast.sarif` is evidence that was supplied and cannot be read.
+
+    Omitting it silently reads as "never supplied" — the false negative
+    `_usable_directory`'s own docstring calls worse than an error. The
+    realistic trigger is a failed CI artifact download.
+    """
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "osv.json").write_text(_osv_bytes(), encoding="utf-8")
+    dangling = artifacts / "sast.sarif"
+    try:
+        dangling.symlink_to(tmp_path / "never-downloaded.sarif")
+    except (OSError, NotImplementedError):
+        pytest.skip("this machine does not allow creating symlinks")
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
+
+    assert len(report.evidence) == 1
+    assert len(report.errors) == 1
+    assert "target does not exist" in report.errors[0].reason

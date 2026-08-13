@@ -21,11 +21,12 @@ from evidence_collector.domain.models import (
     EvidenceBundle,
     EvidenceSource,
     NormalizedEvidence,
+    RawEvidenceRef,
     ReleaseContext,
     Summary,
 )
 from evidence_collector.exporters import export_html, export_json, export_markdown
-from evidence_collector.exporters._jinja import md_escape
+from evidence_collector.exporters._jinja import md_code, md_escape
 
 
 def _build_bundle() -> EvidenceBundle:
@@ -312,3 +313,53 @@ def test_md_escape_neutralises_every_character_python_treats_as_a_line_break() -
         escaped = md_escape(f"before{raw}after")
         assert len(escaped.splitlines()) == 1, f"{raw!r} still breaks the line"
         assert "before" in escaped and "after" in escaped
+
+
+def test_windows_paths_are_not_double_escaped_in_code_spans(tmp_path: Path) -> None:
+    r"""CommonMark does not process backslash escapes inside a code span.
+
+    `md_escape` doubles backslashes, which is correct and necessary in prose
+    and plain table cells — and rendered literally inside backticks, where
+    `report.md.j2` puts nearly every identifier and path. So every artifact
+    path a Windows runner recorded read `C:\Users\...` in the human-facing
+    audit deliverable. An escape applied where it is not processed does not
+    make the value safer, only wrong.
+    """
+    windows_path = r"C:\Users\build\artifacts\sbom.cdx.json"
+    bundle = _build_bundle()
+    evidence = bundle.evidence[0].model_copy(
+        update={
+            "raw": RawEvidenceRef(artifact_path=windows_path, integrity_hash="sha256:abc"),
+        }
+    )
+
+    path = export_markdown(bundle.model_copy(update={"evidence": [evidence]}), tmp_path / "r.md")
+    content = path.read_text(encoding="utf-8")
+
+    assert f"`{windows_path}`" in content
+    # The doubled form is what the prose filter would have produced here.
+    assert r"C:\\Users" not in content
+
+
+def test_a_backtick_cannot_escape_its_code_span() -> None:
+    """A backtick in the value would close the span and free the rest."""
+    escaped = md_code("pkg:npm/a`b` + **bold**")
+
+    assert "`" not in escaped
+    assert "bold" in escaped
+
+
+def test_a_pipe_is_still_escaped_inside_a_code_span() -> None:
+    """A GFM table is split before inline code is parsed, so the pipe still cuts.
+
+    The escape renders as a literal backslash-pipe inside the span, which is
+    ugly and unavoidable — and much better than a row whose columns shift.
+    """
+    escaped = md_code("pkg:npm/a|b")
+
+    assert escaped == r"pkg:npm/a\|b"
+
+
+def test_md_code_neutralises_line_breaks_like_its_prose_sibling() -> None:
+    for raw in ("\n", "\r", "\u2028", "\u2029", "\x85"):
+        assert len(md_code(f"before{raw}after").splitlines()) == 1

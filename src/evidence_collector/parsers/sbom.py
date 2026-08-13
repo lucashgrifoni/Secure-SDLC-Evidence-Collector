@@ -172,7 +172,18 @@ def _cyclonedx_components(data: dict[str, Any], *, path: str | Path | None = Non
     """
     components = _flatten_components(data.get("components"), path=path)
     subject = _subject_component(data)
-    if subject is not None:
+    if subject is not None and not any(existing == subject for existing in components):
+        # `metadata.component` may also appear verbatim in `components[]` — a
+        # spec-legal shape that BOM merge and aggregation tools emit. Walking
+        # its subtree unconditionally then counted everything under it twice:
+        # `component_count` went 3 to 5 on one file, and a CBOM's crypto asset
+        # count doubled.
+        #
+        # The test is whether the subject is *already among the flattened
+        # top-level components*. If it is, its whole subtree came with it, so
+        # there is nothing left to add. Identity would be the natural check but
+        # does not survive the JSON round-trip these dicts arrive through, and
+        # a subject whose content equals a listed component is that component.
         components.extend(_flatten_components(subject.get("components"), path=path))
     return components
 

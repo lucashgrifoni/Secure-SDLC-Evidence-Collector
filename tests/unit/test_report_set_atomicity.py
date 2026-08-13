@@ -224,7 +224,8 @@ def test_a_failure_during_the_replace_phase_rolls_the_whole_set_back(
 
     def _fail_on_the_second_move_into_place(src: Any, dst: Any, **kwargs: Any) -> None:
         # Only count moves INTO place (the source is a scratch file).
-        if str(src).endswith(".tmp") and not str(dst).endswith(".tmp"):
+        # Moves INTO place: the source is a scratch file, the destination is not.
+        if "~n" in Path(str(src)).name and "~" not in Path(str(dst)).name:
             calls["n"] += 1
             if calls["n"] == 2:
                 raise OSError(13, "Permission denied")
@@ -255,7 +256,8 @@ def test_no_scratch_files_survive_a_replace_phase_failure(tmp_path: Path) -> Non
     calls = {"n": 0}
 
     def _fail_on_the_second_move_into_place(src: Any, dst: Any, **kwargs: Any) -> None:
-        if str(src).endswith(".tmp") and not str(dst).endswith(".tmp"):
+        # Moves INTO place: the source is a scratch file, the destination is not.
+        if "~n" in Path(str(src)).name and "~" not in Path(str(dst)).name:
             calls["n"] += 1
             if calls["n"] == 2:
                 raise OSError(13, "Permission denied")
@@ -318,15 +320,115 @@ def test_every_command_that_writes_a_json_artifact_uses_the_atomic_writer() -> N
 
     The same call was in `collect`, `guac`, `oscal`, `statement` and `vex`,
     each writing a file a later command reads back.
+
+    The source tree is located through the *imported package*, not through a
+    cwd-relative string. Written the obvious way — `Path("src/evidence_collector/
+    cli/commands")` — this guard globbed zero files from any other working
+    directory and passed vacuously, so a tox run, an IDE runner or a packaged
+    wheel silently disarmed it; run from a tree that merely happened to contain
+    a `src/`, it audited that tree instead of the code under test.
     """
-    commands = Path("src/evidence_collector/cli/commands")
+    import evidence_collector.cli.commands as package
+
+    commands = Path(package.__file__).parent
+    assert commands.is_dir()
+
+    # Anything that opens a file for writing, not just `.write_text(` — the
+    # first version of this guard matched that one literal, so `open(..., "w")`,
+    # `write_bytes` and `json.dump(fp)` all sailed through.
+    writers = (".write_text(", ".write_bytes(", "json.dump(", "open(")
+    scanned = [path for path in sorted(commands.glob("*.py")) if path.name != "schema.py"]
+    # Without this the guard cannot fail: an empty file list makes
+    # `offenders == []` trivially true, which is exactly how it passed
+    # vacuously from every working directory but one.
+    assert len(scanned) > 10, f"the guard scanned only {len(scanned)} files"
+
     offenders = [
         f"{path.name}:{number}"
         for path in sorted(commands.glob("*.py"))
-        # `schema` writes with an explicit newline="\n" and is a plain dump of
-        # a constant, not a protected artifact.
+        # `schema` is the one deliberate exception: it already writes with an
+        # explicit newline="\n", and its only exposure is truncation on a crash
+        # mid-write. It is still a published artifact, so this is a narrow
+        # carve-out rather than a claim that the file does not matter.
         if path.name != "schema.py"
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
-        if ".write_text(" in line
+        if any(writer in line for writer in writers)
     ]
     assert offenders == [], f"non-atomic writes remain: {offenders}"
+
+
+def test_an_interrupt_leaves_the_previous_run_readable(tmp_path: Path) -> None:
+    """Ctrl-C is the first failure this module's docstring names, and it broke it.
+
+    Phase 2 moves every target aside before phase 3 puts any back, so an
+    interrupt inside that window left the output directory with the report
+    files MISSING — worse than the half-updated set the module exists to
+    prevent, and worse than the `write_text` code it replaced, which always
+    left three complete readable files. `except OSError` steps straight over
+    KeyboardInterrupt, so nothing unwound.
+    """
+    export_report_set(_bundle("1.0.0", ReleaseStatus.READY), tmp_path)
+    before = {name: (tmp_path / name).read_text(encoding="utf-8") for name in _REPORT_FILES}
+
+    real_replace = os.replace
+    moves = {"n": 0}
+
+    def _interrupt_after_moving_everything_aside(src: Any, dst: Any, **kwargs: Any) -> None:
+        real_replace(src, dst, **kwargs)
+        # Count only the move-aside renames (target -> scratch).
+        if not str(src).startswith(".") and "~o" in Path(str(dst)).name:
+            moves["n"] += 1
+            if moves["n"] == len(_REPORT_FILES):
+                raise KeyboardInterrupt
+
+    with (
+        mock.patch("os.replace", _interrupt_after_moving_everything_aside),
+        pytest.raises(KeyboardInterrupt),
+    ):
+        export_report_set(_bundle("2.0.0", ReleaseStatus.NOT_READY), tmp_path)
+
+    for name in _REPORT_FILES:
+        assert (tmp_path / name).exists(), f"{name} vanished on interrupt"
+        assert (tmp_path / name).read_text(encoding="utf-8") == before[name]
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted(_REPORT_FILES)
+
+
+def test_a_target_that_is_a_directory_is_rejected_before_anything_moves(
+    tmp_path: Path,
+) -> None:
+    """Otherwise phase 2 renames the user's directory away and leaves it there.
+
+    The commit that introduced the move-aside claimed this case was handled.
+    It was not: staging writes a differently named file and succeeds, so the
+    failure landed in phase 2, which happily renamed the whole directory —
+    contents included — to a scratch name.
+    """
+    export_report_set(_bundle("1.0.0", ReleaseStatus.READY), tmp_path)
+    (tmp_path / "report.md").unlink()
+    blocking = tmp_path / "report.md"
+    blocking.mkdir()
+    (blocking / "someone-elses-file.txt").write_text("keep me", encoding="utf-8")
+
+    with pytest.raises(IsADirectoryError):
+        export_report_set(_bundle("2.0.0", ReleaseStatus.NOT_READY), tmp_path)
+
+    assert blocking.is_dir()
+    assert (blocking / "someone-elses-file.txt").read_text(encoding="utf-8") == "keep me"
+    # bundle.json still describes the run that actually completed.
+    assert "1.0.0" in (tmp_path / "bundle.json").read_text(encoding="utf-8")
+
+
+def test_the_scratch_name_does_not_lengthen_the_path_more_than_before(
+    tmp_path: Path,
+) -> None:
+    """Windows caps a path at 260 characters without LongPathsEnabled.
+
+    Every character the scratch name adds is length the caller can no longer
+    use. A `.{name}.{kind}.{uuid4:12}.tmp` scheme cost 22 characters over the
+    target and broke `run` and `enrich` at a CI path that had worked before.
+    The pid scheme it replaced cost 11, so that is the budget to beat.
+    """
+    target = tmp_path / "bundle.json"
+    overhead = len(_atomic._scratch(target, "new").name) - len(target.name)
+
+    assert overhead <= 11, f"scratch name adds {overhead} characters to the path"

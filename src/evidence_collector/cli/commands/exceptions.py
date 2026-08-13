@@ -108,7 +108,15 @@ def register(app: typer.Typer) -> None:
             Path, typer.Argument(help="Directory containing exception YAML/JSON files")
         ],
     ) -> None:
-        """Walk a directory and list every exception, flagging expired ones."""
+        """Walk a directory and list every exception, flagging the dormant ones.
+
+        "Active" here means only that the waiver is inside its approval
+        window. Scope is not decidable without an application and a release
+        to check against, so a waiver scoped to a different application is
+        still counted active — `run` and `evaluate` are where scope is
+        applied. The footer says so rather than leaving the reader to infer
+        a stronger claim than the command can make.
+        """
         if not directory.is_dir():
             console.print(f"[red]Not a directory:[/red] {directory}")
             raise typer.Exit(code=EXIT_INPUT_ERROR)
@@ -170,4 +178,9 @@ def register(app: typer.Typer) -> None:
             f"[bold]{parseable - dormant}[/bold] active · "
             f"[yellow]{dormant}[/yellow] not in force · "
             f"[yellow]{invalid}[/yellow] unparseable"
+        )
+        console.print(
+            '[dim]"Active" counts the approval window only. A waiver scoped to '
+            "another application or release still shows as active here; scope is "
+            "applied by `run` and `evaluate`.[/dim]"
         )
