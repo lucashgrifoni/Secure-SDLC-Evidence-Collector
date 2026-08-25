@@ -38,16 +38,21 @@ paths = [
   '''\.hypothesis/.*''',
   '''__pycache__/.*''',
 ]
-regexes = [
-  # A test canary that was written to look like a real GitHub PAT, in commit
-  # a7e4044, and corrected in the commit that added this line. It never was a
-  # credential — the literal reads `CanaryTokenMustNeverBeLogged` — but the
-  # scanner matched `github-pat` on its shape, which is exactly what a secret
-  # scanner should do. The canary is now unmistakably synthetic, so nothing
-  # ahead of us matches; this entry exists only because a full-history scan
-  # still reaches the commit that carried the old one.
+stopwords = [
+  # A test canary written to look like a real GitHub PAT, added in a7e4044 and
+  # corrected in 5df5082. It never was a credential — the value spells out that
+  # it must never be logged — but Gitleaks matched `github-pat` on its shape,
+  # which is exactly what a secret scanner should do. Nothing ahead of us
+  # matches any more; this entry exists only because the history scan still
+  # reaches the commit that carried it.
   #
-  # Scoped to the one literal rather than to the file or the commit, so a real
-  # secret landing in either is still caught.
-  '''ghp_CanaryTokenMustNeverBeLogged00000001''',
+  # A stopword drops a finding whose *value* contains this phrase, which is
+  # narrow (no real credential contains it) and, unlike the alternatives,
+  # writes nothing credential-shaped into this file. Two earlier attempts are
+  # worth not repeating: a `regexes` entry has to spell the offending string
+  # out, which just moved the finding here — Trivy's secret scanner does not
+  # read Gitleaks' allowlist and flagged `.gitleaks.toml` itself on the next
+  # run — and a `fingerprints` entry is silently ignored, because fingerprints
+  # belong to `--baseline-path` and are not an allowlist key.
+  "CanaryTokenMustNeverBeLogged",
 ]
