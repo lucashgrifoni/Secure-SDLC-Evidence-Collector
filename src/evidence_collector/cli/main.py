@@ -99,14 +99,13 @@ EXIT_COMMAND_FAILED = 3
 # that is not a release verdict exits 3, and it names a rejected
 # `--predicate-type` as an example.
 #
-# It has to be corrected here rather than around `app()`. Click's standalone
-# mode catches `UsageError` itself, prints it, and calls `sys.exit(exit_code)`,
-# so nothing distinguishable propagates — by the time the caller sees
-# `SystemExit(2)` it is indistinguishable from a genuine `not_ready`. Rebinding
-# the class attribute changes the code at its source, and covers every
-# `UsageError` subclass (`BadParameter`, `MissingParameter`, `NoSuchOption`)
-# since they all inherit it.
-click.UsageError.exit_code = EXIT_INPUT_ERROR
+# The mapping is done here, with `standalone_mode=False`, rather than by
+# rebinding `click.UsageError.exit_code`. That rebinding worked against typer
+# 0.24 and silently stopped working against 0.27, which no longer routes usage
+# errors through the exception's own `exit_code` — CI caught it on a version
+# this machine did not have. Owning the mapping means the contract depends on
+# this file, not on which Typer resolved.
+EXIT_INTERRUPTED = 130
 
 
 def _report_command_failure(exc: BaseException) -> None:
@@ -137,13 +136,27 @@ def main() -> None:
             f"started at {datetime.now(tz=UTC).isoformat()}"
         )
     try:
-        app()
+        # `standalone_mode=False` makes Click hand the exceptions back instead
+        # of choosing exit codes itself, so every code below is this project's.
+        # Click *returns* the code for a deliberate exit in this mode rather
+        # than raising, so the return value is the verdict and discarding it
+        # silently turned every `not_ready` into a 0.
+        outcome = app(standalone_mode=False)
+    except click.UsageError as exc:
+        exc.show()
+        raise SystemExit(EXIT_INPUT_ERROR) from exc
+    except click.exceptions.Exit as exc:
+        # Belt and braces: some versions raise here instead of returning.
+        raise SystemExit(exc.exit_code) from exc
+    except click.Abort as exc:
+        raise SystemExit(EXIT_INTERRUPTED) from exc
     except Exception as exc:
-        # SystemExit derives from BaseException, so every deliberate exit —
-        # including typer.Exit — passes through untouched. Only genuinely
-        # unhandled exceptions land here.
         _report_command_failure(exc)
         raise SystemExit(EXIT_COMMAND_FAILED) from exc
+    # The verdict codes (`typer.Exit(...)` from the commands) and the 0 that
+    # `--help` and `--version` use arrive here as the return value. A command
+    # that simply returned yields None, which is success.
+    raise SystemExit(outcome if isinstance(outcome, int) else 0)
 
 
 if __name__ == "__main__":

@@ -432,3 +432,33 @@ def test_the_scratch_name_does_not_lengthen_the_path_more_than_before(
     overhead = len(_atomic._scratch(target, "new").name) - len(target.name)
 
     assert overhead <= 11, f"scratch name adds {overhead} characters to the path"
+
+
+def test_write_atomic_leaves_no_scratch_when_interrupted(tmp_path: Path) -> None:
+    """An interrupt between staging and the rename must not leave a copy behind.
+
+    `write_atomic` caught only OSError, so Ctrl-C in that window left the
+    staged file next to the real output. `enrich` writes `bundle.json` through
+    here, so the leftover would be a full unlabelled bundle sitting beside the
+    bundle — in the directory the tool publishes.
+    """
+    target = tmp_path / "bundle.json"
+    target.write_text('{"release": "1.0.0"}', encoding="utf-8")
+
+    with (
+        mock.patch("os.replace", side_effect=KeyboardInterrupt),
+        pytest.raises(KeyboardInterrupt),
+    ):
+        write_atomic(target, '{"release": "2.0.0"}')
+
+    assert target.read_text(encoding="utf-8") == '{"release": "1.0.0"}'
+    assert [p.name for p in tmp_path.iterdir()] == ["bundle.json"]
+
+
+def test_scratch_naming_gives_up_rather_than_spinning(tmp_path: Path) -> None:
+    """A filesystem that claims every candidate exists must not hang a writer."""
+    with (
+        mock.patch.object(Path, "exists", lambda self: True),
+        pytest.raises(OSError, match="unused temporary name"),
+    ):
+        _atomic._scratch(tmp_path / "bundle.json", "new")

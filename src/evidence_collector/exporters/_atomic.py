@@ -59,14 +59,24 @@ def _scratch(target: Path, kind: str) -> Path:
     22 characters over the target and broke `run` and `enrich` at a plausible
     CI path that had worked before — a regression paid for by uniqueness we
     did not need that much of. One marker character plus six hex digits is
-    seven over the target, less than the pid scheme it replaced, and the
-    while-loop below removes the birthday risk that shortening introduces.
+    nine over the target, less than the eleven of the pid scheme it replaced,
+    and the retry below removes the birthday risk that shortening introduces.
     """
     marker = kind[0]
-    while True:
+    # Bounded rather than `while True`: `Path.exists()` swallows only a narrow
+    # set of errnos, and a filesystem that answers "yes" to every probe would
+    # otherwise spin forever inside a writer. Six hex digits over a handful of
+    # files makes a collision vanishingly unlikely; after ten tries something
+    # else is wrong and the caller deserves to hear about it rather than hang.
+    for _ in range(10):
         candidate = target.with_name(f".{target.name}~{marker}{uuid.uuid4().hex[:6]}")
         if not candidate.exists():
             return candidate
+    raise OSError(
+        errno.EEXIST,
+        "Could not find an unused temporary name next to the output file",
+        str(target),
+    )
 
 
 def _stage(target: Path, content: str) -> Path:
@@ -77,18 +87,6 @@ def _stage(target: Path, content: str) -> Path:
         handle.flush()
         os.fsync(handle.fileno())
     return temp
-
-
-def write_atomic(target: Path, content: str) -> Path:
-    """Replace `target` with `content`, or leave it entirely untouched."""
-    target.parent.mkdir(parents=True, exist_ok=True)
-    temp = _stage(target, content)
-    try:
-        os.replace(temp, target)
-    except OSError:
-        temp.unlink(missing_ok=True)
-        raise
-    return target
 
 
 def _unlink_quietly(path: Path) -> None:
@@ -109,6 +107,23 @@ def _unlink_quietly(path: Path) -> None:
             path,
             exc.strerror or exc,
         )
+
+
+def write_atomic(target: Path, content: str) -> Path:
+    """Replace `target` with `content`, or leave it entirely untouched."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temp = _stage(target, content)
+    try:
+        os.replace(temp, target)
+    # BaseException for the same reason as `write_all_or_nothing`: an interrupt
+    # between staging and the rename is not an OSError, and leaving the scratch
+    # file behind puts an unlabelled copy of the payload next to the real
+    # output. `enrich` writes `bundle.json` through here, so that copy would be
+    # a full bundle sitting beside the bundle.
+    except BaseException:
+        _unlink_quietly(temp)
+        raise
+    return target
 
 
 def write_all_or_nothing(payloads: dict[Path, str]) -> list[Path]:

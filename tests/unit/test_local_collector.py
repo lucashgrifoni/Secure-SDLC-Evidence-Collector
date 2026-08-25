@@ -598,24 +598,31 @@ def test_overlapping_artifact_dirs_do_not_double_report_one_failure(
     assert len(report.errors) == 1, [f"{e.path}: {e.reason}" for e in report.errors]
 
 
-def test_non_regular_files_are_not_handed_to_the_parsers(tmp_path: Path) -> None:
+def test_a_fifo_is_skipped_without_being_opened(tmp_path: Path) -> None:
     """`os.walk` lists every non-directory entry, a wider set than files.
 
-    Moving from `rglob(...) if p.is_file()` to `os.walk` silently dropped that
-    filter, so broken symlinks and dangling reparse points reached ingestion.
-    Worst case is not noise: on POSIX a FIFO named `*.json` blocks the JSON
-    probe's `open()` forever, which the old filter made unreachable.
+    Moving from `rglob(...) if p.is_file()` to `os.walk` dropped that filter,
+    so FIFOs, sockets and device nodes reached ingestion. This is the case
+    where the consequence is not noise: opening a FIFO named `*.json` blocks
+    the JSON probe's `open()` until something writes to the other end, and
+    nothing ever will. The run would hang rather than fail.
+
+    A broken symlink is deliberately *not* covered here — it is reported, by
+    `test_a_broken_link_is_reported_rather_than_silently_dropped`, because a
+    dangling `sast.sarif` is evidence that was supplied and could not be read.
+    An earlier version of this test asserted silence for that case and
+    contradicted its sibling; only Linux ran it, so only CI could see it.
     """
+    if not hasattr(os, "mkfifo"):
+        pytest.skip("this platform has no FIFOs")
+
     artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
     (artifacts / "osv.json").write_text(_osv_bytes(), encoding="utf-8")
+    os.mkfifo(artifacts / "pipe.json")
 
-    dangling = artifacts / "dangling.json"
-    try:
-        dangling.symlink_to(tmp_path / "no-such-target.json")
-    except (OSError, NotImplementedError):
-        pytest.skip("this machine does not allow creating symlinks")
-
+    # Reaching the assertions at all is most of the point: opening the FIFO
+    # would block here forever.
     report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
 
     assert len(report.evidence) == 1
