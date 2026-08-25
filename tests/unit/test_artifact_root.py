@@ -330,3 +330,51 @@ def test_scanner_values_do_not_depend_on_the_working_directory(tmp_path: Path) -
     assert from_subdirectory == from_root, (
         "the bundle changed because of the process working directory"
     )
+
+
+@pytest.mark.parametrize(
+    ("label", "value", "expected"),
+    [
+        ("the root itself", "{root}", "."),
+        ("the root with Trivy's OS decoration", "{root} (alpine 3.18.4)", ". (alpine 3.18.4)"),
+        ("a subdirectory with the decoration", "{root}/sub (debian 12.15)", "sub (debian 12.15)"),
+        ("a plain file under the root", "{root}/services/api/req.txt", "services/api/req.txt"),
+        ("an image reference", "acme/api:1.0 (debian 12)", "acme/api:1.0 (debian 12)"),
+        ("a bare image reference", "acme/api:1.0", "acme/api:1.0"),
+        ("a language name", "Java", "Java"),
+        ("an absolute path outside the root", "{outside} (alpine 3)", "{outside} (alpine 3)"),
+    ],
+    ids=[
+        "root",
+        "root-decorated",
+        "subdir-decorated",
+        "plain-file",
+        "image-decorated",
+        "image-bare",
+        "language",
+        "outside-root",
+    ],
+)
+def test_scanner_locations_are_stripped_even_when_decorated(
+    tmp_path: Path, label: str, value: str, expected: str
+) -> None:
+    """Trivy composes the OS-package target as `<ArtifactName> (<family> <version>)`.
+
+    Requiring the *whole* string to be a path meant one trailing decoration
+    made the strip fail and the value shipped verbatim — so a bundle carried
+    `metadata.artifact_name: "."` beside a `metadata.targets[0]` holding the
+    full local path, username and hidden directory names included, both derived
+    from the same source string. It fails open, silently, next to a value that
+    was stripped correctly.
+
+    The shipped fixture only ever used a strict subdirectory as the
+    ArtifactName, so the root-equals-target shape was never exercised.
+    """
+    from evidence_collector.normalizers.engine import _strip_root
+
+    root = (tmp_path / "repo").resolve()
+    outside = (tmp_path / "elsewhere").resolve()
+    rendered = value.format(root=root, outside=outside).replace("/", os.sep)
+    wanted = expected.format(root=root, outside=outside).replace("/", os.sep)
+
+    assert _strip_root(rendered, str(root)) == wanted, label

@@ -16,6 +16,7 @@ Heuristics for evidence classification:
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -106,6 +107,9 @@ def _new_evidence_id(prefix: str, *parts: str) -> str:
     return f"{prefix}-{digest}"
 
 
+_TRIVY_DECORATED_TARGET = re.compile(r"^(?P<path>.+?)(?P<suffix> \([^()]*\))$")
+
+
 def _strip_root(value: str, root: str | None) -> str:
     """Rewrite a scanner-reported location against the artifact root.
 
@@ -130,12 +134,36 @@ def _strip_root(value: str, root: str | None) -> str:
     """
     if not root or not value:
         return value
+    stripped = _strip_absolute(value, root)
+    if stripped is not None:
+        return stripped
+    # Trivy composes the OS-package target as "<ArtifactName> (<family>
+    # <version>)". Requiring the *whole* string to be a path meant that one
+    # trailing decoration made the strip fail and the value ship verbatim — so
+    # a report could carry `metadata.artifact_name: "."` next to
+    # `metadata.targets[0]` holding the full local path, username and hidden
+    # directory names included, both derived from the same string. Verified
+    # against real Trivy output, not a constructed payload.
+    #
+    # Only the path half is reconsidered, and it still has to be absolute and
+    # under the root, so an image reference like `acme/api:1.0 (debian 12)` is
+    # left alone exactly as before.
+    decorated = _TRIVY_DECORATED_TARGET.match(value)
+    if decorated:
+        inner = _strip_absolute(decorated["path"], root)
+        if inner is not None:
+            return inner + decorated["suffix"]
+    return value
+
+
+def _strip_absolute(value: str, root: str) -> str | None:
+    """Return `value` relative to `root`, or None if it is not a path under it."""
     candidate = Path(value)
     if not candidate.is_absolute():
-        return value
+        return None
     relative = relative_to_root(candidate, root)
     if relative == candidate:
-        return value
+        return None
     return str(relative)
 
 
