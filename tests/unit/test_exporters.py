@@ -363,3 +363,65 @@ def test_a_pipe_is_still_escaped_inside_a_code_span() -> None:
 def test_md_code_neutralises_line_breaks_like_its_prose_sibling() -> None:
     for raw in ("\n", "\r", "\u2028", "\u2029", "\x85"):
         assert len(md_code(f"before{raw}after").splitlines()) == 1
+
+
+# ---------------------------------------------------------------------------
+# The two published reports must agree about where evidence came from
+# ---------------------------------------------------------------------------
+
+
+def _manual_bundle() -> EvidenceBundle:
+    """A bundle whose only evidence is an operator-declared attestation.
+
+    `producer` is the tool the operator *says* signed the artifact, which is
+    exactly the field that reads as machine provenance when nothing qualifies
+    it.
+    """
+    bundle = _build_bundle()
+    declared = bundle.evidence[0].model_copy(
+        update={
+            "evidence_id": "att-1",
+            "evidence_type": EvidenceType.ARTIFACT_SIGNATURE,
+            "source": EvidenceSource(name="manual-attestation", kind="attestation"),
+            "producer": "cosign",
+            "manual": True,
+            "summary": "Artifact signed with cosign using keyless OIDC flow",
+        }
+    )
+    return bundle.model_copy(
+        update={"evidence": [declared], "control_evaluations": [], "summary": bundle.summary}
+    )
+
+
+def test_a_manual_attestation_is_marked_as_one_in_both_reports(tmp_path: Path) -> None:
+    """`summary.html` attributed an operator's typed claim to the named tool.
+
+    The evidence carries `manual=True` and a `manual-attestation` source, and
+    `report.md` has rendered that qualifier since it was written. The HTML
+    evidence table showed only `producer` — so the same evidence read as
+    "cosign signed this" in the artifact a reviewer skims and as a declared
+    claim in the one they read closely. Both are published side by side from a
+    single run, so they cannot be allowed to disagree about provenance.
+    """
+    bundle = _manual_bundle()
+    markdown = export_markdown(bundle, tmp_path / "report.md").read_text(encoding="utf-8")
+    html = export_html(bundle, tmp_path / "summary.html").read_text(encoding="utf-8")
+
+    assert "manual attestation" in markdown
+    assert "manual attestation" in html
+
+
+def test_machine_collected_evidence_is_not_labelled_manual(tmp_path: Path) -> None:
+    """The negative control: the label has to mean something.
+
+    A marker applied to everything carries no information, and a test that
+    only asserts its presence would pass just as happily.
+    """
+    bundle = _build_bundle()
+    assert bundle.evidence[0].manual is False
+
+    markdown = export_markdown(bundle, tmp_path / "report.md").read_text(encoding="utf-8")
+    html = export_html(bundle, tmp_path / "summary.html").read_text(encoding="utf-8")
+
+    assert "manual attestation" not in markdown
+    assert "manual attestation" not in html

@@ -89,6 +89,7 @@
   .pill-missing { background: rgba(239, 68, 68, 0.15); color: var(--bad); }
   .pill-waived { background: rgba(148, 163, 184, 0.2); color: var(--muted); }
   .pill-not_applicable { background: rgba(148, 163, 184, 0.2); color: var(--muted); }
+  .manual { color: var(--muted); font-size: 0.85rem; }
   footer { margin-top: 32px; color: var(--muted); font-size: 0.8rem; }
 </style>
 </head>
@@ -257,7 +258,11 @@
     <tr>
       <td><code>{{ item.evidence_id }}</code></td>
       <td>{{ item.evidence_type.value }}</td>
-      <td>{{ item.producer }}</td>
+      {#- A manually attested item names the tool the operator says produced it,
+          so this column alone reads as though the tool was collected from.
+          report.md has carried the qualifier since it was written; this table
+          did not, and it is the one a reviewer skims. -#}
+      <td>{{ item.producer }}{% if item.manual %} <span class="manual">(manual attestation)</span>{% endif %}</td>
       <td>{{ item.status.value }}</td>
       <td>{{ item.confidence.value }}</td>
       <td><code>{{ item.subject_ref }}</code></td>
