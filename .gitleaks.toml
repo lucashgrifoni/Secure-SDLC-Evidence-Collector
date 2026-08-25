@@ -38,3 +38,16 @@ paths = [
   '''\.hypothesis/.*''',
   '''__pycache__/.*''',
 ]
+regexes = [
+  # A test canary that was written to look like a real GitHub PAT, in commit
+  # a7e4044, and corrected in the commit that added this line. It never was a
+  # credential — the literal reads `CanaryTokenMustNeverBeLogged` — but the
+  # scanner matched `github-pat` on its shape, which is exactly what a secret
+  # scanner should do. The canary is now unmistakably synthetic, so nothing
+  # ahead of us matches; this entry exists only because a full-history scan
+  # still reaches the commit that carried the old one.
+  #
+  # Scoped to the one literal rather than to the file or the commit, so a real
+  # secret landing in either is still caught.
+  '''ghp_CanaryTokenMustNeverBeLogged00000001''',
+]

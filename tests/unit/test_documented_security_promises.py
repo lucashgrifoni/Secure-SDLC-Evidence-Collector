@@ -34,8 +34,15 @@ from evidence_collector.domain import models
 from evidence_collector.parsers.junit import parse_junit
 
 # Distinctive enough that finding it anywhere in captured output is proof, and
-# shaped like the real thing so nothing along the way rejects it early.
-CANARY = "ghp_CanaryTokenMustNeverBeLogged00000001"
+# deliberately shaped so that it cannot be mistaken for a credential.
+#
+# The first version of this was `ghp_` + a random-looking tail, on the reasoning
+# that a realistic token would not be rejected somewhere along the way. Nothing
+# validates the format — the collector interpolates whatever string it is given
+# into a header — so the realism bought nothing, and Gitleaks flagged the file
+# as a leaked `github-pat` on the next run, correctly: a scanner cannot tell a
+# fake PAT from a real one by shape. Keep this unmistakably synthetic.
+CANARY = "canary-value-that-must-never-be-logged"
 
 
 def _project_root() -> Path:
