@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import os
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
@@ -46,7 +46,9 @@ class GitHubCollectorConfig:
 
     repository: str
     api_base: str = _DEFAULT_API
-    token: str | None = None
+    # Kept out of the generated `repr`; see the note on the GitLab config for
+    # why the default one was a hazard even with nothing logging it today.
+    token: str | None = field(default=None, repr=False)
     user_agent: str = "secure-sdlc-evidence-collector/2.5.1"  # x-release-please-version
 
     @classmethod
