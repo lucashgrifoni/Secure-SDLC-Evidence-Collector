@@ -220,7 +220,13 @@ def _cyclonedx_object_counts(
     # BOM subject in metadata.component with nothing under components[]; include
     # it so the subject is counted (mirrors the CISA component checks).
     subject = _subject_component(data)
-    if subject is not None:
+    # Only when it is not already there. `_cyclonedx_components` drops a subject
+    # that also appears verbatim in `components[]`, so re-inserting it
+    # unconditionally counted it twice: a CBOM whose subject *is* the
+    # cryptographic asset, listed in both places, reported `component_count: 1`
+    # beside `crypto_asset_count: 2` - two numbers from one file disagreeing
+    # about the same object.
+    if subject is not None and not any(existing == subject for existing in components):
         components.insert(0, subject)
     for component in components:
         if not isinstance(component, dict):

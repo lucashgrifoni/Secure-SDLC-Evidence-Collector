@@ -453,3 +453,48 @@ def test_a_subject_repeated_in_components_is_not_counted_twice(tmp_path: Path) -
     # subject + its two children, each counted once.
     assert parsed.component_count == 3
     assert parsed.crypto_asset_count == 1
+
+
+def test_a_subject_that_is_itself_an_asset_is_counted_once(tmp_path: Path) -> None:
+    """`_cyclonedx_object_counts` re-inserted the subject without checking.
+
+    `_cyclonedx_components` already drops a subject that appears verbatim in
+    `components[]`, so re-inserting it unconditionally counted it twice. A CBOM
+    whose subject *is* the cryptographic asset, listed in both places, reported
+    `component_count: 1` beside `crypto_asset_count: 2` — two numbers from one
+    file disagreeing about the same object.
+    """
+    key: dict[str, Any] = {"type": "cryptographic-asset", "name": "rsa-key", "version": "1"}
+    parsed = parse_sbom(
+        _write(
+            tmp_path,
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.6",
+                "metadata": {"component": key},
+                "components": [key],
+            },
+        )
+    )
+
+    assert parsed.component_count == 1
+    assert parsed.crypto_asset_count == 1
+
+
+def test_a_subject_asset_absent_from_components_is_still_counted(tmp_path: Path) -> None:
+    """The dedup must not swing the other way and lose the single-asset CBOM."""
+    parsed = parse_sbom(
+        _write(
+            tmp_path,
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.6",
+                "metadata": {
+                    "component": {"type": "cryptographic-asset", "name": "rsa-key", "version": "1"}
+                },
+                "components": [],
+            },
+        )
+    )
+
+    assert parsed.crypto_asset_count == 1

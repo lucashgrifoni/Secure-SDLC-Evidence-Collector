@@ -462,3 +462,34 @@ def test_scratch_naming_gives_up_rather_than_spinning(tmp_path: Path) -> None:
         pytest.raises(OSError, match="unused temporary name"),
     ):
         _atomic._scratch(tmp_path / "bundle.json", "new")
+
+
+def test_no_scratch_survives_an_interrupt_inside_the_write_itself(tmp_path: Path) -> None:
+    """The callers can only clean up a scratch path `_stage` has returned.
+
+    An interrupt or a full disk part-way through the write leaves a partial
+    file none of them knows about, so the previous commit's `BaseException`
+    guard in `write_atomic` had nothing to unlink. `enrich` writes
+    `bundle.json` through this path, so the leftover is a partial bundle in the
+    published output directory.
+    """
+    target = tmp_path / "bundle.json"
+    target.write_text('{"release": "1.0.0"}', encoding="utf-8")
+    real_open = Path.open
+
+    def _die_mid_write(self: Path, *args: Any, **kwargs: Any) -> Any:
+        if self.name.startswith("."):
+            handle = real_open(self, *args, **kwargs)
+            handle.write("partial")
+            handle.close()
+            raise KeyboardInterrupt
+        return real_open(self, *args, **kwargs)
+
+    with (
+        mock.patch.object(Path, "open", _die_mid_write),
+        pytest.raises(KeyboardInterrupt),
+    ):
+        write_atomic(target, '{"release": "2.0.0"}')
+
+    assert target.read_text(encoding="utf-8") == '{"release": "1.0.0"}'
+    assert [p.name for p in tmp_path.iterdir()] == ["bundle.json"]

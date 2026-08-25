@@ -79,16 +79,6 @@ def _scratch(target: Path, kind: str) -> Path:
     )
 
 
-def _stage(target: Path, content: str) -> Path:
-    """Write `content` next to `target` and return the temporary path."""
-    temp = _scratch(target, "new")
-    with temp.open("w", encoding="utf-8", newline="\n") as handle:
-        handle.write(content)
-        handle.flush()
-        os.fsync(handle.fileno())
-    return temp
-
-
 def _unlink_quietly(path: Path) -> None:
     """Remove a scratch file, saying so out loud if it cannot be removed.
 
@@ -107,6 +97,26 @@ def _unlink_quietly(path: Path) -> None:
             path,
             exc.strerror or exc,
         )
+
+
+def _stage(target: Path, content: str) -> Path:
+    """Write `content` next to `target` and return the temporary path.
+
+    The callers unlink the scratch file when a write fails, but they can only
+    do that once this function has *returned* its path. An interrupt or a full
+    disk part-way through the write leaves a partial file none of them knows
+    about, so it cleans up after itself.
+    """
+    temp = _scratch(target, "new")
+    try:
+        with temp.open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except BaseException:
+        _unlink_quietly(temp)
+        raise
+    return temp
 
 
 def write_atomic(target: Path, content: str) -> Path:
