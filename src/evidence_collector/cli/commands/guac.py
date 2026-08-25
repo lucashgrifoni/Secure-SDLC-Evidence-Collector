@@ -15,7 +15,7 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
-from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
@@ -53,7 +53,7 @@ def register(app: typer.Typer) -> None:
         """Translate BUNDLE_PATH into a GUAC-collector container."""
         try:
             raw = json.loads(bundle_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
+        except UNREADABLE_INPUT as exc:
             if is_json_logs():
                 emit_event("guac_failed", bundle=str(bundle_path), reason=str(exc))
             else:

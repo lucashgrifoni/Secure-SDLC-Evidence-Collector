@@ -13,14 +13,13 @@ on drift so it can be wired into CI as a hard gate.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
 from evidence_collector.application.integrity import structural_sha256
-from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 
@@ -62,7 +61,7 @@ def register(app: typer.Typer) -> None:
         """
         try:
             actual = structural_sha256(bundle_path)
-        except (OSError, json.JSONDecodeError) as exc:
+        except UNREADABLE_INPUT as exc:
             if is_json_logs():
                 emit_event(
                     "verify_failed",

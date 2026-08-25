@@ -23,7 +23,7 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
-from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
@@ -169,7 +169,7 @@ def _require_usable[FeedT: (EpssFeed, KevFeed)](feed: FeedT, path: Path, label: 
 def _load_bundle(path: Path) -> EvidenceBundle:
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except UNREADABLE_INPUT as exc:
         if is_json_logs():
             emit_event("enrich_failed", bundle=str(path), reason=str(exc))
         else:

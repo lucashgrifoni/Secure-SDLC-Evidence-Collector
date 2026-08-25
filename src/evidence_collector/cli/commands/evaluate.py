@@ -7,11 +7,15 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from pydantic import ValidationError
 
 from evidence_collector.application.orchestrator import BundleBuildResult, build_bundle
 from evidence_collector.cli._builders import build_application, build_release
-from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, fail_on_exit_code, validate_fail_on
+from evidence_collector.cli._exit_codes import (
+    EXIT_INPUT_ERROR,
+    UNREADABLE_INPUT,
+    fail_on_exit_code,
+    validate_fail_on,
+)
 from evidence_collector.cli._render import render_summary
 from evidence_collector.cli._state import EVIDENCE_ADAPTER, console
 from evidence_collector.domain.models import CollectionError
@@ -56,7 +60,7 @@ def evaluate(
             raw_errors = []
         evidence = EVIDENCE_ADAPTER.validate_python(raw_evidence)
         collection_errors = [CollectionError.model_validate(entry) for entry in raw_errors]
-    except (ValidationError, json.JSONDecodeError) as exc:
+    except UNREADABLE_INPUT as exc:
         console.print(f"[red]Invalid evidence file {evidence_path}:[/red] {exc}")
         raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 

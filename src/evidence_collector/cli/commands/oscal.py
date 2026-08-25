@@ -10,7 +10,7 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
-from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
 from evidence_collector.cli._state import console
 from evidence_collector.exporters._atomic import write_atomic
 
@@ -104,11 +104,14 @@ def register(app: typer.Typer) -> None:
         try:
             raw = json.loads(bundle_path.read_text(encoding="utf-8"))
             bundle = EvidenceBundle.model_validate(raw)
-        except (OSError, json.JSONDecodeError) as exc:
-            console.print(f"[red]Could not read {bundle_path}:[/red] {exc}")
-            raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
+        # Both clauses hang off one `try` here, and `ValidationError` is a
+        # `ValueError` subclass, so it has to be matched before the broader
+        # tuple or a schema mismatch gets reported as an unreadable file.
         except ValidationError as exc:
             console.print(f"[red]Bundle does not match the current schema:[/red] {exc}")
+            raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
+        except UNREADABLE_INPUT as exc:
+            console.print(f"[red]Could not read {bundle_path}:[/red] {exc}")
             raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
         payload = json.dumps(
