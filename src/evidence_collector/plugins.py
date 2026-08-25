@@ -49,12 +49,25 @@ def _resolve(group: str) -> dict[str, EntryPoint]:
 def discover_parsers() -> dict[str, Callable[..., Any]]:
     """Return a mapping of parser-name → callable.
 
-    Keys come from the entry-point name. Built-in parsers register
-    under stable names: ``sarif``, ``sbom``, ``junit``, ``zap``,
-    ``attestation``, ``exception``. Third-party plugins can register
-    additional names, or override the built-ins by declaring the same
-    name (last load wins, and which package loads last is unspecified —
-    do not rely on override).
+    Keys come from the entry-point name. Built-in parsers register under
+    stable names: ``sarif``, ``sbom``, ``junit``, ``zap``, ``attestation``,
+    ``exception``, ``vsa`` and ``provenance`` — the last two were added to
+    ``pyproject.toml`` without reaching this list.
+
+    Third-party plugins can register additional names, or shadow a built-in
+    by declaring the same name; last load wins and load order is
+    unspecified, so a name collision is not a supported way to override.
+    Treat it as a trust question rather than a configuration one: a package
+    installed in the environment can decide what parses an artifact, and the
+    bundle does not record which implementation ran. That matters only for a
+    caller that dispatches through this function — the ``run`` pipeline
+    calls the built-in parsers directly and loads no plugin code — so it is
+    a constraint on the auto-wiring in the roadmap, not on today's pipeline.
+
+    Note also that this loads *every* registered entry point, not just the
+    one a caller wants, and a plugin that raises on import propagates out of
+    here. That is deliberate: a plugin the operator installed and that
+    cannot load is worth failing over, not skipping in silence.
     """
     return {name: ep.load() for name, ep in _resolve(PARSER_GROUP).items()}
 
