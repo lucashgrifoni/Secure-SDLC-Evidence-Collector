@@ -285,10 +285,89 @@ jobs:
           path: release-evidence/
           if-no-files-found: error
 
+  # Generating the self-SBOM means installing the wheel's whole runtime closure
+  # and then RUNNING cyclonedx-py inside that environment — import-time code
+  # from every installed package executes. That used to happen inside
+  # `sign-and-publish`, which holds `id-token: write` and `contents: write`, so
+  # a single compromised release upstream would have been executing next to the
+  # Sigstore identity that signs this project's artifacts.
+  #
+  # It runs here instead, with `contents: read` and nothing else, and hands the
+  # result over as an artifact. What this buys is the blast radius: a poisoned
+  # dependency can no longer mint a signing token or write to the Release.
+  #
+  # What it does NOT buy — worth stating plainly — is SBOM integrity. An SBOM of
+  # an installed environment is produced by observing that environment, so its
+  # contents are influenced by the closure either way, and the signature applied
+  # downstream attests "this is the SBOM our pipeline produced", which is all a
+  # signature can ever mean. Removing that would mean giving up resolved
+  # versions for declared ranges, which is a worse SBOM.
+  sbom:
+    name: Generate self-SBOM
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2
+        with:
+          egress-policy: audit
+
+      - name: Download distribution
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: python-dist
+          path: dist
+
+      - name: Setup Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      # Self-SBOM. Generates a CycloneDX SBOM of the collector itself,
+      # rooted at the just-built wheel, using cyclonedx-bom.
+      # The tool ships SBOMs of its consumers; it should ship its own too.
+      # Only CycloneDX JSON is produced here. SPDX 2.3 is intentionally
+      # not generated to keep the supply-chain surface small; auditors
+      # who require SPDX can convert the CycloneDX SBOM with
+      # `cyclonedx-cli convert` downstream.
+      - name: Generate self-SBOM
+        run: |
+          set -euo pipefail
+          # Install the wheel into a clean environment so the SBOM
+          # captures only the runtime closure, not dev dependencies.
+          python -m venv /tmp/sbom-venv
+          /tmp/sbom-venv/bin/pip install --upgrade pip
+          /tmp/sbom-venv/bin/pip install dist/*.whl
+          # Pinned rather than a range. As a `>=4.5,<6` range this resolved to
+          # whatever PyPI served at release time, and being inside a `run:`
+          # block it was invisible to Dependabot's pip ecosystem, so it was
+          # both floating and outside the update process — which is how it sat
+          # two majors behind upstream without anyone being told. Bumping it is
+          # now a visible, reviewable change. The trade-off is real: an exact
+          # pin trades availability for integrity, so a yank of this version
+          # fails the release where the range would have moved on.
+          /tmp/sbom-venv/bin/pip install "cyclonedx-bom==5.5.0"
+          mkdir -p sbom
+          /tmp/sbom-venv/bin/cyclonedx-py environment \
+            --output-format json \
+            --output-file sbom/secure-sdlc-evidence-collector.cdx.json
+          ls -lah sbom/
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom
+          path: sbom/
+          if-no-files-found: error
+
   sign-and-publish:
     name: Sign artifacts and publish GitHub Release
     runs-on: ubuntu-latest
-    needs: [build, release-bundle, provenance]
+    needs: [build, release-bundle, provenance, sbom]
     timeout-minutes: 20
     permissions:
       contents: write
@@ -323,33 +402,14 @@ jobs:
           name: ${{ needs.provenance.outputs.provenance-name }}
           path: provenance
 
-      - name: Setup Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      # Built in the unprivileged `sbom` job. This job signs it; it does not
+      # produce it, and runs no Python of its own — which is why there is no
+      # `setup-python` here any more.
+      - name: Download self-SBOM
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-
-      # Self-SBOM. Generates a CycloneDX SBOM of the collector itself,
-      # rooted at the just-built wheel, using cyclonedx-bom.
-      # The tool ships SBOMs of its consumers; it should ship its own too.
-      # Only CycloneDX JSON is produced here. SPDX 2.3 is intentionally
-      # not generated to keep the supply-chain surface small; auditors
-      # who require SPDX can convert the CycloneDX SBOM with
-      # `cyclonedx-cli convert` downstream.
-      - name: Generate self-SBOM
-        run: |
-          set -euo pipefail
-          # Install the wheel into a clean environment so the SBOM
-          # captures only the runtime closure, not dev dependencies.
-          python -m venv /tmp/sbom-venv
-          /tmp/sbom-venv/bin/pip install --upgrade pip
-          /tmp/sbom-venv/bin/pip install dist/*.whl
-          /tmp/sbom-venv/bin/pip install "cyclonedx-bom>=4.5,<6"
-          mkdir -p sbom
-          /tmp/sbom-venv/bin/cyclonedx-py environment \
-            --output-format json \
-            --output-file sbom/secure-sdlc-evidence-collector.cdx.json
-          ls -lah sbom/
+          name: sbom
+          path: sbom
 
       - name: Install cosign
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
