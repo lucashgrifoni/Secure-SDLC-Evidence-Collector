@@ -24,7 +24,20 @@
 | Build ID | {{ bundle.release.build_id | md or "-" }} |
 | Artifact digest | `{{ bundle.release.artifact_digest | md_code or "-" }}` |
 | Tag | {{ bundle.release.tag | md or "-" }} |
+{% if bundle.catalog %}
+## Control catalog
 
+Every verdict below is relative to this catalog. A bundle evaluated against a
+different control set is a different claim, so it is recorded here as well as
+in `bundle.json`.
+
+| Field | Value |
+|-------|-------|
+| Origin | {{ bundle.catalog.origin | md }}{% if bundle.catalog.origin == "custom" %} — **not the catalog shipped with the tool**{% endif +%} |
+| Name | `{{ bundle.catalog.name | md_code }}` |
+| SHA-256 | `{{ bundle.catalog.sha256 | md_code }}` |
+| Controls defined | {{ bundle.catalog.control_count }} |
+{% endif %}
 ## Verdict
 
 - **Release status:** `{{ bundle.summary.release_status.value }}`

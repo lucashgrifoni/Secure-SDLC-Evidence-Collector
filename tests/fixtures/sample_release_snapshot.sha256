@@ -90,4 +90,22 @@
 # `invalid`, so the control comes out MISSING with the file still visible to
 # the auditor. The canonical sample has 41 executed tests, so its status is
 # unchanged; only the summary text moved the digest.
-97273d00c233fd100dadf93d595640b50b3b0c6a88f86e9f605991e4a1f6e9eb
+#
+# 2026-08-25 (SEC-007 - catalogue provenance): bumped from 97273d00... to
+# 861b285d... after the bundle gained a `catalog` block naming the control
+# catalog the evaluations were produced against: origin (builtin/custom),
+# filename, SHA-256 of the file's bytes and control count.
+#
+# The verdict in a bundle is relative to a catalog, and `--catalog` lets an
+# operator supply their own, but nothing recorded which one had been used. Two
+# bundles built from identical evidence - one `not_ready` and exit 2 against the
+# shipped catalog, one `conditional` and exit 0 against a catalog whose required
+# evidence had been moved to recommended - were indistinguishable to whoever
+# received them. `verify --expected` proves a bundle has not changed since it was
+# generated; nothing proved against which standard.
+#
+# BUNDLE_SCHEMA_VERSION moved 2.0.0 -> 2.1.0 in the same change and is itself
+# inside the structural hash, so part of this bump is that. Minor rather than
+# major: a 2.1.0 consumer reads a 2.0.0 bundle fine, while a validator pinned to
+# 2.0.0 rejects a 2.1.0 one, which is what the version field is for saying.
+861b285dd8cb8427484e4ac64317675e48588b050e405916a90e18e5b04e3007

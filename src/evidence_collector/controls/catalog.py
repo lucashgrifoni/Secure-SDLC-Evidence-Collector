@@ -8,16 +8,17 @@ extended by passing an alternative path.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import logging
 from functools import cache
 from importlib.resources import as_file, files
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 import yaml
 from pydantic import TypeAdapter
 
-from evidence_collector.domain.models import ControlDefinition
+from evidence_collector.domain.models import CatalogRef, ControlDefinition
 
 
 def bundled_catalog_names() -> list[str]:
@@ -120,6 +121,9 @@ def load_catalog(path: str | Path) -> list[ControlDefinition]:
     return _parse_catalog(content, str(resolved))
 
 
+_DEFAULT_CATALOG_NAME = "catalog.yaml"
+
+
 @cache
 def default_catalog() -> list[ControlDefinition]:
     """Return the control catalog bundled with the package (cached)."""
@@ -136,6 +140,60 @@ def catalog_from_source(
     if path is None:
         return cast("list[ControlDefinition]", list(default_catalog()))
     return load_catalog(path)
+
+
+def catalog_with_provenance(
+    path: str | Path | None = None,
+) -> tuple[list[ControlDefinition], CatalogRef]:
+    """Return the catalog plus a record of which catalog it is.
+
+    Every verdict in a bundle is relative to a catalog, and `--catalog` lets an
+    operator supply their own, so a bundle that does not say which one it used
+    cannot be checked by whoever receives it. See :class:`CatalogRef`.
+
+    The digest is over the file's bytes exactly as read, which is what makes it
+    reproducible with `sha256sum`. It is deliberately not taken over the parsed
+    model: two YAML files that differ only in key order or comments describe
+    the same controls, and an auditor comparing against a published catalog is
+    asking about the file.
+    """
+    if path is None:
+        resource = files("evidence_collector.controls.data").joinpath(_DEFAULT_CATALOG_NAME)
+        with as_file(resource) as resolved:
+            raw = Path(resolved).read_bytes()
+        origin, name = "builtin", _DEFAULT_CATALOG_NAME
+    else:
+        resolved = _coerce_path(path)
+        raw = resolved.read_bytes()
+        # A packaged catalog stays `builtin` even when it is reached by path,
+        # because what a reader needs to know is whether the controls are the
+        # shipped ones — not how the operator spelled the argument.
+        origin = "builtin" if _is_packaged_catalog(resolved) else "custom"
+        # Filename only. Which directory the operator keeps it in is the kind
+        # of detail `--artifact-root` exists to keep out of a published bundle.
+        name = resolved.name
+
+    controls = _parse_catalog(raw.decode("utf-8"), name)
+    ref = CatalogRef(
+        origin=cast("Literal['builtin', 'custom']", origin),
+        name=name,
+        sha256=hashlib.sha256(raw).hexdigest(),
+        control_count=len(controls),
+    )
+    return controls, ref
+
+
+def _is_packaged_catalog(candidate: Path) -> bool:
+    """Whether `candidate` is one of the catalogs shipped inside the package."""
+    try:
+        resource = files("evidence_collector.controls.data").joinpath(candidate.name)
+        with as_file(resource) as packaged:
+            packaged_path = Path(packaged)
+            if not packaged_path.is_file():
+                return False
+            return packaged_path.resolve() == candidate.resolve()
+    except (OSError, ModuleNotFoundError, FileNotFoundError):
+        return False
 
 
 def bundled_catalog_path(name: str) -> Path:

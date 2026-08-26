@@ -8,7 +8,7 @@ adapter, and framework concerns.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -46,7 +46,14 @@ from evidence_collector.domain.enums import (
 #
 # Bundles without collection problems do not carry the field at all (see
 # `_omit_empty_collection_errors`), so they still validate against 1.0.0.
-BUNDLE_SCHEMA_VERSION = "2.0.0"
+#
+# 2.1.0 adds `catalog`. Minor, not major, because the direction that breaks is
+# the other one: a 2.1.0 consumer reads a 2.0.0 bundle fine — the field is
+# optional and simply absent — while a validator pinned to 2.0.0 rejects a
+# 2.1.0 bundle, which is exactly what the version field is for telling it.
+# Unlike `collection_errors` this one is never omitted, because "which catalog
+# produced this verdict" has no empty case worth hiding.
+BUNDLE_SCHEMA_VERSION = "2.1.0"
 
 
 class _BaseModel(BaseModel):
@@ -545,6 +552,48 @@ class CollectionError(_BaseModel):
     reason: Annotated[str, Field(min_length=1, max_length=1000)]
 
 
+class CatalogRef(_BaseModel):
+    """Which control catalog produced a bundle's evaluations.
+
+    Every verdict in a bundle is relative to a catalog, and `--catalog` lets an
+    operator supply their own. Nothing recorded which one had been used, so two
+    bundles built from identical evidence — one `not_ready` and exit 2 against
+    the shipped catalog, one `conditional` and exit 0 against a catalog whose
+    required evidence had been moved to recommended — were indistinguishable to
+    whoever received them. `verify --expected` proves a bundle has not changed
+    since it was generated; this is what says against which standard.
+
+    `origin` matters on its own because the names collide: `catalog.yaml` is
+    both the packaged default and the likeliest name for an operator's own
+    file, so the name alone cannot answer "was this the shipped catalog?".
+
+    `name` is a bare filename, never a path. Which directory an operator keeps
+    their catalog in is the kind of detail `--artifact-root` exists to keep out
+    of a published bundle, and it is not needed to identify the catalog — the
+    digest does that.
+    """
+
+    origin: Literal["builtin", "custom"] = Field(
+        description=(
+            "`builtin` for a catalog shipped inside the package, `custom` for "
+            "one loaded from a path the operator supplied."
+        )
+    )
+    name: Annotated[str, Field(min_length=1, max_length=200)] = Field(
+        description="Filename of the catalog, without any directory component."
+    )
+    sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")] = Field(
+        description=(
+            "SHA-256 of the catalog file's bytes as read. The repository stores "
+            "and checks out YAML with LF endings, so this matches `sha256sum` "
+            "on a normal checkout and is stable across operating systems."
+        )
+    )
+    control_count: Annotated[int, Field(ge=1)] = Field(
+        description="How many controls the catalog defines."
+    )
+
+
 class EvidenceBundle(_BaseModel):
     """Top-level, serializable container produced by the collector."""
 
@@ -553,6 +602,14 @@ class EvidenceBundle(_BaseModel):
     generated_at: datetime = Field(default_factory=_utcnow)
     application: Application
     release: ReleaseContext
+    catalog: CatalogRef | None = Field(
+        default=None,
+        description=(
+            "The control catalog these evaluations were produced against. "
+            "Optional so that a bundle written before 2.1.0 still validates; "
+            "every bundle this version writes carries it."
+        ),
+    )
     evidence: list[NormalizedEvidence] = Field(default_factory=list)
     control_evaluations: list[ControlEvaluation] = Field(default_factory=list)
     gaps: list[Gap] = Field(default_factory=list)

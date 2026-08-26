@@ -23,7 +23,7 @@ from evidence_collector.collectors.local import (
     LocalArtifactCollector,
     LocalCollectionReport,
 )
-from evidence_collector.controls import default_catalog, evaluate_controls, load_catalog
+from evidence_collector.controls import catalog_with_provenance, evaluate_controls
 from evidence_collector.domain.enums import ReleaseStatus
 from evidence_collector.domain.models import (
     Application,
@@ -128,7 +128,7 @@ def build_bundle(
     collection_errors: list[CollectionError] | None = None,
 ) -> tuple[EvidenceBundle, list[ControlDefinition]]:
     """Build an EvidenceBundle from an already-normalized evidence set."""
-    controls = load_catalog(catalog_path) if catalog_path else list(default_catalog())
+    controls, catalog_ref = catalog_with_provenance(catalog_path)
     exception_list = exceptions or []
     evaluations, gaps = evaluate_controls(
         controls,
@@ -154,6 +154,7 @@ def build_bundle(
         bundle_id=_default_bundle_id(application, release),
         application=application,
         release=release,
+        catalog=catalog_ref,
         evidence=evidence,
         control_evaluations=evaluations,
         gaps=gaps,

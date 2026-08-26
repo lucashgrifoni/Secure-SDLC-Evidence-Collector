@@ -133,6 +133,25 @@
       {{ bundle.summary.controls_met }} met · {{ bundle.summary.controls_partial }} partial · {{ bundle.summary.controls_missing }} missing
     </div>
   </div>
+  {#- Which catalog produced the verdict belongs beside the verdict, not in an
+      appendix: the same evidence yields a different release status against a
+      different control set, and a custom catalog is the case a reader most
+      needs to notice. -#}
+  {% if bundle.catalog %}
+  <div class="card">
+    <div class="label">Control catalog</div>
+    <div class="value">{{ bundle.catalog.name }}</div>
+    <div class="meta">
+      {% if bundle.catalog.origin == "custom" %}
+      <strong class="status-not_ready">custom</strong> — not the catalog shipped with the tool
+      {% else %}
+      shipped with the tool
+      {% endif %}
+      · {{ bundle.catalog.control_count }} controls
+      · <code>{{ bundle.catalog.sha256[:12] }}</code>
+    </div>
+  </div>
+  {% endif %}
 </section>
 
 {% if bundle.collection_errors %}

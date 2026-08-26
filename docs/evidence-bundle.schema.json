@@ -44,6 +44,48 @@
       "title": "Application",
       "type": "object"
     },
+    "CatalogRef": {
+      "additionalProperties": false,
+      "description": "Which control catalog produced a bundle's evaluations.\n\nEvery verdict in a bundle is relative to a catalog, and `--catalog` lets an\noperator supply their own. Nothing recorded which one had been used, so two\nbundles built from identical evidence — one `not_ready` and exit 2 against\nthe shipped catalog, one `conditional` and exit 0 against a catalog whose\nrequired evidence had been moved to recommended — were indistinguishable to\nwhoever received them. `verify --expected` proves a bundle has not changed\nsince it was generated; this is what says against which standard.\n\n`origin` matters on its own because the names collide: `catalog.yaml` is\nboth the packaged default and the likeliest name for an operator's own\nfile, so the name alone cannot answer \"was this the shipped catalog?\".\n\n`name` is a bare filename, never a path. Which directory an operator keeps\ntheir catalog in is the kind of detail `--artifact-root` exists to keep out\nof a published bundle, and it is not needed to identify the catalog — the\ndigest does that.",
+      "properties": {
+        "control_count": {
+          "description": "How many controls the catalog defines.",
+          "minimum": 1,
+          "title": "Control Count",
+          "type": "integer"
+        },
+        "name": {
+          "description": "Filename of the catalog, without any directory component.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "origin": {
+          "description": "`builtin` for a catalog shipped inside the package, `custom` for one loaded from a path the operator supplied.",
+          "enum": [
+            "builtin",
+            "custom"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "SHA-256 of the catalog file's bytes as read. The repository stores and checks out YAML with LF endings, so this matches `sha256sum` on a normal checkout and is stable across operating systems.",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "origin",
+        "name",
+        "sha256",
+        "control_count"
+      ],
+      "title": "CatalogRef",
+      "type": "object"
+    },
     "CollectionError": {
       "additionalProperties": false,
       "description": "An input that was supplied but could not be ingested.\n\n\"No evidence was supplied\" and \"evidence was supplied and is broken\" are\nmaterially different states, and only the first was ever recorded. The\ncollector warned on the console and the warning died there: the bundle,\nthe report and the HTML summary all showed the affected control as\nplainly *missing evidence*, telling the engineer to re-run a scan that\nhad in fact already run and whose output was sitting on disk, truncated.\n\nCI logs rotate; the bundle is the durable, signable artifact that\n``verify``, ``compare``, ``statement``, ``vex`` and ``oscal`` all\nconsume. The distinction has to live here to survive.",
@@ -1188,9 +1230,21 @@
       "type": "string"
     },
     "bundle_version": {
-      "default": "2.0.0",
+      "default": "2.1.0",
       "title": "Bundle Version",
       "type": "string"
+    },
+    "catalog": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CatalogRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The control catalog these evaluations were produced against. Optional so that a bundle written before 2.1.0 still validates; every bundle this version writes carries it."
     },
     "collection_errors": {
       "description": "Inputs that were supplied but could not be ingested (unreadable, malformed, oversized). Omitted entirely for a clean run, so a bundle with no collection problems still validates against a pinned pre-3.x schema. It is not byte-identical to a pre-3.x bundle: bundle_version moved to 2.0.0 in the same release, and that field is inside the structural hash.",

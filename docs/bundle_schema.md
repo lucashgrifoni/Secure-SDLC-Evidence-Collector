@@ -1,6 +1,6 @@
 # Bundle schema reference
 
-Bundle schema version: **`2.0.0`**
+Bundle schema version: **`2.1.0`**
 
 Top-level document produced by every `run` / `evaluate` invocation. All
 timestamps are ISO 8601 UTC. All enum values serialize as their string form.
@@ -15,6 +15,16 @@ bundle that carries anything it does not know.
 omits the field entirely rather than emitting an empty list, so a clean run
 still validates against `1.0.0` and only bundles that genuinely report a
 failed input require the newer contract.
+
+`2.1.0` adds `catalog`, naming the control catalog the evaluations were
+produced against. Every verdict in a bundle is relative to a catalog and
+`--catalog` lets you supply your own, so without this a bundle could not be
+checked by whoever received it: the same evidence yields `not_ready` and exit
+`2` against the shipped catalog and `conditional` and exit `0` against one
+whose required evidence types have been moved to recommended. `verify
+--expected` proves a bundle has not changed since it was generated; `catalog`
+is what says against which standard. Unlike `collection_errors` it is never
+omitted — there is no empty case worth hiding.
 
 ## Machine-readable schema
 
@@ -56,7 +66,7 @@ configuration, once the contract is registered there.
 
 ```jsonc
 {
-  "bundle_version": "2.0.0",
+  "bundle_version": "2.1.0",
   "bundle_id": "bundle-20260410-payments-api-2026.04.10-ab12cd34",
   "generated_at": "2026-04-10T12:20:00Z",
   "application": {
@@ -74,12 +84,33 @@ configuration, once the contract is registered there.
     "artifact_digest": "sha256:...",
     "tag": "v2026.04.10"
   },
+  "catalog": {
+    "origin": "builtin",
+    "name": "catalog.yaml",
+    "sha256": "b34bf0f9f3eacef6634f01a6da267778965ef5a1d3eb45690376144f7da4ad08",
+    "control_count": 13
+  },
   "evidence": [ /* NormalizedEvidence[] */ ],
   "control_evaluations": [ /* ControlEvaluation[] */ ],
   "gaps": [ /* Gap[] */ ],
   "summary": { /* Summary */ }
 }
 ```
+
+## CatalogRef
+
+Which control catalog produced the evaluations. Present on every bundle this
+version writes; absent on bundles written before `2.1.0`.
+
+| Field | Type | Notes |
+|---|---|---|
+| `origin` | enum | `builtin` for a catalog shipped inside the package, `custom` for one loaded from a path you supplied. Decided by identity, not by filename: `catalog.yaml` is both the packaged default and the likeliest name for your own file. |
+| `name` | string | Filename only, never a path. Which directory you keep a catalog in is the kind of detail `--artifact-root` exists to keep out of a published bundle. |
+| `sha256` | string | SHA-256 of the catalog file's bytes as read, so `sha256sum` on the same file matches. Taken over the file rather than the parsed model: two YAML files differing only in key order or comments describe the same controls, and an auditor comparing against a published catalog is asking about the file. |
+| `control_count` | int | How many controls the catalog defines. |
+
+Inside the structural hash, so `verify --expected` rejects a bundle whose
+catalog record has been edited.
 
 ## NormalizedEvidence
 
