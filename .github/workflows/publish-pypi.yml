@@ -87,17 +87,41 @@ jobs:
         with:
           persist-credentials: false
 
+      # `inputs.tag` reaches the shell through the environment, never through
+      # the script text. `${{ }}` is substituted before the shell parses the
+      # line, so quoting it is not protection: a dispatch input of
+      # `v1.0.0"; curl … | sh; #` closed the assignment and ran. Only someone
+      # with write access can dispatch this workflow, and `main` requires no
+      # review, so today that person can already push a tag this pipeline will
+      # sign and publish — the injection grants nothing extra. It is fixed
+      # because the step feeds the `python-dist` artifact that is later signed
+      # with Sigstore and pushed to PyPI, so it stops being harmless the moment
+      # a second collaborator or an automation account can dispatch.
       - name: Resolve tag
         id: resolve
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            tag="${{ inputs.tag }}"
+            tag="$INPUT_TAG"
           else
             tag="${GITHUB_REF_NAME}"
           fi
           if [ -z "$tag" ]; then
             echo "Could not resolve tag" >&2
+            exit 1
+          fi
+          # The push trigger only ever fires on `v*.*.*`; a manually dispatched
+          # tag is held to the same shape so both paths agree. Anchored at both
+          # ends on purpose — the first version of this check was anchored only
+          # at the start, which accepted `v1.0.0"; curl … | sh; #` as a valid
+          # tag. The env indirection above already stops that from executing, so
+          # the guard was not load-bearing, but a check that looks like
+          # validation and passes anything with the right prefix is worse than
+          # no check at all.
+          if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
+            echo "Refusing tag '$tag': expected the v<major>.<minor>.<patch> form" >&2
             exit 1
           fi
           echo "tag=$tag" >>"$GITHUB_OUTPUT"
