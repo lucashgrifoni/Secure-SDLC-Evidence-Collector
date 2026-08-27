@@ -75,6 +75,7 @@ nav:
   - Bundle schema reference: bundle_schema.md
   - GitHub Action: github_action.md
   - Release readiness: release-readiness.md
+  - Rolling back a release: rollback.md
   - AI evidence: ai-evidence.md
   - Comparison vs alternatives: comparison.md
   - GUAC integration: guac.md

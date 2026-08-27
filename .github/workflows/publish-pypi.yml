@@ -132,11 +132,27 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
-      # T6.C4 reproducible build: pin SOURCE_DATE_EPOCH from the tag's
-      # commit so the wheel and sdist timestamps are deterministic
+      # T6.C4 reproducible build: pin SOURCE_DATE_EPOCH from the tag's commit
+      # so build timestamps are deterministic
       # (https://reproducible-builds.org/specs/source-date-epoch/).
-      # Setuptools honours this for the wheel RECORD timestamps, the
-      # METADATA file timestamps, and the sdist tar entries.
+      #
+      # Measured on setuptools 80.9.0, building twice from the same tree with
+      # the same SOURCE_DATE_EPOCH: **the wheel is byte-identical, the sdist is
+      # not**. This comment used to claim both, which was wrong about the sdist
+      # in two ways that are worth naming, because a verifier rebuilding from
+      # source will hit them:
+      #
+      #   * the gzip wrapper stores the wall-clock time of the build in its
+      #     header, and SOURCE_DATE_EPOCH does not reach it;
+      #   * 26 of 123 tar entries — PKG-INFO, setup.cfg, the egg-info and the
+      #     root directory, i.e. everything setuptools *generates* rather than
+      #     copies — get the current time. The 97 entries taken from the repo
+      #     do honour the epoch.
+      #
+      # So the artifact almost everyone installs is reproducible and the source
+      # archive is not. Closing that means repacking the tarball with
+      # normalised mtimes and a zeroed gzip header, which is a build-pipeline
+      # change this workflow cannot exercise outside a real release.
       - name: Resolve SOURCE_DATE_EPOCH from tag commit
         id: sde
         run: |
