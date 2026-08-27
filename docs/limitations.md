@@ -333,3 +333,32 @@ These are explicitly out of scope for security reports (see
   unexpected disagreement is itself a finding.
 - SPDX VEX is deferred (low industry adoption). Tracked in the v2.1
   backlog.
+
+## 10 · The bundle carries the identifiers you put in it
+
+A bundle is meant to be shared — with an auditor, a customer, a regulator — and
+it repeats back whatever identifies people in the evidence you fed it. In the
+shipped sample that is five distinct values: the `approver` on a waiver, the
+`approver` on a release approval, the `author` on PR metadata, and the
+`reviewers` on a code review. The waiver approver also appears in `report.md`
+and in the `summary.html` exceptions table, so it reaches the two files a
+reviewer actually opens.
+
+None of this is accidental. A waiver without an accountable approver is not
+worth recording, and the model requires the field. But three consequences are
+worth knowing before you decide what to type into it:
+
+- **It is published.** The tool has an explicit control for keeping filesystem
+  paths out of a shared bundle (`--artifact-root`) and no equivalent for these.
+- **It is signed.** The release pipeline signs the bundle with Sigstore, which
+  binds a named person to "I approved waiving this control" in a form that is
+  tamper-evident and meant to be durable. That is the point for an audit trail;
+  it is also a stronger and more permanent link than someone writing a YAML file
+  is likely to have in mind.
+- **It is inside the structural hash.** Editing it later invalidates
+  `verify --expected`, so it is not something you remove after the fact.
+
+If your policy needs the accountability without the personal identifier, record
+a role or a ticket reference (`security-review-board`, `RISK-4471`) rather than
+an individual's address. The tool treats the field as an opaque string and does
+not care which you choose.
