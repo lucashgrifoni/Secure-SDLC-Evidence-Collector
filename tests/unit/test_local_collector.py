@@ -9,6 +9,7 @@ its filename does not declare the source tool.
 
 from __future__ import annotations
 
+import builtins
 import os
 from pathlib import Path
 from typing import Any
@@ -683,3 +684,86 @@ def test_a_broken_link_is_reported_rather_than_silently_dropped(tmp_path: Path) 
     assert len(report.evidence) == 1
     assert len(report.errors) == 1
     assert "target does not exist" in report.errors[0].reason
+
+
+@pytest.mark.parametrize(
+    ("filename", "payload", "max_opens"),
+    [
+        pytest.param(
+            "scan.sarif",
+            '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"semgrep",'
+            '"version":"1","rules":[]}},"results":[]}]}',
+            2,
+            id="sarif",
+        ),
+        pytest.param(
+            "sbom.cdx.json",
+            '{"bomFormat":"CycloneDX","specVersion":"1.5","components":[]}',
+            4,
+            id="cyclonedx-json",
+        ),
+        pytest.param(
+            "junit.xml",
+            '<testsuites tests="1" failures="0" errors="0">'
+            '<testsuite name="s" tests="1" failures="0" errors="0">'
+            '<testcase name="t" classname="x" time="0.1"/></testsuite></testsuites>',
+            2,
+            id="junit-xml",
+        ),
+    ],
+)
+def test_a_recognized_artifact_is_read_a_bounded_number_of_times(
+    tmp_path: Path, filename: str, payload: str, max_opens: int
+) -> None:
+    """The bound above covers the file nothing recognises. This covers the rest.
+
+    `test_detection_does_not_reread_the_same_file_for_every_probe` stops at
+    detection, so nothing pinned what a file costs once a parser accepts it —
+    and that is the path every real artifact takes. Measured today: two opens
+    for `.sarif` and `.xml` (detection, then the parser), and four for `.json`,
+    which additionally pays the in-toto record probe, because an in-toto
+    statement and a CycloneDX SBOM are both `.json` and cannot be told apart by
+    extension, plus the integrity hash.
+
+    Four full reads of a file that may be 25 MB is the reason to hold the line
+    here rather than let it drift up one reader at a time. The peek memo
+    already holds the parsed document, so a fifth reader is nearly always a
+    missed reuse.
+
+    Counts `builtins.open` as well as `Path.open`: the parsers open through the
+    builtin, so patching only `Path.open` — as the detection test above does —
+    sees a smaller number than the file actually pays.
+    """
+    artifacts_dir = tmp_path / "artifacts"
+    artifacts_dir.mkdir()
+    (artifacts_dir / filename).write_text(payload, encoding="utf-8")
+
+    opens = 0
+    real_builtin_open = builtins.open
+    real_path_open = Path.open
+
+    def counting_builtin(file: Any, *args: Any, **kwargs: Any) -> Any:
+        nonlocal opens
+        try:
+            if Path(file).name == filename:
+                opens += 1
+        except TypeError:  # a file descriptor, not a path
+            pass
+        return real_builtin_open(file, *args, **kwargs)
+
+    def counting_path(self: Path, *args: Any, **kwargs: Any) -> Any:
+        nonlocal opens
+        if self.name == filename:
+            opens += 1
+        return real_path_open(self, *args, **kwargs)
+
+    with (
+        mock.patch.object(builtins, "open", counting_builtin),
+        mock.patch.object(Path, "open", counting_path),
+    ):
+        report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir]).collect()
+
+    assert len(report.evidence) == 1, (
+        "the artifact must be recognised for this bound to mean anything"
+    )
+    assert opens <= max_opens, f"{filename} was opened {opens} times, budget is {max_opens}"
