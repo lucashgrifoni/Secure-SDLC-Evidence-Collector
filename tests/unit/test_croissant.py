@@ -154,3 +154,53 @@ def test_croissant_alone_meets_the_ai_catalog_lineage_control(tmp_path: Path) ->
         e for e in bundle["control_evaluations"] if e["control_id"] == "AI-TRAINING-LINEAGE"
     ]
     assert lineage["evaluation_status"] == "met"
+
+
+def test_oversized_name_and_url_are_clipped_not_rejected(tmp_path: Path) -> None:
+    """Hub metadata is untrusted input; a long field must not cost the evidence."""
+    doc = dict(_CROISSANT_10, name="N" * 1500, url="https://example.org/" + "u" * 600)
+    parsed = parse_croissant(_write(tmp_path / "big.json", doc))
+    evidence = normalize_croissant(parsed, _release())
+
+    assert len(evidence.subject_ref) <= 500
+    assert len(evidence.summary or "") <= 1000
+    assert evidence.metadata["dataset_name"] == "N" * 1500
+
+
+@pytest.mark.parametrize(
+    "conforms_to",
+    ["http://mlcommons.org/croissant/2.0", "http://mlcommons.org/croissant/not-a-version"],
+)
+def test_an_unsupported_croissant_version_is_not_read(tmp_path: Path, conforms_to: str) -> None:
+    """Only 1.0 and 1.1 are implemented; anything else must not satisfy the control."""
+    doc = dict(_CROISSANT_10, conformsTo=conforms_to)
+    with pytest.raises(ParseError):
+        parse_croissant(_write(tmp_path / "future.json", doc))
+
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    _write(artifacts / "future.json", doc)
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
+    assert [
+        e for e in report.evidence if e.evidence_type == EvidenceType.AI_TRAINING_DATA_LINEAGE
+    ] == []
+
+
+def test_a_supported_version_later_in_the_list_is_found(tmp_path: Path) -> None:
+    doc = dict(
+        _CROISSANT_10,
+        conformsTo=["http://mlcommons.org/croissant/2.0", "http://mlcommons.org/croissant/1.1"],
+    )
+    assert parse_croissant(_write(tmp_path / "multi.json", doc)).croissant_version == "1.1"
+
+
+@pytest.mark.parametrize("name", ["model-card.json", "lm-eval.json", "dataset.garak.json"])
+def test_croissant_wins_over_a_reserved_file_name(tmp_path: Path, name: str) -> None:
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    _write(artifacts / name, _CROISSANT_10)
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
+
+    assert report.errors == []
+    assert [e.evidence_type for e in report.evidence] == [EvidenceType.AI_TRAINING_DATA_LINEAGE]

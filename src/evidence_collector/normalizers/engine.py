@@ -1102,7 +1102,13 @@ def normalize_croissant(
         metadata["dataset_version"] = parsed.dataset_version
     if parsed.date_published:
         metadata["date_published"] = parsed.date_published
-    subject_ref = parsed.url or parsed.name or release.release_id
+    # Hub metadata is untrusted: a long URL or name shortens the display fields
+    # (500 and 1000 characters in the model) instead of costing the evidence.
+    # The full values stay in metadata.
+    subject_ref = (parsed.url or parsed.name or release.release_id)[:500]
+    shown_name = parsed.name or "unnamed"
+    if len(shown_name) > 200:
+        shown_name = shown_name[:200] + "..."
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
             "croissant", parsed.artifact.integrity_hash, subject_ref, release.release_id
@@ -1123,9 +1129,7 @@ def normalize_croissant(
         generated_at=None,
         raw=_raw_ref(parsed.artifact, artifact_root),
         findings_count={},
-        summary=(
-            f"Croissant {parsed.croissant_version} metadata for dataset {parsed.name or 'unnamed'}"
-        ),
+        summary=f"Croissant {parsed.croissant_version[:20]} metadata for dataset {shown_name}",
         metadata=metadata,
     )
 

@@ -5,9 +5,10 @@ it to describe what a dataset is, where its files live, how its records are
 structured and under which terms it may be used. For this collector it is
 the machine-readable form of training-data lineage.
 
-A file is Croissant when its dataset-level ``conformsTo`` (or the prefixed
-``dct:conformsTo``) names ``http://mlcommons.org/croissant/<version>``. In
-1.1 the property may be a list, so a dataset can also declare other specs.
+A file is read when its dataset-level ``conformsTo`` (or the prefixed
+``dct:conformsTo``) names ``http://mlcommons.org/croissant/1.0`` or ``/1.1``.
+In 1.1 the property may be a list, so a dataset can also declare other specs;
+any other version under the Croissant prefix is not read.
 Keys are accepted with or without their JSON-LD prefix (``license`` or
 ``sc:license``), because a document may compact them either way.
 
@@ -37,6 +38,7 @@ from evidence_collector.parsers._common import (
 )
 
 CROISSANT_URI_PREFIX = "http://mlcommons.org/croissant/"
+SUPPORTED_VERSIONS = ("1.0", "1.1")
 _PROV_TERMS = ("wasDerivedFrom", "wasGeneratedBy", "wasAttributedTo")
 
 
@@ -71,13 +73,18 @@ def _as_list(value: Any) -> list[Any]:
 
 
 def croissant_version(data: Any) -> str | None:
-    """The Croissant version a document declares, or None when it is not one."""
+    """The supported Croissant version a document declares, or None.
+
+    Only the versions this parser implements count. A document that declares
+    only some other version under the same prefix (a future 2.0, a typo) is
+    not read, so it cannot satisfy a lineage control on a shape nobody checked.
+    """
     if not isinstance(data, dict):
         return None
     for uri in _as_list(_get(data, "conformsTo", "dct")):
         if isinstance(uri, str) and uri.startswith(CROISSANT_URI_PREFIX):
             version = uri[len(CROISSANT_URI_PREFIX) :].strip("/")
-            if version:
+            if version in SUPPORTED_VERSIONS:
                 return version
     return None
 
@@ -98,8 +105,8 @@ def parse_croissant(path: str | Path) -> ParsedCroissant:
     version = croissant_version(data)
     if version is None:
         raise ParseError(
-            f"{resolved} is not Croissant: no dataset-level conformsTo naming "
-            f"{CROISSANT_URI_PREFIX}<version>."
+            f"{resolved} is not Croissant 1.0 or 1.1: no dataset-level conformsTo "
+            f"naming {CROISSANT_URI_PREFIX}1.0 or {CROISSANT_URI_PREFIX}1.1."
         )
     licenses = [text for text in map(_text, _as_list(_get(data, "license", "sc"))) if text]
     distribution = [d for d in _as_list(_get(data, "distribution", "sc")) if isinstance(d, dict)]

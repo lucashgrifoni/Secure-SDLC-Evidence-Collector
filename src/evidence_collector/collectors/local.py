@@ -566,6 +566,17 @@ class LocalArtifactCollector:
             # T6.5 AI evidence detection. Filename-based first because
             # garak / lm-eval / model-card payloads are JSON shapes we
             # do not want to confuse with generic JSON artifacts.
+            # Croissant is recognised by its declared conformsTo, so it goes
+            # before the AI routes that trust a file name: a dataset card saved
+            # as model-card.json is still a dataset card.
+            if _looks_like_croissant(file_path):
+                parsed_croissant = parse_croissant(file_path)
+                report.evidence.append(
+                    normalize_croissant(
+                        parsed_croissant, self._release, artifact_root=self._artifact_root
+                    )
+                )
+                return
             if _looks_like_garak(file_path):
                 parsed_garak = parse_garak(file_path)
                 report.evidence.append(
@@ -583,14 +594,6 @@ class LocalArtifactCollector:
                 report.evidence.append(
                     normalize_model_card(
                         parsed_mc, self._release, artifact_root=self._artifact_root
-                    )
-                )
-                return
-            if _looks_like_croissant(file_path):
-                parsed_croissant = parse_croissant(file_path)
-                report.evidence.append(
-                    normalize_croissant(
-                        parsed_croissant, self._release, artifact_root=self._artifact_root
                     )
                 )
                 return
