@@ -20,6 +20,7 @@ where the rationale would be easy to forget and expensive to re-derive.
 - [ADR-0011 — CRA and FedRAMP 20x profiles](./0011-cra-and-fedramp-20x-profiles.md)
 - [ADR-0012 — GUAC graph integration](./0012-guac-graph-integration.md)
 - [ADR-0013 — Release versioning process](./0013-release-versioning-process.md)
+- [ADR-0014 — NIST CSF 2.0 crosswalk for the built-in catalogs](./0014-csf-2-crosswalk-for-built-in-catalogs.md)
 
 ## Format
 
