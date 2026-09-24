@@ -361,11 +361,13 @@ jobs:
           name: python-dist
           path: dist
 
+      # No pip cache here: this job has no checkout, and setup-python keys
+      # the cache on a dependency file in the workspace. Asking for one
+      # failed the 3.0.0 release before the SBOM was generated.
       - name: Setup Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
 
       # Self-SBOM. Generates a CycloneDX SBOM of the collector itself,
       # rooted at the just-built wheel, using cyclonedx-bom.
