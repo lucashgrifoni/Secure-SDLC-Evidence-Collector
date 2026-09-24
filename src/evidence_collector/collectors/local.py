@@ -26,6 +26,7 @@ from evidence_collector.normalizers import (
     normalize_attestation,
     normalize_croissant,
     normalize_garak,
+    normalize_inspect_eval,
     normalize_intoto_statement,
     normalize_junit,
     normalize_lm_eval,
@@ -45,6 +46,7 @@ from evidence_collector.parsers import (
     parse_croissant,
     parse_exception,
     parse_garak,
+    parse_inspect_eval,
     parse_intoto_statements,
     parse_junit,
     parse_lm_eval,
@@ -62,6 +64,7 @@ from evidence_collector.parsers import (
 from evidence_collector.parsers._common import MAX_INPUT_BYTES, ParseError
 from evidence_collector.parsers._intoto import read_records
 from evidence_collector.parsers.croissant import croissant_version
+from evidence_collector.parsers.inspect_eval import looks_like_inspect_log
 from evidence_collector.parsers.intoto_provenance import file_has_provenance
 from evidence_collector.parsers.intoto_statement import file_has_ingestable_statement
 from evidence_collector.parsers.intoto_vsa import VSA_PREDICATE_TYPE
@@ -574,6 +577,18 @@ class LocalArtifactCollector:
                 report.evidence.append(
                     normalize_croissant(
                         parsed_croissant, self._release, artifact_root=self._artifact_root
+                    )
+                )
+                return
+            # Inspect logs are recognised by content (version, status, eval.task,
+            # eval.model), not by name: Inspect names them by timestamp.
+            if file_path.suffix.lower() == ".json" and looks_like_inspect_log(
+                _peek_json(file_path)
+            ):
+                parsed_inspect = parse_inspect_eval(file_path)
+                report.evidence.append(
+                    normalize_inspect_eval(
+                        parsed_inspect, self._release, artifact_root=self._artifact_root
                     )
                 )
                 return

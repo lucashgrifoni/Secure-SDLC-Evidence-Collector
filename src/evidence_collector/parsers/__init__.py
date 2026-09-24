@@ -6,6 +6,7 @@ from evidence_collector.parsers.attestation import parse_attestation
 from evidence_collector.parsers.croissant import parse_croissant
 from evidence_collector.parsers.exception import parse_exception
 from evidence_collector.parsers.garak import parse_garak
+from evidence_collector.parsers.inspect_eval import parse_inspect_eval
 from evidence_collector.parsers.intoto_provenance import parse_provenance, parse_provenances
 from evidence_collector.parsers.intoto_statement import (
     parse_intoto_statement,
@@ -31,6 +32,7 @@ __all__ = [
     "parse_croissant",
     "parse_exception",
     "parse_garak",
+    "parse_inspect_eval",
     "parse_intoto_statement",
     "parse_intoto_statements",
     "parse_junit",
