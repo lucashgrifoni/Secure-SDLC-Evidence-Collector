@@ -212,3 +212,16 @@ def test_the_location_is_a_uri_even_when_the_path_has_spaces(
         for r in document["runs"][0]["results"]
     }
     assert uris == {"release%20out/a%26b%231/bundle.json"}
+
+
+def test_a_path_that_is_not_utf8_still_becomes_a_uri(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """POSIX file names can hold any byte; Python shows the odd ones as surrogates."""
+    from evidence_collector.cli.commands.sarif import _artifact_uri
+
+    monkeypatch.chdir(tmp_path)
+    uri = _artifact_uri(Path("bad\udcffname") / "bundle.json")
+    assert uri.isascii()
+    assert uri.startswith("bad%")
+    assert uri.endswith("name/bundle.json")
