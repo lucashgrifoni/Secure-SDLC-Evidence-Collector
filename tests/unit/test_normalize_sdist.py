@@ -32,7 +32,7 @@ def _script() -> ModuleType:
     return module
 
 
-def _sdist(path: Path, *, stamp: int, header_time: int) -> Path:
+def _sdist(path: Path, *, stamp: int, header_time: int, file_mode: int = 0o644) -> Path:
     """A small sdist whose generated entries carry `stamp` as mtime."""
     path.parent.mkdir(parents=True, exist_ok=True)
     raw = io.BytesIO()
@@ -42,13 +42,15 @@ def _sdist(path: Path, *, stamp: int, header_time: int) -> Path:
         root.mtime = stamp
         root.mode = 0o755
         tar.addfile(root)
-        for name, body, mtime in (
-            ("pkg-1.0/PKG-INFO", b"Metadata-Version: 2.4\nName: pkg\n", stamp),
-            ("pkg-1.0/src/pkg/__init__.py", b"VALUE = 1\n", _EPOCH - 100),
+        for name, body, mtime, mode in (
+            ("pkg-1.0/PKG-INFO", b"Metadata-Version: 2.4\nName: pkg\n", stamp, file_mode),
+            ("pkg-1.0/src/pkg/__init__.py", b"VALUE = 1\n", _EPOCH - 100, file_mode),
+            ("pkg-1.0/tools/run.sh", b"#!/bin/sh\n", _EPOCH - 100, file_mode | 0o100),
         ):
             info = tarfile.TarInfo(name)
             info.size = len(body)
             info.mtime = mtime
+            info.mode = mode
             info.uid, info.gid, info.uname, info.gname = 1001, 121, "runner", "docker"
             tar.addfile(info, io.BytesIO(body))
     with (
@@ -85,6 +87,7 @@ def test_contents_survive_and_no_entry_is_newer_than_the_epoch(tmp_path: Path) -
             "pkg-1.0",
             "pkg-1.0/PKG-INFO",
             "pkg-1.0/src/pkg/__init__.py",
+            "pkg-1.0/tools/run.sh",
         ]
         assert max(m.mtime for m in members) <= _EPOCH
         # An older mtime from the repository is kept, not raised to the epoch.
@@ -103,3 +106,26 @@ def test_the_command_needs_source_date_epoch(
     before = sdist.read_bytes()
     assert _script().main([str(tmp_path)]) == 2
     assert sdist.read_bytes() == before
+
+
+def test_permission_modes_from_different_umasks_converge(tmp_path: Path) -> None:
+    """A checkout under umask 077 gives 0600 files where 022 gives 0644."""
+    loose = _sdist(tmp_path / "a" / "pkg-1.0.tar.gz", stamp=_EPOCH, header_time=_EPOCH)
+    tight = _sdist(
+        tmp_path / "b" / "pkg-1.0.tar.gz", stamp=_EPOCH, header_time=_EPOCH, file_mode=0o600
+    )
+    assert loose.read_bytes() != tight.read_bytes()
+
+    script = _script()
+    script.normalize(loose, _EPOCH)
+    script.normalize(tight, _EPOCH)
+
+    assert loose.read_bytes() == tight.read_bytes()
+    with tarfile.open(loose, "r:gz") as tar:
+        modes = {m.name: m.mode for m in tar.getmembers()}
+    assert modes == {
+        "pkg-1.0": 0o755,
+        "pkg-1.0/PKG-INFO": 0o644,
+        "pkg-1.0/src/pkg/__init__.py": 0o644,
+        "pkg-1.0/tools/run.sh": 0o755,
+    }

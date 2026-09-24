@@ -8,6 +8,8 @@ egg-info, the root directory), and the gzip header keeps the wall-clock time
 of the build. This script rewrites each ``*.tar.gz``:
 
 * every entry's mtime is clamped to SOURCE_DATE_EPOCH (older ones are kept);
+* modes become 0755 for directories and executables and 0644 otherwise, so
+  the umask of the checkout does not leak into the archive;
 * owner and group are reset to 0 with empty names;
 * entries keep their order and their bytes;
 * the gzip header carries SOURCE_DATE_EPOCH and no file name.
@@ -35,6 +37,9 @@ def normalize(sdist: Path, epoch: int) -> None:
     ):
         for member in source.getmembers():
             member.mtime = min(int(member.mtime), epoch)
+            # The checkout's umask decides 0644 vs 0600; only "executable or
+            # not" is part of the source, so keep that and fix the rest.
+            member.mode = 0o755 if member.isdir() or member.mode & 0o111 else 0o644
             member.uid = member.gid = 0
             member.uname = member.gname = ""
             member.pax_headers = {}
