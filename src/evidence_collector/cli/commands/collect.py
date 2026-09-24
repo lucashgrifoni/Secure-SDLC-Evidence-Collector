@@ -21,7 +21,7 @@ def register(app: typer.Typer) -> None:
         release_id: Annotated[str, typer.Option("--release-id", help="Release identifier")],
         commit_sha: Annotated[str, typer.Option("--commit-sha", help="Commit SHA for the release")],
         output_path: Annotated[
-            Path, typer.Option("--output", help="Where to write the evidence JSON list")
+            Path, typer.Option("--output", help="Where to write the evidence file (JSON object)")
         ] = Path("evidence.json"),
         branch: Annotated[str, typer.Option(help="Branch name")] = "main",
         artifacts_dir: Annotated[

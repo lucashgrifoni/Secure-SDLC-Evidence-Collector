@@ -154,7 +154,7 @@ explicit missing critical evidence.
 
 ```
 sdlc-evidence run                    # full pipeline: collect + evaluate + export
-sdlc-evidence collect                # walk directories, emit an evidence JSON list
+sdlc-evidence collect                # walk directories, write evidence and collection errors as JSON
 sdlc-evidence evaluate               # evaluate an existing evidence list, export bundle
 sdlc-evidence bundle                 # alias of evaluate
 sdlc-evidence controls               # print the active control catalog
@@ -209,7 +209,7 @@ traceback). The full taxonomy:
 |---|---|---|
 | `0` | `ready`, or a command that does not gate | everywhere |
 | `1` | `conditional` | `run`, `evaluate`, `bundle` (subject to `--fail-on`) |
-| `2` | `not_ready` | `run`, `evaluate`, `bundle` |
+| `2` | `not_ready`; for `verify --expected`, a digest that does not match | `run`, `evaluate`, `bundle`, `verify --expected` |
 | `3` | the command could not run: bad input, unreadable file, failed validation | every command |
 
 A wrapper can therefore branch on the code alone. `1` means `conditional` and
@@ -220,15 +220,15 @@ nothing else; `3` means "nothing was produced, do not read this as a verdict".
 > `not_ready` release — while `verify`, `compare` and `evaluate` returned `3`.
 > See [Migrating to 3.0.0](#migrating-to-300).
 
-The one code still shared with something else is `2`: Click emits it for a
-usage error (an unknown flag, a missing required option). That is upstream
-behaviour, and it is distinguishable because a usage error prints `Usage:` and
-produces no bundle.
+Usage errors exit `3` as well: an unknown flag, a missing required option, or a
+rejected value such as `--fail-on banana`. The CLI replaces Click's default of
+`2` for them, because `2` is the `not_ready` verdict.
 
 ### Migrating to 3.0.0
 
-Two changes are observable to existing callers. Neither changes the schema, the
-flags, or the control catalog.
+These changes are observable to existing callers. The first two change exit
+codes and rationale text; the rest change the bundle schema, the `collect`
+output, the API defaults and how an empty catalog is handled.
 
 **1. Input errors now exit `3` everywhere (was `2` on five commands).**
 
@@ -275,6 +275,40 @@ sdlc-evidence verify path/to/bundle.json
 
 Bundles produced by 2.x are still readable by 3.0.0 — only newly produced ones
 hash differently.
+
+**3. The bundle schema moves from `1.0.0` to `2.1.0`.**
+
+`collection_errors` (2.0.0) lists the inputs that could not be read and is
+omitted when there are none. `catalog` (2.1.0) names the control catalog behind
+the verdict and is always present, so a validator pinned to the `1.0.0` schema
+rejects every new bundle. Validate against the published schema, read
+`collection_errors` with a default, and regenerate `verify --expected` pins,
+since `bundle_version` is part of the structural hash.
+
+**4. `collect --output` writes an object instead of a list.**
+
+```json
+{"evidence": [...], "collection_errors": [...]}
+```
+
+Read `payload["evidence"]`. `evaluate --evidence` accepts both shapes, so files
+written by 2.x still work.
+
+**5. Usage errors exit `3`.**
+
+An unknown flag, a missing required option or a rejected value used to exit
+`2`, the `not_ready` code. They exit `3` now, like every other input error.
+
+**6. The API serves `/docs` and `/openapi.json` only on request.**
+
+Set `SDLC_EVIDENCE_API_DOCS=1`, or pass `expose_docs=True` when embedding the
+app, to serve them.
+
+**7. A catalog with no controls is refused.**
+
+`controls: []` used to evaluate to `ready` because nothing was checked; it now
+exits `3`. A `--catalog` name that is not found on disk still falls back to the
+bundled catalog of the same name, and the run prints a warning saying so.
 
 ### Use the collector as a pre-commit hook
 

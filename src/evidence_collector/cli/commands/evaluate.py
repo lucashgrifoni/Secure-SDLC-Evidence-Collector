@@ -121,7 +121,7 @@ def register(app: typer.Typer) -> None:
     @app.command("evaluate")
     def cmd_evaluate(
         evidence_path: Annotated[
-            Path, typer.Option("--evidence", help="Path to an evidence JSON list")
+            Path, typer.Option("--evidence", help="Path to the evidence file written by collect")
         ],
         application: Annotated[str, typer.Option(help="Application name")],
         repository: Annotated[str, typer.Option(help="Repository reference")],
