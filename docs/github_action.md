@@ -34,7 +34,7 @@ jobs:
 
       # Step 2 — assemble the evidence bundle
       - id: collect
-        uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v2.5.1
+        uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v3.0.1 # x-release-please-version
         with:
           application: "payments-api"
           release-id: ${{ github.ref_name }}
@@ -83,7 +83,7 @@ The five bundled catalogs can be selected by name, without a path:
 ### Applying waivers in CI
 
 ```yaml
-- uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v2.5.1
+- uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v3.0.1 # x-release-please-version
   with:
     application: payments-api
     release-id: ${{ github.ref_name }}
@@ -113,6 +113,48 @@ coverage, the control counts, and the critical evidence types that are
 missing. The application name and release id come from your inputs, so they
 are shown as code spans that cannot close themselves or start a new line.
 The full report stays in `report.md`.
+
+## Attesting the evidence
+
+To have GitHub sign the evidence as an attestation on your release
+artifact, add `actions/attest` after the collector. Give it the predicate
+payload, not the whole in-toto Statement: `actions/attest` builds the
+Statement itself, so passing `sdlc-evidence statement` output as the
+predicate would nest one Statement inside another.
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+steps:
+  - id: evidence
+    uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v3.0.1 # x-release-please-version
+    with:
+      application: payments-api
+      release-id: ${{ github.ref_name }}
+      artifacts-dir: artifacts
+
+  - id: predicate
+    env:
+      BUNDLE_PATH: ${{ steps.evidence.outputs.bundle-path }}
+    run: |
+      sdlc-evidence statement "$BUNDLE_PATH" -o statement.intoto.json
+      jq '.predicate' statement.intoto.json > predicate.json
+      echo "type=$(jq -r '.predicateType' statement.intoto.json)" >> "$GITHUB_OUTPUT"
+
+  - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+    with:
+      subject-path: dist/*.whl
+      predicate-type: ${{ steps.predicate.outputs.type }}
+      predicate-path: predicate.json
+```
+
+`subject-path` names what you ship. Anyone can then check the attestation
+with `gh attestation verify <file> --repo <owner>/<repo> --predicate-type
+<type>`. The `action-self-test` workflow in this repository runs the same
+steps on the sample release.
 
 ## Permissions
 
