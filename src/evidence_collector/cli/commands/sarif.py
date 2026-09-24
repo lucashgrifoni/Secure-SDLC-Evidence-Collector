@@ -8,8 +8,10 @@ command only writes the file; uploading it stays with the caller.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import quote_from_bytes
 
 import typer
 from pydantic import ValidationError
@@ -82,9 +84,13 @@ def _artifact_uri(bundle_path: Path) -> str:
 
     Code scanning resolves a location against the repository root, which is
     the working directory in a pipeline. A bundle outside it has no such
-    path, so its file name is the best the location can say.
+    path, so its file name is the best the location can say. SARIF wants an
+    RFC 3986 reference, so spaces and reserved characters are percent-encoded.
+    Encoding goes through the file-system bytes: a POSIX file name need not be
+    UTF-8, and Python shows its odd bytes as surrogates that `quote` rejects.
     """
     try:
-        return bundle_path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+        path = bundle_path.resolve().relative_to(Path.cwd().resolve()).as_posix()
     except ValueError:
-        return bundle_path.name
+        path = bundle_path.name
+    return quote_from_bytes(os.fsencode(path), safe="/")
