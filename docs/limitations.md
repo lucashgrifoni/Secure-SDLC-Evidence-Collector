@@ -373,7 +373,7 @@ list tell a visitor which controls gate your releases and what is installed.
 
 The extra installs uvicorn, which starts it:
 
-```bash
+```sh
 uvicorn evidence_collector.api.app:app --host 127.0.0.1 --port 8000
 ```
 
