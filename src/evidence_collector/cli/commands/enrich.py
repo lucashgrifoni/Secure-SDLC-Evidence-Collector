@@ -23,10 +23,11 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
-from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
+from evidence_collector.exporters._atomic import write_atomic
 from evidence_collector.intelligence import (
     EpssFeed,
     KevFeed,
@@ -44,7 +45,10 @@ def register(app: typer.Typer) -> None:
         bundle_path: Annotated[
             Path,
             typer.Argument(
-                exists=True,
+                # No exists=True: Click validates it BEFORE the command body and
+                # raises UsageError -> exit 2, the not_ready code. The body below
+                # already catches OSError and exits EXIT_INPUT_ERROR, which is what
+                # the README promises for every input failure.
                 file_okay=True,
                 dir_okay=False,
                 readable=True,
@@ -115,10 +119,7 @@ def register(app: typer.Typer) -> None:
 
         enriched, report = enrich_bundle(bundle, epss, kev, top_risk_limit=top_risk_limit)
         destination = output or bundle_path
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(
-            enriched.model_dump_json(indent=2, exclude_none=False), encoding="utf-8"
-        )
+        write_atomic(destination, enriched.model_dump_json(indent=2, exclude_none=False))
 
         if is_json_logs():
             emit_event(
@@ -168,7 +169,7 @@ def _require_usable[FeedT: (EpssFeed, KevFeed)](feed: FeedT, path: Path, label: 
 def _load_bundle(path: Path) -> EvidenceBundle:
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except UNREADABLE_INPUT as exc:
         if is_json_logs():
             emit_event("enrich_failed", bundle=str(path), reason=str(exc))
         else:

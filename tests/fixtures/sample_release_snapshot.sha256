@@ -56,10 +56,56 @@
 # evidence[*].raw.integrity_hash — hence the second bump. Both bumps ship in
 # 3.0.0 deliberately, so consumers absorb one digest change rather than two.
 #
+#
+# 2026-08-07 (3.0.0, same release - bundle contract version): bumped from
+# 6c420913... to 17fb007e... after BUNDLE_SCHEMA_VERSION moved 1.0.0 -> 2.0.0.
+# `bundle_version` is inside the structural hash, so the digest moves with it.
+#
+# The version had to move. The bundle gained `collection_errors`, and the
+# published schema is `additionalProperties: false` at every level, so a
+# consumer validating against the 1.0.0 contract they pinned rejects any
+# bundle carrying it - by this contract's own rules that is breaking, and the
+# field that exists to announce it had stayed at 1.0.0 while the shape changed
+# underneath. In the same change, serialization now omits `collection_errors`
+# when empty, so a clean bundle still validates against 1.0.0 and only bundles
+# that genuinely report a failed input carry the new shape.
+#
 # Note for whoever regenerates this next: .gitattributes sets `* text=auto
 # eol=lf`, so the fixtures are stored and hashed as LF. Rewriting them from a
 # Windows checkout with a text-mode write produces CRLF, whose SHA-256 differs
 # — the digest computed locally then disagrees with CI. Write fixture bytes
 # with LF explicitly, or read the digest off the CI failure. This is the same
 # trap that caused the 2026-05-18 bump above.
-6c420913138afaba2df96c5ef4ccc051597a9b0a482b94c2889397614b1a5d82
+#
+# 2026-08-07 (3.0.0, same release - JUnit summary precision): bumped from
+# 17fb007e... to 97273d00... after the test-result summary stopped reporting
+# reported-vs-executed as one number. `42 tests executed, ... 1 skipped`
+# became `42 tests reported, 41 executed, ... 1 skipped`, which is what the
+# file actually says - 42 were not executed, 41 were.
+#
+# The reword rides along with a substantive fix in the same normalizer: a
+# suite where nothing ran (tests="0", or every test skipped) used to be
+# recorded as `passed` at HIGH confidence and satisfied the test-result
+# control outright. A test job whose glob matched nothing now yields
+# `invalid`, so the control comes out MISSING with the file still visible to
+# the auditor. The canonical sample has 41 executed tests, so its status is
+# unchanged; only the summary text moved the digest.
+#
+# 2026-08-25 (SEC-007 - catalogue provenance): bumped from 97273d00... to
+# 861b285d... after the bundle gained a `catalog` block naming the control
+# catalog the evaluations were produced against: origin (builtin/custom),
+# filename, SHA-256 of the file's bytes and control count.
+#
+# The verdict in a bundle is relative to a catalog, and `--catalog` lets an
+# operator supply their own, but nothing recorded which one had been used. Two
+# bundles built from identical evidence - one `not_ready` and exit 2 against the
+# shipped catalog, one `conditional` and exit 0 against a catalog whose required
+# evidence had been moved to recommended - were indistinguishable to whoever
+# received them. `verify --expected` proves a bundle has not changed since it was
+# generated; nothing proved against which standard.
+#
+# BUNDLE_SCHEMA_VERSION moved 2.0.0 -> 2.1.0 in the same change and is itself
+# inside the structural hash, so part of this bump is that. Minor rather than
+# major: a 2.1.0 consumer reads a 2.0.0 bundle fine, while a validator pinned to
+# 2.0.0 rejects a 2.1.0 one, which is what the version field is for saying.
+861b285dd8cb8427484e4ac64317675e48588b050e405916a90e18e5b04e3007

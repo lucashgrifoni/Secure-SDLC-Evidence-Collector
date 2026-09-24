@@ -117,25 +117,33 @@ def test_every_public_cli_option_has_help_text() -> None:
     docs/program/openssf-bestpractices-answers.md, which claims the
     documentation_interface criterion is met by "README.md + `--help`".
     """
-    import click
     from typer.main import get_command
 
     from evidence_collector.cli.main import app as cli_app
 
     missing: list[str] = []
+    visited: list[str] = []
 
-    # Deliberately untyped: newer Typer returns its own `typer._click.core.Command`
-    # subclass, so annotating `click.Command` fails under mypy --strict on some
-    # dependency resolutions and passes on others. The isinstance checks below
-    # are the real contract.
+    # Duck-typed rather than `isinstance(..., click.Group)`. Typer 0.27 dropped
+    # its click dependency and vendors its own copy as `typer._click`, so the
+    # objects here are not instances of the real click classes even when click
+    # happens to be installed. The isinstance version therefore treated the root
+    # group as a leaf and this test passed while checking a single command's
+    # options — the guard reporting success without doing its job. `visited`
+    # below is what makes that failure visible instead of silent.
     def walk(command: Any, prefix: str = "") -> None:
-        if isinstance(command, click.Group):
-            for name, sub in command.commands.items():
+        subcommands = getattr(command, "commands", None)
+        if subcommands:
+            for name, sub in subcommands.items():
                 walk(sub, f"{prefix}{name} ")
             return
+        visited.append(prefix.strip() or "(root)")
         for param in command.params:
-            if isinstance(param, click.Option) and not param.help and not param.hidden:
+            if getattr(param, "param_type_name", "") != "option":
+                continue
+            if not param.help and not param.hidden:
                 missing.append(f"{prefix.strip() or '(root)'} {'/'.join(param.opts)}")
 
     walk(get_command(cli_app))
+    assert len(visited) > 10, f"the walk only reached {visited} — it is not checking the CLI"
     assert missing == [], f"options without help: {missing}"

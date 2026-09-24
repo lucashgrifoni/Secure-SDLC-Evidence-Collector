@@ -62,6 +62,7 @@ def _evidence(
     known_ransomware: bool = False,
     epss_percentile: float = 0.1,
     evidence_type: EvidenceType = EvidenceType.SCA_SCAN,
+    evidence_id: str = "sca-1",
 ) -> NormalizedEvidence:
     intel = VulnerabilityIntelligence(
         cve_count=1,
@@ -78,7 +79,7 @@ def _evidence(
         ],
     )
     return NormalizedEvidence(
-        evidence_id="sca-1",
+        evidence_id=evidence_id,
         evidence_type=evidence_type,
         source=EvidenceSource(name="trivy", kind="sca"),
         producer="trivy",
@@ -170,7 +171,9 @@ def test_fedramp_ksi_catalog_loads_and_includes_critical_baseline() -> None:
 
 
 def test_guac_adapter_emits_one_document_per_evidence() -> None:
-    bundle = _bundle([_evidence(evidence_type=EvidenceType.SBOM), _evidence()])
+    bundle = _bundle(
+        [_evidence(evidence_type=EvidenceType.SBOM, evidence_id="sbom-1"), _evidence()]
+    )
     doc = build_guac_collection(bundle)
     assert doc["format"] == "guac-collect"
     assert doc["release"]["release_id"] == "2026.05.19"

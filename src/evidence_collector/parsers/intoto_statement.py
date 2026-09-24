@@ -53,7 +53,7 @@ from evidence_collector.parsers._common import (
 )
 from evidence_collector.parsers._intoto import (
     file_has_statement,
-    find_statement,
+    find_statements,
     first_subject_name,
     iter_record_dicts,
 )
@@ -203,24 +203,12 @@ def _extract_vulns(predicate: dict[str, Any], parsed: ParsedIntotoStatement) -> 
     parsed.findings_count = counts
 
 
-def parse_intoto_statement(path: str | Path) -> ParsedIntotoStatement:
-    resolved = ensure_file(path)
-    try:
-        text = resolved.read_text(encoding="utf-8")
-    except UnicodeDecodeError as exc:
-        raise ParseError(f"Invalid text encoding in {resolved}: {exc}") from exc
-
-    records = iter_record_dicts(text)
-    if not records:
-        raise ParseError(f"File {resolved} is not a JSON object or a JSONL of objects.")
-
-    found = find_statement(records, _is_ingestable)
-    if found is None:
-        raise ParseError(
-            f"File {resolved} contains no ingestable in-toto Statement across "
-            f"{len(records)} record(s)."
-        )
-    record, statement, envelope = found
+def _build(
+    artifact: ParsedArtifact,
+    record: dict[str, Any],
+    statement: dict[str, Any],
+    envelope: str,
+) -> ParsedIntotoStatement:
     predicate_type = statement["predicateType"]
 
     predicate = statement.get("predicate")
@@ -231,7 +219,7 @@ def parse_intoto_statement(path: str | Path) -> ParsedIntotoStatement:
         predicate = {}
 
     parsed = ParsedIntotoStatement(
-        artifact=describe(resolved, content_type="application/json"),
+        artifact=artifact,
         predicate_type=predicate_type,
         envelope=envelope,
         recognized=predicate_type in RECOGNIZED_PREDICATE_TYPES,
@@ -247,3 +235,40 @@ def parse_intoto_statement(path: str | Path) -> ParsedIntotoStatement:
         _extract_vulns(predicate, parsed)
 
     return parsed
+
+
+def parse_intoto_statements(path: str | Path) -> list[ParsedIntotoStatement]:
+    """Return one parsed record per ingestable Statement in ``path``.
+
+    This is the ingestion entry point. A JSONL can carry many attestations
+    and this module's matcher accepts every predicate no dedicated parser
+    claims, so taking only the first match dropped the rest with no warning
+    — the exact failure mode this module was written to end.
+    """
+    resolved = ensure_file(path)
+    try:
+        text = resolved.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise ParseError(f"Invalid text encoding in {resolved}: {exc}") from exc
+
+    records = iter_record_dicts(text)
+    if not records:
+        raise ParseError(f"File {resolved} is not a JSON object or a JSONL of objects.")
+
+    found = find_statements(records, _is_ingestable)
+    if not found:
+        raise ParseError(
+            f"File {resolved} contains no ingestable in-toto Statement across "
+            f"{len(records)} record(s)."
+        )
+    artifact = describe(resolved, content_type="application/json")
+    return [_build(artifact, record, statement, envelope) for record, statement, envelope in found]
+
+
+def parse_intoto_statement(path: str | Path) -> ParsedIntotoStatement:
+    """Return the first ingestable Statement in ``path``.
+
+    Convenience wrapper kept for single-Statement callers and tests; the
+    collector uses :func:`parse_intoto_statements` so nothing is dropped.
+    """
+    return parse_intoto_statements(path)[0]

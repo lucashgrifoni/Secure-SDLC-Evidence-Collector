@@ -37,19 +37,43 @@ def test_oversize_file_hits_safety_cap(tmp_path: Path) -> None:
         ensure_file(big)
 
 
+def _file_of_size(path: Path, size: int) -> Path:
+    """Write a sparse file of exactly `size` bytes.
+
+    Same trick the oversize test above uses: seek then write one byte, so a
+    25 MB boundary costs no real disk or time. `ensure_file` checks existence
+    and size and does not read the content, so the hole is harmless.
+    """
+    with path.open("wb") as handle:
+        handle.seek(size - 1)
+        handle.write(b"x")
+    assert path.stat().st_size == size, "the boundary file is not the size this test needs"
+    return path
+
+
 def test_exact_cap_is_accepted(tmp_path: Path) -> None:
-    f = tmp_path / "limit.json"
-    with f.open("wb") as handle:
-        handle.write(b"{}")
-        # Pad with whitespace to land exactly at the cap. The Windows
-        # filesystem cannot always punch sparse holes, so check size
-        # before and skip if padding is impractical.
-        remaining = MAX_INPUT_BYTES - 2
-        if remaining > 0 and remaining < 64 * 1024:
-            handle.write(b" " * remaining)
-    # A small file well below the cap should work; the real test is that
-    # `ensure_file` doesn't raise on the boundary.
-    ensure_file(f)
+    """A file of exactly `MAX_INPUT_BYTES` is inside the cap, not over it.
+
+    This never reached the boundary before. It wrote two bytes and then padded
+    only `if remaining < 64 * 1024`, but `remaining` is `MAX_INPUT_BYTES - 2`
+    — about 25 MB — so the condition was always false and the padding never
+    ran. The test was named for the cap and asserted nothing about a 2-byte
+    file; its own comment said "the real test is that `ensure_file` doesn't
+    raise on the boundary", which is precisely what it did not do.
+    """
+    at_cap = _file_of_size(tmp_path / "at-cap.json", MAX_INPUT_BYTES)
+    assert ensure_file(at_cap) == at_cap
+
+
+def test_one_byte_past_the_cap_is_rejected(tmp_path: Path) -> None:
+    """The other side of the boundary, off by exactly one.
+
+    `test_oversize_file_hits_safety_cap` uses cap + 1024, which proves the cap
+    exists but not where it is. A comparison written `>=` instead of `>` passes
+    that test and fails this one.
+    """
+    with pytest.raises(ParseError, match="safety cap"):
+        ensure_file(_file_of_size(tmp_path / "over-cap.json", MAX_INPUT_BYTES + 1))
 
 
 def test_load_json_rejects_malformed(tmp_path: Path) -> None:

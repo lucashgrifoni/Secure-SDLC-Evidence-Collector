@@ -22,6 +22,7 @@ from typing import Annotated
 import typer
 
 from evidence_collector import __version__
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli._logging import configure_logging, emit_event
 from evidence_collector.cli._state import console, is_json_logs, set_json_logs
 from evidence_collector.cli.commands import register_all
@@ -88,6 +89,30 @@ def _force_utf8_std_streams() -> None:
 # already the input/IO failure code used by verify, compare and evaluate.
 EXIT_COMMAND_FAILED = 3
 
+# The CLI framework exits 2 for every usage error: a rejected option value, an
+# unknown flag, a missing argument, a path failing its `exists=` / `file_okay=`
+# check. In this CLI 2 is a release verdict - `not_ready` - so a typo in
+# `--fail-on`, or a directory passed where a bundle was expected, came back as
+# "this release is not ready" and a pipeline gating on the documented codes
+# acted on a verdict the tool never reached. The README states the contract
+# plainly: every failure that is not a release verdict exits 3.
+#
+# `main` therefore runs the app with `standalone_mode=False` and chooses every
+# code itself. Two earlier attempts leaned on the framework's internals and
+# both broke on a version this machine did not have:
+#
+#   * rebinding `click.UsageError.exit_code` worked under typer 0.24 and was
+#     silently ignored by 0.27;
+#   * importing `click` at all fails under 0.27, which dropped the dependency
+#     outright and vendors its own copy as `typer._click` - so `click.UsageError`
+#     is not even the class that gets raised there.
+#
+# Nothing here names a framework exception class. A usage error is recognised
+# by what it *offers*: an `exit_code` and a `show()` that renders the usage
+# message, true of the Click-family exceptions in both layouts. The distinction
+# only selects the message anyway, since an input error and a crash both exit 3
+# under this project's taxonomy.
+
 
 def _report_command_failure(exc: BaseException) -> None:
     """Print one actionable line for an unhandled exception, no raw traceback.
@@ -117,13 +142,20 @@ def main() -> None:
             f"started at {datetime.now(tz=UTC).isoformat()}"
         )
     try:
-        app()
+        # With `standalone_mode=False` the framework hands back the outcome
+        # instead of exiting itself: an int for a deliberate exit - the verdict
+        # codes from `typer.Exit`, and the 0 of `--help` and `--version` - or
+        # None for a command that simply returned. Discarding that return value
+        # turned every `not_ready` into a 0 while this was being written.
+        outcome = app(standalone_mode=False)
     except Exception as exc:
-        # SystemExit derives from BaseException, so every deliberate exit —
-        # including typer.Exit and Click's usage errors — passes through
-        # untouched. Only genuinely unhandled exceptions land here.
-        _report_command_failure(exc)
-        raise SystemExit(EXIT_COMMAND_FAILED) from exc
+        show = getattr(exc, "show", None)
+        if callable(show) and hasattr(exc, "exit_code"):
+            show()
+        else:
+            _report_command_failure(exc)
+        raise SystemExit(EXIT_INPUT_ERROR) from exc
+    raise SystemExit(outcome if isinstance(outcome, int) else 0)
 
 
 if __name__ == "__main__":

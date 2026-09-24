@@ -103,13 +103,13 @@ expected` correction.
 
 | Promise (README/CHANGELOG) | Implementation | Positive fixture | Negative / edge fixture | Expected | Obtained |
 |---|---|---|---|---|---|
-| Parse SARIF (Semgrep, CodeQL, Sonar, Snyk Code, Trivy, Grype, Gitleaks, Bandit, pip-audit) | `parsers/sarif.py`, `normalizers/engine.py` | `examples/sample_release/artifacts/semgrep.sarif`, `trivy.sarif`, `gitleaks.sarif` | `tests/unit/test_parsers.py::test_sarif_malformed`, `test_sarif_missing_runs` | parse succeeds on known tools; unknown driver → `evidence_type=sast_scan` (conservative default) | matches |
-| Parse CycloneDX SBOM | `parsers/sbom.py` | `examples/sample_release/artifacts/sbom.cdx.json` | `tests/unit/test_parsers.py::test_sbom_invalid_json` | `evidence_type=sbom`, components counted | matches |
+| Parse SARIF (Semgrep, CodeQL, Sonar, Snyk Code, Trivy, Grype, Gitleaks, Bandit, pip-audit) | `parsers/sarif.py`, `normalizers/engine.py` | `examples/sample_release/artifacts/semgrep.sarif`, `trivy.sarif`, `gitleaks.sarif` | `tests/unit/test_parsers.py::test_parse_sarif_semgrep`, `tests/unit/test_parsers.py::test_parse_sarif_requires_runs` | parse succeeds on known tools; unknown driver → `evidence_type=sast_scan` (conservative default) | matches |
+| Parse CycloneDX SBOM | `parsers/sbom.py` | `examples/sample_release/artifacts/sbom.cdx.json` | `tests/unit/test_parsers.py::test_parse_sbom_cyclonedx`, `tests/unit/test_parsers.py::test_parse_sbom_spdx` | `evidence_type=sbom`, components counted | matches |
 | Parse SPDX SBOM | `parsers/sbom.py` | covered via unit test fixture | same | `evidence_type=sbom` | matches |
-| Parse JUnit XML | `parsers/junit.py` | `examples/sample_release/artifacts/junit.xml` | `tests/unit/test_parsers.py::test_junit_defused` (XXE guard) | `evidence_type=test_result`, pass/fail counted | matches |
-| Parse OWASP ZAP JSON (DAST) | `parsers/zap.py` | `examples/sample_release/artifacts/zap-baseline.json` | `tests/unit/test_zap.py::test_zap_missing_site` | `evidence_type=dast_scan`, alerts bucketed by risk | matches |
+| Parse JUnit XML | `parsers/junit.py` | `examples/sample_release/artifacts/junit.xml` | `tests/unit/test_parsers.py::test_parse_junit`, `tests/unit/test_parsers.py::test_parse_junit_rejects_malformed_xml` (XXE guard in `tests/unit/test_documented_security_promises.py`) | `evidence_type=test_result`, pass/fail counted | matches |
+| Parse OWASP ZAP JSON (DAST) | `parsers/zap.py` | `examples/sample_release/artifacts/zap-baseline.json` | `tests/unit/test_zap.py::test_parse_zap_rejects_document_without_site`, `tests/unit/test_zap.py::test_parse_zap_counts_severities` | `evidence_type=dast_scan`, alerts bucketed by risk | matches |
 | Parse YAML/JSON attestations | `parsers/attestation.py` | `examples/sample_release/attestations/*.yaml` | attestation with unknown key → `extra='forbid'` raises | `evidence_type` derives from `kind` field | matches |
-| 25 MB safety cap | `parsers/_common.py::read_bounded` | `tests/unit/test_parsers.py::test_sarif_oversize` | large SARIF → raises `ArtifactTooLargeError` | reject > 25 MB | matches |
+| 25 MB safety cap | `parsers/_common.py::read_bounded` | `tests/unit/test_parser_safety.py::test_oversize_file_hits_safety_cap`, `tests/unit/test_local_collector.py::test_oversized_artifact_is_reported_not_dropped` | large SARIF → raises `ArtifactTooLargeError` | reject > 25 MB | matches |
 
 ## 2 · Classification promises (SARIF → canonical evidence_type)
 
@@ -146,7 +146,7 @@ expected` correction.
 | Scenario | Expected verdict | Fixture | Obtained |
 |---|---|---|---|
 | Every critical + high has required evidence | `ready` | `examples/sample_release/` (full) | `ready`, 13/13 |
-| Only recommended evidence is missing | `conditional` | `examples/sample_release/` with `artifact_attestation.yaml` removed | `conditional` (reproduced in `tests/integration/test_end_to_end.py::test_conditional_when_only_recommended_missing`) |
+| Only recommended evidence is missing | `conditional` | `examples/sample_release/` with `artifact_attestation.yaml` removed | `conditional` (reproduced in `tests/unit/test_scoring.py::test_release_conditional_when_only_medium_gap`) |
 | Only medium-criticality controls lack evidence | `conditional` | drop `threat_model.yaml` | `conditional` |
 | A critical control lacks required evidence | `not_ready` | sample_release without `--attestations-dir` | `not_ready` (4 missing critical: `ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`, `SSDF-PS.2`) |
 | Vulnerable lab scanned without attestations | `not_ready` | `examples/labs/01-core-saas-lab/` | `not_ready` (4 missing critical: `ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`, `SSDF-PS.2`) — re-validated 2026-05-17 against [`output/publication-2026-05-17/labs/01-core-saas-lab/`](../output/publication-2026-05-17/labs/01-core-saas-lab/) |
@@ -157,17 +157,30 @@ expected` correction.
 
 | Promise | Test | Expected | Obtained |
 |---|---|---|---|
-| Two runs on identical inputs produce identical `bundle.json` (after stripping `generated_at`, `evaluated_at`, `bundle_id`) | `tests/integration/test_end_to_end.py::test_bundle_determinism` | diff returns empty | matches |
-| `compare` command reports zero deltas for identical bundles | `tests/integration/test_cli.py::test_compare_identical_bundles` | no improvements/regressions | matches |
+| Two runs on identical inputs produce identical `bundle.json` (after stripping `generated_at`, `evaluated_at`, `bundle_id`) | `tests/integration/test_determinism.py::test_sample_release_bundle_is_deterministic` | diff returns empty | matches |
+| Artifact discovery order does not change the bundle | `tests/integration/test_determinism.py::test_sample_release_bundle_is_stable_across_artifact_reorder` | identical structural hash | matches |
+| The structural hash holds under every profile | `tests/integration/test_determinism.py::test_structural_hash_is_stable_under_every_profile` | identical structural hash | matches |
+| `compare` command reports zero deltas for identical bundles | `tests/integration/test_cli_more_commands.py::test_compare_emits_zero_delta_for_identical_bundles` | no improvements/regressions | matches |
 
 ## 6 · Security promises
 
 | Promise | Implementation | Test |
 |---|---|---|
-| No token ever logged | `collectors/github.py`, `collectors/gitlab.py` (no `log(token)` calls; headers redacted) | `tests/unit/test_github_collector.py::test_token_not_logged` |
-| XML parsed without external entities | `parsers/junit.py` uses `defusedxml` | `tests/unit/test_parsers.py::test_junit_defused` |
-| Pydantic `extra='forbid'` on every canonical type | `domain/models.py` `model_config` | `tests/unit/test_domain_models.py::test_bundle_rejects_extra_fields` |
-| `--output-dir` does not escape to parent | `application/orchestrator.py` normalizes path | `tests/unit/test_exporters.py::test_output_dir_boundary` |
+| No token ever logged | `collectors/github.py`, `collectors/gitlab.py` (no `log(token)` calls; the token is also kept out of the config `repr`) | `tests/unit/test_documented_security_promises.py::test_a_github_token_never_reaches_a_log_record`, `::test_a_gitlab_token_never_reaches_a_log_record`, `::test_a_collector_config_does_not_render_its_token` |
+| XML parsed without external entities, and entity expansion refused | `parsers/junit.py` uses `defusedxml` | `tests/unit/test_documented_security_promises.py::test_an_external_entity_is_never_expanded_when_parsing_junit_xml`, `::test_entity_expansion_is_refused_rather_than_expanded` |
+| Pydantic `extra='forbid'` on every canonical type | `domain/models.py` `model_config` on the shared `_BaseModel` | `tests/unit/test_documented_security_promises.py::test_every_canonical_model_is_configured_to_forbid_unknown_fields`, `::test_no_canonical_model_actually_accepts_an_unknown_field` |
+| A hostile artifact cannot take the collection down with it | `collectors/local.py` shared ingestion guard | `tests/unit/test_hostile_input_containment.py` |
+
+Every test named above was verified to exist and pass on 2026-08-25. The row
+that used to sit at the end of this table claimed `--output-dir` could not
+escape to a parent, implemented by a path normalization in
+`application/orchestrator.py`. Neither part was true: the orchestrator calls
+`output_dir.mkdir(parents=True, exist_ok=True)` and nothing else, and
+`--output-dir a/b/../../c` writes to `c`. That is ordinary behaviour for a CLI
+output flag — it honours the path the operator typed, the way `cp` does — so
+the row was removed rather than the behaviour changed. If you are wiring
+`--output-dir` from an untrusted value in a workflow, constrain it there; this
+tool does not.
 
 ## 7 · Known gaps still open
 

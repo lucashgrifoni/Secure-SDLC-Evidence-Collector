@@ -4,22 +4,28 @@ The KEV catalog is a JSON document maintained by CISA that lists CVEs
 confirmed to be exploited in the wild. The schema is documented at
 https://www.cisa.gov/known-exploited-vulnerabilities-catalog.
 
-This module ships a deterministic loader that accepts either:
+This module ships a deterministic loader that reads a local file path. The
+operator supplies the catalog with ``enrich --kev-feed``; fetching it is their
+job, which is what makes the command work in CI and air-gapped environments.
 
-* a local file path (preferred for CI and air-gapped environments), or
-* a freshly downloaded copy in a cache directory.
-
-The loader never touches the network on its own. Network IO is centralised
-in :func:`evidence_collector.intelligence.enricher._refresh_feeds` so the
-default code path remains side-effect-free and unit-testable.
+Nothing in this package touches the network — not the loader, not the
+enricher. An earlier version of this docstring pointed at an
+``enricher._refresh_feeds`` as the place network IO was centralised; no such
+function exists, and the only outbound calls in the project are in the SCM
+collectors and ``doctor``.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from evidence_collector.intelligence._feeds import MALFORMED_FEED
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -97,7 +103,15 @@ def load_kev_feed(path: Path) -> KevFeed:
         return KevFeed(feed_date=None, records={})
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    # The guard covered two of the ways a file can be malformed, and the
+    # docstring above promises to tolerate all of them. A corrupted download
+    # raised `UnicodeDecodeError`, `RecursionError` or a bare `ValueError`
+    # straight past it and failed `enrich` outright. See `_feeds` for what
+    # each member of the tuple stands for.
+    except MALFORMED_FEED:
+        logger.warning(
+            "Could not read the KEV feed at %s; continuing without KEV enrichment.", path
+        )
         return KevFeed(feed_date=None, records={})
     if not isinstance(raw, dict):
         return KevFeed(feed_date=None, records={})

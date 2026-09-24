@@ -8,9 +8,18 @@ adapter, and framework concerns.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    ValidationInfo,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from evidence_collector.domain.enums import (
     ConfidenceLevel,
@@ -23,7 +32,28 @@ from evidence_collector.domain.enums import (
     SubjectType,
 )
 
-BUNDLE_SCHEMA_VERSION = "1.0.0"
+# Versions the *bundle contract*, not the tool. It moves when the shape of a
+# bundle changes in a way a consumer must know about, which is why the
+# published schema sets `additionalProperties: false` at every level: a
+# consumer pinning a version is told when a bundle no longer matches it.
+#
+# 2.0.0 adds `collection_errors`. That field is additive, but a strict
+# validator pinned to 1.0.0 rejects any bundle carrying it, so by this
+# contract's own rules it is a breaking change and the version has to say so.
+# It stayed at 1.0.0 while the shape changed underneath it, which is the one
+# thing a version field must never do — a consumer got a validation failure
+# with no way to learn that a newer schema existed.
+#
+# Bundles without collection problems do not carry the field at all (see
+# `_omit_empty_collection_errors`), so they still validate against 1.0.0.
+#
+# 2.1.0 adds `catalog`. Minor, not major, because the direction that breaks is
+# the other one: a 2.1.0 consumer reads a 2.0.0 bundle fine — the field is
+# optional and simply absent — while a validator pinned to 2.0.0 rejects a
+# 2.1.0 bundle, which is exactly what the version field is for telling it.
+# Unlike `collection_errors` this one is never omitted, because "which catalog
+# produced this verdict" has no empty case worth hiding.
+BUNDLE_SCHEMA_VERSION = "2.1.0"
 
 
 class _BaseModel(BaseModel):
@@ -39,6 +69,21 @@ class _BaseModel(BaseModel):
 
 def _utcnow() -> datetime:
     return datetime.now(tz=UTC)
+
+
+def _reject_duplicates(ids: list[str], *, label: str, refs: str) -> None:
+    """Raise if any id appears twice, naming the offenders and what breaks."""
+    seen: set[str] = set()
+    duplicates: list[str] = []
+    for value in ids:
+        if value in seen and value not in duplicates:
+            duplicates.append(value)
+        seen.add(value)
+    if duplicates:
+        raise ValueError(
+            f"Duplicate {label}: {duplicates}. Each id must identify exactly "
+            f"one record, otherwise {refs} are ambiguous."
+        )
 
 
 class Application(_BaseModel):
@@ -137,11 +182,10 @@ class TopRiskCve(_BaseModel):
 class VulnerabilityIntelligence(_BaseModel):
     """EPSS + CISA KEV enrichment aggregated for a single evidence record.
 
-    Computed by the optional ``enrich`` step (CLI flag ``--enrich`` on
-    ``run``, or the standalone ``sdlc-evidence enrich`` command). When the
-    enrichment step is skipped the field stays ``None`` and the bundle
-    behaves exactly like it did pre-enrichment, so consumers that never
-    opt in are unaffected.
+    Computed by the optional ``sdlc-evidence enrich`` command, run against an
+    existing ``bundle.json``. When the enrichment step is skipped the field
+    stays ``None`` and the bundle behaves exactly like it did
+    pre-enrichment, so consumers that never opt in are unaffected.
 
     Source feeds:
 
@@ -278,10 +322,10 @@ class NormalizedEvidence(_BaseModel):
         default=None,
         description=(
             "Optional EPSS/KEV enrichment summary for the CVEs in ``cve_ids``. "
-            "Stays ``None`` unless the user opted into enrichment via the "
-            "``run --enrich`` flag or the standalone ``sdlc-evidence enrich`` "
-            "command. The bundle remains schema-compatible with pre-enrichment "
-            "consumers when this field is absent."
+            "Stays ``None`` unless the user opted into enrichment by running "
+            "``sdlc-evidence enrich`` against the bundle. The bundle remains "
+            "schema-compatible with pre-enrichment consumers when this field "
+            "is absent."
         ),
     )
     reachability: Reachability | None = Field(
@@ -439,6 +483,32 @@ class EvidenceException(_BaseModel):
     )
     scope: ExceptionScope = Field(default_factory=ExceptionScope)
 
+    @field_validator("approved_at", "expires_at")
+    @classmethod
+    def _require_timezone(cls, value: datetime, info: ValidationInfo) -> datetime:
+        """Reject a waiver timestamp with no timezone.
+
+        `datetime.fromisoformat` happily accepts `2026-12-31` and
+        `2026-12-31T00:00:00`, producing a naive value. Every consumer
+        compares it against `datetime.now(tz=UTC)`, so the whole run died on
+        `TypeError: can't compare offset-naive and offset-aware datetimes` —
+        a bare traceback, exit 3, and no bundle, report or summary written at
+        all. One waiver missing a `Z` took the entire release report with it.
+
+        Validating here rather than in the parser also covers bundle
+        round-trips and waivers built programmatically. The message names the
+        field and shows the fix, because "add a timezone" is not obvious from
+        a date that looks perfectly well-formed.
+        """
+        if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+            raise ValueError(
+                f"{info.field_name} must carry a timezone (e.g. "
+                f"'2026-12-31T00:00:00Z' or '2026-12-31T00:00:00+00:00'); got a "
+                "value with none. Waiver windows are compared against UTC, and a "
+                "naive timestamp has no defined instant."
+            )
+        return value
+
     @model_validator(mode="after")
     def _expiration_after_approval(self) -> EvidenceException:
         if self.expires_at <= self.approved_at:
@@ -448,11 +518,100 @@ class EvidenceException(_BaseModel):
         return self
 
     def is_valid_for(self, application: str, release_id: str, now: datetime) -> bool:
-        if now >= self.expires_at:
+        """Whether this waiver is in force for the given release, right now.
+
+        Both ends of the window are enforced. Only the upper bound was, so a
+        waiver dated to be approved next quarter already waived a critical
+        control today: the control flipped missing -> waived and the release
+        flipped not_ready -> ready, exit 2 -> 0. An approval that has not
+        happened yet cannot excuse anything.
+        """
+        if not (self.approved_at <= now < self.expires_at):
             return False
         if self.scope.application and self.scope.application != application:
             return False
         return not (self.scope.release_id and self.scope.release_id != release_id)
+
+
+_COLLECTION_PATH_MAX = 500
+_COLLECTION_REASON_MAX = 1000
+
+
+class CollectionError(_BaseModel):
+    """An input that was supplied but could not be ingested.
+
+    "No evidence was supplied" and "evidence was supplied and is broken" are
+    materially different states, and only the first was ever recorded. The
+    collector warned on the console and the warning died there: the bundle,
+    the report and the HTML summary all showed the affected control as
+    plainly *missing evidence*, telling the engineer to re-run a scan that
+    had in fact already run and whose output was sitting on disk, truncated.
+
+    CI logs rotate; the bundle is the durable, signable artifact that
+    ``verify``, ``compare``, ``statement``, ``vex`` and ``oscal`` all
+    consume. The distinction has to live here to survive.
+    """
+
+    path: Annotated[str, Field(min_length=1, max_length=_COLLECTION_PATH_MAX)]
+    reason: Annotated[str, Field(min_length=1, max_length=_COLLECTION_REASON_MAX)]
+
+    @classmethod
+    def clipped(cls, path: str, reason: str) -> CollectionError:
+        """Build the record with each field cut to fit the model's caps.
+
+        A deep path is legal on Linux and a parser's message can run long. A
+        record that failed its own validation ended `run` before any report
+        was written, which is the failure this record exists to survive. The
+        end of a path names the file and the start of a reason says what went
+        wrong, so those are the parts kept.
+        """
+        if len(path) > _COLLECTION_PATH_MAX:
+            path = "..." + path[-(_COLLECTION_PATH_MAX - 3) :]
+        if len(reason) > _COLLECTION_REASON_MAX:
+            reason = reason[: _COLLECTION_REASON_MAX - 3] + "..."
+        return cls(path=path, reason=reason)
+
+
+class CatalogRef(_BaseModel):
+    """Which control catalog produced a bundle's evaluations.
+
+    Every verdict in a bundle is relative to a catalog, and `--catalog` lets an
+    operator supply their own. Nothing recorded which one had been used, so two
+    bundles built from identical evidence — one `not_ready` and exit 2 against
+    the shipped catalog, one `conditional` and exit 0 against a catalog whose
+    required evidence had been moved to recommended — were indistinguishable to
+    whoever received them. `verify --expected` proves a bundle has not changed
+    since it was generated; this is what says against which standard.
+
+    `origin` matters on its own because the names collide: `catalog.yaml` is
+    both the packaged default and the likeliest name for an operator's own
+    file, so the name alone cannot answer "was this the shipped catalog?".
+
+    `name` is a bare filename, never a path. Which directory an operator keeps
+    their catalog in is the kind of detail `--artifact-root` exists to keep out
+    of a published bundle, and it is not needed to identify the catalog — the
+    digest does that.
+    """
+
+    origin: Literal["builtin", "custom"] = Field(
+        description=(
+            "`builtin` for a catalog shipped inside the package, `custom` for "
+            "one loaded from a path the operator supplied."
+        )
+    )
+    name: Annotated[str, Field(min_length=1, max_length=200)] = Field(
+        description="Filename of the catalog, without any directory component."
+    )
+    sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")] = Field(
+        description=(
+            "SHA-256 of the catalog file's bytes as read. The repository stores "
+            "and checks out YAML with LF endings, so this matches `sha256sum` "
+            "on a normal checkout and is stable across operating systems."
+        )
+    )
+    control_count: Annotated[int, Field(ge=1)] = Field(
+        description="How many controls the catalog defines."
+    )
 
 
 class EvidenceBundle(_BaseModel):
@@ -463,11 +622,94 @@ class EvidenceBundle(_BaseModel):
     generated_at: datetime = Field(default_factory=_utcnow)
     application: Application
     release: ReleaseContext
+    catalog: CatalogRef | None = Field(
+        default=None,
+        description=(
+            "The control catalog these evaluations were produced against. "
+            "Optional so that a bundle written before 2.1.0 still validates; "
+            "every bundle this version writes carries it."
+        ),
+    )
     evidence: list[NormalizedEvidence] = Field(default_factory=list)
     control_evaluations: list[ControlEvaluation] = Field(default_factory=list)
     gaps: list[Gap] = Field(default_factory=list)
     exceptions: list[EvidenceException] = Field(default_factory=list)
+    collection_errors: list[CollectionError] = Field(
+        default_factory=list,
+        description=(
+            "Inputs that were supplied but could not be ingested (unreadable, "
+            "malformed, oversized). Omitted entirely for a clean run, so a "
+            "bundle with no collection problems still validates against a "
+            "pinned pre-3.x schema. It is not byte-identical to a pre-3.x "
+            "bundle: bundle_version moved to 2.0.0 in the same release, and "
+            "that field is inside the structural hash."
+        ),
+    )
     summary: Summary
+
+    # No return annotation, deliberately. Pydantic builds the serialization
+    # schema from a wrap serializer's annotated return type, so declaring
+    # `-> dict[str, Any]` replaced the entire contract:
+    # `model_json_schema(mode="serialization")` collapsed from 11 properties,
+    # 24 $defs and `additionalProperties: false` to a bare
+    # `{"additionalProperties": true, "type": "object"}`. Serialization mode is
+    # the semantically correct mode for a schema describing *produced* bundles
+    # and the one FastAPI uses for `response_model`, so a downstream service
+    # exposing `response_model=EvidenceBundle` published an untyped object in
+    # its OpenAPI — from a package that ships `py.typed`. Nothing in the suite
+    # covered that mode, so it stayed green.
+    # `-> Any` collapses it too, so the annotation has to be absent rather than
+    # widened, and mypy is silenced at exactly this line.
+    @model_serializer(mode="wrap")
+    def _omit_empty_collection_errors(self, handler: SerializerFunctionWrapHandler):  # type: ignore[no-untyped-def]
+        """Leave `collection_errors` out entirely when nothing failed.
+
+        The published schema is `additionalProperties: false` at every level,
+        so a consumer validating against the 1.0.0 contract they pinned
+        rejects any bundle carrying a field that contract does not know. With
+        the key always present, *every* bundle broke those consumers —
+        including the overwhelming majority where nothing went wrong and there
+        was nothing to report.
+
+        Omitting the empty case keeps a clean run byte-identical to what it
+        produced before the field existed, which is what the field's own
+        description already promised, and narrows the breaking change to the
+        bundles that genuinely carry new information.
+        """
+        data: dict[str, Any] = handler(self)
+        if not data.get("collection_errors"):
+            data.pop("collection_errors", None)
+        return data
+
+    @model_validator(mode="after")
+    def _ids_are_unique(self) -> EvidenceBundle:
+        """An id must identify exactly one record, for evidence and waivers alike.
+
+        The validator below already checks that every `evidence_refs` and
+        `exception_refs` entry points at a known id. That is only half the
+        guarantee: if two records share an id, the reference resolves to two
+        things, and a consumer doing the obvious
+        `{e.evidence_id: e for e in bundle.evidence}` keeps whichever came last
+        without noticing. For a tool whose product is the audit trail, an
+        ambiguous reference is not a bundle worth signing.
+        """
+        _reject_duplicates(
+            [item.evidence_id for item in self.evidence],
+            label="evidence ids",
+            refs="control evidence_refs",
+        )
+        # A waiver is what lets a control pass *without* evidence, so an
+        # ambiguous `exception_id` matters more here than anywhere else. The
+        # uniqueness guarantee was added for evidence and skipped for
+        # exceptions, while `_evaluations_reference_existing_evidence` below
+        # already checks `exception_refs` against known ids — the same half a
+        # guarantee that check had before.
+        _reject_duplicates(
+            [item.exception_id for item in self.exceptions],
+            label="exception ids",
+            refs="control exception_refs",
+        )
+        return self
 
     @model_validator(mode="after")
     def _evaluations_reference_existing_evidence(self) -> EvidenceBundle:

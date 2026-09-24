@@ -41,6 +41,9 @@ class ParsedSarif:
     findings_count: dict[str, int] = field(default_factory=dict)
     total_findings: int = 0
     cve_ids: list[str] = field(default_factory=list)
+    # Index of the SARIF ``runs[]`` entry this record came from. A merged
+    # file carries one run per tool, and each is its own evidence.
+    run_index: int = 0
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -50,7 +53,7 @@ def _normalize_severity(raw_level: str | None) -> str:
     return _SEVERITY_MAP.get(raw_level.lower(), "medium")
 
 
-def parse_sarif(path: str | Path) -> ParsedSarif:
+def parse_sarifs(path: str | Path) -> list[ParsedSarif]:
     resolved = ensure_file(path)
     data = load_json(resolved)
 
@@ -58,32 +61,30 @@ def parse_sarif(path: str | Path) -> ParsedSarif:
     if not isinstance(runs, list) or not runs:
         raise ParseError(f"SARIF file {resolved} has no runs")
 
-    first_run = runs[0]
-    if not isinstance(first_run, dict):
+    if not isinstance(runs[0], dict):
         raise ParseError(f"SARIF file {resolved} has a malformed first run")
 
-    tool = first_run.get("tool", {})
-    driver = tool.get("driver", {}) if isinstance(tool, dict) else {}
-    tool_name = str(driver.get("name") or "unknown-sarif-tool")
-    tool_version_raw = driver.get("version") or driver.get("semanticVersion")
-    tool_version = str(tool_version_raw) if tool_version_raw else None
-
-    findings_count: dict[str, int] = {
-        "critical": 0,
-        "high": 0,
-        "medium": 0,
-        "low": 0,
-        "info": 0,
-    }
-    total = 0
-    cve_ids: set[str] = set()
-    for run in runs:
+    artifact = describe(resolved, content_type="application/sarif+json")
+    parsed: list[ParsedSarif] = []
+    for index, run in enumerate(runs):
         if not isinstance(run, dict):
             continue
+        tool = run.get("tool", {})
+        driver = tool.get("driver", {}) if isinstance(tool, dict) else {}
+        tool_name = str(driver.get("name") or "unknown-sarif-tool")
+        tool_version_raw = driver.get("version") or driver.get("semanticVersion")
+
+        findings_count: dict[str, int] = {
+            "critical": 0,
+            "high": 0,
+            "medium": 0,
+            "low": 0,
+            "info": 0,
+        }
+        total = 0
+        cve_ids: set[str] = set()
         results = run.get("results")
-        if not isinstance(results, list):
-            continue
-        for result in results:
+        for result in results if isinstance(results, list) else []:
             if not isinstance(result, dict):
                 continue
             total += 1
@@ -94,16 +95,22 @@ def parse_sarif(path: str | Path) -> ParsedSarif:
             findings_count[severity_bucket] += 1
             _collect_cves_from_result(result, cve_ids)
 
-    artifact = describe(resolved, content_type="application/sarif+json")
-    return ParsedSarif(
-        artifact=artifact,
-        tool_name=tool_name,
-        tool_version=tool_version,
-        findings_count=findings_count,
-        total_findings=total,
-        cve_ids=sorted(cve_ids),
-        raw=data,
-    )
+        parsed.append(
+            ParsedSarif(
+                artifact=artifact,
+                tool_name=tool_name,
+                tool_version=str(tool_version_raw) if tool_version_raw else None,
+                findings_count=findings_count,
+                total_findings=total,
+                cve_ids=sorted(cve_ids),
+                run_index=index,
+                raw=data,
+            )
+        )
+
+    if not parsed:
+        raise ParseError(f"SARIF file {resolved} has no usable runs")
+    return parsed
 
 
 def _candidate_strings_from_properties(properties: Any) -> list[str]:
@@ -150,3 +157,13 @@ def _collect_cves_from_result(result: dict[str, Any], sink: set[str]) -> None:
     for candidate in _candidate_strings_from_result(result):
         for match in _CVE_PATTERN.findall(candidate):
             sink.add(match.upper())
+
+
+def parse_sarif(path: str | Path) -> ParsedSarif:
+    """Return the first run of ``path``.
+
+    Convenience wrapper for single-run callers and tests; the collector uses
+    :func:`parse_sarifs` so a merged file does not lose every run after the
+    first.
+    """
+    return parse_sarifs(path)[0]

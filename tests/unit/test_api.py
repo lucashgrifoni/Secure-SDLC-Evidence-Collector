@@ -61,3 +61,43 @@ def test_plugins_lists_builtin_groups(client: TestClient) -> None:
     assert "collectors" in payload
     assert "sarif" in payload["parsers"]
     assert "local" in payload["collectors"]
+
+
+def test_interactive_docs_are_off_unless_asked_for() -> None:
+    """The code said `/docs` was off by default and then served it.
+
+    `docs_url="/docs"` sat directly under a comment reading "No /docs in
+    production by default", while `redoc_url=None` beside it was correct — one
+    of the two was disabled and the other was not. Nothing sensitive is exposed
+    either way (every endpoint is read-only and returns the published schema,
+    the control catalog or plugin names); the defect is the expectation it set,
+    since an operator reading that comment would expose the port believing the
+    interactive surface was closed.
+    """
+    closed = TestClient(build_app())
+
+    assert closed.get("/docs").status_code == 404
+    # The spec follows the UI: serving it while claiming the UI is off would be
+    # the same half-measure.
+    assert closed.get("/openapi.json").status_code == 404
+    # The actual API is unaffected.
+    assert closed.get("/healthz").status_code == 200
+    assert closed.get("/schema").status_code == 200
+
+
+def test_docs_can_be_opted_into_explicitly() -> None:
+    opted_in = TestClient(build_app(expose_docs=True))
+
+    assert opted_in.get("/docs").status_code == 200
+    assert opted_in.get("/openapi.json").status_code == 200
+
+
+def test_docs_can_be_opted_into_by_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Deploy-time opt-in without a code change."""
+    monkeypatch.setenv("SDLC_EVIDENCE_API_DOCS", "1")
+
+    assert TestClient(build_app()).get("/docs").status_code == 200
+
+    monkeypatch.setenv("SDLC_EVIDENCE_API_DOCS", "0")
+
+    assert TestClient(build_app()).get("/docs").status_code == 404

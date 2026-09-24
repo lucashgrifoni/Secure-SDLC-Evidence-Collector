@@ -10,9 +10,12 @@ from __future__ import annotations
 import codecs
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from pydantic import ValidationError
 
 from evidence_collector.domain.models import (
     EvidenceException,
@@ -40,21 +43,22 @@ from evidence_collector.parsers import (
     parse_attestation,
     parse_exception,
     parse_garak,
-    parse_intoto_statement,
+    parse_intoto_statements,
     parse_junit,
     parse_lm_eval,
     parse_model_card,
     parse_osv,
-    parse_provenance,
+    parse_provenances,
     parse_registry_attestation,
-    parse_release_attestation,
-    parse_sarif,
+    parse_release_attestations,
+    parse_sarifs,
     parse_sbom,
     parse_trivy_json,
     parse_vsa,
     parse_zap,
 )
 from evidence_collector.parsers._common import MAX_INPUT_BYTES, ParseError
+from evidence_collector.parsers._intoto import read_records
 from evidence_collector.parsers.intoto_provenance import file_has_provenance
 from evidence_collector.parsers.intoto_statement import file_has_ingestable_statement
 from evidence_collector.parsers.intoto_vsa import VSA_PREDICATE_TYPE
@@ -62,14 +66,63 @@ from evidence_collector.parsers.registry_attestation import looks_like_registry_
 from evidence_collector.parsers.release_attestation import file_has_release_attestation
 from evidence_collector.parsers.sbom import is_spdx3
 from evidence_collector.parsers.trivy_json import looks_like_trivy_json
+from evidence_collector.paths import redact_path_in, relative_to_root
 
 logger = logging.getLogger(__name__)
+
+# What "this input could not be turned into evidence" looks like at the
+# ingestion boundary.
+#
+# `ValidationError` belongs here because the normalizers build pydantic models
+# out of scanner-supplied strings, and those fields carry length caps. A SARIF
+# whose `tool.driver.name` is 5000 characters is a bad input, not a bug — but
+# the exception it raised was neither a ParseError nor an OSError, so it
+# escaped every frame up to `main()` and ended the run, discarding every other
+# artifact in the directory. Recording it names the offending file and lets the
+# rest of the collection finish.
+_INGEST_FAILURES = (ParseError, OSError, ValidationError)
 
 
 @dataclass
 class LocalCollectionError:
     path: Path
     reason: str
+
+
+# Fields that legitimately differ between two reads of one artifact, and so
+# must not make two records look like different evidence. `collected_at` is a
+# wall-clock stamp taken per record, so two reads differ by microseconds; the
+# structural-hash normaliser calls it volatile for the same reason. It is
+# restated here rather than imported because `collectors` sits below
+# `application` in the layering — `test_local_collector` pins the two together.
+_VOLATILE_EVIDENCE_FIELDS = {"collected_at"}
+_LOCATION_FIELDS_IN_RAW = {"artifact_path", "artifact_uri"}
+
+
+def _artifact_location(evidence: NormalizedEvidence) -> str:
+    """Best available description of where an evidence record was read from."""
+    raw = evidence.raw
+    if raw is None:
+        return evidence.evidence_id
+    return raw.artifact_path or raw.artifact_uri or evidence.evidence_id
+
+
+def _same_evidence_apart_from_path(first: NormalizedEvidence, second: NormalizedEvidence) -> bool:
+    """Whether two records are the same evidence read from two locations.
+
+    The comparison ignores exactly the fields that legitimately differ
+    between two copies of one artifact — where it was found — and nothing
+    else. Anything beyond that means the shared id is a real collision, not
+    a duplicate supply, and the caller must not discard either record.
+    """
+    ignore = {"raw"} | _VOLATILE_EVIDENCE_FIELDS
+    if first.model_dump(exclude=ignore) != second.model_dump(exclude=ignore):
+        return False
+    if first.raw is None or second.raw is None:
+        return first.raw is second.raw
+    return first.raw.model_dump(exclude=_LOCATION_FIELDS_IN_RAW) == second.raw.model_dump(
+        exclude=_LOCATION_FIELDS_IN_RAW
+    )
 
 
 @dataclass
@@ -98,6 +151,33 @@ class LocalArtifactCollector:
         self._exceptions_dirs = exceptions_dirs or []
         self._artifact_root = str(artifact_root) if artifact_root else None
 
+    def _record_error(self, report: LocalCollectionReport, path: Path, reason: str) -> None:
+        """Record a failed input, with its path rewritten against the artifact root.
+
+        `--artifact-root` exists so a published bundle records repo-relative
+        paths "instead of leaking local filesystem locations". Collection
+        errors were exempt from that: `collection_errors[].path` carried the
+        absolute path, and so did `reason`, which embeds the path in the
+        parser's own message. So a run that set the flag precisely to avoid
+        publishing `/home/alice/clients/acme/...` published it anyway — in the
+        one part of the bundle nobody thinks to check, and only when something
+        had already gone wrong.
+        """
+        relative = relative_to_root(path, self._artifact_root)
+        error = LocalCollectionError(path=relative, reason=redact_path_in(reason, path, relative))
+        # `_walk_once` de-duplicates *files* through a resolved-path set, but
+        # nothing guarded the errors: passing a parent directory and one of its
+        # own subdirectories — the documented-repeatable flag, trivial in a CI
+        # matrix — produced one evidence record and two identical entries for a
+        # single unreadable folder. The bundle is the durable signed artifact,
+        # so overstating how many inputs failed is a defect in it.
+        if any(
+            existing.path == error.path and existing.reason == error.reason
+            for existing in report.errors
+        ):
+            return
+        report.errors.append(error)
+
     def _usable_directory(self, directory: Path, report: LocalCollectionReport) -> bool:
         """Return whether ``directory`` can be walked, recording why when it cannot.
 
@@ -110,40 +190,247 @@ class LocalArtifactCollector:
         finding is worse than an error, so the two cases are now distinct.
         """
         if not directory.exists():
-            report.errors.append(LocalCollectionError(path=directory, reason="directory not found"))
+            self._record_error(report, directory, "directory not found")
             return False
         if not directory.is_dir():
-            report.errors.append(
-                LocalCollectionError(
-                    path=directory,
-                    reason="not a directory (expected a folder; pass the containing folder, "
-                    "not a single file)",
-                )
+            self._record_error(
+                report,
+                directory,
+                "not a directory (expected a folder; pass the containing folder, "
+                "not a single file)",
             )
             return False
         return True
 
+    def _walk_once(self, directories: list[Path], report: LocalCollectionReport) -> list[Path]:
+        """Return every file under ``directories``, each exactly once.
+
+        ``--artifacts-dir`` is documented as repeatable, and nothing stopped
+        a caller from passing a directory and one of its own subdirectories
+        (a parent plus a scanner-specific folder, or a CI matrix that appends
+        paths). ``rglob`` then yielded the nested files under both roots, so
+        every one of them was ingested twice: the bundle carried duplicate
+        evidence with *colliding* ``evidence_id`` values — the id is derived
+        from the artifact hash and context, so the same file always produces
+        the same id — and the coverage and confidence scores were computed
+        over the inflated set.
+
+        Paths are resolved before de-duplication so a parent/child overlap,
+        a symlink, and a case difference on Windows all collapse to one
+        entry. Order stays deterministic: directories in the order given,
+        files sorted within each.
+        """
+        seen: set[Path] = set()
+        ordered: list[Path] = []
+        for directory in directories:
+            if not self._usable_directory(directory, report):
+                continue
+            for file_path in self._walk_tree(directory, report):
+                try:
+                    key = file_path.resolve()
+                except OSError:
+                    key = file_path.absolute()
+                if key in seen:
+                    continue
+                seen.add(key)
+                ordered.append(file_path)
+        return ordered
+
+    def _walk_tree(self, directory: Path, report: LocalCollectionReport) -> list[Path]:
+        """Return every file under ``directory``, reporting what could not be read.
+
+        This used to be ``directory.rglob("*")``. CPython's glob machinery
+        swallows the ``PermissionError`` / ``OSError`` that ``os.scandir``
+        raises on a directory it cannot descend into, so an unreadable
+        subdirectory simply produced no entries: its evidence vanished, the
+        run exited on a `not_ready` verdict citing missing critical evidence,
+        and no warning was printed anywhere. The scans had run; the collector
+        just could not see them and did not say so.
+
+        ``os.walk`` with an ``onerror`` callback turns that back into a
+        recorded failure. Sorting is preserved so ordering stays deterministic
+        (docs/limitations.md §8).
+        """
+        found: list[Path] = []
+
+        def _on_error(exc: OSError) -> None:
+            path = Path(exc.filename) if exc.filename else directory
+            reason = f"Could not read directory {path}: {exc.strerror or exc}"
+            logger.warning("%s", reason)
+            self._record_error(report, path, reason)
+
+        for root, dir_names, file_names in os.walk(directory, onerror=_on_error):
+            dir_names.sort()
+            root_path = Path(root)
+            for name in sorted(file_names):
+                candidate = root_path / name
+                if self._is_ingestable_file(candidate, report):
+                    found.append(candidate)
+        return found
+
+    def _is_ingestable_file(self, candidate: Path, report: LocalCollectionReport) -> bool:
+        """Whether ``candidate`` is a regular file worth handing to the parsers.
+
+        ``os.walk`` reports every *non-directory* entry, a wider set than the
+        ``rglob(...) if p.is_file()`` it replaced: broken symlinks, dangling
+        reparse points, and on POSIX FIFOs, sockets and device nodes. Opening
+        those is noise at best and a hang at worst — a FIFO named ``*.json``
+        blocks the JSON probe's ``open()`` forever.
+
+        The filter has to sit inside the error handling, not beside it.
+        ``Path.is_file`` only swallows ENOENT/ENOTDIR/EBADF/ELOOP; EACCES,
+        EPERM, EIO and Windows' ERROR_ACCESS_DENIED all propagate, and this
+        call runs outside ``os.walk``'s ``onerror`` hook. So an unreadable
+        *file* — a directory with mode 0444 lists its children but cannot stat
+        them — aborted the whole collection with a bare PermissionError, taking
+        every other artifact with it and leaking the absolute path in the crash
+        text, past the ``--artifact-root`` redaction.
+
+        A broken symlink is reported rather than dropped: a dangling
+        ``sast.sarif`` from a failed CI artifact download is evidence that was
+        supplied and could not be read, and silently omitting it reads as
+        "never supplied" — the false negative `_usable_directory` calls worse
+        than an error.
+        """
+        try:
+            if candidate.is_file():
+                return True
+        except OSError as exc:
+            self._record_error(
+                report, candidate, f"Could not read {candidate}: {exc.strerror or exc}"
+            )
+            return False
+        if not candidate.exists():
+            self._record_error(
+                report,
+                candidate,
+                f"{candidate} is a link whose target does not exist, so it could not be read",
+            )
+            return False
+        logger.debug("Skipping %s: not a regular file", candidate)
+        return False
+
     def collect(self) -> LocalCollectionReport:
         report = LocalCollectionReport()
-        for directory in self._artifacts_dirs:
-            if not self._usable_directory(directory, report):
-                continue
-            for file_path in sorted(p for p in directory.rglob("*") if p.is_file()):
-                report.inspected_files += 1
-                self._ingest_artifact(file_path, report)
-        for directory in self._attestations_dirs:
-            if not self._usable_directory(directory, report):
-                continue
-            for file_path in sorted(p for p in directory.rglob("*") if p.is_file()):
-                report.inspected_files += 1
-                self._ingest_attestation(file_path, report)
-        for directory in self._exceptions_dirs:
-            if not self._usable_directory(directory, report):
-                continue
-            for file_path in sorted(p for p in directory.rglob("*") if p.is_file()):
-                report.inspected_files += 1
-                self._ingest_exception(file_path, report)
+        for file_path in self._walk_once(self._artifacts_dirs, report):
+            report.inspected_files += 1
+            self._ingest_artifact(file_path, report)
+        for file_path in self._walk_once(self._attestations_dirs, report):
+            report.inspected_files += 1
+            self._ingest_attestation(file_path, report)
+        for file_path in self._walk_once(self._exceptions_dirs, report):
+            report.inspected_files += 1
+            self._ingest_exception(file_path, report)
+        report.evidence = self._deduplicate_evidence(report.evidence, report)
+        report.exceptions = self._deduplicate_exceptions(report.exceptions, report)
         return report
+
+    def _deduplicate_exceptions(
+        self, exceptions: list[EvidenceException], report: LocalCollectionReport
+    ) -> list[EvidenceException]:
+        """Collapse waivers supplied twice, for the same reasons as evidence.
+
+        `--exceptions-dir` is repeatable, and the same waiver file reaching the
+        run through two of them is the identical duplicate-supply case that was
+        fixed for evidence and skipped here. The result was an accepted bundle
+        carrying two `EvidenceException` records under one `exception_id`, with
+        `exception_refs: ['EXC-1', 'EXC-1']` on the control and a rationale
+        naming the waiver twice.
+
+        A waiver is the object that lets a control pass *without* evidence, so
+        an ambiguous reference matters more here than anywhere else in the
+        bundle. As with evidence, two records sharing an id are merged only
+        when they are the same waiver; if they differ in substance the id
+        collision is reported instead, because discarding either would drop a
+        real approval decision.
+        """
+        kept: dict[str, EvidenceException] = {}
+        order: list[str] = []
+        for exception in exceptions:
+            first = kept.get(exception.exception_id)
+            if first is None:
+                kept[exception.exception_id] = exception
+                order.append(exception.exception_id)
+                continue
+            if first == exception:
+                logger.info(
+                    "Ignoring duplicate exception %s: the same waiver was supplied twice",
+                    exception.exception_id,
+                )
+                continue
+            # Unlike `evidence_id`, which is a digest of the artifact's own
+            # content, `exception_id` is chosen by whoever wrote the waiver — a
+            # duplicate is one typo away. Keeping both so the model would reject
+            # the bundle turned that typo into a dead run: exit 3, no bundle, no
+            # report, no summary, and a raw pydantic dump. That is the failure
+            # this codebase already treats as a bug elsewhere ("one waiver
+            # missing a `Z` took the entire release report with it").
+            #
+            # So the first one wins and the conflict is recorded where it
+            # survives — in `collection_errors`, in the bundle, in the report.
+            # The operator sees exactly which id was supplied twice and that
+            # only one of them was applied.
+            reason = (
+                f"exception id {exception.exception_id} was supplied twice with "
+                "different content. Only the first was applied; fix the "
+                "duplicate id so the waiver that should apply is unambiguous."
+            )
+            logger.error("%s", reason)
+            self._record_error(report, Path(exception.exception_id), reason)
+        return [kept[key] for key in order]
+
+    @staticmethod
+    def _deduplicate_evidence(
+        evidence: list[NormalizedEvidence], report: LocalCollectionReport
+    ) -> list[NormalizedEvidence]:
+        """Collapse records that describe the same evidence found twice.
+
+        ``evidence_id`` is a digest of the artifact's content hash plus its
+        tool and release context, so the *same bytes* supplied at two paths
+        produce the same id — two CI jobs uploading one scanner's SARIF into
+        their own folder is enough. Nothing rejected that: the bundle carried
+        two records under one id, and `evidence_refs` stopped identifying a
+        single record, in a tool whose entire product is traceability. A
+        consumer doing the obvious ``{e.evidence_id: e for e in evidence}``
+        silently kept whichever came last.
+
+        Two records sharing an id are the same evidence and differ only in
+        where it was read from, so the first (walk order is deterministic) is
+        kept and the duplicate path is recorded on it.
+
+        If they differ in substance, that is not a duplicate supply but a
+        genuine id collision — dropping one would lose real evidence, so it
+        is reported instead and both are kept for the model to reject.
+        """
+        kept: dict[str, NormalizedEvidence] = {}
+        order: list[str] = []
+        collisions: list[NormalizedEvidence] = []
+        for item in evidence:
+            first = kept.get(item.evidence_id)
+            if first is None:
+                kept[item.evidence_id] = item
+                order.append(item.evidence_id)
+                continue
+            if _same_evidence_apart_from_path(first, item):
+                logger.info(
+                    "Ignoring duplicate evidence %s: %s is the same artifact already "
+                    "ingested from %s",
+                    item.evidence_id,
+                    _artifact_location(item),
+                    _artifact_location(first),
+                )
+                continue
+            reason = (
+                f"evidence id {item.evidence_id} was derived for two different "
+                f"records ({_artifact_location(first)} and {_artifact_location(item)}); "
+                "the bundle cannot reference either one unambiguously"
+            )
+            logger.error("%s", reason)
+            report.errors.append(
+                LocalCollectionError(path=Path(_artifact_location(item)), reason=reason)
+            )
+            collisions.append(item)
+        return [kept[key] for key in order] + collisions
 
     def _ingest_exception(self, file_path: Path, report: LocalCollectionReport) -> None:
         suffix = file_path.suffix.lower()
@@ -151,17 +438,26 @@ class LocalArtifactCollector:
             return
         try:
             report.exceptions.append(parse_exception(file_path))
-        except (ParseError, OSError) as exc:
+        except _INGEST_FAILURES as exc:
             logger.warning("Failed to ingest exception %s: %s", file_path, exc)
-            report.errors.append(LocalCollectionError(path=file_path, reason=str(exc)))
+            self._record_error(report, file_path, str(exc))
 
     def _ingest_artifact(self, file_path: Path, report: LocalCollectionReport) -> None:
         suffix = file_path.suffix.lower()
         try:
             if suffix in {".sarif", ".sarif.json"} or _looks_like_sarif(file_path):
-                parsed = parse_sarif(file_path)
-                evidence = normalize_sarif(parsed, self._release, artifact_root=self._artifact_root)
-                report.evidence.append(evidence)
+                # One evidence per SARIF ``runs[]`` entry. A merged file — what
+                # `trivy fs --format sarif` and most aggregators emit — carries
+                # one run per tool, each with its own `tool.driver.name`, which
+                # is exactly what the classifier reads. Taking only runs[0]
+                # made every later run vanish: a semgrep+gitleaks+trivy file
+                # produced a single `sast_scan`, and the release reported the
+                # secrets and SCA controls as missing critical evidence while
+                # both scans had in fact been supplied.
+                for parsed in parse_sarifs(file_path):
+                    report.evidence.append(
+                        normalize_sarif(parsed, self._release, artifact_root=self._artifact_root)
+                    )
                 return
             # Native Trivy JSON. Checked early because it is the only
             # artifact that yields SEVERAL evidences from one file: Trivy
@@ -208,20 +504,20 @@ class LocalArtifactCollector:
             # returning on the first match would silently drop the other.
             intoto_found = False
             if _looks_like_provenance(file_path):
-                parsed_prov = parse_provenance(file_path)
-                report.evidence.append(
-                    normalize_provenance(
-                        parsed_prov, self._release, artifact_root=self._artifact_root
+                for parsed_prov in parse_provenances(file_path):
+                    report.evidence.append(
+                        normalize_provenance(
+                            parsed_prov, self._release, artifact_root=self._artifact_root
+                        )
                     )
-                )
                 intoto_found = True
             if _looks_like_release_attestation(file_path):
-                parsed_rel = parse_release_attestation(file_path)
-                report.evidence.append(
-                    normalize_release_attestation(
-                        parsed_rel, self._release, artifact_root=self._artifact_root
+                for parsed_rel in parse_release_attestations(file_path):
+                    report.evidence.append(
+                        normalize_release_attestation(
+                            parsed_rel, self._release, artifact_root=self._artifact_root
+                        )
                     )
-                )
                 intoto_found = True
             # Anything else that is still a valid in-toto Statement. Known
             # predicates (SVR, test-result, vulns) map to a real evidence
@@ -230,18 +526,22 @@ class LocalArtifactCollector:
             # dropped silently — the user got a bundle with no trace of a
             # file they believed they had supplied.
             if _looks_like_intoto_statement(file_path):
-                parsed_stmt = parse_intoto_statement(file_path)
-                if not parsed_stmt.recognized:
-                    logger.warning(
-                        "Ingesting %s as a generic attestation: unrecognized in-toto predicate %s",
-                        file_path,
-                        parsed_stmt.predicate_type,
+                for index, parsed_stmt in enumerate(parse_intoto_statements(file_path)):
+                    if not parsed_stmt.recognized:
+                        logger.warning(
+                            "Ingesting %s as a generic attestation: unrecognized in-toto "
+                            "predicate %s",
+                            file_path,
+                            parsed_stmt.predicate_type,
+                        )
+                    report.evidence.append(
+                        normalize_intoto_statement(
+                            parsed_stmt,
+                            self._release,
+                            artifact_root=self._artifact_root,
+                            index=index,
+                        )
                     )
-                report.evidence.append(
-                    normalize_intoto_statement(
-                        parsed_stmt, self._release, artifact_root=self._artifact_root
-                    )
-                )
                 intoto_found = True
             if intoto_found:
                 return
@@ -302,12 +602,26 @@ class LocalArtifactCollector:
             encoding_error = _undecodable_text_reason(file_path)
             if encoding_error is not None:
                 logger.warning("Failed to ingest %s: %s", file_path, encoding_error)
-                report.errors.append(LocalCollectionError(path=file_path, reason=encoding_error))
+                self._record_error(report, file_path, encoding_error)
+                return
+            # A .json/.jsonl file that is not valid JSON is a THIRD case: not
+            # an unknown format, not an unreadable byte stream, but a file the
+            # caller plainly meant as evidence and which is broken. It used to
+            # fall through to the debug line below and vanish — while a file
+            # with byte-identical content named .sarif produced a warning,
+            # purely because the SARIF branch parses eagerly and raises.
+            # Truncated scanner output is exactly how this happens in a
+            # pipeline, and a report that silently understates coverage is
+            # worse than one that errors.
+            json_error = _malformed_json_reason(file_path)
+            if json_error is not None:
+                logger.warning("Failed to ingest %s: %s", file_path, json_error)
+                self._record_error(report, file_path, json_error)
                 return
             logger.debug("Ignoring unrecognized artifact: %s", file_path)
-        except (ParseError, OSError) as exc:
+        except _INGEST_FAILURES as exc:
             logger.warning("Failed to ingest %s: %s", file_path, exc)
-            report.errors.append(LocalCollectionError(path=file_path, reason=str(exc)))
+            self._record_error(report, file_path, str(exc))
 
     def _ingest_attestation(self, file_path: Path, report: LocalCollectionReport) -> None:
         suffix = file_path.suffix.lower()
@@ -318,9 +632,9 @@ class LocalArtifactCollector:
             report.evidence.append(
                 normalize_attestation(parsed, self._release, artifact_root=self._artifact_root)
             )
-        except (ParseError, OSError) as exc:
+        except _INGEST_FAILURES as exc:
             logger.warning("Failed to ingest attestation %s: %s", file_path, exc)
-            report.errors.append(LocalCollectionError(path=file_path, reason=str(exc)))
+            self._record_error(report, file_path, str(exc))
 
 
 def _looks_like_sarif(path: Path) -> bool:
@@ -494,6 +808,52 @@ _TEXT_EVIDENCE_SUFFIXES = frozenset({".json", ".jsonl", ".sarif", ".xml", ".yaml
 _ENCODING_PROBE_BYTES = 8192
 
 
+def _malformed_json_reason(path: Path) -> str | None:
+    """Return why a ``.json``/``.jsonl`` artifact is not valid JSON, or None.
+
+    Called only on the fallthrough, after every detector has declined the
+    file. A caller who drops `report.json` into the artifacts directory means
+    it as evidence; if it does not parse, saying so is the difference between
+    a report that understates coverage and one that explains why.
+
+    A ``.jsonl`` is valid when *any* line parses as a JSON object — that is
+    the shape the in-toto detectors accept — so a partially written JSONL is
+    only reported when nothing at all could be read from it.
+    """
+    suffix = path.suffix.lower()
+    if suffix not in {".json", ".jsonl"}:
+        return None
+
+    # Both lookups below are memoized and were already populated by the
+    # detectors, so the common case costs no extra read. Doing the parse
+    # unconditionally here added a fourth open to every candidate file and
+    # broke the detection-read bound.
+    if suffix == ".jsonl":
+        return None if read_records(path) else f"No JSON records could be read from {path}."
+    if _peek_json(path) is not None:
+        return None
+
+    # Only now, on a file we are already about to call broken, is a re-read
+    # worth it: the caller deserves the parse position, and this path is by
+    # definition rare.
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        # Reported by the encoding probe and the size check, which run first.
+        return None
+    if not text.strip():
+        return f"File {path} is empty."
+    try:
+        json.loads(text)
+    except json.JSONDecodeError as exc:
+        return f"Invalid JSON in {path}: {exc}"
+    except RecursionError:
+        return f"JSON in {path} is nested too deeply to parse."
+    except ValueError as exc:
+        return f"Invalid JSON value in {path}: {exc}"
+    return None
+
+
 def _undecodable_text_reason(path: Path) -> str | None:
     """Return why ``path`` is unreadable as UTF-8 text, or ``None`` if it is fine.
 
@@ -562,7 +922,16 @@ def _peek_json(path: Path) -> Any:
         try:
             with path.open("r", encoding="utf-8") as handle:
                 value = json.load(handle)
-        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        # Detection reads every candidate file before any parser sees it, so
+        # this is where a hostile document actually lands. `RecursionError`
+        # (deep nesting blows `json.load`'s stack) and the bare `ValueError`
+        # CPython raises for a numeric literal past its 4300-digit int
+        # conversion cap are neither OSError nor JSONDecodeError, so they
+        # escaped and aborted the whole run — every sibling artifact discarded
+        # because one file was malformed. Detection failing means "not a
+        # recognisable JSON artifact", which is exactly `None`; the reason is
+        # reported by `_malformed_json_reason`.
+        except (OSError, UnicodeDecodeError, RecursionError, ValueError):
             value = None
     _LAST_PEEK["key"] = key
     _LAST_PEEK["value"] = value

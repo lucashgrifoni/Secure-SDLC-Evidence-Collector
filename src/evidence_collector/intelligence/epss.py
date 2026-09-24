@@ -9,10 +9,11 @@ comment line contains the model version and the score date, e.g.::
     CVE-2023-1234,0.97132,0.99991
     ...
 
-This module accepts either the gzipped CSV (auto-detected by file
-suffix) or a plain ``.csv``. The loader is deterministic and never
-touches the network; refresh is handled by
-:mod:`evidence_collector.intelligence.enricher`.
+This module accepts either the gzipped CSV (auto-detected by file suffix) or a
+plain ``.csv``. The loader is deterministic and never touches the network: the
+operator downloads the feed and passes it with ``enrich --epss-feed``. Nothing
+in this package refreshes it for them, despite what an earlier version of this
+docstring said.
 """
 
 from __future__ import annotations
@@ -20,10 +21,15 @@ from __future__ import annotations
 import csv
 import gzip
 import io
+import logging
 import math
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from evidence_collector.intelligence._feeds import MALFORMED_FEED
+
+logger = logging.getLogger(__name__)
 
 _HEADER_DATE_PATTERN = re.compile(r"score_date:([0-9]{4}-[0-9]{2}-[0-9]{2})")
 _HEADER_MODEL_PATTERN = re.compile(r"model_version:(v?[0-9][\w.\-]*)")
@@ -81,17 +87,29 @@ def load_epss_feed(path: Path) -> EpssFeed:
     """
     if not path.is_file():
         return EpssFeed(feed_date=None, records={})
+    try:
+        return _read_epss(path)
+    except MALFORMED_FEED:
+        logger.warning(
+            "Could not read the EPSS feed at %s; continuing without EPSS enrichment.", path
+        )
+        return EpssFeed(feed_date=None, records={})
 
+
+def _read_epss(path: Path) -> EpssFeed:
+    """Parse ``path``, raising on anything :data:`MALFORMED_FEED` names.
+
+    Split out from :func:`load_epss_feed` so one guard covers the decompress
+    and decode as well as the open. The guard used to sit around ``_open_csv``
+    alone, where it could not fire: ``gzip.open`` is lazy, so a file that is
+    not gzip at all, or a download cut off mid-stream, only fails on the first
+    read inside the ``with`` block below.
+    """
     feed_date: str | None = None
     model_version: str | None = None
     records: dict[str, EpssRecord] = {}
 
-    try:
-        stream = _open_csv(path)
-    except (OSError, gzip.BadGzipFile):
-        return EpssFeed(feed_date=None, records={})
-
-    with stream:
+    with _open_csv(path) as stream:
         first_line = stream.readline()
         if first_line.startswith("#"):
             match = _HEADER_DATE_PATTERN.search(first_line)

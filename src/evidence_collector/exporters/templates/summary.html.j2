@@ -89,6 +89,7 @@
   .pill-missing { background: rgba(239, 68, 68, 0.15); color: var(--bad); }
   .pill-waived { background: rgba(148, 163, 184, 0.2); color: var(--muted); }
   .pill-not_applicable { background: rgba(148, 163, 184, 0.2); color: var(--muted); }
+  .manual { color: var(--muted); font-size: 0.85rem; }
   footer { margin-top: 32px; color: var(--muted); font-size: 0.8rem; }
 </style>
 </head>
@@ -132,7 +133,52 @@
       {{ bundle.summary.controls_met }} met · {{ bundle.summary.controls_partial }} partial · {{ bundle.summary.controls_missing }} missing
     </div>
   </div>
+  {#- Which catalog produced the verdict belongs beside the verdict, not in an
+      appendix: the same evidence yields a different release status against a
+      different control set, and a custom catalog is the case a reader most
+      needs to notice. -#}
+  {% if bundle.catalog %}
+  <div class="card">
+    <div class="label">Control catalog</div>
+    <div class="value">{{ bundle.catalog.name }}</div>
+    <div class="meta">
+      {% if bundle.catalog.origin == "custom" %}
+      <strong class="status-not_ready">custom</strong> — not the catalog shipped with the tool
+      {% else %}
+      shipped with the tool
+      {% endif %}
+      · {{ bundle.catalog.control_count }} controls
+      · <code>{{ bundle.catalog.sha256[:12] }}</code>
+    </div>
+  </div>
+  {% endif %}
 </section>
+
+{% if bundle.collection_errors %}
+<h2>Inputs that could not be read</h2>
+<p>
+  <strong>{{ bundle.collection_errors | length }} supplied input(s) failed to
+  parse.</strong> A control below may read as <em>missing evidence</em> when the
+  evidence was in fact provided and could not be ingested. Fix the inputs and
+  re-run before treating any gap here as a real one.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>Input</th>
+      <th>Why it was not ingested</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for error in bundle.collection_errors %}
+    <tr>
+      <td><code>{{ error.path }}</code></td>
+      <td>{{ error.reason }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
 
 <h2>Controls</h2>
 <table>
@@ -231,7 +277,11 @@
     <tr>
       <td><code>{{ item.evidence_id }}</code></td>
       <td>{{ item.evidence_type.value }}</td>
-      <td>{{ item.producer }}</td>
+      {#- A manually attested item names the tool the operator says produced it,
+          so this column alone reads as though the tool was collected from.
+          report.md has carried the qualifier since it was written; this table
+          did not, and it is the one a reviewer skims. -#}
+      <td>{{ item.producer }}{% if item.manual %} <span class="manual">(manual attestation)</span>{% endif %}</td>
       <td>{{ item.status.value }}</td>
       <td>{{ item.confidence.value }}</td>
       <td><code>{{ item.subject_ref }}</code></td>

@@ -46,7 +46,7 @@ from evidence_collector.parsers._common import (
 )
 from evidence_collector.parsers._intoto import (
     file_has_statement,
-    find_statement,
+    find_statements,
     first_subject_name,
     iter_record_dicts,
 )
@@ -134,7 +134,18 @@ def _assets(statement: dict[str, Any]) -> list[ReleaseAsset]:
     return assets
 
 
-def parse_release_attestation(path: str | Path) -> ParsedReleaseAttestation:
+def parse_release_attestations(path: str | Path) -> list[ParsedReleaseAttestation]:
+    """Return one parsed record per release attestation in ``path``.
+
+    Ingestion entry point. A release JSONL can carry an attestation per
+    published artifact — a PyPI sdist and a wheel, or several npm packages —
+    and taking only the first silently dropped the others.
+
+    A record missing the spec-required ``purl`` is skipped rather than
+    aborting the file, so one malformed attestation cannot take the valid
+    ones down with it. If *every* record is malformed the file raises, so
+    the failure is still surfaced.
+    """
     resolved = ensure_file(path)
     try:
         text = resolved.read_text(encoding="utf-8")
@@ -145,38 +156,52 @@ def parse_release_attestation(path: str | Path) -> ParsedReleaseAttestation:
     if not records:
         raise ParseError(f"File {resolved} is not a JSON object or a JSONL of objects.")
 
-    found = find_statement(records, _is_release_predicate)
-    if found is None:
+    found = find_statements(records, _is_release_predicate)
+    if not found:
         raise ParseError(
             f"File {resolved} contains no in-toto release attestation (a predicateType "
             f"among {sorted(RELEASE_PREDICATE_TYPES)}) across {len(records)} record(s)."
         )
-    record, statement, envelope = found
-    predicate_type = statement["predicateType"]
-
-    predicate = statement.get("predicate")
-    if not isinstance(predicate, dict):
-        raise ParseError(f"Release attestation {resolved} is missing a 'predicate' object.")
-
-    # The only field the spec marks required. Without it the attestation
-    # identifies no release, so it must not satisfy a release-integrity control.
-    purl = _optional_str(predicate.get("purl"))
-    if purl is None:
-        raise ParseError(f"Release attestation {resolved} is missing required field 'purl'.")
-
-    # v0.2 name first, v0.1 name as the fallback.
-    package_id = _optional_str(predicate.get("packageId")) or _optional_str(
-        predicate.get("releaseId")
-    )
 
     artifact = describe(resolved, content_type="application/json")
-    return ParsedReleaseAttestation(
-        artifact=artifact,
-        predicate_type=predicate_type,
-        purl=purl,
-        envelope=envelope,
-        package_id=package_id,
-        subject_name=first_subject_name(statement),
-        assets=_assets(statement),
-        raw=record,
-    )
+    parsed: list[ParsedReleaseAttestation] = []
+    for record, statement, envelope in found:
+        predicate = statement.get("predicate")
+        if not isinstance(predicate, dict):
+            continue
+        # The only field the spec marks required. Without it the attestation
+        # identifies no release, so it must not satisfy a release-integrity
+        # control.
+        purl = _optional_str(predicate.get("purl"))
+        if purl is None:
+            continue
+        parsed.append(
+            ParsedReleaseAttestation(
+                artifact=artifact,
+                predicate_type=statement["predicateType"],
+                purl=purl,
+                envelope=envelope,
+                # v0.2 name first, v0.1 name as the fallback.
+                package_id=_optional_str(predicate.get("packageId"))
+                or _optional_str(predicate.get("releaseId")),
+                subject_name=first_subject_name(statement),
+                assets=_assets(statement),
+                raw=record,
+            )
+        )
+
+    if not parsed:
+        raise ParseError(
+            f"Release attestation {resolved} is missing required field 'purl' "
+            f"in all {len(found)} record(s)."
+        )
+    return parsed
+
+
+def parse_release_attestation(path: str | Path) -> ParsedReleaseAttestation:
+    """Return the first release attestation in ``path``.
+
+    Convenience wrapper for single-attestation callers and tests; the
+    collector uses :func:`parse_release_attestations`.
+    """
+    return parse_release_attestations(path)[0]

@@ -7,14 +7,19 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from pydantic import ValidationError
 
 from evidence_collector.application.orchestrator import BundleBuildResult, build_bundle
 from evidence_collector.cli._builders import build_application, build_release
-from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, fail_on_exit_code, validate_fail_on
+from evidence_collector.cli._exit_codes import (
+    EXIT_INPUT_ERROR,
+    UNREADABLE_INPUT,
+    fail_on_exit_code,
+    validate_fail_on,
+)
 from evidence_collector.cli._render import render_summary
 from evidence_collector.cli._state import EVIDENCE_ADAPTER, console
-from evidence_collector.exporters import export_html, export_json, export_markdown
+from evidence_collector.domain.models import CollectionError
+from evidence_collector.exporters import export_report_set
 
 
 def evaluate(
@@ -29,30 +34,89 @@ def evaluate(
     owner_team: str | None,
     catalog_path: Path | None,
     fail_on: str,
+    exceptions_dir: list[Path] | None = None,
 ) -> None:
-    """Reusable core for ``evaluate`` and the legacy ``bundle`` alias."""
+    """Reusable core for ``evaluate`` and the legacy ``bundle`` alias.
+
+    `--exceptions-dir` exists here because this is where controls are
+    evaluated, and it existed only on `run`. The documented `collect` →
+    `evaluate` split therefore could not apply a waiver at all: a control that
+    `run` reports as WAIVED came out MISSING through the two-step flow, so the
+    same evidence and the same approved, in-force exception produced two
+    different release verdicts depending on which documented path was used.
+    """
     fail_on = validate_fail_on(fail_on)
     try:
         data = json.loads(evidence_path.read_text(encoding="utf-8"))
-        evidence = EVIDENCE_ADAPTER.validate_python(data)
-    except (ValidationError, json.JSONDecodeError) as exc:
+        # `collect` writes an envelope carrying the evidence and the inputs it
+        # could not read. A bare list is what earlier versions wrote and is
+        # still accepted — but it can say nothing about failed inputs, so a
+        # bundle built from one must not claim there were none.
+        if isinstance(data, dict):
+            # Defaulting a missing key to an empty list turned `{}` or a typo
+            # into a release verdict built from no evidence at all.
+            if "evidence" not in data:
+                raise ValueError(
+                    "the object has no `evidence` key; `collect --output` writes one, "
+                    "and a bare JSON list is also accepted"
+                )
+            raw_evidence = data["evidence"]
+            raw_errors = data.get("collection_errors", [])
+        else:
+            raw_evidence = data
+            raw_errors = []
+        evidence = EVIDENCE_ADAPTER.validate_python(raw_evidence)
+        collection_errors = [CollectionError.model_validate(entry) for entry in raw_errors]
+    except UNREADABLE_INPUT as exc:
         console.print(f"[red]Invalid evidence file {evidence_path}:[/red] {exc}")
         raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
+    if collection_errors:
+        console.print("[yellow]Collection warnings carried from the evidence file:[/yellow]")
+        for error in collection_errors:
+            console.print(f"  - {error.path}: {error.reason}")
+
     app_ = build_application(application, repository, environment, owner_team)
     release = build_release(release_id, commit_sha, branch)
-    bundle, _ = build_bundle(app_, release, list(evidence), catalog_path=catalog_path)
+
+    exceptions = []
+    if exceptions_dir:
+        # Reuse the collector rather than parsing waiver files here: it already
+        # de-duplicates a waiver supplied through two directories, records an
+        # unreadable one as a collection error instead of crashing, and strips
+        # paths. Only the exceptions directories are handed to it.
+        from evidence_collector.collectors.local import LocalArtifactCollector
+
+        waiver_report = LocalArtifactCollector(
+            release=release, exceptions_dirs=list(exceptions_dir)
+        ).collect()
+        exceptions = waiver_report.exceptions
+        for waiver_error in waiver_report.errors:
+            console.print(
+                f"[yellow]Exception input skipped:[/yellow] "
+                f"{waiver_error.path}: {waiver_error.reason}"
+            )
+            collection_errors.append(
+                CollectionError.clipped(str(waiver_error.path), waiver_error.reason)
+            )
+
+    bundle, _ = build_bundle(
+        app_,
+        release,
+        list(evidence),
+        catalog_path=catalog_path,
+        exceptions=exceptions,
+        collection_errors=collection_errors,
+    )
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    json_path = export_json(bundle, output_dir / "bundle.json")
-    markdown_path = export_markdown(bundle, output_dir / "report.md")
-    html_path = export_html(bundle, output_dir / "summary.html")
+    reports = export_report_set(bundle, output_dir)
 
     result = BundleBuildResult(
         bundle=bundle,
-        json_path=json_path,
-        markdown_path=markdown_path,
-        html_path=html_path,
+        json_path=reports.json_path,
+        markdown_path=reports.markdown_path,
+        html_path=reports.html_path,
     )
     render_summary(result)
     raise typer.Exit(code=fail_on_exit_code(bundle.summary.release_status, fail_on))
@@ -64,7 +128,7 @@ def register(app: typer.Typer) -> None:
     @app.command("evaluate")
     def cmd_evaluate(
         evidence_path: Annotated[
-            Path, typer.Option("--evidence", help="Path to an evidence JSON list")
+            Path, typer.Option("--evidence", help="Path to the evidence file written by collect")
         ],
         application: Annotated[str, typer.Option(help="Application name")],
         repository: Annotated[str, typer.Option(help="Repository reference")],
@@ -93,6 +157,15 @@ def register(app: typer.Typer) -> None:
                 help="Exit non-zero when release_status reaches this severity: ready|conditional|not_ready",
             ),
         ] = "not_ready",
+        exceptions_dir: Annotated[
+            list[Path] | None,
+            typer.Option(
+                "--exceptions-dir",
+                help=(
+                    "Directory with approved exception (waiver) files (can be given multiple times)"
+                ),
+            ),
+        ] = None,
     ) -> None:
         """Evaluate an existing evidence list and produce the full bundle outputs."""
         evaluate(
@@ -107,4 +180,5 @@ def register(app: typer.Typer) -> None:
             owner_team=owner_team,
             catalog_path=catalog_path,
             fail_on=fail_on,
+            exceptions_dir=exceptions_dir,
         )

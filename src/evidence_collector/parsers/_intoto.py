@@ -88,7 +88,14 @@ def iter_record_dicts(text: str) -> list[dict[str, Any]]:
     of a JSONL document. Blank and non-JSON lines are skipped."""
     try:
         whole = json.loads(text)
-    except json.JSONDecodeError:
+    # `json.loads` does not only raise JSONDecodeError. Deep nesting exhausts
+    # the stack (RecursionError) and a numeric literal past CPython's
+    # 4300-digit int conversion cap raises a bare ValueError. Neither is an
+    # OSError or a ParseError, so both escaped every guard between here and
+    # `main()` and aborted the entire run — discarding every other artifact in
+    # the directory because one file was malformed. Here, all three mean the
+    # same thing: this text is not a readable record.
+    except (json.JSONDecodeError, RecursionError, ValueError):
         whole = None
     if isinstance(whole, dict):
         return [whole]
@@ -99,32 +106,51 @@ def iter_record_dicts(text: str) -> list[dict[str, Any]]:
             continue
         try:
             candidate = json.loads(stripped)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, RecursionError, ValueError):
             continue
         if isinstance(candidate, dict):
             records.append(candidate)
     return records
 
 
-def find_statement(
+def find_statements(
     records: list[dict[str, Any]],
     matches: PredicateMatcher,
-) -> tuple[dict[str, Any], dict[str, Any], str] | None:
-    """Return ``(record, statement, envelope)`` for the first record whose
+) -> list[tuple[dict[str, Any], dict[str, Any], str]]:
+    """Return ``(record, statement, envelope)`` for **every** record whose
     unwrapped Statement carries a ``predicateType`` accepted by ``matches``.
 
-    Scanning every record — rather than only the first — is what lets a
-    ``gh attestation download`` JSONL holding several predicates yield the one
-    the caller wants instead of whichever happens to appear first in the file.
+    A JSONL is the multi-attestation format: ``gh attestation download``
+    writes one bundle per line and fetches up to 30 by default. Returning
+    only the first match made every attestation after it disappear with no
+    warning — and because the generic ingestor's matcher accepts every
+    predicate no dedicated parser claims, an SVR, a failing test-result and
+    an unknown predicate in one file all collapsed into a single "family"
+    where exactly one survived.
     """
+    found: list[tuple[dict[str, Any], dict[str, Any], str]] = []
     for record in records:
         statement, envelope = unwrap(record)
         if statement is None:
             continue
         predicate_type = statement.get("predicateType")
         if isinstance(predicate_type, str) and matches(predicate_type):
-            return record, statement, envelope
-    return None
+            found.append((record, statement, envelope))
+    return found
+
+
+def find_statement(
+    records: list[dict[str, Any]],
+    matches: PredicateMatcher,
+) -> tuple[dict[str, Any], dict[str, Any], str] | None:
+    """Return the first matching ``(record, statement, envelope)``, or None.
+
+    Kept for detection, where "is there at least one?" is the whole
+    question. Ingestion must use :func:`find_statements` — taking only the
+    first is how multi-attestation files silently lost records.
+    """
+    found = find_statements(records, matches)
+    return found[0] if found else None
 
 
 # One-slot memo keyed on (path, mtime, size), mirroring the collector's JSON
@@ -167,7 +193,7 @@ def read_records(path: Path) -> list[dict[str, Any]] | None:
     if key[2] <= MAX_INPUT_BYTES:
         try:
             value = iter_record_dicts(path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeDecodeError):
+        except (OSError, UnicodeDecodeError, RecursionError, ValueError):
             value = None
     _LAST_RECORDS["key"] = key
     _LAST_RECORDS["value"] = value

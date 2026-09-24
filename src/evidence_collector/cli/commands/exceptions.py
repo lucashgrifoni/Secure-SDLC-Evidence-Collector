@@ -11,8 +11,38 @@ from rich.table import Table
 
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli._state import console
+from evidence_collector.domain.models import EvidenceException
 from evidence_collector.parsers import parse_exception
 from evidence_collector.parsers._common import ParseError
+
+
+def _in_force(exception: EvidenceException, now: datetime) -> bool:
+    """Whether the engine would honour this waiver right now.
+
+    These commands used to test only `now >= expires_at`, so a waiver approved
+    for a future window was reported as "valid" and counted "active" while
+    `run` and `evaluate` refused it as not yet in effect. The window has two
+    ends — `examples/sample_release/exceptions/README.md` documents it as
+    half-open — and a reporting command that disagrees with the gate about
+    which waivers are live is worse than one that says nothing.
+
+    Scope is deliberately not considered: these commands inspect files without
+    an application or release in hand, so a scoped waiver is neither in nor out
+    of scope here. Only the time window is decidable.
+    """
+    return exception.approved_at <= now < exception.expires_at
+
+
+def _window_note(exception: EvidenceException, now: datetime) -> str:
+    """Say why a well-formed waiver is not in force, if it is not."""
+    if now >= exception.expires_at:
+        return " [yellow](EXPIRED — waives nothing)[/yellow]"
+    if now < exception.approved_at:
+        return (
+            f" [yellow](NOT YET IN EFFECT until "
+            f"{exception.approved_at.isoformat()} — waives nothing)[/yellow]"
+        )
+    return ""
 
 
 def register(app: typer.Typer) -> None:
@@ -38,7 +68,15 @@ def register(app: typer.Typer) -> None:
         Accepts multiple paths so it can be wired as a ``pre-commit`` hook:
         pre-commit passes every matched, staged file in a single
         invocation. Each file is reported individually; the command exits
-        1 if *any* file is invalid, 0 when all are valid.
+        ``EXIT_INPUT_ERROR`` if *any* file is missing or invalid, 0 when all
+        are valid.
+
+        It used to exit 1 here, which the README reserves for the
+        ``conditional`` verdict and nothing else — and a waiver file that
+        does not exist is a bad input, not a softer release outcome. It also
+        disagreed with its sibling ``exceptions list``. Any exit code works
+        for a pre-commit hook, which only distinguishes zero from non-zero,
+        so the taxonomy wins.
         """
         if not paths:
             console.print("[red]No exception files given.[/red]")
@@ -55,18 +93,14 @@ def register(app: typer.Typer) -> None:
             # command's exit contract (it ships as a pre-commit hook). It is
             # still worth saying out loud: a well-formed waiver that expired
             # waives nothing, and silence here reads as approval.
-            expiry_note = (
-                " [yellow](EXPIRED — waives nothing)[/yellow]"
-                if datetime.now(tz=UTC) >= exception.expires_at
-                else ""
-            )
+            expiry_note = _window_note(exception, datetime.now(tz=UTC))
             console.print(
                 f"[green]{exception.exception_id}[/green] valid · "
                 f"control={exception.control_id} · approver={exception.approver} "
                 f"· expires_at={exception.expires_at.isoformat()}{expiry_note}"
             )
         if invalid:
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=EXIT_INPUT_ERROR)
 
     @exceptions_app.command("list")
     def cmd_exceptions_list(
@@ -74,7 +108,15 @@ def register(app: typer.Typer) -> None:
             Path, typer.Argument(help="Directory containing exception YAML/JSON files")
         ],
     ) -> None:
-        """Walk a directory and list every exception, flagging expired ones."""
+        """Walk a directory and list every exception, flagging the dormant ones.
+
+        "Active" here means only that the waiver is inside its approval
+        window. Scope is not decidable without an application and a release
+        to check against, so a waiver scoped to a different application is
+        still counted active — `run` and `evaluate` are where scope is
+        applied. The footer says so rather than leaving the reader to infer
+        a stronger claim than the command can make.
+        """
         if not directory.is_dir():
             console.print(f"[red]Not a directory:[/red] {directory}")
             raise typer.Exit(code=EXIT_INPUT_ERROR)
@@ -86,7 +128,7 @@ def register(app: typer.Typer) -> None:
         table.add_column("Scope")
         now = datetime.now(tz=UTC)
         parseable = 0
-        expired = 0
+        dormant = 0
         invalid = 0
         for path in sorted(directory.rglob("*")):
             if path.suffix.lower() not in {".yaml", ".yml", ".json"} or not path.is_file():
@@ -98,9 +140,9 @@ def register(app: typer.Typer) -> None:
                 console.print(f"[yellow]skipped[/yellow] {path}: {err}")
                 continue
             parseable += 1
-            is_expired = now >= exc.expires_at
-            if is_expired:
-                expired += 1
+            in_force = _in_force(exc, now)
+            if not in_force:
+                dormant += 1
             scope_bits: list[str] = []
             if exc.scope.application:
                 scope_bits.append(f"app={exc.scope.application}")
@@ -110,8 +152,13 @@ def register(app: typer.Typer) -> None:
             # column: an extra column squeezes the exception ID to unreadable
             # width on an 80-column terminal, and the state belongs to the date.
             expires_cell = exc.expires_at.isoformat()
-            if is_expired:
+            if now >= exc.expires_at:
                 expires_cell = f"[yellow]{expires_cell} (expired)[/yellow]"
+            elif now < exc.approved_at:
+                expires_cell = (
+                    f"[yellow]{expires_cell} (not yet in effect until "
+                    f"{exc.approved_at.isoformat()})[/yellow]"
+                )
             table.add_row(
                 exc.exception_id,
                 exc.control_id,
@@ -122,10 +169,18 @@ def register(app: typer.Typer) -> None:
         console.print(table)
         # "valid" used to mean "parsed", so an expired waiver was reported as
         # `1 valid · 0 invalid` — the opposite of what a reader needs, and this
-        # command ships as a pre-commit hook. Expiry is now counted separately:
-        # the file is still well-formed, it just no longer waives anything.
+        # command ships as a pre-commit hook. A waiver that is not in force is
+        # now counted separately: the file is still well-formed, it just does
+        # not waive anything. "not in force" rather than "expired" because a
+        # waiver dated in the future is equally dormant, and calling that
+        # "active" is what made this command disagree with the release gate.
         console.print(
-            f"[bold]{parseable - expired}[/bold] active · "
-            f"[yellow]{expired}[/yellow] expired · "
+            f"[bold]{parseable - dormant}[/bold] active · "
+            f"[yellow]{dormant}[/yellow] not in force · "
             f"[yellow]{invalid}[/yellow] unparseable"
+        )
+        console.print(
+            '[dim]"Active" counts the approval window only. A waiver scoped to '
+            "another application or release still shows as active here; scope is "
+            "applied by `run` and `evaluate`.[/dim]"
         )

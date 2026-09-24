@@ -41,6 +41,29 @@ _THRESHOLD_RANK: Final[dict[str, int]] = {
 # contracts against each other.
 EXIT_INPUT_ERROR: Final[int] = 3
 
+# What "a malformed input file" is allowed to raise, for the commands that read
+# a bundle.json before doing anything with it.
+#
+# Eight of them named `OSError` and `json.JSONDecodeError` and stopped there,
+# which covers a missing file and a syntax error but not the rest of what a
+# corrupted file does on the way in. Each of the others reached the top-level
+# handler instead, so the exit code stayed correct at 3 while the message
+# became a bare `ValueError: Exceeds the limit (4300 digits)... use
+# sys.set_int_max_str_digits()` — naming neither the file nor anything the
+# operator can act on, and pointing at a remedy that is not the problem. A
+# pipeline running one of these over many bundles could not tell which one
+# failed.
+#
+# `ValueError` is what makes it work: `json.JSONDecodeError`, the 4300-digit
+# int conversion cap and `UnicodeDecodeError` from a mis-encoded byte are all
+# subclasses. `RecursionError` (deeply nested JSON) is not, so it is named.
+#
+# Watch the clause order where a handler also catches Pydantic's
+# `ValidationError` on the *same* `try`: that is a `ValueError` subclass too,
+# so it must come first or this tuple swallows it and reports a schema
+# mismatch as an unreadable file.
+UNREADABLE_INPUT: Final[tuple[type[Exception], ...]] = (OSError, RecursionError, ValueError)
+
 FAIL_ON_VALUES: Final[tuple[str, ...]] = ("ready", "conditional", "not_ready")
 
 

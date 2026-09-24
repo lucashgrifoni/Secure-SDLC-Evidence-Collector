@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 import os
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
@@ -46,7 +46,11 @@ class GitLabCollectorConfig:
 
     project: str
     api_base: str = _DEFAULT_API
-    token: str | None = None
+    # Kept out of the generated `repr`. Nothing logs this config today, and a
+    # test pins that, but the default `repr` put the bearer token one
+    # `logger.debug("config=%s", config)` — or one traceback rendered with
+    # locals — away from being written down somewhere it does not belong.
+    token: str | None = field(default=None, repr=False)
     user_agent: str = "secure-sdlc-evidence-collector/2.5.1"  # x-release-please-version
 
     @classmethod

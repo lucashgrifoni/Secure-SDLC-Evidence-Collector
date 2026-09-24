@@ -277,3 +277,123 @@ def test_load_epss_feed_reads_the_v5_model_version(tmp_path: Path) -> None:
     assert feed.model_version == "v2026.06.15"
     assert feed.feed_date == "2026-06-20"
     assert feed.get("CVE-2023-1111") is not None
+
+
+# ---------------------------------------------------------------------------
+# A corrupted download is an expected condition, not a crash
+# ---------------------------------------------------------------------------
+#
+# Both loaders document that a malformed feed yields an empty feed so the run
+# continues un-enriched. Each shipped a guard too narrow to honour that, and a
+# partly-downloaded file walked past both: KEV failed `enrich` outright, and
+# EPSS guarded only `_open_csv`, where the guard could not fire at all because
+# `gzip.open` defers the decompress to the first read.
+#
+# These feeds are fetched over the network, so truncation and a captive-portal
+# HTML page in place of the payload are the ordinary cases, not exotic ones.
+
+
+def _truncated_gzip(payload: bytes) -> bytes:
+    """A download cut off before the gzip end-of-stream marker."""
+    return gzip.compress(payload)[:12]
+
+
+# `tmp_path` names its directory after the test id, so the payload is kept out
+# of the id: a 200 KB literal in there is a MAX_PATH failure on Windows before
+# the test body ever runs.
+@pytest.mark.parametrize(
+    ("suffix", "payload"),
+    [
+        pytest.param(
+            ".csv.gz",
+            b"cve,epss,percentile\nCVE-2023-1111,0.5,0.9\n",
+            id="not-gzip-at-all",
+        ),
+        pytest.param(
+            ".csv.gz",
+            _truncated_gzip(b"cve,epss,percentile\n"),
+            id="truncated-gzip-stream",
+        ),
+        pytest.param(
+            ".csv.gz",
+            gzip.compress(b"cve,epss,percentile\n\xff\xfe,0.5,0.9\n"),
+            id="undecodable-byte-inside-the-gzip",
+        ),
+        pytest.param(
+            ".csv",
+            b'cve,epss,percentile\n"' + b"A" * 200_000 + b'",0.5,0.9\n',
+            id="csv-field-past-the-128-KiB-module-limit",
+        ),
+        pytest.param(
+            ".csv",
+            b"<html><body>503</body></html>",
+            id="html-error-page-saved-as-csv",
+        ),
+    ],
+)
+def test_a_corrupt_epss_download_degrades_instead_of_raising(
+    tmp_path: Path, suffix: str, payload: bytes
+) -> None:
+    path = tmp_path / f"epss{suffix}"
+    path.write_bytes(payload)
+    assert load_epss_feed(path).records == {}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param(b"<html><body>404</body></html>", id="html-error-page-saved-as-json"),
+        pytest.param(b"[" * 60_000 + b"]" * 60_000, id="nested-past-the-stack-limit"),
+        pytest.param(
+            b'{"vulnerabilities":[{"cveID":"CVE-2023-1111","n":' + b"9" * 5_000 + b"}]}",
+            id="numeric-literal-past-the-4300-digit-int-cap",
+        ),
+        pytest.param(b'{"vulnerabilities":[{"cveID":"\xff\xfe"}]}', id="undecodable-byte"),
+        pytest.param(b'{"vulnerabilities":[{"cveID":"CVE-2023-1111"', id="truncated-mid-object"),
+    ],
+)
+def test_a_corrupt_kev_download_degrades_instead_of_raising(tmp_path: Path, payload: bytes) -> None:
+    path = tmp_path / "kev.json"
+    path.write_bytes(payload)
+    feed = load_kev_feed(path)
+    assert feed.records == {}
+    assert feed.feed_date is None
+
+
+def test_widening_the_guard_did_not_stop_the_valid_feeds_parsing(
+    synth_epss: Path, synth_epss_gz: Path, synth_kev: Path
+) -> None:
+    """The half of the change that the parametrized cases above cannot catch.
+
+    Two rounds of this campaign found that a fix broke the case the old code
+    got right, so the guard gets checked from both sides: a wider `except`
+    that also swallowed a working parse would leave every assertion above
+    passing and the tool silently un-enriched.
+    """
+    for path in (synth_epss, synth_epss_gz):
+        feed = load_epss_feed(path)
+        assert feed.get("CVE-2023-1111") is not None
+        assert feed.feed_date == "2026-05-17"
+        assert feed.model_version == "v2026.05.01"
+    kev = load_kev_feed(synth_kev)
+    assert kev.contains("CVE-2023-1111")
+
+
+def test_a_readable_feed_with_no_rows_keeps_the_metadata_it_did_parse(
+    tmp_path: Path,
+) -> None:
+    """ "No usable rows" and "unreadable file" are different outcomes.
+
+    A feed whose comment line parsed still reports its date and model even
+    with nothing after the header; routing it through the failure path would
+    throw away metadata the loader had already read successfully.
+    """
+    path = tmp_path / "epss-headers-only.csv"
+    path.write_text(
+        "#model_version:v2026.05.01,score_date:2026-05-17T00:00:00+0000\ncve,epss,percentile\n",
+        encoding="utf-8",
+    )
+    feed = load_epss_feed(path)
+    assert feed.records == {}
+    assert feed.feed_date == "2026-05-17"
+    assert feed.model_version == "v2026.05.01"

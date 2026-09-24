@@ -16,7 +16,9 @@ Heuristics for evidence classification:
 from __future__ import annotations
 
 import hashlib
+import os
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from evidence_collector.domain.enums import (
@@ -53,6 +55,7 @@ from evidence_collector.parsers.sarif import ParsedSarif
 from evidence_collector.parsers.sbom import ParsedSbom
 from evidence_collector.parsers.trivy_json import ParsedTrivyJson
 from evidence_collector.parsers.zap import ParsedZap
+from evidence_collector.paths import relative_to_root
 
 _SAST_TOOLS: frozenset[str] = frozenset(
     {
@@ -104,15 +107,98 @@ def _new_evidence_id(prefix: str, *parts: str) -> str:
     return f"{prefix}-{digest}"
 
 
+def _strip_root(value: str, root: str | None) -> str:
+    """Rewrite a scanner-reported location against the artifact root.
+
+    Scanners report where *they* looked, which on a filesystem scan is a local
+    *absolute* path. Only absolute values are considered, and that restriction
+    is the whole correctness argument.
+
+    Passing relative values through `relative_to_root` resolved them against
+    the process working directory. Whenever that directory was inside the
+    artifact root — running from `<repo>/services/api` with
+    `--artifact-root <repo>` — a container-image reference matched and was
+    rewritten: `acme/api:1.0` became `services\\api\\acme\\api:1.0`, and a
+    Trivy target of `Java` became `services\\api\\Java`. That inserts the
+    collector's own directory layout into fields that never held a path, and
+    makes bundle content depend on where the command happened to be run from,
+    which nothing else in this codebase does.
+
+    Values that are not absolute paths under the root — image references,
+    remote targets, package coordinates — come back **verbatim**, not
+    round-tripped through `Path`: on Windows that alone would rewrite the
+    separator in `acme/api:1.0`.
+
+    Scanners also *decorate* the path rather than reporting it bare. Trivy
+    composes an OS-package target as `<path> (<family> <version>)`; a CycloneDX
+    subject arrives as `<name>@<version>`, and the name is the scanned
+    directory. Requiring the whole string to be a path meant one trailing
+    decoration made the strip fail and the value shipped verbatim — a bundle
+    carrying `artifact_name: "."` beside a `targets[0]` with the full local
+    path, both derived from the same string. So a leading path *prefix* is
+    recognised too, and only the prefix is rewritten.
+
+    That is deliberately not a list of decoration patterns. The prefix must
+    still be an absolute path under the root, which is what keeps
+    `acme/api:1.0 (debian 12)` and `pkg:pypi/app@1.0` untouched, and it does
+    not need to be extended each time a scanner invents a new suffix.
+
+    The prefix must also end where the root's last segment ends. `/tmp/repo`
+    is a string prefix of `/tmp/repo-old/image`, a sibling directory, and
+    stripping it produced `.-old/image`. A character that could continue a
+    directory name disqualifies the match; a separator, a space or `@` does
+    not.
+    """
+    if not root or not value:
+        return value
+    stripped = _strip_absolute(value, root)
+    if stripped is not None:
+        return stripped
+    for base in _root_spellings(root):
+        if os.path.normcase(value).startswith(os.path.normcase(base)):
+            head, tail = value[: len(base)], value[len(base) :]
+            if tail and _continues_a_name(tail[0]):
+                continue
+            inner = _strip_absolute(head, root)
+            if inner is not None:
+                return inner + tail
+    return value
+
+
+def _continues_a_name(char: str) -> bool:
+    """Whether `char`, right after the root, would extend its last segment."""
+    return char.isalnum() or char in "-_.+~"
+
+
+def _root_spellings(root: str) -> list[str]:
+    """The forms the artifact root can appear in inside a scanner's own string."""
+    base = Path(root).expanduser()
+    spellings = [str(base)]
+    try:
+        resolved = str(base.resolve())
+    except OSError:  # pragma: no cover - depends on filesystem state
+        return spellings
+    if resolved not in spellings:
+        spellings.append(resolved)
+    # Longest first, so a root that is a prefix of its own resolved form does
+    # not strip the shorter one and leave the rest of the path behind.
+    return sorted(spellings, key=len, reverse=True)
+
+
+def _strip_absolute(value: str, root: str) -> str | None:
+    """Return `value` relative to `root`, or None if it is not a path under it."""
+    candidate = Path(value)
+    if not candidate.is_absolute():
+        return None
+    relative = relative_to_root(candidate, root)
+    if relative == candidate:
+        return None
+    return str(relative)
+
+
 def _raw_ref(artifact: ParsedArtifact, root: str | None = None) -> RawEvidenceRef:
-    artifact_path = str(artifact.path)
-    if root is not None:
-        try:
-            artifact_path = str(artifact.path.relative_to(root))
-        except ValueError:
-            artifact_path = str(artifact.path)
     return RawEvidenceRef(
-        artifact_path=artifact_path,
+        artifact_path=str(relative_to_root(artifact.path, root)),
         integrity_hash=artifact.integrity_hash,
         content_type=artifact.content_type,
         size_bytes=artifact.size_bytes,
@@ -229,7 +315,15 @@ def normalize_sarif(
     )
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
-            prefix, parsed.tool_name, parsed.artifact.integrity_hash, release.commit_sha
+            prefix,
+            parsed.tool_name,
+            parsed.artifact.integrity_hash,
+            release.commit_sha,
+            # Only from the second run onward, so a single-run SARIF — every
+            # fixture and the overwhelming majority of real files — keeps the
+            # id it had before merged files were split per run, and the
+            # determinism snapshots do not move.
+            *([str(parsed.run_index)] if parsed.run_index else []),
         ),
         evidence_type=evidence_type,
         source=EvidenceSource(name=parsed.tool_name, kind="sarif", version=parsed.tool_version),
@@ -258,7 +352,14 @@ def normalize_sbom(
     *,
     artifact_root: str | None = None,
 ) -> NormalizedEvidence:
-    subject_ref = parsed.subject_ref or release.artifact_digest or release.release_id
+    # `subject_ref` is the BOM's own `metadata.component`, and when the SBOM was
+    # generated by scanning a directory that name IS the absolute path. It
+    # reached bundle.json, report.md and summary.html untouched while
+    # `raw.artifact_path` beside it was stripped correctly — the same flag, the
+    # same run, one field honouring it and one not.
+    subject_ref = _strip_root(
+        parsed.subject_ref or release.artifact_digest or release.release_id, artifact_root
+    )
     metadata: dict[str, Any] = {}
     if parsed.serial_number:
         metadata["serial_number"] = parsed.serial_number
@@ -607,12 +708,19 @@ def normalize_trivy_json(
             "trivy_schema_version": parsed.schema_version,
             "result_class": group.kind,
         }
+        # Trivy's `ArtifactName` and per-result `Target` are filesystem paths
+        # when it scanned a directory, and they carried the full local path
+        # into the bundle even when `--artifact-root` had correctly stripped
+        # `raw.artifact_path` beside them. The flag promises the *bundle*
+        # records repo-relative paths, so these are held to it too. A value
+        # that is not a path under the root — an image reference like
+        # `acme/api:1.0`, a remote target — is left exactly as Trivy wrote it.
         if parsed.artifact_name:
-            metadata["artifact_name"] = parsed.artifact_name
+            metadata["artifact_name"] = _strip_root(parsed.artifact_name, artifact_root)
         if parsed.artifact_type:
             metadata["artifact_type"] = parsed.artifact_type
         if group.targets:
-            metadata["targets"] = list(group.targets)
+            metadata["targets"] = [_strip_root(target, artifact_root) for target in group.targets]
         evidences.append(
             NormalizedEvidence(
                 evidence_id=_new_evidence_id(
@@ -779,6 +887,7 @@ def normalize_intoto_statement(
     release: ReleaseContext,
     *,
     artifact_root: str | None = None,
+    index: int = 0,
 ) -> NormalizedEvidence:
     """Build evidence from any in-toto Statement without a dedicated parser.
 
@@ -815,10 +924,16 @@ def normalize_intoto_statement(
         metadata["scanner_uri"] = parsed.scanner_uri
     if parsed.scanner_version:
         metadata["scanner_version"] = parsed.scanner_version
+    # A JSONL can carry several Statements with the same predicate type, and
+    # the file hash, the predicate and the release are then identical for all
+    # of them. The position in the file tells them apart. It joins the id only
+    # from the second Statement on, so a one-Statement file keeps the id it
+    # always had.
+    id_parts = [parsed.artifact.integrity_hash, parsed.predicate_type]
+    if index:
+        id_parts.append(str(index))
     return NormalizedEvidence(
-        evidence_id=_new_evidence_id(
-            "stmt", parsed.artifact.integrity_hash, parsed.predicate_type, release.release_id
-        ),
+        evidence_id=_new_evidence_id("stmt", *id_parts, release.release_id),
         evidence_type=evidence_type,
         source=EvidenceSource(name=producer, kind=source_kind),
         producer=producer,
@@ -1006,7 +1121,26 @@ def normalize_junit(
     artifact_root: str | None = None,
 ) -> NormalizedEvidence:
     failed = parsed.failures + parsed.errors
-    status = EvidenceStatus.PASSED if failed == 0 else EvidenceStatus.FAILED
+    executed = parsed.total - parsed.skipped
+    if failed:
+        status = EvidenceStatus.FAILED
+    elif executed <= 0:
+        # Zero failures out of zero tests is not a passing test run, and it
+        # used to be recorded as `passed` at HIGH confidence — satisfying the
+        # test-result control outright. The realistic trigger is not a hostile
+        # file: a test job whose glob matched nothing, a build that failed
+        # before the suite ran, a runner that wrote an empty report. All of
+        # those produce a release certified as tested on the strength of a
+        # suite that never executed, which is the failure mode this tool
+        # exists to make impossible.
+        #
+        # `invalid` is the enum's documented value for "present but does not
+        # demonstrate what it claims", and the control engine does not count
+        # it as satisfying, so the control comes out MISSING with the file
+        # still visible in the bundle for the auditor.
+        status = EvidenceStatus.INVALID
+    else:
+        status = EvidenceStatus.PASSED
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
             "test",
@@ -1032,9 +1166,10 @@ def normalize_junit(
             "skipped": parsed.skipped,
         },
         summary=(
-            f"{parsed.total} tests executed, {parsed.failures} failures, "
-            f"{parsed.errors} errors, {parsed.skipped} skipped, "
-            f"duration {parsed.time_seconds:.2f}s"
+            f"{parsed.total} tests reported, {executed} executed, "
+            f"{parsed.failures} failures, {parsed.errors} errors, "
+            f"{parsed.skipped} skipped, duration {parsed.time_seconds:.2f}s"
+            + (" — no test actually ran, so this proves nothing" if executed <= 0 else "")
         ),
     )
 

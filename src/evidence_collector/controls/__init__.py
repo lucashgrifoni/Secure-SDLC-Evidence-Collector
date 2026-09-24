@@ -8,7 +8,16 @@ The `controls` package is responsible for:
 
 from __future__ import annotations
 
-from evidence_collector.controls.catalog import default_catalog, load_catalog
+from evidence_collector.controls.catalog import (
+    catalog_with_provenance,
+    default_catalog,
+    load_catalog,
+)
 from evidence_collector.controls.engine import evaluate_controls
 
-__all__ = ["default_catalog", "evaluate_controls", "load_catalog"]
+__all__ = [
+    "catalog_with_provenance",
+    "default_catalog",
+    "evaluate_controls",
+    "load_catalog",
+]

@@ -16,10 +16,11 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
-from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
+from evidence_collector.exporters._atomic import write_atomic
 from evidence_collector.exporters.vex import (
     MergeConflictPolicy,
     VexMergeConflictError,
@@ -37,7 +38,10 @@ def register(app: typer.Typer) -> None:
         bundle_path: Annotated[
             Path,
             typer.Argument(
-                exists=True,
+                # No exists=True: Click validates it BEFORE the command body and
+                # raises UsageError -> exit 2, the not_ready code. The body below
+                # already catches OSError and exits EXIT_INPUT_ERROR, which is what
+                # the README promises for every input failure.
                 file_okay=True,
                 dir_okay=False,
                 readable=True,
@@ -80,7 +84,7 @@ def register(app: typer.Typer) -> None:
             )
         try:
             raw = json.loads(bundle_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
+        except UNREADABLE_INPUT as exc:
             if is_json_logs():
                 emit_event("vex_failed", bundle=str(bundle_path), reason=str(exc))
             else:
@@ -119,8 +123,7 @@ def register(app: typer.Typer) -> None:
                     console.print(f"[red]VEX merge conflict:[/red] {exc}")
                 raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps(document, indent=2, sort_keys=False), encoding="utf-8")
+        write_atomic(output, json.dumps(document, indent=2, sort_keys=False))
 
         statements = document.get("statements", [])
         if is_json_logs():

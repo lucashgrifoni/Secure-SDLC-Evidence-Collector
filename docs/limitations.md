@@ -21,14 +21,16 @@ SARIF is a format, not a taxonomy. A single SARIF file may contain
 multiple `runs` from different tools with overlapping intent (Trivy
 exports vuln + secret + misconfig in one file; Snyk exports SAST + SCA
 separately; Sonar exports a mix). The collector classifies each `run`
-into exactly one `evidence_type` based on the driver name.
+into exactly one `evidence_type` based on that run's own driver name,
+and emits **one evidence record per run**.
 
-- **False-positive risk**: a Trivy SARIF with a vuln run and a secret
-  run in the same file is classified as `sca_scan`; the secret run is
-  counted under SCA rather than under `secrets_scan`. Mitigation:
-  export Trivy's secret scan into a separate file (`trivy fs --scanners
-  secret --format sarif --output trivy-secrets.sarif`) or provide the
-  output of a dedicated secrets tool (Gitleaks/TruffleHog).
+- Until 3.x only `runs[0]` set the record's identity while the findings
+  of every run were aggregated into it, so a merged
+  semgrep+gitleaks+trivy file produced a single `sast_scan` and the
+  release reported the secrets and SCA controls as *missing critical
+  evidence* — with both scans supplied. Splitting per run removed that;
+  exporting each scanner to its own file is no longer necessary, though
+  it remains perfectly valid.
 - **False-negative risk**: an unknown driver defaults to `sast_scan`.
   If the driver was actually a DAST tool, the `sast_scan` control is
   credited while `dast_scan` remains missing.
@@ -191,6 +193,18 @@ The collector checks **presence**, not correctness.
   the signed DSSE payload, the **payload wins**. The declared field sits
   outside the signature, so trusting it would let unsigned registry
   metadata relabel an attestation.
+- The `attestations[]` envelope is **not unique to npm** — GitHub's
+  `GET /repos/{owner}/{repo}/attestations/{digest}` returns the same shape.
+  npm states `predicateType` beside each bundle and GitHub does not, so
+  that is the discriminator. Without it the evidence records
+  `registry: unspecified-registry` rather than guessing: `producer` is what
+  a reviewer reads to answer "who asserted this", and naming the wrong
+  registry there is worse than declining to name one. The embedded
+  predicate types are surfaced either way.
+- A GitHub attestation saved this way is therefore recorded as a
+  *publication envelope*, not as full SLSA provenance. To get the builder
+  identity, build type and invocation extracted, save the bundle with
+  `gh attestation download` — that shape routes to the provenance parser.
 
 ## 8 · Determinism boundaries
 
@@ -204,6 +218,12 @@ The collector checks **presence**, not correctness.
   paths before ingestion, so Linux and Windows should produce the same
   bundle — the `test_sample_release_bundle_is_stable_across_artifact_reorder`
   regression test catches drift if this ever changes.
+- Output files are written with LF line endings on every platform.
+  Before 3.0 they were written in the platform's default text mode, so
+  a bundle produced on Windows differed from the same bundle produced
+  on Linux in every single line ending. The structural hash is computed
+  over parsed JSON and was never affected, but "byte-for-byte identical
+  output" only became true across operating systems here.
 
 ## 9 · Performance envelope
 
@@ -249,8 +269,9 @@ These are explicitly out of scope for security reports (see
 
 ## 13 · Enriched bundles are not byte-stable across EPSS / KEV feed refreshes
 
-- `sdlc-evidence enrich` and `sdlc-evidence run --enrich` write
-  EPSS / KEV signal into evidence. The structural-hash gate
+- `sdlc-evidence enrich` writes EPSS / KEV signal into evidence.
+  (There is no `run --enrich`; enrichment is a separate command run
+  against an existing `bundle.json`.) The structural-hash gate
   deliberately captures `epss_feed_date`, `epss_model_version`, and
   `kev_feed_date` so a feed bump (or an EPSS model-version change)
   surfaces as drift.
@@ -312,3 +333,32 @@ These are explicitly out of scope for security reports (see
   unexpected disagreement is itself a finding.
 - SPDX VEX is deferred (low industry adoption). Tracked in the v2.1
   backlog.
+
+## 10 · The bundle carries the identifiers you put in it
+
+A bundle is meant to be shared — with an auditor, a customer, a regulator — and
+it repeats back whatever identifies people in the evidence you fed it. In the
+shipped sample that is five distinct values: the `approver` on a waiver, the
+`approver` on a release approval, the `author` on PR metadata, and the
+`reviewers` on a code review. The waiver approver also appears in `report.md`
+and in the `summary.html` exceptions table, so it reaches the two files a
+reviewer actually opens.
+
+None of this is accidental. A waiver without an accountable approver is not
+worth recording, and the model requires the field. But three consequences are
+worth knowing before you decide what to type into it:
+
+- **It is published.** The tool has an explicit control for keeping filesystem
+  paths out of a shared bundle (`--artifact-root`) and no equivalent for these.
+- **It is signed.** The release pipeline signs the bundle with Sigstore, which
+  binds a named person to "I approved waiving this control" in a form that is
+  tamper-evident and meant to be durable. That is the point for an audit trail;
+  it is also a stronger and more permanent link than someone writing a YAML file
+  is likely to have in mind.
+- **It is inside the structural hash.** Editing it later invalidates
+  `verify --expected`, so it is not something you remove after the fact.
+
+If your policy needs the accountability without the personal identifier, record
+a role or a ticket reference (`security-review-board`, `RISK-4471`) rather than
+an individual's address. The tool treats the field as an opaque string and does
+not care which you choose.

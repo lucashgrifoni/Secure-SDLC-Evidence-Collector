@@ -1,6 +1,6 @@
 # Secure SDLC Evidence Report
 
-**Bundle ID:** `{{ bundle.bundle_id }}`
+**Bundle ID:** `{{ bundle.bundle_id | md_code }}`
 **Bundle version:** {{ bundle.bundle_version }}
 **Generated at:** {{ bundle.generated_at.isoformat() }}
 
@@ -8,23 +8,36 @@
 
 | Field | Value |
 |-------|-------|
-| Name | `{{ bundle.application.name }}` |
-| Repository | `{{ bundle.application.repository }}` |
-| Environment | {{ bundle.application.environment }} |
-| Owner team | {{ bundle.application.owner_team or "-" }} |
+| Name | `{{ bundle.application.name | md_code }}` |
+| Repository | `{{ bundle.application.repository | md_code }}` |
+| Environment | {{ bundle.application.environment | md }} |
+| Owner team | {{ bundle.application.owner_team | md or "-" }} |
 
 ## Release
 
 | Field | Value |
 |-------|-------|
-| Release ID | `{{ bundle.release.release_id }}` |
-| Commit SHA | `{{ bundle.release.commit_sha }}` |
-| Branch | `{{ bundle.release.branch }}` |
-| Pipeline run | {{ bundle.release.pipeline_run_id or "-" }} |
-| Build ID | {{ bundle.release.build_id or "-" }} |
-| Artifact digest | `{{ bundle.release.artifact_digest or "-" }}` |
-| Tag | {{ bundle.release.tag or "-" }} |
+| Release ID | `{{ bundle.release.release_id | md_code }}` |
+| Commit SHA | `{{ bundle.release.commit_sha | md_code }}` |
+| Branch | `{{ bundle.release.branch | md_code }}` |
+| Pipeline run | {{ bundle.release.pipeline_run_id | md or "-" }} |
+| Build ID | {{ bundle.release.build_id | md or "-" }} |
+| Artifact digest | `{{ bundle.release.artifact_digest | md_code or "-" }}` |
+| Tag | {{ bundle.release.tag | md or "-" }} |
+{% if bundle.catalog %}
+## Control catalog
 
+Every verdict below is relative to this catalog. A bundle evaluated against a
+different control set is a different claim, so it is recorded here as well as
+in `bundle.json`.
+
+| Field | Value |
+|-------|-------|
+| Origin | {{ bundle.catalog.origin | md }}{% if bundle.catalog.origin == "custom" %} — **not the catalog shipped with the tool**{% endif +%} |
+| Name | `{{ bundle.catalog.name | md_code }}` |
+| SHA-256 | `{{ bundle.catalog.sha256 | md_code }}` |
+| Controls defined | {{ bundle.catalog.control_count }} |
+{% endif %}
 ## Verdict
 
 - **Release status:** `{{ bundle.summary.release_status.value }}`
@@ -32,9 +45,22 @@
 - **Confidence score:** {{ bundle.summary.confidence_score }}/100
 - **Controls:** {{ bundle.summary.controls_met }} met · {{ bundle.summary.controls_partial }} partial · {{ bundle.summary.controls_missing }} missing · {{ bundle.summary.controls_waived }} waived · {{ bundle.summary.controls_not_applicable }} n/a
 {% if bundle.summary.missing_critical_evidence %}
-- **Missing critical evidence:** {{ bundle.summary.missing_critical_evidence | join(", ") }}
+- **Missing critical evidence:** {{ bundle.summary.missing_critical_evidence | map("md") | join(", ") }}
 {% else %}
 - **Missing critical evidence:** none
+{% endif %}
+{% if bundle.collection_errors %}
+
+> **{{ bundle.collection_errors | length }} supplied input(s) could not be read.**
+> A control below may read as *missing evidence* when the evidence was in fact
+> provided and failed to parse. Fix the inputs and re-run before treating any
+> gap here as a real one.
+
+| Input | Why it was not ingested |
+|-------|-------------------------|
+{% for error in bundle.collection_errors %}
+| `{{ error.path | md_code }}` | {{ error.reason | md }} |
+{% endfor %}
 {% endif %}
 
 ## Control evaluations
@@ -42,14 +68,14 @@
 | Control | Framework | Status | Criticality | Confidence | Evidence refs |
 |---------|-----------|--------|-------------|------------|---------------|
 {% for evaluation in bundle.control_evaluations %}
-| `{{ evaluation.control_id }}` | {{ evaluation.framework.value }} | **{{ evaluation.evaluation_status.value }}** | {{ evaluation.criticality.value }} | {{ evaluation.confidence.value }} | {{ evaluation.evidence_refs | join(", ") if evaluation.evidence_refs else "-" }} |
+| `{{ evaluation.control_id | md_code }}` | {{ evaluation.framework.value }} | **{{ evaluation.evaluation_status.value }}** | {{ evaluation.criticality.value }} | {{ evaluation.confidence.value }} | {{ evaluation.evidence_refs | map("md") | join(", ") if evaluation.evidence_refs else "-" }} |
 {% endfor %}
 
 ### Rationales
 
 {% for evaluation in bundle.control_evaluations %}
-- **`{{ evaluation.control_id }}` — {{ evaluation.control_name }}**
-  {{ evaluation.rationale }}
+- **`{{ evaluation.control_id | md_code }}` — {{ evaluation.control_name | md }}**
+  {{ evaluation.rationale | md }}
 {% endfor %}
 
 {% if bundle.exceptions %}
@@ -58,13 +84,13 @@
 | Exception ID | Control | Approver | Approved at | Expires at | Reference |
 |--------------|---------|----------|-------------|------------|-----------|
 {% for exception in bundle.exceptions %}
-| `{{ exception.exception_id }}` | `{{ exception.control_id }}` | {{ exception.approver }} | {{ exception.approved_at.isoformat() }} | {{ exception.expires_at.isoformat() }} | {{ exception.reference or "-" }} |
+| `{{ exception.exception_id | md_code }}` | `{{ exception.control_id | md_code }}` | {{ exception.approver | md }} | {{ exception.approved_at.isoformat() }} | {{ exception.expires_at.isoformat() }} | {{ exception.reference | md or "-" }} |
 {% endfor %}
 
 ### Justifications
 
 {% for exception in bundle.exceptions %}
-- **`{{ exception.exception_id }}`** ({{ exception.control_id }}): {{ exception.justification }}
+- **`{{ exception.exception_id | md_code }}`** ({{ exception.control_id | md }}): {{ exception.justification | md }}
 {% endfor %}
 {% endif %}
 
@@ -74,13 +100,13 @@
 | Control | Evidence type | Criticality | Description |
 |---------|---------------|-------------|-------------|
 {% for gap in bundle.gaps %}
-| `{{ gap.control_id }}` | {{ gap.evidence_type.value if gap.evidence_type else "-" }} | {{ gap.criticality.value }} | {{ gap.description }} |
+| `{{ gap.control_id | md_code }}` | {{ gap.evidence_type.value if gap.evidence_type else "-" }} | {{ gap.criticality.value }} | {{ gap.description | md }} |
 {% endfor %}
 
 ### Remediation hints
 
 {% for gap in bundle.gaps %}
-- **`{{ gap.control_id }}`** — {{ gap.remediation or "No remediation hint available." }}
+- **`{{ gap.control_id | md_code }}`** — {{ gap.remediation | md or "No remediation hint available." }}
 {% endfor %}
 {% else %}
 ## Gaps
@@ -93,24 +119,24 @@ No gaps detected.
 | ID | Type | Status | Confidence | Producer | Subject |
 |----|------|--------|------------|----------|---------|
 {% for item in bundle.evidence %}
-| `{{ item.evidence_id }}` | {{ item.evidence_type.value }} | {{ item.status.value }} | {{ item.confidence.value }} | {{ item.producer }} | `{{ item.subject_ref }}` |
+| `{{ item.evidence_id | md_code }}` | {{ item.evidence_type.value }} | {{ item.status.value }} | {{ item.confidence.value }} | {{ item.producer | md }} | `{{ item.subject_ref | md_code }}` |
 {% endfor %}
 
 {% for item in bundle.evidence %}
-### `{{ item.evidence_id }}` — {{ item.evidence_type.value }}
+### `{{ item.evidence_id | md_code }}` — {{ item.evidence_type.value }}
 
-- **Source:** {{ item.source.name }} ({{ item.source.kind }}){% if item.source.version %} · version {{ item.source.version }}{% endif +%}
-- **Producer:** {{ item.producer }}
-- **Subject:** `{{ item.subject_ref }}` ({{ item.subject_type.value }})
+- **Source:** {{ item.source.name | md }} ({{ item.source.kind | md }}){% if item.source.version %} · version {{ item.source.version | md }}{% endif +%}
+- **Producer:** {{ item.producer | md }}
+- **Subject:** `{{ item.subject_ref | md_code }}` ({{ item.subject_type.value }})
 - **Status:** {{ item.status.value }} · **Confidence:** {{ item.confidence.value }}{% if item.manual %} · manual attestation{% endif +%}
 {% if item.summary %}
-- **Summary:** {{ item.summary }}
+- **Summary:** {{ item.summary | md }}
 {% endif %}
 {% if item.findings_count %}
-- **Findings:** {% for key, value in item.findings_count.items() %}{{ key }}={{ value }}{% if not loop.last %} · {% endif %}{% endfor +%}
+- **Findings:** {% for key, value in item.findings_count.items() %}{{ key | md }}={{ value | md }}{% if not loop.last %} · {% endif %}{% endfor +%}
 {% endif %}
 {% if item.raw %}
-- **Artifact:** `{{ item.raw.artifact_path or item.raw.artifact_uri }}` ({{ item.raw.integrity_hash or "no hash" }})
+- **Artifact:** `{{ (item.raw.artifact_path or item.raw.artifact_uri) | md_code }}` ({{ item.raw.integrity_hash | md or "no hash" }})
 {% endif %}
 
 {% endfor %}

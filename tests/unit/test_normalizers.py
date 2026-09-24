@@ -5,7 +5,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from evidence_collector.domain.enums import EvidenceStatus, EvidenceType
+from evidence_collector.domain.models import ReleaseContext
 from evidence_collector.normalizers import (
     normalize_attestation,
     normalize_junit,
@@ -244,3 +247,74 @@ def test_normalize_sarif_marks_low_severity_findings_as_passed(
     evidence = normalize_sarif(parse_sarif(artifact), sample_release)
     assert evidence.findings_count.get("critical", 0) + evidence.findings_count.get("high", 0) == 0
     assert evidence.status == EvidenceStatus.PASSED
+
+
+def _junit(tmp_path: Path, **attrs: object) -> Path:
+    rendered = " ".join(f'{key}="{value}"' for key, value in attrs.items())
+    target = tmp_path / "junit.xml"
+    target.write_text(f'<testsuite name="suite" {rendered}/>', encoding="utf-8")
+    return target
+
+
+@pytest.mark.parametrize(
+    ("label", "tests", "skipped", "failures", "expected"),
+    [
+        ("nothing ran", 0, 0, 0, EvidenceStatus.INVALID),
+        ("every test skipped", 5, 5, 0, EvidenceStatus.INVALID),
+        ("some skipped, some ran", 5, 2, 0, EvidenceStatus.PASSED),
+        ("all ran and passed", 5, 0, 0, EvidenceStatus.PASSED),
+        ("a failure", 5, 0, 1, EvidenceStatus.FAILED),
+    ],
+)
+def test_a_suite_that_never_ran_is_not_a_passing_test_run(
+    tmp_path: Path,
+    sample_release: ReleaseContext,
+    label: str,
+    tests: int,
+    skipped: int,
+    failures: int,
+    expected: EvidenceStatus,
+) -> None:
+    """Zero failures out of zero tests used to certify the test-result control.
+
+    It was recorded as `passed` at HIGH confidence and satisfied SSDF-PW.8
+    outright. The trigger is not a hostile file: a test job whose glob matched
+    nothing, a build that failed before the suite ran, a runner that wrote an
+    empty report. Each of those produced a release certified as tested on the
+    strength of a suite that never executed — the exact failure this tool
+    exists to make impossible.
+
+    `invalid` is the enum's value for "present but does not demonstrate what
+    it claims", and the control engine does not count it as satisfying, so the
+    control comes out MISSING with the file still visible to the auditor.
+    """
+    path = _junit(tmp_path, tests=tests, failures=failures, errors=0, skipped=skipped, time=1)
+
+    evidence = normalize_junit(parse_junit(path), sample_release)
+
+    assert evidence.status == expected, label
+
+
+def test_an_empty_suite_says_why_it_proves_nothing(
+    tmp_path: Path, sample_release: ReleaseContext
+) -> None:
+    """The summary is what a human reads; silence there reads as a pass."""
+    path = _junit(tmp_path, tests=0, failures=0, errors=0, skipped=0, time=0)
+
+    evidence = normalize_junit(parse_junit(path), sample_release)
+
+    assert evidence.summary is not None
+    assert "no test actually ran" in evidence.summary
+
+
+def test_the_summary_separates_reported_from_executed(
+    tmp_path: Path, sample_release: ReleaseContext
+) -> None:
+    """`42 tests executed ... 1 skipped` was self-contradictory: 41 executed."""
+    path = _junit(tmp_path, tests=42, failures=0, errors=0, skipped=1, time=8)
+
+    summary = normalize_junit(parse_junit(path), sample_release).summary
+
+    assert summary is not None
+    assert "42 tests reported" in summary
+    assert "41 executed" in summary

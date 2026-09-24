@@ -99,6 +99,11 @@ The canonical schema is documented in
 fields are required (`exception_id`, `control_id`, `approver`,
 `approved_at`, `expires_at`, `justification`); two optional
 (`reference`, `scope`). `expires_at` must be strictly after
-`approved_at`; `justification` must be ≥ 10 characters. This fixture
+`approved_at`; `justification` must be ≥ 10 characters. Both
+timestamps must carry a timezone — bare `2026-12-31` parses to a
+naive datetime, which has no defined instant to compare a waiver
+window against, and is rejected. The window is half-open:
+`approved_at <= now < expires_at`, so a waiver dated in the future
+does not waive anything yet. This fixture
 must not introduce new fields — extending the schema is explicitly
 out of scope of the maturity rounds.

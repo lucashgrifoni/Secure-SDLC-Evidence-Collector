@@ -21,3 +21,10 @@ docs
 .claude
 .vscode
 .idea
+
+# Internal validation workspace. It is gitignored, so CI never has it — but a
+# local `docker build .` would ship the whole directory into the build context.
+# Nothing in it reaches the image, because every COPY here is explicit and
+# narrow, but the build context is uploaded to the daemon and lands in BuildKit
+# history and cache either way. It is not meant to leave the machine.
+melhorias

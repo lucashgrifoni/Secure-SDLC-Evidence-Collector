@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +21,7 @@ from evidence_collector.collectors.local import LocalArtifactCollector
 from evidence_collector.domain.enums import EvidenceStatus, EvidenceType
 from evidence_collector.domain.models import ReleaseContext
 from evidence_collector.normalizers import normalize_provenance
-from evidence_collector.parsers import parse_provenance
+from evidence_collector.parsers import parse_provenance, parse_provenances
 from evidence_collector.parsers._common import ParseError
 
 _PROV_V1 = "https://slsa.dev/provenance/v1"
@@ -301,4 +302,63 @@ def test_local_collector_ingests_provenance(tmp_path: Path) -> None:
     prov = [e for e in report.evidence if e.evidence_type == EvidenceType.ARTIFACT_ATTESTATION]
     assert len(prov) == 1
     assert prov[0].status == EvidenceStatus.GENERATED
+    assert not report.errors
+
+
+# ---------------------------------------------------------------------------
+# Multi-record provenance JSONL
+# ---------------------------------------------------------------------------
+
+
+def test_jsonl_with_two_provenances_yields_both(tmp_path: Path) -> None:
+    # `gh attestation download` writes one bundle per line and routinely
+    # returns one provenance per published artifact. Keeping only the first
+    # dropped the rest with exit 0 and no warning.
+    first = _statement_v1()
+    first["subject"] = [{"name": "app-1.0.0.tar.gz", "digest": {"sha256": "aa"}}]
+    second = _statement_v1()
+    second["subject"] = [{"name": "app-1.0.0-py3-none-any.whl", "digest": {"sha256": "bb"}}]
+    target = tmp_path / "provenances.jsonl"
+    target.write_text("\n".join(json.dumps(_bundle(s)) for s in (first, second)), encoding="utf-8")
+    parsed = parse_provenances(target)
+    assert [p.subject_name for p in parsed] == [
+        "app-1.0.0.tar.gz",
+        "app-1.0.0-py3-none-any.whl",
+    ]
+
+
+def test_anonymous_provenance_is_skipped_but_valid_ones_survive(tmp_path: Path) -> None:
+    anonymous = _statement_v1()
+    del anonymous["predicate"]["runDetails"]
+    good = _statement_v1()
+    good["subject"] = [{"name": "good.tar.gz", "digest": {"sha256": "cc"}}]
+    target = tmp_path / "mixed.jsonl"
+    target.write_text(
+        "\n".join(json.dumps(_bundle(s)) for s in (anonymous, good)), encoding="utf-8"
+    )
+    parsed = parse_provenances(target)
+    assert [p.subject_name for p in parsed] == ["good.tar.gz"]
+
+
+def test_all_anonymous_provenances_still_raise(tmp_path: Path) -> None:
+    anonymous = _statement_v1()
+    del anonymous["predicate"]["runDetails"]
+    target = tmp_path / "allbad.jsonl"
+    target.write_text("\n".join(json.dumps(_bundle(anonymous)) for _ in range(2)), encoding="utf-8")
+    with pytest.raises(ParseError, match=re.escape("builder.id")):
+        parse_provenances(target)
+
+
+def test_collector_ingests_every_provenance_in_a_jsonl(tmp_path: Path) -> None:
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    first = _statement_v1()
+    first["subject"] = [{"name": "a.tar.gz", "digest": {"sha256": "aa"}}]
+    second = _statement_v1()
+    second["subject"] = [{"name": "b.whl", "digest": {"sha256": "bb"}}]
+    (artifacts / "provenances.jsonl").write_text(
+        "\n".join(json.dumps(_bundle(s)) for s in (first, second)), encoding="utf-8"
+    )
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
+    assert len(report.evidence) == 2
     assert not report.errors

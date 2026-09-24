@@ -44,6 +44,72 @@
       "title": "Application",
       "type": "object"
     },
+    "CatalogRef": {
+      "additionalProperties": false,
+      "description": "Which control catalog produced a bundle's evaluations.\n\nEvery verdict in a bundle is relative to a catalog, and `--catalog` lets an\noperator supply their own. Nothing recorded which one had been used, so two\nbundles built from identical evidence — one `not_ready` and exit 2 against\nthe shipped catalog, one `conditional` and exit 0 against a catalog whose\nrequired evidence had been moved to recommended — were indistinguishable to\nwhoever received them. `verify --expected` proves a bundle has not changed\nsince it was generated; this is what says against which standard.\n\n`origin` matters on its own because the names collide: `catalog.yaml` is\nboth the packaged default and the likeliest name for an operator's own\nfile, so the name alone cannot answer \"was this the shipped catalog?\".\n\n`name` is a bare filename, never a path. Which directory an operator keeps\ntheir catalog in is the kind of detail `--artifact-root` exists to keep out\nof a published bundle, and it is not needed to identify the catalog — the\ndigest does that.",
+      "properties": {
+        "control_count": {
+          "description": "How many controls the catalog defines.",
+          "minimum": 1,
+          "title": "Control Count",
+          "type": "integer"
+        },
+        "name": {
+          "description": "Filename of the catalog, without any directory component.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "origin": {
+          "description": "`builtin` for a catalog shipped inside the package, `custom` for one loaded from a path the operator supplied.",
+          "enum": [
+            "builtin",
+            "custom"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "SHA-256 of the catalog file's bytes as read. The repository stores and checks out YAML with LF endings, so this matches `sha256sum` on a normal checkout and is stable across operating systems.",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "origin",
+        "name",
+        "sha256",
+        "control_count"
+      ],
+      "title": "CatalogRef",
+      "type": "object"
+    },
+    "CollectionError": {
+      "additionalProperties": false,
+      "description": "An input that was supplied but could not be ingested.\n\n\"No evidence was supplied\" and \"evidence was supplied and is broken\" are\nmaterially different states, and only the first was ever recorded. The\ncollector warned on the console and the warning died there: the bundle,\nthe report and the HTML summary all showed the affected control as\nplainly *missing evidence*, telling the engineer to re-run a scan that\nhad in fact already run and whose output was sitting on disk, truncated.\n\nCI logs rotate; the bundle is the durable, signable artifact that\n``verify``, ``compare``, ``statement``, ``vex`` and ``oscal`` all\nconsume. The distinction has to live here to survive.",
+      "properties": {
+        "path": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "reason"
+      ],
+      "title": "CollectionError",
+      "type": "object"
+    },
     "ConfidenceLevel": {
       "description": "Confidence of an evidence or an evaluation.\n\nManual attestations default to `medium` at best; automated signals from\ntrusted sources can reach `high`. `low` signals data that is inconsistent\nor derived from weakly authenticated sources.",
       "enum": [
@@ -597,7 +663,7 @@
             }
           ],
           "default": null,
-          "description": "Optional EPSS/KEV enrichment summary for the CVEs in ``cve_ids``. Stays ``None`` unless the user opted into enrichment via the ``run --enrich`` flag or the standalone ``sdlc-evidence enrich`` command. The bundle remains schema-compatible with pre-enrichment consumers when this field is absent."
+          "description": "Optional EPSS/KEV enrichment summary for the CVEs in ``cve_ids``. Stays ``None`` unless the user opted into enrichment by running ``sdlc-evidence enrich`` against the bundle. The bundle remains schema-compatible with pre-enrichment consumers when this field is absent."
         }
       },
       "required": [
@@ -1032,7 +1098,7 @@
     },
     "VulnerabilityIntelligence": {
       "additionalProperties": false,
-      "description": "EPSS + CISA KEV enrichment aggregated for a single evidence record.\n\nComputed by the optional ``enrich`` step (CLI flag ``--enrich`` on\n``run``, or the standalone ``sdlc-evidence enrich`` command). When the\nenrichment step is skipped the field stays ``None`` and the bundle\nbehaves exactly like it did pre-enrichment, so consumers that never\nopt in are unaffected.\n\nSource feeds:\n\n* EPSS — https://epss.cyentia.com/ (FIRST.org, public CSV, refreshed\n  daily). ``epss_score`` is the probability of exploitation in the\n  next 30 days; ``epss_percentile`` is the position within the day's\n  distribution.\n* CISA KEV — https://www.cisa.gov/known-exploited-vulnerabilities-catalog\n  (JSON catalog of vulnerabilities confirmed exploited in the wild).",
+      "description": "EPSS + CISA KEV enrichment aggregated for a single evidence record.\n\nComputed by the optional ``sdlc-evidence enrich`` command, run against an\nexisting ``bundle.json``. When the enrichment step is skipped the field\nstays ``None`` and the bundle behaves exactly like it did\npre-enrichment, so consumers that never opt in are unaffected.\n\nSource feeds:\n\n* EPSS — https://epss.cyentia.com/ (FIRST.org, public CSV, refreshed\n  daily). ``epss_score`` is the probability of exploitation in the\n  next 30 days; ``epss_percentile`` is the position within the day's\n  distribution.\n* CISA KEV — https://www.cisa.gov/known-exploited-vulnerabilities-catalog\n  (JSON catalog of vulnerabilities confirmed exploited in the wild).",
       "properties": {
         "cve_count": {
           "default": 0,
@@ -1164,9 +1230,29 @@
       "type": "string"
     },
     "bundle_version": {
-      "default": "1.0.0",
+      "default": "2.1.0",
       "title": "Bundle Version",
       "type": "string"
+    },
+    "catalog": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CatalogRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The control catalog these evaluations were produced against. Optional so that a bundle written before 2.1.0 still validates; every bundle this version writes carries it."
+    },
+    "collection_errors": {
+      "description": "Inputs that were supplied but could not be ingested (unreadable, malformed, oversized). Omitted entirely for a clean run, so a bundle with no collection problems still validates against a pinned pre-3.x schema. It is not byte-identical to a pre-3.x bundle: bundle_version moved to 2.0.0 in the same release, and that field is inside the structural hash.",
+      "items": {
+        "$ref": "#/$defs/CollectionError"
+      },
+      "title": "Collection Errors",
+      "type": "array"
     },
     "control_evaluations": {
       "items": {

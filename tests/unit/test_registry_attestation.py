@@ -255,3 +255,47 @@ def test_registry_route_does_not_shadow_a_bare_statement(tmp_path: Path) -> None
     _write(artifacts, _statement("https://example.com/unknown/v1"), name="stmt.json")
     report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
     assert [e.source.kind for e in report.evidence] == ["in-toto-statement"]
+
+
+# ---------------------------------------------------------------------------
+# GitHub's attestations API shares npm's envelope
+# ---------------------------------------------------------------------------
+
+
+def _github_attestations() -> dict[str, Any]:
+    """`GET /repos/{owner}/{repo}/attestations/{digest}` — same envelope as
+    npm's, but with no `predicateType` beside the bundle."""
+    return {
+        "attestations": [
+            {
+                "bundle": _npm_bundle(_SLSA_PROVENANCE),
+                "repository_id": 12345,
+                "bundle_url": "https://api.github.com/…",
+            }
+        ]
+    }
+
+
+def test_github_attestations_are_not_labelled_npm(tmp_path: Path) -> None:
+    # `producer` is the field a reviewer reads to answer "who asserted this".
+    # Stamping a GitHub Actions attestation with "npm" is a factual error in
+    # the evidence record; being unspecific is not.
+    parsed = parse_registry_attestation(_write(tmp_path, _github_attestations()))
+    assert parsed.registry != "npm"
+    assert parsed.registry == "unspecified-registry"
+    ev = normalize_registry_attestation(parsed, _release())
+    assert ev.producer != "npm"
+
+
+def test_github_attestations_still_surface_the_embedded_predicate(tmp_path: Path) -> None:
+    # Declining to name the registry must not cost the reader the content.
+    parsed = parse_registry_attestation(_write(tmp_path, _github_attestations()))
+    assert [s.predicate_type for s in parsed.statements] == [_SLSA_PROVENANCE]
+    ev = normalize_registry_attestation(parsed, _release())
+    assert ev.metadata["predicate_types"] == [_SLSA_PROVENANCE]
+
+
+def test_npm_shape_is_still_recognised_as_npm(tmp_path: Path) -> None:
+    # The discriminator must not cost us the case it was built for.
+    parsed = parse_registry_attestation(_write(tmp_path, _npm_attestations()))
+    assert parsed.registry == "npm"
