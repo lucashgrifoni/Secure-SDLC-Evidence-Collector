@@ -27,17 +27,20 @@ def _jobs(path: Path) -> dict[str, Any]:
 
 @pytest.mark.parametrize("workflow", WORKFLOWS, ids=lambda p: p.name)
 def test_a_cached_setup_python_follows_a_checkout(workflow: Path) -> None:
+    offenders = []
     for job_name, job in _jobs(workflow).items():
         checked_out = False
         for step in job.get("steps", []) if isinstance(job, dict) else []:
             uses = str(step.get("uses", ""))
             if uses.startswith("actions/checkout@"):
                 checked_out = True
-            if uses.startswith("actions/setup-python@") and (step.get("with") or {}).get("cache"):
-                assert checked_out, (
-                    f"{workflow.name}:{job_name} asks setup-python for a cache before any "
-                    "checkout, so there is no dependency file to key it on"
-                )
+            cached = (step.get("with") or {}).get("cache")
+            if uses.startswith("actions/setup-python@") and cached and not checked_out:
+                offenders.append(f"{workflow.name}:{job_name}")
+    assert offenders == [], (
+        f"setup-python asks for a cache before any checkout in {offenders}, "
+        "so there is no dependency file to key it on"
+    )
 
 
 def test_the_workflow_directory_was_found() -> None:
