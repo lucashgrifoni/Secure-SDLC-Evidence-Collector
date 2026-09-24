@@ -4,6 +4,61 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.0.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.5.1...v3.0.0) (2026-09-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **bundle:** `bundle_version` moves from 1.0.0 to 2.1.0 and `catalog` is always present, so a validator pinned to the 1.0.0 schema rejects new bundles. `bundle_version` is part of the structural hash, so digests pinned for `verify --expected` must be regenerated. Read `collection_errors` with a default.
+* **cli:** `collect --output` writes `{"evidence": [...], "collection_errors": [...]}` instead of a bare list. `evaluate` still reads the old format.
+* **cli:** usage errors, rejected option values and missing input paths exit 3 instead of 2, and `exceptions validate` exits 3 instead of 1 for a missing file.
+* **controls:** a catalog whose `controls` list is empty is refused instead of evaluating to `ready`.
+* **api:** `/docs` and `/openapi.json` are off by default. Set `SDLC_EVIDENCE_API_DOCS=1` or pass `expose_docs=True` to serve them.
+* `vex`, `guac`, `statement`, `enrich` and `oscal` now exit 3 instead of 2 for a missing or malformed input. Callers branching on `2` after those commands must switch to `3`; callers branching on non-zero are unaffected. See "Migrating to 3.0.0" in the README.
+
+### Added
+
+* **compare:** flag EPSS model drift between two bundles ([#101](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/101)) ([a528f9d](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/a528f9d128038a4d923d0e6cec66b6e683e31a6d))
+* in-toto SVR end to end, and stop dropping unmodelled predicates ([#99](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/99)) ([b7cdb76](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/b7cdb76bac9873a2ac58956fd48a63b483becb2a))
+* one exit code for every input error, and rationales humans can read ([#97](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/97)) ([fc14174](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/fc14174de509f6fc3d07ab61cf52412b4c26d59a))
+* **parsers:** ingest in-toto release attestations ([#98](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/98)) ([59b21c6](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/59b21c63aac8be29a9624674be3f7f188cb34022))
+* **parsers:** ingest PyPI (PEP 740) and npm registry attestations ([#100](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/100)) ([0a6363b](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/0a6363b4c470a9baada834d9c40f352a3182bcbf))
+* **parsers:** read native Trivy JSON, splitting findings by result class ([#102](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/102)) ([bc94353](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/bc94353c0b67f86fec189049aa73d74261cd9ff1))
+
+
+### Fixed
+
+* **api:** serve the interactive docs and the OpenAPI document only on request ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **application:** report evidence anchored to another release instead of certifying with it ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **bundle:** record unreadable inputs and the catalog behind every verdict ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **cli:** carry collection errors from collect to evaluate, and reach the same verdict as run ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **cli:** exit 3 for usage errors and missing input paths on every command ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **cli:** name the file when a bundle cannot be read ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **collectors:** contain a malformed or hostile artifact to its own file instead of ending the run ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **collectors:** walk overlapping artifact directories once instead of collecting nested files twice ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **controls:** budget rationale text in characters, so a long rationale no longer stops run before it writes its reports ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **controls:** refuse a catalog with no controls, and warn when a catalog path falls back to a packaged catalog ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **exporters:** escape untrusted strings in HTML and Markdown, and write the report set atomically ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **exporters:** stop presenting a declared claim as tool provenance in the HTML summary ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **intelligence:** degrade on a corrupt EPSS or KEV feed as documented ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **junit:** stop counting a report with no executed tests as a passing test run ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* make evidence and waiver ids unique, and make exceptions validate and list agree with the engine ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **parsers:** score OSV severity from CVSS v3 vectors ([#111](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/111)) ([f8f3e97](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/f8f3e97b0e3f3c5a8d5e1c70d300349ae19ca340))
+* **parsers:** stop dropping evidence from multi-Statement files, multi-run SARIF, nested CycloneDX components and corrupt JSON ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **parsers:** stop labelling GitHub's attestations API response as npm ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+* **release:** stop release-please proposing 2.4.0 after the history rewrite ([#109](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/109)) ([f6d3412](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/f6d3412cc6a1a7ab68040e76464f274661135a7c))
+* strip local paths through --artifact-root, including symlinks and decorated scanner targets ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+
+
+### Documentation
+
+* add a release rollback runbook, document the identifiers a bundle repeats, list every shipped evidence type, and bring the 3.0.0 migration notes up to date ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+
+
+### CI
+
+* **release:** generate the SBOM outside the job that signs the release, and pass the dispatch tag through the environment ([8b2cbe2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8b2cbe250f1410e700e9599bf89a2b59571702a1))
+
 ## [2.5.1](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.5.0...v2.5.1) (2026-08-06)
 
 
