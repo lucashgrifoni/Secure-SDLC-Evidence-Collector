@@ -24,6 +24,7 @@ from evidence_collector.domain.models import (
 )
 from evidence_collector.normalizers import (
     normalize_attestation,
+    normalize_croissant,
     normalize_garak,
     normalize_intoto_statement,
     normalize_junit,
@@ -41,6 +42,7 @@ from evidence_collector.normalizers import (
 )
 from evidence_collector.parsers import (
     parse_attestation,
+    parse_croissant,
     parse_exception,
     parse_garak,
     parse_intoto_statements,
@@ -59,6 +61,7 @@ from evidence_collector.parsers import (
 )
 from evidence_collector.parsers._common import MAX_INPUT_BYTES, ParseError
 from evidence_collector.parsers._intoto import read_records
+from evidence_collector.parsers.croissant import croissant_version
 from evidence_collector.parsers.intoto_provenance import file_has_provenance
 from evidence_collector.parsers.intoto_statement import file_has_ingestable_statement
 from evidence_collector.parsers.intoto_vsa import VSA_PREDICATE_TYPE
@@ -563,6 +566,17 @@ class LocalArtifactCollector:
             # T6.5 AI evidence detection. Filename-based first because
             # garak / lm-eval / model-card payloads are JSON shapes we
             # do not want to confuse with generic JSON artifacts.
+            # Croissant is recognised by its declared conformsTo, so it goes
+            # before the AI routes that trust a file name: a dataset card saved
+            # as model-card.json is still a dataset card.
+            if _looks_like_croissant(file_path):
+                parsed_croissant = parse_croissant(file_path)
+                report.evidence.append(
+                    normalize_croissant(
+                        parsed_croissant, self._release, artifact_root=self._artifact_root
+                    )
+                )
+                return
             if _looks_like_garak(file_path):
                 parsed_garak = parse_garak(file_path)
                 report.evidence.append(
@@ -764,6 +778,13 @@ def _looks_like_model_card(path: Path) -> bool:
     if not isinstance(data, dict):
         return False
     return isinstance(data.get("model_details"), dict) or isinstance(data.get("model-index"), list)
+
+
+def _looks_like_croissant(path: Path) -> bool:
+    """Detect Croissant dataset metadata by its declared ``conformsTo``."""
+    if path.suffix.lower() != ".json":
+        return False
+    return croissant_version(_peek_json(path)) is not None
 
 
 def _looks_like_osv(path: Path) -> bool:
