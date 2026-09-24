@@ -24,7 +24,8 @@
       "extra-files": [
         "src/evidence_collector/__init__.py",
         "src/evidence_collector/collectors/github.py",
-        "src/evidence_collector/collectors/gitlab.py"
+        "src/evidence_collector/collectors/gitlab.py",
+        "docs/github_action.md"
       ]
     }
   }

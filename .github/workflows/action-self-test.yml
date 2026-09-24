@@ -1,0 +1,129 @@
+# Action self-test.
+#
+# Runs the composite action from this checkout (`uses: ./`) against the
+# sample release, so a change to action.yml is exercised on a real runner
+# and not only by the unit tests that execute its embedded scripts.
+#
+#   * `run-action` checks the published outputs and renders the job summary.
+#   * `attest-recipe` runs the attestation recipe from docs/github_action.md.
+#     It creates a public attestation, so it runs only on manual dispatch.
+
+name: action-self-test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "action.yml"
+      - ".github/workflows/action-self-test.yml"
+  pull_request:
+    paths:
+      - "action.yml"
+      - ".github/workflows/action-self-test.yml"
+      - "src/evidence_collector/cli/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: action-self-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-action:
+    name: Run the action on the sample release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Collect evidence
+        id: evidence
+        uses: ./
+        with:
+          application: payments-api
+          repository: acme/payments-api
+          release-id: 2026.04.10
+          artifacts-dir: examples/sample_release/artifacts
+          attestations-dir: examples/sample_release/attestations
+          output-dir: evidence-out
+
+      - name: Check the outputs
+        env:
+          BUNDLE_PATH: ${{ steps.evidence.outputs.bundle-path }}
+          REPORT_PATH: ${{ steps.evidence.outputs.report-path }}
+          STATUS: ${{ steps.evidence.outputs.release-status }}
+          COVERAGE: ${{ steps.evidence.outputs.coverage-score }}
+          TOTAL: ${{ steps.evidence.outputs.controls-total }}
+          MET: ${{ steps.evidence.outputs.controls-met }}
+          PARTIAL: ${{ steps.evidence.outputs.controls-partial }}
+          MISSING: ${{ steps.evidence.outputs.controls-missing }}
+        run: |
+          set -euo pipefail
+          test -f "$BUNDLE_PATH"
+          test -f "$REPORT_PATH"
+          test "$STATUS" = ready
+          test "$COVERAGE" = 100
+          test "$TOTAL" -gt 0
+          test "$MET" = "$TOTAL"
+          test "$PARTIAL" = 0
+          test "$MISSING" = 0
+          echo "outputs ok: status=$STATUS coverage=$COVERAGE controls=$MET/$TOTAL"
+
+  attest-recipe:
+    name: Attestation recipe
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Collect evidence
+        id: evidence
+        uses: ./
+        with:
+          application: payments-api
+          repository: acme/payments-api
+          release-id: 2026.04.10
+          artifacts-dir: examples/sample_release/artifacts
+          attestations-dir: examples/sample_release/attestations
+          output-dir: evidence-out
+
+      # Same steps as the recipe in docs/github_action.md.
+      - name: Extract the predicate
+        id: predicate
+        env:
+          BUNDLE_PATH: ${{ steps.evidence.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          sdlc-evidence statement "$BUNDLE_PATH" -o statement.intoto.json
+          jq '.predicate' statement.intoto.json > predicate.json
+          echo "type=$(jq -r '.predicateType' statement.intoto.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: examples/sample_release/artifacts/sbom.cdx.json
+          predicate-type: ${{ steps.predicate.outputs.type }}
+          predicate-path: predicate.json
