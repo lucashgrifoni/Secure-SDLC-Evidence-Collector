@@ -75,14 +75,76 @@ def _severity_bucket_from_cvss(score: float) -> str:
     return "info"
 
 
+# CVSS v3.1 base metric weights (FIRST specification, section 7.4).
+_CVSS3_WEIGHTS: dict[str, dict[str, float]] = {
+    "AV": {"N": 0.85, "A": 0.62, "L": 0.55, "P": 0.2},
+    "AC": {"L": 0.77, "H": 0.44},
+    "UI": {"N": 0.85, "R": 0.62},
+    "C": {"H": 0.56, "L": 0.22, "N": 0.0},
+    "I": {"H": 0.56, "L": 0.22, "N": 0.0},
+    "A": {"H": 0.56, "L": 0.22, "N": 0.0},
+}
+_CVSS3_PR: dict[str, dict[str, float]] = {
+    "U": {"N": 0.85, "L": 0.62, "H": 0.27},
+    "C": {"N": 0.85, "L": 0.68, "H": 0.5},
+}
+_QUALITATIVE_BUCKETS: dict[str, str] = {
+    "CRITICAL": "critical",
+    "HIGH": "high",
+    "MODERATE": "medium",
+    "MEDIUM": "medium",
+    "LOW": "low",
+}
+
+
+def _cvss3_roundup(value: float) -> float:
+    """The specification's Roundup, done in integers to avoid float drift."""
+    scaled = round(value * 100_000)
+    if scaled % 10_000 == 0:
+        return scaled / 100_000.0
+    return (scaled // 10_000 + 1) / 10.0
+
+
+def _cvss3_base_score(vector: str) -> float | None:
+    """Compute the base score of a CVSS v3.0 or v3.1 vector.
+
+    Both versions share the base equations. Only the eight base metrics are
+    read; temporal and environmental metrics do not change the base score. A
+    vector missing any base metric, or carrying a value the specification
+    does not define, returns ``None`` rather than a guess.
+    """
+    head, _, body = vector.partition("/")
+    if head not in {"CVSS:3.0", "CVSS:3.1"}:
+        return None
+    metrics = dict(part.split(":", 1) for part in body.split("/") if ":" in part)
+    try:
+        scope = metrics["S"]
+        weights = {name: table[metrics[name]] for name, table in _CVSS3_WEIGHTS.items()}
+        privileges = _CVSS3_PR[scope][metrics["PR"]]
+    except KeyError:
+        return None
+    impact_sub = 1 - (1 - weights["C"]) * (1 - weights["I"]) * (1 - weights["A"])
+    if scope == "U":
+        impact = 6.42 * impact_sub
+    else:
+        impact = 7.52 * (impact_sub - 0.029) - 3.25 * (impact_sub - 0.02) ** 15
+    exploitability = 8.22 * weights["AV"] * weights["AC"] * privileges * weights["UI"]
+    if impact <= 0:
+        return 0.0
+    if scope == "U":
+        return _cvss3_roundup(min(impact + exploitability, 10.0))
+    return _cvss3_roundup(min(1.08 * (impact + exploitability), 10.0))
+
+
 def _extract_cvss_score(severity_entry: Any) -> float | None:
     """Pull a numeric CVSS base score from an OSV ``severity[*]`` entry.
 
     OSV severity entries are ``{"type": "CVSS_V3" | "CVSS_V4", "score":
-    "CVSS:3.1/AV:N/AC:L/..."}``. We accept either the legacy raw number
-    (``"7.5"``) or a vector string starting with ``CVSS:``; for the
-    latter we look for a trailing ``/<num>`` or return ``None`` and let
-    the caller fall back to the ``medium`` default.
+    "CVSS:3.1/AV:N/AC:L/..."}``. A v3.0 or v3.1 vector is scored with the
+    specification's base equations. A bare number (``"7.5"``) is still
+    accepted. A v4.0 vector is not scored here, because its score comes from
+    the specification's lookup table rather than a formula; the caller falls
+    back to the advisory's own rating or to ``medium``.
     """
     if not isinstance(severity_entry, dict):
         return None
@@ -95,7 +157,9 @@ def _extract_cvss_score(severity_entry: Any) -> float | None:
         return float(score_raw)
     except ValueError:
         pass
-    # CVSS vector — extract the numeric component when present.
+    if score_raw.startswith("CVSS:3."):
+        return _cvss3_base_score(score_raw)
+    # Anything else: extract a trailing numeric component when present.
     match = re.search(r"/([0-9](?:\.[0-9]+)?)\b", score_raw)
     if match is not None:
         try:
@@ -109,22 +173,26 @@ def _bucket_for_vulnerability(vuln: dict[str, Any]) -> str:
     """Return the severity bucket for a single OSV vulnerability.
 
     Picks the highest CVSS score across the ``severity[*]`` entries
-    that we can parse. Falls back to ``medium`` so an unrated finding
-    still flows into the verdict.
+    that we can parse. Without one, the advisory's own qualitative rating
+    (``database_specific.severity``, which GitHub advisories carry) is used,
+    and only then ``medium``, so an unrated finding still flows into the
+    verdict.
     """
     severities = vuln.get("severity")
-    if not isinstance(severities, list) or not severities:
-        return "medium"
     best: float | None = None
-    for entry in severities:
+    for entry in severities if isinstance(severities, list) else []:
         score = _extract_cvss_score(entry)
         if score is None:
             continue
         if best is None or score > best:
             best = score
-    if best is None:
-        return "medium"
-    return _severity_bucket_from_cvss(best)
+    if best is not None:
+        return _severity_bucket_from_cvss(best)
+    specific = vuln.get("database_specific")
+    rating = specific.get("severity") if isinstance(specific, dict) else None
+    if isinstance(rating, str) and rating.strip().upper() in _QUALITATIVE_BUCKETS:
+        return _QUALITATIVE_BUCKETS[rating.strip().upper()]
+    return "medium"
 
 
 def _collect_cves_from_strings(values: Any, sink: set[str]) -> None:
