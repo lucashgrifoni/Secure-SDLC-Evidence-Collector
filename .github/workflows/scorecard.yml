@@ -46,7 +46,7 @@ jobs:
       actions: read            # read workflow run metadata (Token-Permissions check)
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
         with:
           egress-policy: audit
 
@@ -78,7 +78,7 @@ jobs:
           retention-days: 7
 
       - name: Upload SARIF to Security tab
-        uses: github/codeql-action/upload-sarif@4187e74d05793876e9989daffde9c3e66b4acd07 # v3
+        uses: github/codeql-action/upload-sarif@faaca9a8f6edddba5725ffe5adefdab6669a2eca # v3
         with:
           sarif_file: results.sarif
           category: openssf-scorecard
