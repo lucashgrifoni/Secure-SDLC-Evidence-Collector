@@ -31,6 +31,10 @@ authority it claims. The source used here is NIST's own:
   generated 2026-09-24; SHA-256 of the file retrieved
   `7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0`.
   It carries 35 references labelled `SSDF:`, covering 15 SSDF 1.1 tasks.
+  That URL serves the current export, not a versioned one, so the 35
+  references are kept verbatim, per CSF 2.0 subcategory, in
+  [`data/0014-csf20-ssdf-references.json`](./data/0014-csf20-ssdf-references.json)
+  together with the URL, the export date and the SHA-256 above.
 - **SP 800-218r1 (SSDF 1.2), initial public draft of 2025-12-17.** Its
   reference column still cites CSF 1.1 identifiers (`[NISTCSF]`) for almost
   every task; only the new PO.6 tasks cite CSF 2.0 (`[NISTCSF20]: ID.IM`).
@@ -50,18 +54,39 @@ digest moves once instead of twice.
 
 The catalogs map controls at SSDF *practice* level (for example PW.4), while
 NIST maps SSDF *tasks* (PW.4.1, PW.4.4). The CSF column is the union over the
-tasks NIST maps for that practice, with the task shown in brackets.
+tasks NIST maps for that practice, with the task shown in brackets. "None
+listed" means the export has no reference for any task of that practice.
 
-| Control | SSDF practice | CSF 2.0 subcategories listed by NIST |
-|---|---|---|
-| `SSDF-PS.2` | PS.2 | PR.DS-01 [PS.2.1] |
-| `SSDF-PS.3` | PS.3 | PR.DS-01, PR.DS-11 [PS.3.1] |
-| `SSDF-PW.1` | PW.1 | ID.RA-05 [PW.1.1] |
-| `SSDF-PW.4` | PW.4 | GV.SC-03 [PW.4.1]; GV.SC-07, ID.AM-08 [PW.4.1, PW.4.4] |
-| `SSDF-PW.6` (SSDF 1.2 catalog only) | PW.6 | none listed |
-| `SSDF-PW.7` | PW.7 | none listed |
-| `SSDF-PW.8` | PW.8 | none listed |
-| `ORG-*`, `SAMM-*` | not SSDF | no NIST reference; `SAMM-DESIGN-TA-1` complements `SSDF-PW.1` by its own description, which is not a NIST mapping |
+For the SSDF practices the catalogs cite:
+
+| SSDF practice | CSF 2.0 subcategories listed by NIST |
+|---|---|
+| PS.2 | PR.DS-01 [PS.2.1] |
+| PS.3 | PR.DS-01, PR.DS-11 [PS.3.1] |
+| PW.1 | ID.RA-05 [PW.1.1] |
+| PW.4 | GV.SC-03 [PW.4.1]; GV.SC-07, ID.AM-08 [PW.4.1, PW.4.4] |
+| PW.6, PW.7, PW.8, RV.1 | none listed |
+
+Controls, per catalog:
+
+| Catalog | Control | SSDF practice cited | CSF 2.0 |
+|---|---|---|---|
+| `catalog.yaml`, `catalog-ssdf-1.2.yaml` | `SSDF-PS.2` | PS.2 | PR.DS-01 |
+| | `SSDF-PS.3` | PS.3 | PR.DS-01, PR.DS-11 |
+| | `SSDF-PW.1` | PW.1 | ID.RA-05 |
+| | `SSDF-PW.4` | PW.4 | GV.SC-03, GV.SC-07, ID.AM-08 |
+| | `SSDF-PW.6` (1.2 catalog only), `SSDF-PW.7`, `SSDF-PW.8` | PW.6, PW.7, PW.8 | none listed |
+| | `ORG-*`, `SAMM-*` | none | no NIST reference; `SAMM-DESIGN-TA-1` complements `SSDF-PW.1` by its own description, which is not a NIST mapping |
+| `catalog-osps-baseline.yaml` | `OSPS-QA-02.02` | PS.3 | PR.DS-01, PR.DS-11 |
+| | `OSPS-BR-06.01` | PS.2 | PR.DS-01 |
+| | `OSPS-VM-05.03` | PW.4 | GV.SC-03, GV.SC-07, ID.AM-08 |
+| | `OSPS-VM-06.02`, `OSPS-QA-06.01`, `OSPS-QA-07.01`, `OSPS-QA-03.01` | PW.7, PW.8, RV.1 | none listed |
+| `catalog-ai.yaml` | `AI-SBOM` | PS.3 | PR.DS-01, PR.DS-11 |
+| | `AI-SCA` | PW.4 | GV.SC-03, GV.SC-07, ID.AM-08 |
+| | `AI-SAST` | PW.7 | none listed |
+| | `AI-MODEL-CARD`, `AI-PROMPT-INJ`, `AI-SAFETY-EVAL`, `AI-TRAINING-LINEAGE`, `AI-MCP-INVENTORY`, `AI-THREAT-MODEL` | SP 800-218A AI-profile tasks (PS.AI.1, PS.AI.2, PW.1.AI, PW.4.AI) | none listed: the export has no SP 800-218A references |
+| | `AI-RELEASE-APPROVAL` | none | no NIST reference |
+| `catalog-fedramp-20x-ksi.yaml` | all `KSI-*` controls | none: they cite FedRAMP 20x Key Security Indicators | no NIST reference in the export |
 
 PR.PS-06 ("Secure software development practices are integrated, and their
 performance is monitored throughout the software development life cycle") is
@@ -69,6 +94,8 @@ the CSF 2.0 outcome closest to the SSDF as a whole. NIST's informative
 references list no SSDF task for it, and this ADR does not add one.
 
 ### Every SSDF task NIST maps to CSF 2.0
+
+From the CSF 2.0 Reference Tool export (SSDF 1.1 task identifiers):
 
 | SSDF task | CSF 2.0 subcategories |
 |---|---|
@@ -88,9 +115,20 @@ references list no SSDF task for it, and this ADR does not add one.
 | PW.4.1 | GV.SC-03, GV.SC-07, ID.AM-08 |
 | PW.4.4 | GV.SC-07, ID.AM-08 |
 
-A custom catalog that cites SSDF tasks can use this table as is. To
-re-derive it, download the export above and collect, for each CSF 2.0
-subcategory row, the informative references that start with `SSDF:`.
+From the SSDF 1.2 draft (SP 800-218r1 ipd), which cites CSF 2.0 only for its
+new PO.6 tasks, and only at category level:
+
+| SSDF 1.2 draft task | CSF 2.0 |
+|---|---|
+| PO.6.1 | ID.IM (category) |
+| PO.6.2 | ID.IM (category) |
+| PO.6.3 | ID.IM (category) |
+
+A custom catalog that cites SSDF tasks can use these tables as they are;
+the PO.6 rows follow a draft and change if the final SSDF 1.2 changes them.
+To re-derive the first table, collect, for each CSF 2.0 subcategory row of
+the export, the informative references that start with `SSDF:`; the stored
+extract is what that step produced on 2026-09-24.
 
 ## Consequences
 
@@ -106,5 +144,8 @@ subcategory row, the informative references that start with `SSDF:`.
   the controls in `catalog-ai.yaml`, so mapping them to its twelve risk
   areas is a project judgment and needs its own review before it is written
   down as a mapping.
+- NIST lists no reference for PW.7, PW.8 or RV.1 either, so several OSPS
+  and AI controls carry no CSF 2.0 subcategory here, and FedRAMP 20x KSIs
+  are outside the export entirely.
 - When NIST finalises SSDF 1.2 or publishes new informative references, the
   tables must be re-derived from the new export, and this ADR superseded.
