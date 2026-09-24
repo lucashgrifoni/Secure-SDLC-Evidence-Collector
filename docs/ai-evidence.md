@@ -100,6 +100,19 @@ File names recognised: `*.lm-eval.json`, `*.lm_eval.json`,
 `lm-eval.json`. Content sniff also matches files that carry
 `results: {…}` and `versions: {…}` together.
 
+**Inspect** (UK AI Security Institute, https://inspect.aisi.org.uk) eval
+logs are read too, in their JSON form: write them with
+`--log-format json` or convert an `.eval` file with `inspect log convert`.
+They are recognised by content, whatever the file name, and only log
+format version 2 is accepted. The evidence records `eval.task`,
+`eval.model`, the run status, every metric as `scorer/metric` from
+`results.scores`, and the sample counts. Only a run with
+`status: success` counts; an errored, cancelled or unfinished run is
+recorded as `invalid`, so it stays visible but does not satisfy the
+control. A log that includes every sample can exceed the collector's
+25 MB input limit, in which case it is refused like any other oversized
+input.
+
 Mapped control: `AI-SAFETY-EVAL` (SSDF PW.4.AI).
 
 ### `mcp_tool_inventory`

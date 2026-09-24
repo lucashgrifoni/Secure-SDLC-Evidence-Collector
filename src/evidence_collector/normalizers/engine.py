@@ -38,6 +38,7 @@ from evidence_collector.parsers._common import ParsedArtifact
 from evidence_collector.parsers.attestation import ParsedAttestation
 from evidence_collector.parsers.croissant import ParsedCroissant
 from evidence_collector.parsers.garak import ParsedGarak
+from evidence_collector.parsers.inspect_eval import ParsedInspectEval
 from evidence_collector.parsers.intoto_provenance import ParsedProvenance
 from evidence_collector.parsers.intoto_statement import (
     SVR_PREDICATE_TYPE,
@@ -1035,6 +1036,55 @@ def normalize_lm_eval(
         summary=(
             f"lm-eval-harness covered {parsed.total_tasks} task(s) on "
             f"{parsed.model_id or 'unknown model'}"
+        ),
+        metadata=metadata,
+    )
+
+
+def normalize_inspect_eval(
+    parsed: ParsedInspectEval,
+    release: ReleaseContext,
+    *,
+    artifact_root: str | None = None,
+) -> NormalizedEvidence:
+    """Build an ``ai_safety_eval`` evidence from an Inspect eval log.
+
+    Only a run with ``status: success`` is ``generated``. An errored,
+    cancelled or unfinished run is ``invalid``: the file is kept for the
+    reviewer, but it does not satisfy a control that asks for an evaluation.
+    """
+    metadata: dict[str, Any] = {
+        "inspect_task": parsed.task,
+        "ai_model_id": parsed.model,
+        "eval_status": parsed.status,
+        "metrics": dict(parsed.metrics),
+    }
+    if parsed.total_samples is not None:
+        metadata["total_samples"] = parsed.total_samples
+    if parsed.completed_samples is not None:
+        metadata["completed_samples"] = parsed.completed_samples
+    succeeded = parsed.status == "success"
+    task = parsed.task if len(parsed.task) <= 200 else parsed.task[:200] + "..."
+    return NormalizedEvidence(
+        evidence_id=_new_evidence_id(
+            "inspect", parsed.artifact.integrity_hash, parsed.model[:500], release.release_id
+        ),
+        evidence_type=EvidenceType.AI_SAFETY_EVAL,
+        source=EvidenceSource(name="inspect", kind="ai-eval"),
+        producer="inspect",
+        subject_type=SubjectType.AI_MODEL,
+        subject_ref=parsed.model[:500],
+        status=EvidenceStatus.GENERATED if succeeded else EvidenceStatus.INVALID,
+        confidence=ConfidenceLevel.HIGH if succeeded else ConfidenceLevel.LOW,
+        release_id=release.release_id,
+        commit_sha=release.commit_sha,
+        generated_at=None,
+        raw=_raw_ref(parsed.artifact, artifact_root),
+        findings_count={},
+        summary=(
+            f"Inspect task {task}: {len(parsed.metrics)} metric(s)"
+            if succeeded
+            else f"Inspect task {task} did not finish (status {parsed.status})"
         ),
         metadata=metadata,
     )
