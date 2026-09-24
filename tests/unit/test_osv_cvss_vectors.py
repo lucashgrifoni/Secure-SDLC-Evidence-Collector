@@ -105,3 +105,16 @@ def test_a_v4_only_record_without_a_rating_still_falls_back_to_medium(tmp_path: 
         ],
     )
     assert _bucket(path) == "medium"
+
+
+def test_changed_scope_uses_the_base_equation() -> None:
+    """CVSS 3.1 keeps the 3.0 base equation for a changed scope.
+
+    The specification's section 7.1 gives the base Impact for a changed scope
+    as ``7.52 x (ISS - 0.029) - 3.25 x (ISS - 0.02)^15``. The ``0.9731`` and
+    ``^13`` form belongs to section 7.3, the Environmental ModifiedImpact, and
+    scores this vector 7.0 instead of its base 6.9.
+    """
+    from evidence_collector.parsers.osv import _cvss3_base_score
+
+    assert _cvss3_base_score("CVSS:3.1/AV:P/AC:H/PR:L/UI:R/S:C/C:H/I:H/A:H") == 6.9
