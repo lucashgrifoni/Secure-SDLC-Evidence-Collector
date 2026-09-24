@@ -34,7 +34,7 @@ jobs:
 
       # Step 2 — assemble the evidence bundle
       - id: collect
-        uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v3.0.1 # x-release-please-version
+        uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v3.1.0 # x-release-please-version
         with:
           application: "payments-api"
           release-id: ${{ github.ref_name }}
@@ -83,7 +83,7 @@ The five bundled catalogs can be selected by name, without a path:
 ### Applying waivers in CI
 
 ```yaml
-- uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v3.0.1 # x-release-please-version
+- uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v3.1.0 # x-release-please-version
   with:
     application: payments-api
     release-id: ${{ github.ref_name }}
@@ -130,7 +130,7 @@ permissions:
 
 steps:
   - id: evidence
-    uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v3.0.1 # x-release-please-version
+    uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v3.1.0 # x-release-please-version
     with:
       application: payments-api
       release-id: ${{ github.ref_name }}
