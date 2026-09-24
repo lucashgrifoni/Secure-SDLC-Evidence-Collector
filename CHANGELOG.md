@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.1.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v3.0.1...v3.1.0) (2026-09-24)
+
+
+### Added
+
+* **action:** report control counts and write a job summary ([#116](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/116)) ([e83cd38](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/e83cd3812dcb689994e535c837bf606d1ba52954))
+* **cli:** export unmet controls as SARIF 2.1.0 ([#117](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/117)) ([931ddb7](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/931ddb7b14a37f255cf69ec79fe6da09ae6d9d11))
+* **policies:** Rego checks for expired waivers and unmitigated KEV CVEs ([#118](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/118)) ([0246fa9](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/0246fa93945b393b9a5ed41e19a61e352c59ad2a))
+
+
+### Fixed
+
+* **sarif:** percent-encode the bundle path in the result location ([#120](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/120)) ([d3ed887](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/d3ed887b5b2f8790ac1668e3002cb467f0299271))
+
+
+### CI
+
+* **action:** run the action on a real runner and document the attest recipe ([#121](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/121)) ([e04be39](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/e04be395e1f2ff4b99599061f0e6a150bcff6e10))
+* **release:** pin docker/metadata-action to the v6.2.0 release ([#113](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/113)) ([d51f709](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/d51f709959f67ad46f913f2a2e66c1afa8909ad6))
+
 ## [3.0.1](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v3.0.0...v3.0.1) (2026-09-24)
 
 
