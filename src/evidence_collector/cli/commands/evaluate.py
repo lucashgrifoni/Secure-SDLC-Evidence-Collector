@@ -53,7 +53,14 @@ def evaluate(
         # still accepted — but it can say nothing about failed inputs, so a
         # bundle built from one must not claim there were none.
         if isinstance(data, dict):
-            raw_evidence = data.get("evidence", [])
+            # Defaulting a missing key to an empty list turned `{}` or a typo
+            # into a release verdict built from no evidence at all.
+            if "evidence" not in data:
+                raise ValueError(
+                    "the object has no `evidence` key; `collect --output` writes one, "
+                    "and a bare JSON list is also accepted"
+                )
+            raw_evidence = data["evidence"]
             raw_errors = data.get("collection_errors", [])
         else:
             raw_evidence = data
@@ -90,7 +97,7 @@ def evaluate(
                 f"{waiver_error.path}: {waiver_error.reason}"
             )
             collection_errors.append(
-                CollectionError(path=str(waiver_error.path), reason=waiver_error.reason)
+                CollectionError.clipped(str(waiver_error.path), waiver_error.reason)
             )
 
     bundle, _ = build_bundle(

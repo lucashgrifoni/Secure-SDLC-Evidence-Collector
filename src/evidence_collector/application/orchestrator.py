@@ -209,7 +209,7 @@ def run_pipeline(
         # different state from a file that was never supplied. The console
         # warning dies with the CI log; the bundle is what survives.
         collection_errors=[
-            CollectionError(path=str(error.path), reason=error.reason) for error in report.errors
+            CollectionError.clipped(str(error.path), error.reason) for error in report.errors
         ],
     )
     bundle = apply_profile(bundle, profile)

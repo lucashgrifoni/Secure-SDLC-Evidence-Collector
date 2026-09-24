@@ -147,3 +147,43 @@ def test_a_legacy_bare_list_evidence_file_still_evaluates(
     bundle = json.loads((tmp_path / "out" / "bundle.json").read_text(encoding="utf-8"))
     assert len(bundle["evidence"]) == 1
     assert "collection_errors" not in bundle
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "payload",
+    [{}, {"evidnce": []}, {"collection_errors": []}],
+    ids=["empty-object", "misspelled-key", "errors-only"],
+)
+def test_an_envelope_without_evidence_is_an_input_error(
+    runner: CliRunner, tmp_path: Path, payload: dict[str, object]
+) -> None:
+    """An object without `evidence` used to evaluate as an empty evidence list.
+
+    That turned a malformed file into a release verdict instead of the input
+    error it is, and with a catalog of recommended evidence only it could even
+    exit 0.
+    """
+    evidence = tmp_path / "evidence.json"
+    evidence.write_text(json.dumps(payload), encoding="utf-8")
+    out_dir = tmp_path / "out"
+    result = runner.invoke(
+        app,
+        [
+            "evaluate",
+            "--evidence",
+            str(evidence),
+            "--application",
+            "demo",
+            "--repository",
+            "acme/demo",
+            "--release-id",
+            "1.0.0",
+            "--commit-sha",
+            "abcdef1234567890",
+            "--output-dir",
+            str(out_dir),
+        ],
+    )
+    assert result.exit_code == 3
+    assert not (out_dir / "bundle.json").exists()

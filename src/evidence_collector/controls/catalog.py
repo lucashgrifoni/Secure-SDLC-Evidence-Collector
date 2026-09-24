@@ -175,7 +175,7 @@ def catalog_with_provenance(
 
     controls = _parse_catalog(raw.decode("utf-8"), name)
     ref = CatalogRef(
-        origin=cast("Literal['builtin', 'custom']", origin),
+        origin=cast(Literal["builtin", "custom"], origin),
         name=name,
         sha256=hashlib.sha256(raw).hexdigest(),
         control_count=len(controls),

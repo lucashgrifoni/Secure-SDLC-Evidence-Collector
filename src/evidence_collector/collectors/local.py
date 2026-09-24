@@ -526,7 +526,7 @@ class LocalArtifactCollector:
             # dropped silently — the user got a bundle with no trace of a
             # file they believed they had supplied.
             if _looks_like_intoto_statement(file_path):
-                for parsed_stmt in parse_intoto_statements(file_path):
+                for index, parsed_stmt in enumerate(parse_intoto_statements(file_path)):
                     if not parsed_stmt.recognized:
                         logger.warning(
                             "Ingesting %s as a generic attestation: unrecognized in-toto "
@@ -536,7 +536,10 @@ class LocalArtifactCollector:
                         )
                     report.evidence.append(
                         normalize_intoto_statement(
-                            parsed_stmt, self._release, artifact_root=self._artifact_root
+                            parsed_stmt,
+                            self._release,
+                            artifact_root=self._artifact_root,
+                            index=index,
                         )
                     )
                 intoto_found = True

@@ -17,6 +17,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from evidence_collector.application.integrity import normalize_bundle
 from evidence_collector.application.orchestrator import run_pipeline
 from evidence_collector.domain.models import Application, ReleaseContext
@@ -125,3 +127,41 @@ def test_a_run_with_errors_does_change_the_structural_hash(tmp_path: Path) -> No
     broken_norm = normalize_bundle(json.loads(broken_bundle.model_dump_json(exclude_none=False)))
     assert b"collection_errors" in broken_norm
     assert clean_norm != broken_norm
+
+
+def test_a_long_path_or_reason_is_clipped_instead_of_ending_the_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`CollectionError` caps `path` at 500 characters and `reason` at 1000.
+
+    A deep path is legal on Linux and a parser's message can run long. Either
+    one made the model raise while the bundle was being built, which ended
+    `run` before any report was written: the failure this record exists to
+    survive. The tail of a path and the head of a reason carry the useful part,
+    so that is what is kept.
+    """
+    from evidence_collector.collectors import local
+
+    long_path = Path("deep", *(["d" * 50] * 12), "report.sarif")
+    long_reason = "Invalid JSON in report.sarif: " + "x" * 1500
+    original = local.LocalArtifactCollector.collect
+
+    def collect_with_a_long_error(
+        self: local.LocalArtifactCollector,
+    ) -> local.LocalCollectionReport:
+        report = original(self)
+        report.errors.append(local.LocalCollectionError(path=long_path, reason=long_reason))
+        return report
+
+    monkeypatch.setattr(local.LocalArtifactCollector, "collect", collect_with_a_long_error)
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+
+    result = _run(tmp_path, artifacts)
+
+    assert result.json_path is not None and result.json_path.is_file()
+    [error] = result.bundle.collection_errors
+    assert len(error.path) <= 500
+    assert error.path.endswith("report.sarif")
+    assert len(error.reason) <= 1000
+    assert error.reason.startswith("Invalid JSON in report.sarif")

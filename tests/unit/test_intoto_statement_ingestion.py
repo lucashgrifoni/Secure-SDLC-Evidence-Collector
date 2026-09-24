@@ -393,3 +393,47 @@ def test_warning_fires_once_per_unrecognized_statement_not_only_the_survivor(
 def test_single_statement_file_still_yields_exactly_one(tmp_path: Path) -> None:
     parsed = parse_intoto_statements(_write(tmp_path, _svr_payload()))
     assert len(parsed) == 1
+
+
+def test_two_statements_of_one_predicate_get_distinct_evidence_ids(tmp_path: Path) -> None:
+    """Two vulns attestations in one JSONL used to share an evidence id.
+
+    The id was built from the file hash, the predicate type and the release, and
+    all three are the same for both lines. The bundle then refused itself over
+    a duplicate id, so `run` ended without writing any report.
+    """
+    from evidence_collector.application.orchestrator import run_pipeline
+    from evidence_collector.domain.models import Application
+
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    _jsonl(artifacts, [_vulns_payload("low"), _vulns_payload("critical")], "vulns.jsonl")
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
+    ids = [e.evidence_id for e in report.evidence]
+    assert len(ids) == 2
+    assert len(set(ids)) == 2
+
+    result = run_pipeline(
+        Application(name="demo", repository="acme/demo"),
+        _release(),
+        artifacts_dirs=[artifacts],
+        output_dir=tmp_path / "out",
+    )
+    assert result.json_path is not None and result.json_path.is_file()
+    assert len(result.bundle.evidence) == 2
+
+
+def test_a_single_statement_keeps_the_evidence_id_it_had_before(tmp_path: Path) -> None:
+    """Only the second and later Statements of a file take a position in their id.
+
+    A file with one Statement hashes to the id it always had, so bundles built
+    from such files are unchanged by the discriminator.
+    """
+    import hashlib
+
+    parsed = parse_intoto_statements(_jsonl(tmp_path, [_vulns_payload("low")], "one.jsonl"))[0]
+    evidence = normalize_intoto_statement(parsed, _release())
+    parts = [parsed.artifact.integrity_hash, parsed.predicate_type, _release().release_id]
+    digest = hashlib.sha256("||".join(parts).encode("utf-8")).hexdigest()[:12]
+    assert evidence.evidence_id == f"stmt-{digest}"

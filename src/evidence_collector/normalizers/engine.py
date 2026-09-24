@@ -142,6 +142,12 @@ def _strip_root(value: str, root: str | None) -> str:
     still be an absolute path under the root, which is what keeps
     `acme/api:1.0 (debian 12)` and `pkg:pypi/app@1.0` untouched, and it does
     not need to be extended each time a scanner invents a new suffix.
+
+    The prefix must also end where the root's last segment ends. `/tmp/repo`
+    is a string prefix of `/tmp/repo-old/image`, a sibling directory, and
+    stripping it produced `.-old/image`. A character that could continue a
+    directory name disqualifies the match; a separator, a space or `@` does
+    not.
     """
     if not root or not value:
         return value
@@ -151,10 +157,17 @@ def _strip_root(value: str, root: str | None) -> str:
     for base in _root_spellings(root):
         if os.path.normcase(value).startswith(os.path.normcase(base)):
             head, tail = value[: len(base)], value[len(base) :]
+            if tail and _continues_a_name(tail[0]):
+                continue
             inner = _strip_absolute(head, root)
             if inner is not None:
                 return inner + tail
     return value
+
+
+def _continues_a_name(char: str) -> bool:
+    """Whether `char`, right after the root, would extend its last segment."""
+    return char.isalnum() or char in "-_.+~"
 
 
 def _root_spellings(root: str) -> list[str]:
@@ -874,6 +887,7 @@ def normalize_intoto_statement(
     release: ReleaseContext,
     *,
     artifact_root: str | None = None,
+    index: int = 0,
 ) -> NormalizedEvidence:
     """Build evidence from any in-toto Statement without a dedicated parser.
 
@@ -910,10 +924,16 @@ def normalize_intoto_statement(
         metadata["scanner_uri"] = parsed.scanner_uri
     if parsed.scanner_version:
         metadata["scanner_version"] = parsed.scanner_version
+    # A JSONL can carry several Statements with the same predicate type, and
+    # the file hash, the predicate and the release are then identical for all
+    # of them. The position in the file tells them apart. It joins the id only
+    # from the second Statement on, so a one-Statement file keeps the id it
+    # always had.
+    id_parts = [parsed.artifact.integrity_hash, parsed.predicate_type]
+    if index:
+        id_parts.append(str(index))
     return NormalizedEvidence(
-        evidence_id=_new_evidence_id(
-            "stmt", parsed.artifact.integrity_hash, parsed.predicate_type, release.release_id
-        ),
+        evidence_id=_new_evidence_id("stmt", *id_parts, release.release_id),
         evidence_type=evidence_type,
         source=EvidenceSource(name=producer, kind=source_kind),
         producer=producer,

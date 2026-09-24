@@ -10,6 +10,7 @@ import typer
 
 from evidence_collector.cli._builders import build_release
 from evidence_collector.cli._state import EVIDENCE_ADAPTER, console
+from evidence_collector.domain.models import CollectionError
 from evidence_collector.exporters._atomic import write_atomic
 
 
@@ -81,7 +82,8 @@ def register(app: typer.Typer) -> None:
         payload = {
             "evidence": EVIDENCE_ADAPTER.dump_python(report.evidence, mode="json"),
             "collection_errors": [
-                {"path": str(error.path), "reason": error.reason} for error in report.errors
+                CollectionError.clipped(str(error.path), error.reason).model_dump()
+                for error in report.errors
             ],
         }
         write_atomic(output_path, json.dumps(payload, indent=2, ensure_ascii=False) + "\n")

@@ -345,6 +345,12 @@ def test_scanner_values_do_not_depend_on_the_working_directory(tmp_path: Path) -
         ("a bare image reference", "acme/api:1.0", "acme/api:1.0"),
         ("a language name", "Java", "Java"),
         ("an absolute path outside the root", "{outside} (alpine 3)", "{outside} (alpine 3)"),
+        (
+            "a sibling that starts with the root's name",
+            "{root}-old/image (debian 12)",
+            "{root}-old/image (debian 12)",
+        ),
+        ("a dotted sibling of the root", "{root}.bak/app", "{root}.bak/app"),
     ],
     ids=[
         "root",
@@ -357,6 +363,8 @@ def test_scanner_values_do_not_depend_on_the_working_directory(tmp_path: Path) -
         "image-bare",
         "language",
         "outside-root",
+        "sibling-prefix",
+        "sibling-dotted",
     ],
 )
 def test_scanner_locations_are_stripped_even_when_decorated(

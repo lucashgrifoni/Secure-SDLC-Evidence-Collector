@@ -533,6 +533,10 @@ class EvidenceException(_BaseModel):
         return not (self.scope.release_id and self.scope.release_id != release_id)
 
 
+_COLLECTION_PATH_MAX = 500
+_COLLECTION_REASON_MAX = 1000
+
+
 class CollectionError(_BaseModel):
     """An input that was supplied but could not be ingested.
 
@@ -548,8 +552,24 @@ class CollectionError(_BaseModel):
     consume. The distinction has to live here to survive.
     """
 
-    path: Annotated[str, Field(min_length=1, max_length=500)]
-    reason: Annotated[str, Field(min_length=1, max_length=1000)]
+    path: Annotated[str, Field(min_length=1, max_length=_COLLECTION_PATH_MAX)]
+    reason: Annotated[str, Field(min_length=1, max_length=_COLLECTION_REASON_MAX)]
+
+    @classmethod
+    def clipped(cls, path: str, reason: str) -> CollectionError:
+        """Build the record with each field cut to fit the model's caps.
+
+        A deep path is legal on Linux and a parser's message can run long. A
+        record that failed its own validation ended `run` before any report
+        was written, which is the failure this record exists to survive. The
+        end of a path names the file and the start of a reason says what went
+        wrong, so those are the parts kept.
+        """
+        if len(path) > _COLLECTION_PATH_MAX:
+            path = "..." + path[-(_COLLECTION_PATH_MAX - 3) :]
+        if len(reason) > _COLLECTION_REASON_MAX:
+            reason = reason[: _COLLECTION_REASON_MAX - 3] + "..."
+        return cls(path=path, reason=reason)
 
 
 class CatalogRef(_BaseModel):
