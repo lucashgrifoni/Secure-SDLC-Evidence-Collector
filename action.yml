@@ -107,6 +107,21 @@ outputs:
   coverage-score:
     description: "Evidence coverage score (0-100)"
     value: ${{ steps.collect.outputs.coverage-score }}
+  report-path:
+    description: "Absolute path of the generated report.md"
+    value: ${{ steps.collect.outputs.report-path }}
+  controls-total:
+    description: "Number of controls in the catalog the bundle was evaluated against"
+    value: ${{ steps.collect.outputs.controls-total }}
+  controls-met:
+    description: "Controls fully satisfied by the evidence"
+    value: ${{ steps.collect.outputs.controls-met }}
+  controls-partial:
+    description: "Controls only partly satisfied"
+    value: ${{ steps.collect.outputs.controls-partial }}
+  controls-missing:
+    description: "Controls with no satisfying evidence"
+    value: ${{ steps.collect.outputs.controls-missing }}
 
 runs:
   using: "composite"
@@ -197,6 +212,11 @@ runs:
           extra_args+=(--epss-percentile-threshold "$EPSS_PERCENTILE_THRESHOLD")
         fi
 
+        # A bundle already in the output directory (an earlier step, a reused
+        # self-hosted runner) must not pass for this run's verdict when the CLI
+        # fails before writing one. The CLI writes the bundle before any
+        # --fail-on exit, so a bundle newer than this marker is this run's.
+        started="$(mktemp)"
         python -m evidence_collector.cli.main run \
           --application "$APPLICATION" \
           --repository "$REPOSITORY" \
@@ -209,16 +229,54 @@ runs:
           "${extra_args[@]}" || exit_code=$?
 
         bundle="${OUTPUT_DIR}/bundle.json"
-        if [ -f "$bundle" ]; then
+        if [ -f "$bundle" ] && [ "$bundle" -nt "$started" ]; then
           BUNDLE_FILE="$bundle" python - <<'PY' >>"$GITHUB_OUTPUT"
         import json, os
         bundle = os.environ["BUNDLE_FILE"]
         with open(bundle, encoding="utf-8") as fh:
             data = json.load(fh)
+        summary = data["summary"]
         print(f"bundle-path={os.path.abspath(bundle)}")
-        print(f"release-status={data['summary']['release_status']}")
-        print(f"coverage-score={data['summary']['evidence_coverage_score']}")
+        print(f"release-status={summary['release_status']}")
+        print(f"coverage-score={summary['evidence_coverage_score']}")
+        report = os.path.join(os.path.dirname(os.path.abspath(bundle)), "report.md")
+        print(f"report-path={report}")
+        print(f"controls-total={summary['total_controls']}")
+        print(f"controls-met={summary['controls_met']}")
+        print(f"controls-partial={summary['controls_partial']}")
+        print(f"controls-missing={summary['controls_missing']}")
+
+
+        def code(value):
+            # Text that came from the caller's inputs is shown as a code span
+            # that cannot close itself or start a new Markdown line.
+            text = " ".join(str(value).replace("`", "'").split())
+            return f"`{text}`"
+
+
+        step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+        if step_summary:
+            missing = summary.get("missing_critical_evidence") or []
+            lines = [
+                "### Secure SDLC Evidence Collector",
+                "",
+                f"{code(data['application']['name'])} release {code(data['release']['release_id'])}",
+                "",
+                "| Release status | Coverage | Met | Partial | Missing | Waived | Total |",
+                "|---|---|---|---|---|---|---|",
+                f"| {code(summary['release_status'])} | {summary['evidence_coverage_score']} "
+                f"| {summary['controls_met']} | {summary['controls_partial']} "
+                f"| {summary['controls_missing']} | {summary['controls_waived']} "
+                f"| {summary['total_controls']} |",
+                "",
+                "Missing critical evidence: "
+                + (", ".join(code(item) for item in missing) if missing else "none"),
+                "",
+            ]
+            with open(step_summary, "a", encoding="utf-8") as fh:
+                fh.write("\n".join(lines) + "\n")
         PY
         fi
+        rm -f "$started"
 
         exit "${exit_code:-0}"

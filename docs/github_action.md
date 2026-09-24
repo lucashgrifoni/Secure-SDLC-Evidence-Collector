@@ -98,9 +98,21 @@ in the collection warnings instead.
 
 ## Outputs
 
-- `bundle-path` — absolute path of the generated `bundle.json`.
-- `release-status` — `ready` / `conditional` / `not_ready`.
-- `coverage-score` — 0–100 integer.
+- `bundle-path`: absolute path of the generated `bundle.json`.
+- `release-status`: `ready`, `conditional` or `not_ready`.
+- `coverage-score`: integer from 0 to 100.
+- `report-path`: absolute path of the generated `report.md`.
+- `controls-total`, `controls-met`, `controls-partial`, `controls-missing`:
+  control counts from the bundle summary, so a later step can branch on them
+  without parsing `bundle.json`.
+
+## Job summary
+
+The action appends a short table to the job summary page: release status,
+coverage, the control counts, and the critical evidence types that are
+missing. The application name and release id come from your inputs, so they
+are shown as code spans that cannot close themselves or start a new line.
+The full report stays in `report.md`.
 
 ## Permissions
 
