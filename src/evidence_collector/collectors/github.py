@@ -49,7 +49,7 @@ class GitHubCollectorConfig:
     # Kept out of the generated `repr`; see the note on the GitLab config for
     # why the default one was a hazard even with nothing logging it today.
     token: str | None = field(default=None, repr=False)
-    user_agent: str = "secure-sdlc-evidence-collector/3.0.0"  # x-release-please-version
+    user_agent: str = "secure-sdlc-evidence-collector/3.0.1"  # x-release-please-version
 
     @classmethod
     def from_env(cls, repository: str, api_base: str = _DEFAULT_API) -> GitHubCollectorConfig:
