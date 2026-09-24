@@ -20,6 +20,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 import typer
+from pydantic import ValidationError
 
 from evidence_collector import __version__
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
@@ -123,10 +124,20 @@ def _report_command_failure(exc: BaseException) -> None:
     completely empty, breaking the NDJSON contract on the error path.
     """
     detail = str(exc).strip() or exc.__class__.__name__
+    if isinstance(exc, ValidationError):
+        # A value the models reject, such as a 3-character `--commit-sha`. The
+        # default text spans several lines and ends in a pydantic docs URL;
+        # one `Model.field: reason` per error says the same in a single line.
+        detail = "; ".join(
+            f"{exc.title}.{'.'.join(str(part) for part in error['loc'])}: {error['msg']}"
+            for error in exc.errors(include_url=False)
+        )
     if is_json_logs():
         emit_event("command_failed", error_type=exc.__class__.__name__, reason=detail)
     else:
-        console.print(f"[red]{exc.__class__.__name__}:[/red] {detail}")
+        # soft_wrap: the terminal may fold it, but no newline lands inside the
+        # message, so it can still be copied or grepped as one line.
+        console.print(f"[red]{exc.__class__.__name__}:[/red] {detail}", soft_wrap=True)
         console.print("[dim]Re-run with --verbose for the full traceback.[/dim]")
     if any(flag in sys.argv for flag in ("-v", "--verbose")):
         console.print_exception()
