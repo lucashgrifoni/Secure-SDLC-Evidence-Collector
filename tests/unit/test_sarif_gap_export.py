@@ -16,7 +16,8 @@ from typer.testing import CliRunner
 
 from evidence_collector.application.orchestrator import run_pipeline
 from evidence_collector.cli.main import app
-from evidence_collector.domain.models import Application, EvidenceBundle, ReleaseContext
+from evidence_collector.domain.enums import ControlEvaluationStatus, EvidenceType
+from evidence_collector.domain.models import Application, EvidenceBundle, Gap, ReleaseContext
 from evidence_collector.exporters.sarif_gaps import build_gap_sarif
 
 _SAMPLE = Path("examples/sample_release")
@@ -117,3 +118,79 @@ def test_a_missing_or_malformed_bundle_is_an_input_error(
     result = CliRunner().invoke(app, ["sarif", str(bundle), "-o", str(out)])
     assert result.exit_code == 3
     assert not out.exists()
+
+
+def test_a_partial_control_names_the_recommended_evidence_it_lacks(gappy: Path) -> None:
+    """A partial control has every required type; what it lacks is recommended."""
+    bundle = _load(gappy)
+    target = bundle.control_evaluations[0]
+    partial = target.model_copy(
+        update={
+            "evaluation_status": ControlEvaluationStatus.PARTIAL,
+            "missing_required_evidence_types": [],
+            "missing_recommended_evidence_types": [EvidenceType.SBOM],
+        }
+    )
+    bundle = bundle.model_copy(update={"control_evaluations": [partial]})
+    [result] = build_gap_sarif(bundle)["runs"][0]["results"]
+    assert "partial" in result["message"]["text"]
+    assert "Missing recommended evidence: sbom." in result["message"]["text"]
+
+
+def test_every_remediation_hint_for_a_control_reaches_the_rule(gappy: Path) -> None:
+    bundle = _load(gappy)
+    target = next(e for e in bundle.control_evaluations if e.evaluation_status.value == "missing")
+    hints = [
+        Gap(
+            control_id=target.control_id,
+            criticality=target.criticality,
+            description="first gap",
+            remediation="Attach the SBOM.",
+        ),
+        Gap(
+            control_id=target.control_id,
+            criticality=target.criticality,
+            description="second gap",
+            remediation="Attach the provenance.",
+        ),
+    ]
+    bundle = bundle.model_copy(update={"gaps": hints})
+    rules = build_gap_sarif(bundle)["runs"][0]["tool"]["driver"]["rules"]
+    [rule] = [r for r in rules if r["id"] == target.control_id]
+    assert "Attach the SBOM." in rule["help"]["text"]
+    assert "Attach the provenance." in rule["help"]["text"]
+
+
+def test_the_location_keeps_the_bundle_path_relative_to_the_working_directory(
+    gappy: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Code scanning resolves a location against the repository root."""
+    nested = tmp_path / "output" / "release"
+    nested.mkdir(parents=True)
+    (nested / "bundle.json").write_bytes(gappy.read_bytes())
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(app, ["sarif", "output/release/bundle.json", "-o", "gaps.sarif"])
+    assert result.exit_code == 0, result.output
+    document = json.loads((tmp_path / "gaps.sarif").read_text(encoding="utf-8"))
+    uris = {
+        r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+        for r in document["runs"][0]["results"]
+    }
+    assert uris == {"output/release/bundle.json"}
+
+
+def test_a_bundle_outside_the_working_directory_falls_back_to_its_name(
+    gappy: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    work = tmp_path / "work"
+    work.mkdir()
+    monkeypatch.chdir(work)
+    out = tmp_path / "gaps.sarif"
+    result = CliRunner().invoke(app, ["sarif", str(gappy), "-o", str(out)])
+    assert result.exit_code == 0, result.output
+    document = json.loads(out.read_text(encoding="utf-8"))
+    uris = {
+        r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+        for r in document["runs"][0]["results"]
+    }
+    assert uris == {gappy.name}

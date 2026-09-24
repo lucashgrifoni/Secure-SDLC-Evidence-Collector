@@ -75,12 +75,13 @@ def build_gap_sarif(bundle: EvidenceBundle, *, artifact_uri: str = "bundle.json"
 
 
 def _remediation_by_control(bundle: EvidenceBundle) -> dict[str, str]:
-    """First remediation hint the bundle's gaps give for each control."""
-    hints: dict[str, str] = {}
+    """Every distinct remediation hint the bundle's gaps give, per control."""
+    hints: dict[str, list[str]] = {}
     for gap in bundle.gaps:
-        if gap.remediation and gap.control_id not in hints:
-            hints[gap.control_id] = gap.remediation
-    return hints
+        seen = hints.setdefault(gap.control_id, [])
+        if gap.remediation and gap.remediation not in seen:
+            seen.append(gap.remediation)
+    return {control_id: "\n".join(texts) for control_id, texts in hints.items() if texts}
 
 
 def _rule(evaluation: ControlEvaluation, remediation: str | None) -> dict[str, Any]:
@@ -100,13 +101,18 @@ def _rule(evaluation: ControlEvaluation, remediation: str | None) -> dict[str, A
 
 
 def _result(evaluation: ControlEvaluation, artifact_uri: str) -> dict[str, Any]:
-    missing = ", ".join(sorted(t.value for t in evaluation.missing_required_evidence_types))
     text = (
         f"{evaluation.control_id} ({evaluation.control_name}) is "
         f"{evaluation.evaluation_status.value}."
     )
-    if missing:
-        text += f" Missing required evidence: {missing}."
+    # A partial control has all its required types; what it lacks is listed
+    # as recommended, so both lists go into the message.
+    for label, types in (
+        ("required", evaluation.missing_required_evidence_types),
+        ("recommended", evaluation.missing_recommended_evidence_types),
+    ):
+        if types:
+            text += f" Missing {label} evidence: {', '.join(sorted(t.value for t in types))}."
     return {
         "ruleId": evaluation.control_id,
         "level": _LEVEL[evaluation.criticality],

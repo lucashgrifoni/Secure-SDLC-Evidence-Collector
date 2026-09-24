@@ -65,7 +65,7 @@ def register(app: typer.Typer) -> None:
                 console.print(f"[red]Bundle does not match the current schema:[/red] {exc}")
             raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
-        document = build_gap_sarif(bundle, artifact_uri=bundle_path.name)
+        document = build_gap_sarif(bundle, artifact_uri=_artifact_uri(bundle_path))
         write_atomic(output, json.dumps(document, indent=2))
 
         results = len(document["runs"][0]["results"])
@@ -75,3 +75,16 @@ def register(app: typer.Typer) -> None:
             )
         else:
             console.print(f"[green]SARIF[/green] · {results} unmet control(s) → {output}")
+
+
+def _artifact_uri(bundle_path: Path) -> str:
+    """The bundle's path relative to the working directory, as a SARIF URI.
+
+    Code scanning resolves a location against the repository root, which is
+    the working directory in a pipeline. A bundle outside it has no such
+    path, so its file name is the best the location can say.
+    """
+    try:
+        return bundle_path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+    except ValueError:
+        return bundle_path.name

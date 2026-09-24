@@ -8,6 +8,10 @@ the findings of the scanners that fed the bundle.
 sdlc-evidence sarif output/sample_release/bundle.json -o gaps.sarif
 ```
 
+Run it from the repository root: code scanning resolves the result
+location against the root, so the bundle path is written relative to
+the working directory.
+
 ## What goes in
 
 One result per control the bundle evaluated as `missing` or `partial`.
@@ -18,10 +22,10 @@ waiver already records its owner, reason and expiry in the bundle.
 |---|---|
 | `ruleId` | the control id, for example `ORG-CODE-REVIEW` |
 | `level` | `error` for critical and high controls, `warning` for medium, `note` for low |
-| `message` | the control, its status, and the required evidence types still missing |
+| `message` | the control, its status, and the evidence types it still lacks: required ones for a `missing` control, recommended ones for a `partial` control |
 | `security-severity` (rule property) | 9.0, 7.0, 5.0 or 3.0 by criticality, which GitHub uses to rank the alert |
-| `help` (rule) | the remediation hint from the bundle's gap list, when it has one |
-| location | the bundle file name, line 1: a control gap has no line of source code |
+| `help` (rule) | every distinct remediation hint the bundle's gap list gives for the control |
+| location | the bundle path relative to the working directory, line 1, because a control gap has no line of source code; a bundle outside the working directory is named by its file name |
 | `partialFingerprints` | `controlId/v1` set to the control id, so the same gap keeps one alert across releases |
 
 The log carries no timestamps and every list is sorted, so the same
