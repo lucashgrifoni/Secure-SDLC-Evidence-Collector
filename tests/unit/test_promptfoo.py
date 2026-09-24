@@ -173,3 +173,20 @@ def test_a_malformed_row_does_not_stop_the_other_files(tmp_path: Path, row: obje
 
     producers = [e.producer for e in report.evidence]
     assert producers.count("promptfoo") == 2
+
+
+@pytest.mark.parametrize("errors", ["1", True, -1, 1.5, None])
+def test_a_malformed_error_count_is_refused_not_read_as_zero(
+    tmp_path: Path, errors: object
+) -> None:
+    """A present but invalid count must not turn into "no errors" and pass the evidence."""
+    doc = _output(3, 0, 0)
+    doc["results"]["stats"]["errors"] = errors
+    with pytest.raises(ParseError, match="errors"):
+        parse_promptfoo(_write(tmp_path / "results.json", doc))
+
+
+def test_a_missing_error_count_means_none(tmp_path: Path) -> None:
+    doc = _output(3, 0, 0)
+    del doc["results"]["stats"]["errors"]
+    assert parse_promptfoo(_write(tmp_path / "results.json", doc)).errors == 0

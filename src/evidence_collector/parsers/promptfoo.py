@@ -91,6 +91,17 @@ def parse_promptfoo(path: str | Path) -> ParsedPromptfoo:
             f"only version {SUPPORTED_OUTPUT_VERSION} is supported."
         )
     stats = inner["stats"]
+    # A missing count means none; a present one that is not a non-negative
+    # integer is refused, because reading it as zero could pass the evidence.
+    errors = 0
+    if "errors" in stats:
+        parsed_errors = _count(stats["errors"])
+        if parsed_errors is None:
+            raise ParseError(
+                f"{resolved}: results.stats.errors is not a non-negative integer "
+                f"({repr(stats['errors'])[:40]})."
+            )
+        errors = parsed_errors
     passed = failed = 0
     failed_types: dict[str, int] = {}
     rows = inner["results"]
@@ -118,7 +129,7 @@ def parse_promptfoo(path: str | Path) -> ParsedPromptfoo:
         eval_id=str(eval_id)[:200] if isinstance(eval_id, str) and eval_id else None,
         successes=stats["successes"],
         failures=stats["failures"],
-        errors=_count(stats.get("errors")) or 0,
+        errors=errors,
         rows=len(rows),
         assertions_passed=passed,
         assertions_failed=failed,
