@@ -7,7 +7,6 @@
   "draft": false,
   "prerelease": false,
   "include-v-in-tag": true,
-  "last-release-sha": "8ad2f1ae2e03c8f159e8c77dc56655528a2521de",
   "changelog-sections": [
     { "type": "feat",     "section": "Added",      "hidden": false },
     { "type": "fix",      "section": "Fixed",      "hidden": false },
