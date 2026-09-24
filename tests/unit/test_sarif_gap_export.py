@@ -194,3 +194,21 @@ def test_a_bundle_outside_the_working_directory_falls_back_to_its_name(
         for r in document["runs"][0]["results"]
     }
     assert uris == {gappy.name}
+
+
+def test_the_location_is_a_uri_even_when_the_path_has_spaces(
+    gappy: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SARIF `artifactLocation.uri` is an RFC 3986 reference: no raw spaces."""
+    nested = tmp_path / "release out" / "a&b#1"
+    nested.mkdir(parents=True)
+    (nested / "bundle.json").write_bytes(gappy.read_bytes())
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(app, ["sarif", "release out/a&b#1/bundle.json", "-o", "g.sarif"])
+    assert result.exit_code == 0, result.output
+    document = json.loads((tmp_path / "g.sarif").read_text(encoding="utf-8"))
+    uris = {
+        r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+        for r in document["runs"][0]["results"]
+    }
+    assert uris == {"release%20out/a%26b%231/bundle.json"}

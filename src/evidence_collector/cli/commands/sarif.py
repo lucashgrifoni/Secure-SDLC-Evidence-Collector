@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import quote
 
 import typer
 from pydantic import ValidationError
@@ -82,9 +83,11 @@ def _artifact_uri(bundle_path: Path) -> str:
 
     Code scanning resolves a location against the repository root, which is
     the working directory in a pipeline. A bundle outside it has no such
-    path, so its file name is the best the location can say.
+    path, so its file name is the best the location can say. SARIF wants an
+    RFC 3986 reference, so spaces and reserved characters are percent-encoded.
     """
     try:
-        return bundle_path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+        path = bundle_path.resolve().relative_to(Path.cwd().resolve()).as_posix()
     except ValueError:
-        return bundle_path.name
+        path = bundle_path.name
+    return quote(path, safe="/")
