@@ -150,3 +150,26 @@ def test_a_failed_test_keeps_the_ai_safety_control_from_being_met(
     bundle = json.loads(result.json_path.read_text(encoding="utf-8"))
     [safety] = [e for e in bundle["control_evaluations"] if e["control_id"] == "AI-SAFETY-EVAL"]
     assert safety["evaluation_status"] == expected
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        {"success": False, "gradingResult": {"componentResults": 5}},
+        {"success": False, "gradingResult": {"componentResults": True}},
+        {"success": False, "gradingResult": ["not", "a", "dict"]},
+        "not a row",
+    ],
+)
+def test_a_malformed_row_does_not_stop_the_other_files(tmp_path: Path, row: object) -> None:
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    bad = _output(1, 1, 0)
+    bad["results"]["results"].append(row)
+    _write(artifacts / "bad.json", bad)
+    _write(artifacts / "good.json", _output())
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
+
+    producers = [e.producer for e in report.evidence]
+    assert producers.count("promptfoo") == 2

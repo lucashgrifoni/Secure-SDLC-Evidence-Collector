@@ -97,7 +97,11 @@ def parse_promptfoo(path: str | Path) -> ParsedPromptfoo:
     for row in rows:
         grading = row.get("gradingResult") if isinstance(row, dict) else None
         components = grading.get("componentResults") if isinstance(grading, dict) else None
-        for component in components or []:
+        # A malformed row must be skipped, not raise: detection runs on every
+        # JSON artifact and an exception here would stop the whole run.
+        if not isinstance(components, list):
+            continue
+        for component in components:
             if not isinstance(component, dict) or not isinstance(component.get("pass"), bool):
                 continue
             if component["pass"]:
