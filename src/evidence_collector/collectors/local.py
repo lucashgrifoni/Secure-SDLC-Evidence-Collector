@@ -32,6 +32,7 @@ from evidence_collector.normalizers import (
     normalize_lm_eval,
     normalize_model_card,
     normalize_osv,
+    normalize_promptfoo,
     normalize_provenance,
     normalize_registry_attestation,
     normalize_release_attestation,
@@ -52,6 +53,7 @@ from evidence_collector.parsers import (
     parse_lm_eval,
     parse_model_card,
     parse_osv,
+    parse_promptfoo,
     parse_provenances,
     parse_registry_attestation,
     parse_release_attestations,
@@ -68,6 +70,7 @@ from evidence_collector.parsers.inspect_eval import looks_like_inspect_log
 from evidence_collector.parsers.intoto_provenance import file_has_provenance
 from evidence_collector.parsers.intoto_statement import file_has_ingestable_statement
 from evidence_collector.parsers.intoto_vsa import VSA_PREDICATE_TYPE
+from evidence_collector.parsers.promptfoo import looks_like_promptfoo_output
 from evidence_collector.parsers.registry_attestation import looks_like_registry_attestation
 from evidence_collector.parsers.release_attestation import file_has_release_attestation
 from evidence_collector.parsers.sbom import is_spdx3
@@ -589,6 +592,18 @@ class LocalArtifactCollector:
                 report.evidence.append(
                     normalize_inspect_eval(
                         parsed_inspect, self._release, artifact_root=self._artifact_root
+                    )
+                )
+                return
+            # promptfoo output is recognised by its envelope (results.version,
+            # results.stats, results.results), not by name.
+            if file_path.suffix.lower() == ".json" and looks_like_promptfoo_output(
+                _peek_json(file_path)
+            ):
+                parsed_promptfoo = parse_promptfoo(file_path)
+                report.evidence.append(
+                    normalize_promptfoo(
+                        parsed_promptfoo, self._release, artifact_root=self._artifact_root
                     )
                 )
                 return

@@ -51,6 +51,7 @@ from evidence_collector.parsers.junit import ParsedJUnit
 from evidence_collector.parsers.lm_eval import ParsedLmEval
 from evidence_collector.parsers.model_card import ParsedModelCard
 from evidence_collector.parsers.osv import ParsedOsv
+from evidence_collector.parsers.promptfoo import ParsedPromptfoo
 from evidence_collector.parsers.registry_attestation import ParsedRegistryAttestation
 from evidence_collector.parsers.release_attestation import ParsedReleaseAttestation
 from evidence_collector.parsers.sarif import ParsedSarif
@@ -1085,6 +1086,61 @@ def normalize_inspect_eval(
             f"Inspect task {task}: {len(parsed.metrics)} metric(s)"
             if succeeded
             else f"Inspect task {task} did not finish (status {parsed.status})"
+        ),
+        metadata=metadata,
+    )
+
+
+def normalize_promptfoo(
+    parsed: ParsedPromptfoo,
+    release: ReleaseContext,
+    *,
+    artifact_root: str | None = None,
+) -> NormalizedEvidence:
+    """Build an ``ai_safety_eval`` evidence from promptfoo eval output.
+
+    promptfoo decides pass or fail per test, so the evidence carries it: any
+    failed or errored test makes it ``failed``, and a run in which no test
+    produced a verdict (every row errored, or none ran) is ``invalid``.
+    """
+    graded = parsed.successes + parsed.failures
+    if graded == 0:
+        status = EvidenceStatus.INVALID
+    elif parsed.failures or parsed.errors:
+        status = EvidenceStatus.FAILED
+    else:
+        status = EvidenceStatus.PASSED
+    metadata: dict[str, Any] = {
+        "tests_passed": parsed.successes,
+        "tests_failed": parsed.failures,
+        "tests_errored": parsed.errors,
+        "rows": parsed.rows,
+        "assertions_passed": parsed.assertions_passed,
+        "assertions_failed": parsed.assertions_failed,
+        "failed_assertion_types": dict(parsed.failed_assertion_types),
+    }
+    if parsed.eval_id:
+        metadata["eval_id"] = parsed.eval_id
+    subject_ref = parsed.eval_id or release.release_id
+    return NormalizedEvidence(
+        evidence_id=_new_evidence_id(
+            "promptfoo", parsed.artifact.integrity_hash, subject_ref, release.release_id
+        ),
+        evidence_type=EvidenceType.AI_SAFETY_EVAL,
+        source=EvidenceSource(name="promptfoo", kind="ai-eval"),
+        producer="promptfoo",
+        subject_type=SubjectType.AI_MODEL,
+        subject_ref=subject_ref,
+        status=status,
+        confidence=ConfidenceLevel.HIGH if graded else ConfidenceLevel.LOW,
+        release_id=release.release_id,
+        commit_sha=release.commit_sha,
+        generated_at=None,
+        raw=_raw_ref(parsed.artifact, artifact_root),
+        findings_count={"failed": parsed.failures, "errors": parsed.errors},
+        summary=(
+            f"promptfoo: {parsed.successes} passed, {parsed.failures} failed, "
+            f"{parsed.errors} errored"
         ),
         metadata=metadata,
     )
