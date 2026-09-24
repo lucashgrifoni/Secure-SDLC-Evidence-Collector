@@ -371,6 +371,12 @@ not care which you choose.
 no authorization. Nothing it serves is secret, but the catalog and the plugin
 list tell a visitor which controls gate your releases and what is installed.
 
+The extra installs uvicorn, which starts it:
+
+```bash
+uvicorn evidence_collector.api.app:app --host 127.0.0.1 --port 8000
+```
+
 - Keep it on `127.0.0.1`, which is uvicorn's default, or put it behind a proxy
   that authenticates callers. Do not bind it to `0.0.0.0` on a host with a
   public address.
