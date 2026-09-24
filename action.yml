@@ -212,6 +212,11 @@ runs:
           extra_args+=(--epss-percentile-threshold "$EPSS_PERCENTILE_THRESHOLD")
         fi
 
+        # A bundle already in the output directory (an earlier step, a reused
+        # self-hosted runner) must not pass for this run's verdict when the CLI
+        # fails before writing one. The CLI writes the bundle before any
+        # --fail-on exit, so a bundle newer than this marker is this run's.
+        started="$(mktemp)"
         python -m evidence_collector.cli.main run \
           --application "$APPLICATION" \
           --repository "$REPOSITORY" \
@@ -224,7 +229,7 @@ runs:
           "${extra_args[@]}" || exit_code=$?
 
         bundle="${OUTPUT_DIR}/bundle.json"
-        if [ -f "$bundle" ]; then
+        if [ -f "$bundle" ] && [ "$bundle" -nt "$started" ]; then
           BUNDLE_FILE="$bundle" python - <<'PY' >>"$GITHUB_OUTPUT"
         import json, os
         bundle = os.environ["BUNDLE_FILE"]
@@ -272,5 +277,6 @@ runs:
                 fh.write("\n".join(lines) + "\n")
         PY
         fi
+        rm -f "$started"
 
         exit "${exit_code:-0}"
