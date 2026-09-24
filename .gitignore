@@ -67,12 +67,13 @@ output/
 
 # CLI emit commands default to writing these to the cwd when run without
 # -o/--output (sdlc-evidence vex -> openvex.json, statement -> statement.intoto.json,
-# guac -> guac.json). Root-anchored so they are ignored only as repo-root scratch,
-# never test fixtures. `guac.json` was missing from this list and a scratch run
-# from the repo root got it committed.
+# guac -> guac.json, sarif -> gaps.sarif). Root-anchored so they are ignored only as
+# repo-root scratch, never test fixtures. `guac.json` was missing from this list and
+# a scratch run from the repo root got it committed.
 /openvex.json
 /statement.intoto.json
 /guac.json
+/gaps.sarif
 
 # mkdocs build output (site_dir in mkdocs.yml)
 site/
