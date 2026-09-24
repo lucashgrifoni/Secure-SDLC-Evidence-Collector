@@ -130,3 +130,13 @@ def test_only_a_successful_run_meets_the_ai_safety_control(
     bundle = json.loads(result.json_path.read_text(encoding="utf-8"))
     [safety] = [e for e in bundle["control_evaluations"] if e["control_id"] == "AI-SAFETY-EVAL"]
     assert safety["evaluation_status"] == expected
+
+
+def test_non_finite_metric_values_are_skipped(tmp_path: Path) -> None:
+    """Python's json reads NaN and Infinity; a metric without a real value is dropped."""
+    log = _log()
+    raw = json.dumps(log).replace("0.016", "NaN").replace("0.93", "Infinity")
+    path = tmp_path / "logs.json"
+    path.write_text(raw, encoding="utf-8")
+
+    assert parse_inspect_eval(path).metrics == {}

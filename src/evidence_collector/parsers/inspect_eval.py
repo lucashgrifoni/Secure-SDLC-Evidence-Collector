@@ -24,6 +24,7 @@ Spec reference: https://inspect.aisi.org.uk/eval-logs.html
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -74,7 +75,13 @@ def _metrics(results: Any) -> dict[str, float]:
         scorer = str(score.get("name") or "score")
         for key, metric in score["metrics"].items():
             value = metric.get("value") if isinstance(metric, dict) else None
-            if isinstance(value, int | float) and not isinstance(value, bool):
+            # bool is an int subclass, and Python's json reads NaN and Infinity;
+            # neither is a metric value.
+            if (
+                isinstance(value, int | float)
+                and not isinstance(value, bool)
+                and math.isfinite(value)
+            ):
                 out[f"{scorer}/{metric.get('name') or key}"] = float(value)
     return out
 
