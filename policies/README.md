@@ -9,7 +9,7 @@ strategy.
 
 | Directory | Tool | Purpose |
 |---|---|---|
-| `rego/` | [OPA / conftest](https://www.openpolicyagent.org/) | Pure functions over the bundle JSON. `deny[msg]` blocks the release; `warn[msg]` flags review-worthy state. Tests via `conftest verify`. |
+| `rego/` | [OPA / conftest](https://www.openpolicyagent.org/) | Pure functions over the bundle JSON. `deny[msg]` blocks the release; `warn[msg]` flags review-worthy state. `release-ready.rego` gates on the summary; `release-items.rego` checks individual waivers and KEV CVEs. Tests via `conftest verify`. |
 | `kyverno/` | [Kyverno](https://kyverno.io/) | Admission-time backstop. Requires namespaces (and the workloads inside them) to carry a `secure-sdlc.io/release-status=ready` annotation linked to a bundle SHA-256. |
 
 ## Quick start
@@ -26,6 +26,27 @@ conftest test \
   --data '{"release_ready":{"thresholds":{"coverage":100,"confidence":70}}}' \
   output/bundle.json
 ```
+
+### Check individual waivers and KEV CVEs
+
+`release-items.rego` is a separate package, so it only runs when you ask
+for its namespace. It denies a waiver scoped to this application and
+release whose `expires_at` has passed when the gate runs. It also denies a
+CVE that `sdlc-evidence enrich` found in CISA KEV for an artifact, unless
+every inline CycloneDX analysis of that CVE for the same artifact says
+`not_affected` or `false_positive`.
+
+```sh
+conftest test --policy policies/rego/ --namespace release_items output/bundle.json
+```
+
+Three limits. KEV matches come from the enrichment's top-risk list, which
+holds the highest-EPSS CVEs only; a warning names any evidence whose KEV
+count is higher than the CVEs it lists. The bundle records an analysis per
+CVE and artifact, not per component inside the artifact, so a conflicting
+analysis for the same artifact keeps the CVE denied. VEX documents passed
+to `sdlc-evidence vex --consume` are not stored in the bundle, so they
+cannot clear a KEV CVE in this check.
 
 ### Verify the policy itself
 
