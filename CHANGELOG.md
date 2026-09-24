@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.0.1](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v3.0.0...v3.0.1) (2026-09-24)
+
+
+### Fixed
+
+* **release:** generate the SBOM without asking setup-python for a pip cache ([#114](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/114)) ([6c4f170](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/6c4f170c5f725bf0233ab7b08e588fb3bce77e76))
+
+
+### Documentation
+
+* say that the optional API has no authentication, and how to run it ([#112](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/112)) ([cb22724](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/cb22724da4be2e6d3a57007be596c7dde42f7b23))
+
 ## [3.0.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v2.5.1...v3.0.0) (2026-09-24)
 
 
