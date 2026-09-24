@@ -149,10 +149,11 @@ jobs:
       #     copies — get the current time. The 97 entries taken from the repo
       #     do honour the epoch.
       #
-      # So the artifact almost everyone installs is reproducible and the source
-      # archive is not. Closing that means repacking the tarball with
-      # normalised mtimes and a zeroed gzip header, which is a build-pipeline
-      # change this workflow cannot exercise outside a real release.
+      # Both builds below therefore pass the sdist through
+      # scripts/normalize_sdist.py, which clamps every entry's mtime to
+      # SOURCE_DATE_EPOCH, resets owners, and writes the gzip header with the
+      # epoch and no file name. Two builds of the same tree then give the
+      # same sdist bytes, measured locally before this step was added.
       - name: Resolve SOURCE_DATE_EPOCH from tag commit
         id: sde
         run: |
@@ -170,6 +171,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip build
           python -m build --wheel --sdist --outdir dist
+          python scripts/normalize_sdist.py dist
 
       # T6.C4 reproducible build gate: rebuild the wheel and sdist a
       # second time with the same SOURCE_DATE_EPOCH and fail if any
@@ -182,15 +184,13 @@ jobs:
           PYTHONHASHSEED: "0"
         run: |
           python -m build --wheel --sdist --outdir dist-recheck
+          python scripts/normalize_sdist.py dist-recheck
 
-      # Gate behaviour: wheel must be bit-for-bit identical (hard fail),
-      # sdist is checked as a warning only. The sdist non-determinism
-      # source is the gzip header timestamp that Python's stdlib tarfile
-      # / gzip writer does not normalise even when SOURCE_DATE_EPOCH is
-      # set. Tracking that as a follow-up under v2.1 / backlog so we do
-      # not block v2.0 on a tooling-level fix outside our control. The
-      # wheel is what `pip install` consumes, which is the artifact the
-      # T6.C4 spec actually requires to be reproducible.
+      # Gate behaviour: wheel must be bit-for-bit identical (hard fail).
+      # The normalised sdist is expected to match too, but a mismatch stays a
+      # warning until a real release has confirmed the normalisation: this
+      # job runs after the tag exists, so a hard failure here would leave a
+      # tag with nothing published, which is how 3.0.0 was lost.
       - name: Compare SHA-256 between back-to-back builds
         run: |
           set -euo pipefail
@@ -223,7 +223,7 @@ jobs:
             a="$(sha256sum "$artifact" | cut -d' ' -f1)"
             b="$(sha256sum "$other" | cut -d' ' -f1)"
             if [ "$a" != "$b" ]; then
-              echo "::warning::Non-reproducible sdist: $base — $a vs $b (known gzip-header gap; tracked in backlog)"
+              echo "::warning::Non-reproducible sdist: $base — $a vs $b (normalize_sdist.py did not converge)"
             else
               echo "Reproducible sdist: $base ($a)"
             fi
