@@ -226,3 +226,30 @@ def test_the_input_error_code_never_collides_with_a_verdict() -> None:
     verdict_codes = {exit_code_for_status(status) for status in ReleaseStatus}
     assert EXIT_INPUT_ERROR not in verdict_codes
     assert verdict_codes == {0, 1, 2}
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("json_logs", [False, True])
+def test_a_rejected_option_value_is_named_in_one_line(json_logs: bool, tmp_path: Path) -> None:
+    """`--commit-sha xyz` used to print pydantic's multi-line report and its docs URL."""
+    args = (
+        "run",
+        "--application",
+        "a",
+        "--repository",
+        "o/r",
+        "--release-id",
+        "1",
+        "--commit-sha",
+        "xyz",
+        "--branch",
+        "main",
+        "--output-dir",
+        str(tmp_path / "out"),
+    )
+    result = _run(*(("--json-logs",) if json_logs else ()), *args)
+
+    assert result.returncode == 3
+    combined = result.stdout + result.stderr
+    assert "errors.pydantic.dev" not in combined
+    assert "ReleaseContext.commit_sha: String should have at least 7 characters" in combined
