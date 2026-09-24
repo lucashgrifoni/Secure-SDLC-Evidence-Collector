@@ -1,0 +1,98 @@
+{
+  "source": "NIST CSF 2.0 Reference Tool export (Core with informative references)",
+  "url": "https://csrc.nist.gov/extensions/nudp/services/json/csf/download?olirids=all",
+  "generated": "2026-09-24 18:07:44.724000",
+  "sha256": "7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0",
+  "note": "Verbatim informative references labelled 'SSDF:' per CSF 2.0 subcategory, as they appear in the export. Extracted for ADR-0014.",
+  "references": {
+    "GV.OC-02": [
+      "SSDF: PO.2.1"
+    ],
+    "GV.OC-03": [
+      "SSDF: PO.1.1",
+      "SSDF: PO.1.2"
+    ],
+    "GV.RM-07": [
+      "SSDF: PO.2.1"
+    ],
+    "GV.RR-01": [
+      "SSDF: PO.2.3"
+    ],
+    "GV.RR-02": [
+      "SSDF: PO.2.1"
+    ],
+    "GV.SC-02": [
+      "SSDF: PO.2.1"
+    ],
+    "GV.SC-03": [
+      "SSDF: PW.4.1"
+    ],
+    "GV.SC-05": [
+      "SSDF: PO.1.3"
+    ],
+    "GV.SC-07": [
+      "SSDF: PW.4.1",
+      "SSDF: PW.4.4"
+    ],
+    "ID.AM-08": [
+      "SSDF: PW.4.1",
+      "SSDF: PW.4.4"
+    ],
+    "ID.RA-01": [
+      "SSDF: PO.5.2"
+    ],
+    "ID.RA-05": [
+      "SSDF: PW.1.1"
+    ],
+    "ID.RA-06": [
+      "SSDF: PO.5.2"
+    ],
+    "ID.RA-07": [
+      "SSDF: PO.5.2"
+    ],
+    "ID.RA-09": [
+      "SSDF: PO.5.2"
+    ],
+    "PR.AA-03": [
+      "SSDF: PO.5.2"
+    ],
+    "PR.AA-05": [
+      "SSDF: PO.5.2",
+      "SSDF: PS.1.1"
+    ],
+    "PR.AA-06": [
+      "SSDF: PO.2.2",
+      "SSDF: PO.5.2"
+    ],
+    "PR.AT-01": [
+      "SSDF: PO.2.2"
+    ],
+    "PR.AT-02": [
+      "SSDF: PO.2.2"
+    ],
+    "PR.DS-01": [
+      "SSDF: PS.1.1",
+      "SSDF: PS.2.1",
+      "SSDF: PS.3.1"
+    ],
+    "PR.DS-11": [
+      "SSDF: PS.3.1"
+    ],
+    "PR.IR-01": [
+      "SSDF: PO.5.1"
+    ],
+    "PR.PS-01": [
+      "SSDF: PO.5.2",
+      "SSDF: PS.1.1"
+    ],
+    "PR.PS-02": [
+      "SSDF: PO.5.2"
+    ],
+    "PR.PS-03": [
+      "SSDF: PO.5.2"
+    ],
+    "PR.PS-04": [
+      "SSDF: PO.3.3"
+    ]
+  }
+}
