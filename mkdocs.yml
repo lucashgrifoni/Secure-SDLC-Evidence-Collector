@@ -79,6 +79,7 @@ nav:
   - AI evidence: ai-evidence.md
   - Comparison vs alternatives: comparison.md
   - GUAC integration: guac.md
+  - Control gaps as SARIF: sarif.md
   - Plugins: plugins.md
   - Limitations: limitations.md
   - Traceability: traceability.md

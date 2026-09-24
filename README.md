@@ -168,6 +168,7 @@ sdlc-evidence enrich BUNDLE          # attach EPSS + CISA KEV intelligence to a 
 sdlc-evidence vex BUNDLE             # emit an OpenVEX document from a bundle
 sdlc-evidence statement BUNDLE       # wrap a bundle as an in-toto Statement v1
 sdlc-evidence guac BUNDLE [-o PATH]  # emit a GUAC-collector container from a bundle
+sdlc-evidence sarif BUNDLE [-o PATH] # write unmet controls as SARIF 2.1.0 for code scanning
 sdlc-evidence exceptions validate F… # validate one or more waiver files
 sdlc-evidence exceptions list DIR    # list every valid waiver in a directory
 sdlc-evidence --version
