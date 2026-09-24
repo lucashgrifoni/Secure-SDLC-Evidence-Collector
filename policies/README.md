@@ -30,20 +30,23 @@ conftest test \
 ### Check individual waivers and KEV CVEs
 
 `release-items.rego` is a separate package, so it only runs when you ask
-for its namespace. It denies a waiver whose `expires_at` has passed when
-the gate runs, and a CVE that `sdlc-evidence enrich` found in CISA KEV
-unless an inline CycloneDX analysis in the bundle marks it `not_affected`
-or `false_positive`.
+for its namespace. It denies a waiver scoped to this application and
+release whose `expires_at` has passed when the gate runs. It also denies a
+CVE that `sdlc-evidence enrich` found in CISA KEV for an artifact, unless
+every inline CycloneDX analysis of that CVE for the same artifact says
+`not_affected` or `false_positive`.
 
 ```sh
 conftest test --policy policies/rego/ --namespace release_items output/bundle.json
 ```
 
-Two limits. KEV matches come from the enrichment's top-risk list, which
+Three limits. KEV matches come from the enrichment's top-risk list, which
 holds the highest-EPSS CVEs only; a warning names any evidence whose KEV
-count is higher than the CVEs it lists. VEX documents passed to
-`sdlc-evidence vex --consume` are not stored in the bundle, so they cannot
-clear a KEV CVE in this check.
+count is higher than the CVEs it lists. The bundle records an analysis per
+CVE and artifact, not per component inside the artifact, so a conflicting
+analysis for the same artifact keeps the CVE denied. VEX documents passed
+to `sdlc-evidence vex --consume` are not stored in the bundle, so they
+cannot clear a KEV CVE in this check.
 
 ### Verify the policy itself
 
