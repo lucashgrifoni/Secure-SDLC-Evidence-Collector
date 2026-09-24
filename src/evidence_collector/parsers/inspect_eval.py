@@ -57,9 +57,13 @@ def looks_like_inspect_log(data: Any) -> bool:
     if not isinstance(data, dict) or not isinstance(data.get("eval"), dict):
         return False
     spec = data["eval"]
+    status = data.get("status")
+    # Detection runs on every JSON artifact, so a hostile shape must answer
+    # False, not raise: a list here is unhashable for the set lookup.
     return (
         isinstance(data.get("version"), int)
-        and data.get("status") in EVAL_STATUSES
+        and isinstance(status, str)
+        and status in EVAL_STATUSES
         and isinstance(spec.get("task"), str)
         and isinstance(spec.get("model"), str)
     )
@@ -69,7 +73,10 @@ def _metrics(results: Any) -> dict[str, float]:
     out: dict[str, float] = {}
     if not isinstance(results, dict):
         return out
-    for score in results.get("scores") or []:
+    scores = results.get("scores")
+    if not isinstance(scores, list):
+        return out
+    for score in scores:
         if not isinstance(score, dict) or not isinstance(score.get("metrics"), dict):
             continue
         scorer = str(score.get("name") or "score")

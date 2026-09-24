@@ -140,3 +140,30 @@ def test_non_finite_metric_values_are_skipped(tmp_path: Path) -> None:
     path.write_text(raw, encoding="utf-8")
 
     assert parse_inspect_eval(path).metrics == {}
+
+
+@pytest.mark.parametrize(
+    "hostile",
+    [
+        {"status": ["success"]},
+        {"status": {"a": 1}},
+        {"results": {"scores": 5}},
+        {"results": {"scores": True}},
+        {"results": {"scores": "abc"}},
+    ],
+)
+def test_a_malformed_log_does_not_stop_the_other_files(
+    tmp_path: Path, hostile: dict[str, Any]
+) -> None:
+    """Content detection runs on every JSON file; a bad one must not abort the run."""
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    _write(artifacts / "bad.json", {**_log(), **hostile})
+    _write(artifacts / "good.json", _log())
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
+
+    good = [
+        e for e in report.evidence if e.raw and (e.raw.artifact_path or "").endswith("good.json")
+    ]
+    assert len(good) == 1
