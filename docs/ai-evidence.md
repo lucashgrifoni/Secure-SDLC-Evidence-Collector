@@ -18,21 +18,29 @@ artifacts/
 ├── run.garak.jsonl         # prompt-injection probe results
 ├── model.lm-eval.json      # lm-evaluation-harness output
 ├── model-card.json         # HF or Google MCT model card
-├── mcp-tools.json          # MCP / tool inventory (free schema)
-└── training-lineage.json   # training-data manifest (free schema)
+└── dataset.croissant.json  # Croissant dataset metadata (training-data lineage)
 
-# 2. Run with the AI catalog.
+# 2. Free-schema manifests go in as attestations.
+attestations/
+├── tool-inventory.yaml     # evidence_type: mcp_tool_inventory
+└── training-lineage.yaml   # evidence_type: ai_training_data_lineage (if no Croissant file)
+
+# 3. Run with the AI catalog.
 sdlc-evidence run \
   --application acme/llm-coach \
   --repository acme/llm-coach \
   --release-id 2026.05.19 \
   --commit-sha "$(git rev-parse HEAD)" \
   --artifacts-dir artifacts \
+  --attestations-dir attestations \
   --catalog catalog-ai.yaml
 ```
 
-The collector auto-detects each AI shape via filename + content
-sniff and routes it to the right parser.
+The collector auto-detects each AI file in the artifacts directory via
+filename + content sniff and routes it to the right parser. A
+free-schema JSON file dropped there (a tool list, a hand-written
+dataset manifest) matches no parser and is not collected, so those go
+in as attestations instead.
 
 ## Evidence types
 
@@ -106,9 +114,22 @@ agentic system can reach. Recommended fields:
 - `tools[*].risk_class` — short label (e.g. `read-only`, `write`,
   `external-network`)
 
-The collector does not normalise the tool inventory shape today; it
-preserves the file as evidence so a reviewer can inspect blast
-radius.
+The collector does not parse a tool inventory, and a file dropped in
+the artifacts directory is not collected. Supply it as an attestation
+in the attestations directory, with the manifest under `metadata`, so
+a reviewer can inspect blast radius from the bundle:
+
+```yaml
+evidence_type: mcp_tool_inventory
+producer: platform-team
+subject_ref: acme/llm-coach
+status: passed
+metadata:
+  tools:
+    - name: search
+      scopes: [read]
+      risk_class: low
+```
 
 Mapped control: `AI-MCP-INVENTORY` (OWASP Top 10 for Agentic
 Applications 2026 — tool misuse / excessive tool reach; OWASP
@@ -116,8 +137,26 @@ LLM06:2025 excessive agency).
 
 ### `ai_training_data_lineage`
 
-Free-schema JSON manifest of the datasets used to train / fine-tune
-the model. Recommended fields:
+Two sources.
+
+**Croissant dataset metadata** (MLCommons, spec 1.0 and 1.1). Any
+`.json` file whose dataset-level `conformsTo` (or `dct:conformsTo`)
+names `http://mlcommons.org/croissant/1.0` or `/1.1` is recognised by
+content, whatever its file name; in 1.1 `conformsTo` may be a list. The
+evidence records the Croissant version, dataset name, version, URL and
+licenses, `datePublished`, which PROV-O terms are present
+(`wasDerivedFrom`, `wasGeneratedBy`, `wasAttributedTo`), whether
+`usageInfo` carries a usage policy, and how many record sets and
+distribution files there are and how many of those carry a `sha256`.
+Confidence is high when the file names the dataset and a license, and
+medium otherwise.
+
+**A free-schema manifest** of the datasets used to train / fine-tune
+the model, supplied as an attestation (`evidence_type:
+ai_training_data_lineage`) in the attestations directory, with the
+manifest under `metadata`, the same way as the tool inventory above. A
+manifest file dropped in the artifacts directory is not collected.
+Recommended fields:
 
 - `datasets[*].name`, `datasets[*].version`
 - `datasets[*].source` — URL or repository

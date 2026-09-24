@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from evidence_collector.normalizers.engine import (
     normalize_attestation,
+    normalize_croissant,
     normalize_garak,
     normalize_intoto_statement,
     normalize_junit,
@@ -24,6 +25,7 @@ from evidence_collector.normalizers.engine import (
 
 __all__ = [
     "normalize_attestation",
+    "normalize_croissant",
     "normalize_garak",
     "normalize_intoto_statement",
     "normalize_junit",

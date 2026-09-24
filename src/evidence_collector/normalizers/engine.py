@@ -36,6 +36,7 @@ from evidence_collector.domain.models import (
 )
 from evidence_collector.parsers._common import ParsedArtifact
 from evidence_collector.parsers.attestation import ParsedAttestation
+from evidence_collector.parsers.croissant import ParsedCroissant
 from evidence_collector.parsers.garak import ParsedGarak
 from evidence_collector.parsers.intoto_provenance import ParsedProvenance
 from evidence_collector.parsers.intoto_statement import (
@@ -1075,6 +1076,56 @@ def normalize_model_card(
         raw=_raw_ref(parsed.artifact, artifact_root),
         findings_count={},
         summary=(f"Model card ({parsed.shape}) for {parsed.model_id or 'unknown model'}"),
+        metadata=metadata,
+    )
+
+
+def normalize_croissant(
+    parsed: ParsedCroissant,
+    release: ReleaseContext,
+    *,
+    artifact_root: str | None = None,
+) -> NormalizedEvidence:
+    """Build ``ai_training_data_lineage`` evidence from Croissant dataset metadata."""
+    metadata: dict[str, Any] = {
+        "croissant_version": parsed.croissant_version,
+        "licenses": list(parsed.licenses),
+        "provenance": list(parsed.provenance),
+        "usage_policy": parsed.has_usage_policy,
+        "record_sets": parsed.record_set_count,
+        "distribution_files": parsed.distribution_count,
+        "distribution_files_with_sha256": parsed.distribution_with_sha256,
+    }
+    if parsed.name:
+        metadata["dataset_name"] = parsed.name
+    if parsed.dataset_version:
+        metadata["dataset_version"] = parsed.dataset_version
+    if parsed.date_published:
+        metadata["date_published"] = parsed.date_published
+    subject_ref = parsed.url or parsed.name or release.release_id
+    return NormalizedEvidence(
+        evidence_id=_new_evidence_id(
+            "croissant", parsed.artifact.integrity_hash, subject_ref, release.release_id
+        ),
+        evidence_type=EvidenceType.AI_TRAINING_DATA_LINEAGE,
+        source=EvidenceSource(name="croissant", kind="dataset-metadata"),
+        producer="croissant",
+        subject_type=SubjectType.AI_DATASET,
+        subject_ref=subject_ref,
+        status=EvidenceStatus.GENERATED,
+        # Name and license are what a lineage review starts from; without them
+        # the file proves a dataset exists more than where it came from.
+        confidence=(
+            ConfidenceLevel.HIGH if parsed.name and parsed.licenses else ConfidenceLevel.MEDIUM
+        ),
+        release_id=release.release_id,
+        commit_sha=release.commit_sha,
+        generated_at=None,
+        raw=_raw_ref(parsed.artifact, artifact_root),
+        findings_count={},
+        summary=(
+            f"Croissant {parsed.croissant_version} metadata for dataset {parsed.name or 'unnamed'}"
+        ),
         metadata=metadata,
     )
 
