@@ -362,3 +362,19 @@ If your policy needs the accountability without the personal identifier, record
 a role or a ticket reference (`security-review-board`, `RISK-4471`) rather than
 an individual's address. The tool treats the field as an opaque string and does
 not care which you choose.
+
+## 18 · The optional API has no authentication
+
+`pip install "secure-sdlc-evidence-collector[api]"` adds a FastAPI app,
+`evidence_collector.api.app:app`, with five GET routes: `/healthz`,
+`/version`, `/schema`, `/catalog` and `/plugins`. It has no authentication and
+no authorization. Nothing it serves is secret, but the catalog and the plugin
+list tell a visitor which controls gate your releases and what is installed.
+
+- Keep it on `127.0.0.1`, which is uvicorn's default, or put it behind a proxy
+  that authenticates callers. Do not bind it to `0.0.0.0` on a host with a
+  public address.
+- `/docs` and `/openapi.json` are served only when `SDLC_EVIDENCE_API_DOCS=1`
+  is set or the app is built with `expose_docs=True`.
+- The collector does not refuse a public bind. That choice stays with whoever
+  runs the server.
