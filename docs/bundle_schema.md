@@ -147,6 +147,20 @@ catalog record has been edited.
 | `evaluated_at` | datetime | When the engine ran. |
 | `exception_refs` | string[] | Reserved for Phase 2 exception workflow. |
 
+Every required evidence type needs at least one record with status
+`passed`, `completed` or `generated`. A record with any other status,
+such as `failed` or `invalid`, does not satisfy the control and counts
+as missing. When every required type is satisfied the control is `met`,
+or `partial` if a recommended type is not. A record of a required or
+recommended type that did not satisfy never changes the verdict and is
+not in `evidence_refs`. A `met` or `partial` rationale names each such
+record with its status, ending with a sentence such as `Evidence
+promptfoo-1a4d6017fd82 (failed) of type ai_safety_eval did not count.`
+A `missing` rationale says that records of a missing required type are
+present but did not satisfy the control. Types with no record at all are
+still reported as "missing required evidence types". A `waived`
+rationale names the exception, not the records.
+
 ## Gap
 
 | Field | Type | Notes |

@@ -45,6 +45,13 @@ parser claimed (an `artifact_ignored` event per file under
 `--json-logs`), so a file that did not become evidence does not go
 unnoticed.
 
+An lm-eval file always becomes `generated` evidence, which satisfies
+`AI-SAFETY-EVAL` on its own. A control is met when at least one record
+of each required type satisfies it, so a failed promptfoo run in the
+same directory does not block the control. The control's rationale
+names the failed run, and the run keeps its `failed` status in the
+bundle's evidence list.
+
 ## Evidence types
 
 ### `model_card`
@@ -127,6 +134,10 @@ which assertion types failed. Unlike lm-eval, promptfoo decides pass or
 fail per test, so the evidence carries its verdict: `passed` when every
 test passed, `failed` when any test failed or errored, and `invalid`
 when no test produced a verdict. Only `passed` satisfies the control.
+A control is met when at least one record of each required type
+satisfies it, so a failed promptfoo run beside a passing run or an
+lm-eval file does not block `AI-SAFETY-EVAL`; the rationale names the
+failed run.
 
 Mapped control: `AI-SAFETY-EVAL` (SSDF PW.4.AI).
 

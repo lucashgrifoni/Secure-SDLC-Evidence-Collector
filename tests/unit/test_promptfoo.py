@@ -152,6 +152,76 @@ def test_a_failed_test_keeps_the_ai_safety_control_from_being_met(
     assert safety["evaluation_status"] == expected
 
 
+def _run_ai_catalog(tmp_path: Path, files: dict[str, object]) -> dict[str, Any]:
+    from evidence_collector.application.orchestrator import run_pipeline
+    from evidence_collector.controls.catalog import bundled_catalog_path
+    from evidence_collector.domain.models import Application
+
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    for name, data in files.items():
+        _write(artifacts / name, data)
+    result = run_pipeline(
+        Application(name="support-bot", repository="acme/support-bot"),
+        _release(),
+        artifacts_dirs=[artifacts],
+        output_dir=tmp_path / "out",
+        catalog_path=bundled_catalog_path("catalog-ai.yaml"),
+    )
+    assert result.json_path is not None
+    bundle: dict[str, Any] = json.loads(result.json_path.read_text(encoding="utf-8"))
+    return bundle
+
+
+# The lm-eval file from the quick start in docs/ai-evidence.md. lm-eval evidence
+# is always `generated`, so it satisfies AI-SAFETY-EVAL on its own.
+_LM_EVAL = {
+    "results": {"toxigen": {"acc,none": 0.41}},
+    "versions": {"toxigen": 1},
+    "config": {"model": "hf", "model_args": "pretrained=acme/llm-coach"},
+}
+
+
+@pytest.mark.parametrize(
+    ("companion_name", "companion"),
+    [("results_pass.json", _output(2, 0, 0)), ("model.lm-eval.json", _LM_EVAL)],
+)
+def test_a_failed_run_beside_other_safety_evidence_is_named_in_the_rationale(
+    tmp_path: Path, companion_name: str, companion: object
+) -> None:
+    """The control stays met, but the failed run no longer disappears from it."""
+    bundle = _run_ai_catalog(
+        tmp_path, {"results_fail.json": _output(1, 2, 0), companion_name: companion}
+    )
+
+    [failed] = [e["evidence_id"] for e in bundle["evidence"] if e["status"] == "failed"]
+    [other] = [
+        e["evidence_id"]
+        for e in bundle["evidence"]
+        if e["evidence_type"] == "ai_safety_eval" and e["status"] != "failed"
+    ]
+    [safety] = [e for e in bundle["control_evaluations"] if e["control_id"] == "AI-SAFETY-EVAL"]
+    assert safety["evaluation_status"] == "met"
+    assert safety["evidence_refs"] == [other]
+    assert safety["rationale"] == (
+        f"Control AI-SAFETY-EVAL is met by evidence {other}. "
+        f"Evidence {failed} (failed) of type ai_safety_eval did not count."
+    )
+
+
+def test_a_lone_failed_run_is_named_as_present_rather_than_missing(tmp_path: Path) -> None:
+    bundle = _run_ai_catalog(tmp_path, {"results_fail.json": _output(1, 2, 0)})
+
+    [failed] = [e["evidence_id"] for e in bundle["evidence"] if e["status"] == "failed"]
+    [safety] = [e for e in bundle["control_evaluations"] if e["control_id"] == "AI-SAFETY-EVAL"]
+    assert safety["evaluation_status"] == "missing"
+    assert safety["evidence_refs"] == []
+    assert safety["rationale"] == (
+        f"Control AI-SAFETY-EVAL is not satisfied: required evidence {failed} (failed) "
+        "of type ai_safety_eval is present but did not satisfy it."
+    )
+
+
 @pytest.mark.parametrize(
     "row",
     [
