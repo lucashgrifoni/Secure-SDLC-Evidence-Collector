@@ -51,7 +51,7 @@ class GitLabCollectorConfig:
     # `logger.debug("config=%s", config)` — or one traceback rendered with
     # locals — away from being written down somewhere it does not belong.
     token: str | None = field(default=None, repr=False)
-    user_agent: str = "secure-sdlc-evidence-collector/3.1.0"  # x-release-please-version
+    user_agent: str = "secure-sdlc-evidence-collector/3.2.0"  # x-release-please-version
 
     @classmethod
     def from_env(cls, project: str, api_base: str = _DEFAULT_API) -> GitLabCollectorConfig:
