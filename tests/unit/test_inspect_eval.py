@@ -68,6 +68,77 @@ def test_a_successful_log_is_read(tmp_path: Path) -> None:
     assert (parsed.total_samples, parsed.completed_samples) == (250, 250)
 
 
+def _reduced(name: str, reducer: str | None, **metrics: float) -> dict[str, Any]:
+    """One `results.scores` entry as Inspect 0.3 writes it for an epoch reducer."""
+    return {
+        "name": name,
+        "scorer": name,
+        "reducer": reducer,
+        "scored_samples": 2,
+        "unscored_samples": 0,
+        "params": {},
+        "metrics": {k: {"name": k, "value": v, "params": {}} for k, v in metrics.items()},
+    }
+
+
+@pytest.mark.parametrize(
+    ("scores", "expected"),
+    [
+        (  # Epochs(2, ["mean", "max"]): the headline mean comes first.
+            [
+                _reduced("first_epoch_only", "mean", accuracy=0.5),
+                _reduced("first_epoch_only", "max", accuracy=1.0),
+            ],
+            {"first_epoch_only/accuracy": 0.5, "first_epoch_only/max/accuracy": 1.0},
+        ),
+        (  # --epochs-reducer max,mean: Inspect's headline is then max.
+            [
+                _reduced("first_epoch_only", "max", accuracy=1.0),
+                _reduced("first_epoch_only", "mean", accuracy=0.5),
+            ],
+            {"first_epoch_only/accuracy": 1.0, "first_epoch_only/mean/accuracy": 0.5},
+        ),
+        (  # Two scorers, two reducers each.
+            [
+                _reduced("includes", "mean", accuracy=0.5, stderr=0.5),
+                _reduced("includes", "max", accuracy=1.0, stderr=0.0),
+                _reduced("match", "mean", accuracy=0.25, stderr=0.25),
+                _reduced("match", "max", accuracy=0.5, stderr=0.5),
+            ],
+            {
+                "includes/accuracy": 0.5,
+                "includes/stderr": 0.5,
+                "includes/max/accuracy": 1.0,
+                "includes/max/stderr": 0.0,
+                "match/accuracy": 0.25,
+                "match/stderr": 0.25,
+                "match/max/accuracy": 0.5,
+                "match/max/stderr": 0.5,
+            },
+        ),
+        (  # A single reducer keeps the plain keys, as before.
+            [_reduced("includes", "mean", accuracy=0.5, stderr=0.5)],
+            {"includes/accuracy": 0.5, "includes/stderr": 0.5},
+        ),
+        (  # No epochs: Inspect writes reducer null.
+            [_reduced("includes", None, accuracy=0.5, stderr=0.5)],
+            {"includes/accuracy": 0.5, "includes/stderr": 0.5},
+        ),
+    ],
+)
+def test_every_epoch_reducer_is_kept(
+    tmp_path: Path, scores: list[dict[str, Any]], expected: dict[str, float]
+) -> None:
+    """Several reducers share one scorer name; none may overwrite another."""
+    log = _log()
+    log["results"]["scores"] = scores
+    parsed = parse_inspect_eval(_write(tmp_path / "logs.json", log))
+
+    assert parsed.metrics == expected
+    evidence = normalize_inspect_eval(parsed, _release())
+    assert evidence.summary == f"Inspect task inspect_evals/xstest: {len(expected)} metric(s)"
+
+
 def test_a_successful_run_is_a_safety_eval_for_the_model(tmp_path: Path) -> None:
     evidence = normalize_inspect_eval(
         parse_inspect_eval(_write(tmp_path / "logs.json", _log())), _release()

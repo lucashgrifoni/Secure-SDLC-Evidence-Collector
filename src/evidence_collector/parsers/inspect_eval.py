@@ -14,7 +14,9 @@ with ``--log-format json`` or produced by ``inspect log convert``. Top level::
     }
 
 Only format version 2 is read; any other version is refused with a parse
-error rather than guessed at. Metrics are flattened to ``scorer/metric``.
+error rather than guessed at. Metrics are flattened to ``scorer/metric``;
+when a task has several epoch reducers, the first one Inspect lists (its
+headline) keeps that key and each other reducer is ``scorer/reducer/metric``.
 Like the lm-eval parser, this one does not judge the numbers: thresholds
 belong in the control catalog. What it does judge is whether the run
 finished, which the normalizer uses to keep a failed run from counting.
@@ -76,10 +78,18 @@ def _metrics(results: Any) -> dict[str, float]:
     scores = results.get("scores")
     if not isinstance(scores, list):
         return out
+    seen: set[str] = set()
     for score in scores:
         if not isinstance(score, dict) or not isinstance(score.get("metrics"), dict):
             continue
         scorer = str(score.get("name") or "score")
+        # With several epoch reducers Inspect writes one entry per reducer under
+        # the same scorer name, its headline first. That one keeps scorer/metric;
+        # each later one becomes scorer/reducer/metric instead of overwriting it.
+        reducer = score.get("reducer")
+        later = scorer in seen and isinstance(reducer, str) and bool(reducer)
+        prefix = f"{scorer}/{reducer}" if later else scorer
+        seen.add(scorer)
         for key, metric in score["metrics"].items():
             value = metric.get("value") if isinstance(metric, dict) else None
             # bool is an int subclass, and Python's json reads NaN and Infinity;
@@ -89,7 +99,7 @@ def _metrics(results: Any) -> dict[str, float]:
                 and not isinstance(value, bool)
                 and math.isfinite(value)
             ):
-                out[f"{scorer}/{metric.get('name') or key}"] = float(value)
+                out[f"{prefix}/{metric.get('name') or key}"] = float(value)
     return out
 
 
