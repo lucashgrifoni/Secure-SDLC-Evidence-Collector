@@ -25,6 +25,7 @@ Spec references
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -99,6 +100,55 @@ def _text(value: Any) -> str | None:
     return None
 
 
+def _version(value: Any) -> str | None:
+    """Dataset version as text; schema.org allows a Number as well as Text.
+
+    Kaggle and OpenML publish ``"version": 1``. A bool is not a version (it is
+    an ``int`` in Python), and neither is the NaN or Infinity ``json`` accepts.
+    Only a float is checked for that: ``math.isfinite`` converts an int to a
+    float, which overflows for an int past about 309 digits.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return str(value) if math.isfinite(value) else None
+    return _text(value)
+
+
+def _name(value: Any) -> str | None:
+    """Dataset name, including the language-tagged forms Croissant 1.1 allows.
+
+    Besides a plain string, ``name`` may be a value object (``{"@value": ...,
+    "@language": ...}``), a language map (``{"en": ..., "de": ...}``, declared
+    with ``"@container": "@language"``) or a list of those. The choice is
+    deterministic, so the same file always gives the same evidence: in a list
+    the first entry that reads, in a language map the exact ``en`` tag, then
+    the untagged ``@none`` value, then the first language tag in sorted order.
+    """
+    for entry in _as_list(value):
+        text = _text(entry) or _language_tagged(entry)
+        if text:
+            return text
+    return None
+
+
+def _language_tagged(value: Any) -> str | None:
+    """The string a JSON-LD value object or language map carries, or None."""
+    if not isinstance(value, dict):
+        return None
+    if "@value" in value:
+        tagged = value["@value"]
+        return _text(tagged) if isinstance(tagged, str) else None
+    tags = sorted(key for key in value if not key.startswith("@"))
+    for tag in ("en", "@none", *tags):
+        for candidate in _as_list(value.get(tag)):
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate.strip()
+    return None
+
+
 def parse_croissant(path: str | Path) -> ParsedCroissant:
     resolved = ensure_file(path)
     data = load_json(resolved)
@@ -113,8 +163,8 @@ def parse_croissant(path: str | Path) -> ParsedCroissant:
     return ParsedCroissant(
         artifact=describe(resolved, content_type="application/ld+json"),
         croissant_version=version,
-        name=_text(_get(data, "name", "sc")),
-        dataset_version=_text(_get(data, "version", "sc")),
+        name=_name(_get(data, "name", "sc")),
+        dataset_version=_version(_get(data, "version", "sc")),
         url=_text(_get(data, "url", "sc")),
         licenses=licenses,
         date_published=_text(_get(data, "datePublished", "sc")),

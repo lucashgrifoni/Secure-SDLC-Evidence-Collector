@@ -176,8 +176,14 @@ licenses, `datePublished`, which PROV-O terms are present
 (`wasDerivedFrom`, `wasGeneratedBy`, `wasAttributedTo`), whether
 `usageInfo` carries a usage policy, and how many record sets and
 distribution files there are and how many of those carry a `sha256`.
-Confidence is high when the file names the dataset and a license, and
-medium otherwise.
+A numeric `version` is recorded as text (`1` becomes `"1"`). A name
+given as a language map is read as the value of its `en` tag, else its
+untagged (`@none`) value, else the value of the first language tag in
+sorted order; an `@value` object gives its value, and a list gives its first
+readable entry. Confidence is high when the file names the dataset and
+a license, and medium otherwise. A placeholder license (`unknown`,
+`NOASSERTION` or `none`, in any case) is still recorded but does not
+count as naming one.
 
 **A free-schema manifest** of the datasets used to train / fine-tune
 the model, supplied as an attestation (`evidence_type:

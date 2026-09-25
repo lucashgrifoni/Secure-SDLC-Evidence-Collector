@@ -1215,6 +1215,12 @@ def normalize_croissant(
     shown_name = parsed.name or "unnamed"
     if len(shown_name) > 200:
         shown_name = shown_name[:200] + "..."
+    # A placeholder license ("unknown" on hubs, SPDX's NOASSERTION and NONE)
+    # says no license is known, so it stays in metadata but names none. "other"
+    # does count: hubs use it for a real custom license.
+    names_license = any(
+        text.lower() not in {"unknown", "noassertion", "none"} for text in parsed.licenses
+    )
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
             "croissant", parsed.artifact.integrity_hash, subject_ref, release.release_id
@@ -1228,7 +1234,7 @@ def normalize_croissant(
         # Name and license are what a lineage review starts from; without them
         # the file proves a dataset exists more than where it came from.
         confidence=(
-            ConfidenceLevel.HIGH if parsed.name and parsed.licenses else ConfidenceLevel.MEDIUM
+            ConfidenceLevel.HIGH if parsed.name and names_license else ConfidenceLevel.MEDIUM
         ),
         release_id=release.release_id,
         commit_sha=release.commit_sha,
