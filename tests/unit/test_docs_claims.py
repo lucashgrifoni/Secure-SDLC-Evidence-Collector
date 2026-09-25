@@ -32,6 +32,8 @@ from evidence_collector.domain.enums import EvidenceType
 _DOCS_INDEX = Path("docs/index.md")
 _README = Path("README.md")
 _HOOKS_MANIFEST = Path(".pre-commit-hooks.yaml")
+_ROLLBACK = Path("docs/rollback.md")
+_PUBLISH_WORKFLOW = Path(".github/workflows/publish-pypi.yml")
 
 
 def _git(*args: str) -> subprocess.CompletedProcess[str]:
@@ -101,3 +103,41 @@ def test_readme_lists_every_shipped_evidence_type() -> None:
         if f"`{evidence_type.value}`" not in readme
     ]
     assert not missing, f"README does not mention shipped evidence types: {missing}"
+
+
+def _prose(path: Path) -> str:
+    """The file's text with line wrapping collapsed, so a phrase can span lines."""
+    return " ".join(path.read_text(encoding="utf-8").split())
+
+
+def test_rollback_note_does_not_contradict_the_sdist_normalisation() -> None:
+    """`docs/rollback.md` kept saying the sdist is not reproducible.
+
+    That stopped being true when the publish job started repacking the sdist
+    with `scripts/normalize_sdist.py`, but the page still told a verifier to
+    compare wheels only, so nothing pointed them at the normaliser they need
+    to reproduce the published sdist.
+    """
+    workflow = _PUBLISH_WORKFLOW.read_text(encoding="utf-8")
+    assert "scripts/normalize_sdist.py" in workflow, "precondition: the job normalises the sdist"
+    doc = _prose(_ROLLBACK)
+    assert "the sdist is not" not in doc, "rollback.md still calls the sdist unreproducible"
+    assert "Compare wheels, not sdists" not in doc
+    assert "scripts/normalize_sdist.py" in doc
+
+
+def test_rollback_note_says_a_matching_rebuild_needs_linux() -> None:
+    """A rebuild only matches the published bytes on the platform the job uses.
+
+    The build job runs on `ubuntu-latest`. A Windows rebuild of the same tree
+    with the same SOURCE_DATE_EPOCH gets CRLF in PKG-INFO, setup.cfg and the
+    wheel's METADATA, and Windows file attributes in the wheel, so it never
+    matches. The page has to say so, or a verifier reads the mismatch as
+    tampering.
+    """
+    workflow = _PUBLISH_WORKFLOW.read_text(encoding="utf-8")
+    assert "runs-on: ubuntu-latest" in workflow, "precondition: releases build on Linux"
+    doc = _prose(_ROLLBACK)
+    assert "SOURCE_DATE_EPOCH" in doc
+    assert "Linux" in doc
+    assert "Windows" in doc

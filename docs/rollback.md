@@ -66,12 +66,75 @@ a signed asset does not invalidate its signature — anyone who already download
 the wheel plus its `.sig` and `.pem` can still verify it. Yanking on PyPI is
 what actually changes what new consumers get.
 
+## Rebuilding a release to compare it
+
+To investigate a bad release you can rebuild its wheel and sdist from the tag
+and check them against the published files. The publish job builds both on
+`ubuntu-latest` with Python 3.12 and `SOURCE_DATE_EPOCH` set to the commit time
+of the tag, then passes the sdist through `scripts/normalize_sdist.py`. That
+script sets every tar entry newer than `SOURCE_DATE_EPOCH` back to it, sets
+modes to 0755 for directories and executables and 0644 for everything else,
+resets owners, and writes the gzip header with the epoch and no file name. The
+wheel is not repacked: setuptools already stamps its entries with
+`SOURCE_DATE_EPOCH`.
+
+The job builds everything twice from the same checkout and compares the
+hashes. A wheel mismatch fails the release; an sdist mismatch is only a warning
+until a real release has confirmed the normalisation.
+
+To match the published files, your rebuild has to repeat the job's conditions:
+
+- **Build on Linux.** On Windows, setuptools writes `PKG-INFO`, its egg-info
+  copy and `setup.cfg` with CRLF line endings, and the wheel gets the same CRLF
+  in `METADATA` plus Windows file attributes on every entry. Neither the sdist
+  nor the wheel can match, whatever else you do. A Linux container on a Windows
+  machine is fine.
+- **Build from a fresh clone made inside Linux, with umask 022.** The wheel
+  keeps each file's mode from the checkout, so files at 0664 instead of 0644
+  give a different wheel even on Linux. The sdist keeps the executable bit, so
+  a Windows checkout seen through a bind mount, WSL's `/mnt/c` or a network
+  share, where every file looks executable, gives a different sdist. The sdist
+  also keeps mtimes older than `SOURCE_DATE_EPOCH`, so a working tree whose
+  files predate the tag commit does not match either; a fresh clone gives every
+  file a newer mtime.
+- **Set `SOURCE_DATE_EPOCH` to the tag's commit time**, as the job does with
+  `git log -1 --pretty=%ct`.
+- **Use the same setuptools.** The workflow does not pin it, and the wheel
+  names the version in its `*.dist-info/WHEEL` file
+  (`Generator: setuptools (A.B.C)`), so any other version gives a different
+  wheel.
+
+For example, inside `docker run --rm -it python:3.12 bash`:
+
+```sh
+TAG=vX.Y.Z          # the release to rebuild
+SETUPTOOLS=A.B.C    # from "Generator: setuptools (A.B.C)" in the published wheel
+umask 022
+git clone --depth 1 --branch "$TAG" \
+  https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector.git src
+cd src
+export SOURCE_DATE_EPOCH="$(git log -1 --pretty=%ct)"
+python -m pip install build wheel "setuptools==$SETUPTOOLS"
+python -m build --no-isolation --wheel --sdist --outdir dist
+python scripts/normalize_sdist.py dist
+sha256sum dist/*
+```
+
+`--no-isolation` makes the build use the setuptools you pinned. The job builds
+in an isolated environment instead; with the same setuptools version both give
+the same bytes. Compare the two hashes with the SHA-256 digests PyPI lists for
+the release files, or with `sha256sum` of the wheel and sdist attached to the
+GitHub Release. Tags older than `scripts/normalize_sdist.py` published an sdist
+that was never normalised, so for those skip that step and compare only the
+wheel.
+
 ## What is not covered
 
-- **Rebuilding the exact bad artifact to investigate it.** The wheel is
-  reproducible from the tagged commit; the sdist is not — its gzip header and
-  its generated files (`PKG-INFO`, `setup.cfg`, egg-info) carry build-time
-  timestamps. Compare wheels, not sdists.
+- **A confirmed sdist rebuild.** The sdist normalisation has not yet been
+  checked against a published release, and the job's own sdist check still
+  only warns on a mismatch. If your hashes differ, compare the archives member
+  by member (line endings and file modes are the usual cause) before treating
+  the difference as tampering.
 - **A rehearsal.** This procedure has not been executed against a real release.
   Yanking is reversible and the steps above are all documented vendor
   behaviour, but no one here has done it under pressure.
