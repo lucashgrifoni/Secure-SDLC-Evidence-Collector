@@ -150,3 +150,31 @@ def test_a_long_list_is_cut_short(tmp_path: Path, sample_release_root: Path) -> 
     assert "note-00.txt" in result.output
     assert "note-11.txt" not in result.output
     assert "and 2 more" in result.output
+
+
+def test_ignored_paths_follow_the_artifact_root(tmp_path: Path, sample_release_root: Path) -> None:
+    """--artifact-root keeps local paths out of published output; logs included."""
+    artifacts = _artifacts(tmp_path, sample_release_root, {"notes.txt": "hello\n"})
+
+    report = LocalArtifactCollector(
+        _release(), artifacts_dirs=[artifacts], artifact_root=tmp_path
+    ).collect()
+    assert [p.as_posix() for p in report.ignored] == ["artifacts/notes.txt"]
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "--json-logs",
+            *_run_args(artifacts, tmp_path / "out", sample_release_root),
+            "--artifact-root",
+            str(tmp_path),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    ignored = [
+        json.loads(line)
+        for line in result.output.splitlines()
+        if line.strip().startswith("{") and '"artifact_ignored"' in line
+    ]
+    assert [Path(str(e["path"])).as_posix() for e in ignored] == ["artifacts/notes.txt"]
+    assert str(tmp_path) not in json.dumps(ignored)
