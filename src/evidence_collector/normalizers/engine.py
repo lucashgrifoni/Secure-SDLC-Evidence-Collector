@@ -1101,15 +1101,23 @@ def normalize_promptfoo(
 
     promptfoo decides pass or fail per test, so the evidence carries it: any
     failed or errored test makes it ``failed``, and a run in which no test
-    produced a verdict (every row errored, or none ran) is ``invalid``.
+    produced a verdict (every row errored, or none ran) is ``invalid``. So is
+    a run whose tests all passed without a single graded assertion: promptfoo
+    passes a test that has no assertion ("No assertions"), so that run
+    checked nothing and must not satisfy the control either.
     """
     graded = parsed.successes + parsed.failures
+    asserted = parsed.assertions_passed + parsed.assertions_failed
     if graded == 0:
         status = EvidenceStatus.INVALID
     elif parsed.failures or parsed.errors:
         status = EvidenceStatus.FAILED
+    elif asserted == 0:
+        status = EvidenceStatus.INVALID
     else:
         status = EvidenceStatus.PASSED
+    valid = status != EvidenceStatus.INVALID
+    unasserted = graded > 0 and not valid
     metadata: dict[str, Any] = {
         "tests_passed": parsed.successes,
         "tests_failed": parsed.failures,
@@ -1132,7 +1140,7 @@ def normalize_promptfoo(
         subject_type=SubjectType.AI_MODEL,
         subject_ref=subject_ref,
         status=status,
-        confidence=ConfidenceLevel.HIGH if graded else ConfidenceLevel.LOW,
+        confidence=ConfidenceLevel.HIGH if valid else ConfidenceLevel.LOW,
         release_id=release.release_id,
         commit_sha=release.commit_sha,
         generated_at=None,
@@ -1140,7 +1148,7 @@ def normalize_promptfoo(
         findings_count={"failed": parsed.failures, "errors": parsed.errors},
         summary=(
             f"promptfoo: {parsed.successes} passed, {parsed.failures} failed, "
-            f"{parsed.errors} errored"
+            f"{parsed.errors} errored" + ("; no assertions were graded" if unasserted else "")
         ),
         metadata=metadata,
     )

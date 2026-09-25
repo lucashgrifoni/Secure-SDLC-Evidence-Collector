@@ -23,7 +23,8 @@ the version it was written against. The envelope looks like::
 Only ``results.version == 3`` is read. ``gradingResult`` and its
 ``componentResults`` may be missing on error rows or rows without
 assertions, and are skipped there. Test counts come from ``stats``; the
-per-assertion tally and the failing assertion types come from the rows.
+per-assertion tally and the failing assertion types come from the rows,
+counting each assertion inside an ``assert-set`` once and not the set.
 
 Spec reference: https://www.promptfoo.dev/docs/configuration/outputs/
 """
@@ -114,6 +115,11 @@ def parse_promptfoo(path: str | Path) -> ParsedPromptfoo:
             continue
         for component in components:
             if not isinstance(component, dict) or not isinstance(component.get("pass"), bool):
+                continue
+            # A component with its own componentResults is an aggregate, such
+            # as an assert-set. promptfoo repeats its children flat right after
+            # it, so they are counted there and the aggregate is not.
+            if isinstance(component.get("componentResults"), list):
                 continue
             if component["pass"]:
                 passed += 1

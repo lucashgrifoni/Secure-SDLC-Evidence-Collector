@@ -122,7 +122,10 @@ envelope (`results.version`, `results.stats`, `results.results`). promptfoo
 publishes no formal schema, so only output version 3 is accepted. The
 evidence records the passed, failed and errored test counts from
 `results.stats`, the assertion tally from each row's
-`gradingResult.componentResults` (skipped on rows that have none), and
+`gradingResult.componentResults` (skipped on rows that have none; an
+`assert-set` counts as its individual assertions, and a run that graded
+no assertion at all is `invalid`, because promptfoo passes a test that
+has none), and
 which assertion types failed. Unlike lm-eval, promptfoo decides pass or
 fail per test, so the evidence carries its verdict: `passed` when every
 test passed, `failed` when any test failed or errored, and `invalid`
