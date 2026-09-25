@@ -139,6 +139,10 @@ class LocalCollectionReport:
     evidence: list[NormalizedEvidence] = field(default_factory=list)
     exceptions: list[EvidenceException] = field(default_factory=list)
     errors: list[LocalCollectionError] = field(default_factory=list)
+    # Artifacts no parser claimed. Not errors - an unrelated file is allowed in
+    # the directory - but the CLI lists them, because a user who dropped a
+    # free-form manifest there otherwise gets no evidence and no word about it.
+    ignored: list[Path] = field(default_factory=list)
     inspected_files: int = 0
 
 
@@ -663,6 +667,9 @@ class LocalArtifactCollector:
                 self._record_error(report, file_path, json_error)
                 return
             logger.debug("Ignoring unrecognized artifact: %s", file_path)
+            # Rewritten like collection errors: the list reaches console output
+            # and NDJSON logs, which --artifact-root keeps free of local paths.
+            report.ignored.append(relative_to_root(file_path, self._artifact_root))
         except _INGEST_FAILURES as exc:
             logger.warning("Failed to ingest %s: %s", file_path, exc)
             self._record_error(report, file_path, str(exc))

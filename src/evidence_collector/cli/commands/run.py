@@ -11,7 +11,11 @@ from evidence_collector.application.orchestrator import run_pipeline
 from evidence_collector.application.profiles import ReleaseProfile
 from evidence_collector.cli._builders import build_application, build_release
 from evidence_collector.cli._exit_codes import fail_on_exit_code, validate_fail_on
-from evidence_collector.cli._render import render_collection_errors, render_summary
+from evidence_collector.cli._render import (
+    render_collection_errors,
+    render_ignored_artifacts,
+    render_summary,
+)
 from evidence_collector.collectors.github import GitHubCollector, GitHubCollectorConfig
 from evidence_collector.domain.models import NormalizedEvidence
 from evidence_collector.scoring import (
@@ -193,5 +197,7 @@ def register(app: typer.Typer) -> None:
         )
         render_summary(result)
         render_collection_errors(result)
+        if result.collection_report is not None:
+            render_ignored_artifacts(result.collection_report.ignored)
 
         raise typer.Exit(code=fail_on_exit_code(result.bundle.summary.release_status, fail_on))
