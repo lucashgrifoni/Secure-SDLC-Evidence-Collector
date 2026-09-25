@@ -40,7 +40,10 @@ The collector auto-detects each AI file in the artifacts directory via
 filename + content sniff and routes it to the right parser. A
 free-schema JSON file dropped there (a tool list, a hand-written
 dataset manifest) matches no parser and is not collected, so those go
-in as attestations instead.
+in as attestations instead. `run` and `collect` list every file no
+parser claimed (an `artifact_ignored` event per file under
+`--json-logs`), so a file that did not become evidence does not go
+unnoticed.
 
 ## Evidence types
 

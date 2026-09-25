@@ -9,6 +9,7 @@ from typing import Annotated
 import typer
 
 from evidence_collector.cli._builders import build_release
+from evidence_collector.cli._render import render_ignored_artifacts
 from evidence_collector.cli._state import EVIDENCE_ADAPTER, console
 from evidence_collector.domain.models import CollectionError
 from evidence_collector.exporters._atomic import write_atomic
@@ -94,3 +95,4 @@ def register(app: typer.Typer) -> None:
             console.print("[yellow]Collection warnings:[/yellow]")
             for error in report.errors:
                 console.print(f"  - {error.path}: {error.reason}")
+        render_ignored_artifacts(report.ignored)

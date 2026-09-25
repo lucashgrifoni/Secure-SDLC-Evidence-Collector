@@ -7,6 +7,8 @@ the human and machine-readable surfaces stay aligned automatically.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from rich.table import Table
 
 from evidence_collector.application.orchestrator import BundleBuildResult
@@ -83,3 +85,31 @@ def render_collection_errors(result: BundleBuildResult) -> None:
     console.print("[yellow]Collection warnings:[/yellow]")
     for error in errors:
         console.print(f"  - {error.path}: {error.reason}")
+
+
+_IGNORED_SHOWN = 10
+
+
+def render_ignored_artifacts(paths: list[Path]) -> None:
+    """Say which files in --artifacts-dir no parser claimed.
+
+    They are not collection errors and never reach the bundle; this only tells
+    the user that the file they put there did not become evidence.
+    """
+    if not paths:
+        return
+    if is_json_logs():
+        for path in paths:
+            emit_event("artifact_ignored", path=str(path))
+        return
+    count = len(paths)
+    noun, verb = ("file", "was") if count == 1 else ("files", "were")
+    console.print(
+        f"[yellow]{count} {noun} in --artifacts-dir matched no parser and {verb} "
+        "not collected:[/yellow]",
+        soft_wrap=True,
+    )
+    for path in paths[:_IGNORED_SHOWN]:
+        console.print(f"  - {path}", soft_wrap=True)
+    if count > _IGNORED_SHOWN:
+        console.print(f"  ... and {count - _IGNORED_SHOWN} more", soft_wrap=True)
