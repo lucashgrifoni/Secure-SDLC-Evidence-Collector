@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+from markdown_it import MarkdownIt
+
 from evidence_collector.domain.enums import (
     ConfidenceLevel,
     ControlCriticality,
@@ -27,6 +30,8 @@ from evidence_collector.domain.models import (
 )
 from evidence_collector.exporters import export_html, export_json, export_markdown
 from evidence_collector.exporters._jinja import md_code, md_escape
+from evidence_collector.normalizers import normalize_croissant
+from evidence_collector.parsers import parse_croissant
 
 
 def _build_bundle() -> EvidenceBundle:
@@ -244,6 +249,10 @@ def test_markdown_report_cannot_be_restructured_by_untrusted_strings(
     for row in rows:
         assert row.count("|") - row.count("\\|") == 7
 
+    # The `<script>` producer is written as text, not as a live tag.
+    assert '- **Producer:** &lt;script&gt;alert("pwned")&lt;/script&gt;' in content
+    assert f"- **Producer:** {_XSS}" not in content
+
 
 def test_markdown_escape_filter_keeps_ordinary_values_untouched() -> None:
     """Escaping must not corrupt the overwhelmingly common clean case."""
@@ -251,6 +260,77 @@ def test_markdown_escape_filter_keeps_ordinary_values_untouched() -> None:
     assert md_escape("pkg:npm/lodash@4.17.20") == "pkg:npm/lodash@4.17.20"
     assert md_escape(None) == ""
     assert md_escape(42) == "42"
+
+
+def test_md_escape_turns_inline_html_into_text() -> None:
+    """CommonMark passes raw HTML through in prose and table cells.
+
+    A value such as a dataset name of `<img src=x onerror=alert(1)>` was copied
+    into `report.md` verbatim, and any renderer that allows inline HTML turned
+    it into a live element. Angle brackets become entity references, which
+    CommonMark decodes back to the same visible characters as plain text.
+    """
+    assert md_escape("<img src=x onerror=alert(1)>") == "&lt;img src=x onerror=alert(1)&gt;"
+    assert md_escape("<https://attacker.example/>") == "&lt;https://attacker.example/&gt;"
+
+
+def test_md_escape_keeps_an_entity_in_the_value_literal() -> None:
+    """An ampersand that starts an entity reference is escaped, a bare one is not.
+
+    CommonMark decodes `&lt;` in prose, so a value that already reads
+    `&lt;script&gt;` would otherwise be displayed as `<script>`, which is not
+    what the artifact said. A bare `&` starts no entity and stays readable.
+    """
+    assert md_escape("&lt;script&gt;") == "&amp;lt;script&amp;gt;"
+    assert md_escape("&#60;b&#x3E;") == "&amp;#60;b&amp;#x3E;"
+    assert md_escape("R&D && ops") == "R&D && ops"
+
+
+def test_markdown_report_renders_untrusted_html_as_text(tmp_path: Path) -> None:
+    """Raw HTML in an artifact must render as text wherever report.md shows it.
+
+    The shape is a real Croissant 1.0 file whose `name` carries a tag. The
+    normalizer copies the name into the evidence summary, and the Summary
+    bullet wrote it out raw. Rendering the report with a CommonMark renderer,
+    which allows inline HTML, is the check that matters: no element may come
+    out of a value the tool only copied. `bundle_version` is hostile too: a
+    library caller can render a bundle loaded from a file, where it is any
+    string.
+    """
+    metadata = tmp_path / "metadata.json"
+    metadata.write_text(
+        json.dumps(
+            {
+                "@context": {"@vocab": "https://schema.org/"},
+                "@type": "sc:Dataset",
+                "name": "<img src=x onerror=alert(1)>",
+                "conformsTo": "http://mlcommons.org/croissant/1.0",
+                "url": "https://example.com/dataset/titanic",
+                "distribution": [{"@type": "cr:FileObject", "@id": "titanic.csv"}],
+                "recordSet": [{"@type": "cr:RecordSet", "name": "passengers"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    hostile = _hostile_bundle()
+    croissant = normalize_croissant(parse_croissant(metadata), hostile.release)
+    bundle = hostile.model_copy(
+        update={"evidence": [*hostile.evidence, croissant], "bundle_version": _XSS}
+    )
+
+    content = export_markdown(bundle, tmp_path / "report.md").read_text(encoding="utf-8")
+
+    assert (
+        "- **Summary:** Croissant 1.0 metadata for dataset &lt;img src=x onerror=alert(1)&gt;"
+        in content
+    )
+
+    html = MarkdownIt("commonmark").enable("table").render(content)
+    assert "<img" not in html
+    assert "<script" not in html
+    # The values are still shown, as text.
+    assert "&lt;img src=x onerror=alert(1)&gt;" in html
+    assert "&lt;script&gt;alert(&quot;pwned&quot;)&lt;/script&gt;" in html
 
 
 def test_bundle_id_cannot_forge_document_structure(tmp_path: Path) -> None:
@@ -425,3 +505,18 @@ def test_machine_collected_evidence_is_not_labelled_manual(tmp_path: Path) -> No
 
     assert "manual attestation" not in markdown
     assert "manual attestation" not in html
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["[clk](javascript:alert(2))", "![p](http://attacker.example/p.png)", "[x][ref]"],
+)
+def test_a_value_cannot_forge_a_markdown_link_or_image(value: str) -> None:
+    """Brackets are escaped, so a value cannot open a link or a remote image."""
+    escaped = md_escape(value)
+    assert "[" not in escaped.replace(r"\[", "")
+    assert "]" not in escaped.replace(r"\]", "")
+    rendered = MarkdownIt().render(escaped)
+    assert "<a " not in rendered
+    assert "<img" not in rendered
+    assert "clk" in rendered or "p.png" in rendered or "ref" in rendered

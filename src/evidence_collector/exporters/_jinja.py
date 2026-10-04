@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from functools import cache
 from importlib.resources import files
 
@@ -19,10 +20,11 @@ from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescap
 # carrying a `<script>` tag, lands verbatim in an HTML file that a release
 # manager opens in a browser and that CI publishes as a build artifact.
 #
-# `.md.j2` stays unescaped on purpose: HTML-escaping Markdown would render
-# `&amp;` and `&#39;` as literal text. Markdown injection is handled where it
-# belongs, by the `md` filter, which neutralises the characters that break
-# document structure.
+# `.md.j2` stays out of autoescape on purpose: most identifiers in report.md
+# sit inside backtick code spans, where CommonMark does not decode entities, so
+# autoescaping would render `&amp;` and `&#39;` there as literal text. Markdown
+# injection is handled where it belongs, by the `md` filter for prose and table
+# cells (structure characters and raw HTML) and `md_code` for code spans.
 AUTOESCAPED_EXTENSIONS = ("html", "htm", "xml", "html.j2", "htm.j2", "xml.j2")
 
 
@@ -65,6 +67,10 @@ _MD_CONTROL_CHARS: dict[int, str] = {ord(c): " " for c in _MD_LINE_BREAKS + "\t"
 # literals they are invisible in source and ruff flags them as ambiguous.
 _MD_CONTROL_CHARS[0x2028] = " "
 _MD_CONTROL_CHARS[0x2029] = " "
+# An `&` that could open a named, decimal or hex character reference. This is a
+# superset of what CommonMark and Python-Markdown decode, so nothing the value
+# carried is decoded into a different character. A bare `&` is left alone.
+_MD_ENTITY_START = re.compile(r"&(?=#?[A-Za-z0-9]+;)")
 
 
 def md_escape(value: object) -> str:
@@ -95,11 +101,28 @@ def md_escape(value: object) -> str:
     into another column and promote an attacker-chosen date into "Expires at",
     so an expired waiver read as valid for decades, out of a string the tool
     merely copied from a waiver file.
+
+    Raw HTML is the third problem. CommonMark passes inline HTML through in
+    prose and table cells, so a dataset or tool named
+    `<img src=x onerror=alert(1)>` became a live element in any renderer that
+    allows HTML. `<` and `>` become `&lt;` and `&gt;`, and an `&` that would
+    open an entity reference becomes `&amp;`, so a value that already reads
+    `&lt;` is shown as written. CommonMark decodes those references back to
+    the same visible text. The `&` is handled before the angle brackets so the
+    references this filter writes are not escaped a second time.
+
+    Square brackets are backslash-escaped too. Without that, a value such as
+    `[x](javascript:alert(1))` became a live link in Python-Markdown (the
+    engine behind mkdocs), and `![p](https://example.test/p.png)` a remote
+    image in every renderer. An escaped bracket renders as a literal bracket.
     """
     if value is None:
         return ""
     text = str(value).translate(_MD_CONTROL_CHARS)
-    return text.replace("\\", "\\\\").replace("|", "\\|")
+    text = text.replace("\\", "\\\\").replace("|", "\\|")
+    text = text.replace("[", "\\[").replace("]", "\\]")
+    text = _MD_ENTITY_START.sub("&amp;", text)
+    return text.replace("<", "&lt;").replace(">", "&gt;")
 
 
 def md_code(value: object) -> str:
