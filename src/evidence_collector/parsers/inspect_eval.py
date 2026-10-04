@@ -14,7 +14,9 @@ with ``--log-format json`` or produced by ``inspect log convert``. Top level::
     }
 
 Only format version 2 is read; any other version is refused with a parse
-error rather than guessed at. Metrics are flattened to ``scorer/metric``.
+error rather than guessed at. Metrics are flattened to ``scorer/metric``;
+when a task has several epoch reducers, the first one Inspect lists (its
+headline) keeps that key and each other reducer is ``scorer/reducer/metric``.
 Like the lm-eval parser, this one does not judge the numbers: thresholds
 belong in the control catalog. What it does judge is whether the run
 finished, which the normalizer uses to keep a failed run from counting.
@@ -76,10 +78,31 @@ def _metrics(results: Any) -> dict[str, float]:
     scores = results.get("scores")
     if not isinstance(scores, list):
         return out
+    # With several epoch reducers Inspect writes one entry per reducer under the
+    # same scorer name. The headline reducer keeps scorer/metric and each other
+    # one becomes scorer/reducer/metric instead of overwriting it. Inspect
+    # records the resolved headline in results.headline; without it, the first
+    # entry for a scorer is the headline, which is the order Inspect writes.
+    headline = results.get("headline")
+    plain: dict[str, object] = {}
+    if isinstance(headline, dict) and isinstance(headline.get("reducer"), str):
+        plain[str(headline.get("scorer"))] = headline["reducer"]
+    for score in scores:
+        if isinstance(score, dict) and isinstance(score.get("metrics"), dict):
+            name = str(score.get("name") or "score")
+            if name in plain and not any(
+                isinstance(s, dict) and s.get("name") == name and s.get("reducer") == plain[name]
+                for s in scores
+            ):
+                plain[name] = score.get("reducer")
+            plain.setdefault(name, score.get("reducer"))
     for score in scores:
         if not isinstance(score, dict) or not isinstance(score.get("metrics"), dict):
             continue
         scorer = str(score.get("name") or "score")
+        reducer = score.get("reducer")
+        other = isinstance(reducer, str) and bool(reducer) and reducer != plain.get(scorer)
+        prefix = f"{scorer}/{reducer}" if other else scorer
         for key, metric in score["metrics"].items():
             value = metric.get("value") if isinstance(metric, dict) else None
             # bool is an int subclass, and Python's json reads NaN and Infinity;
@@ -89,7 +112,7 @@ def _metrics(results: Any) -> dict[str, float]:
                 and not isinstance(value, bool)
                 and math.isfinite(value)
             ):
-                out[f"{scorer}/{metric.get('name') or key}"] = float(value)
+                out[f"{prefix}/{metric.get('name') or key}"] = float(value)
     return out
 
 

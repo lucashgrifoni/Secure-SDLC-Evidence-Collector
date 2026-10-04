@@ -114,9 +114,16 @@ File names recognised: `*.lm-eval.json`, `*.lm_eval.json`,
 logs are read too, in their JSON form: write them with
 `--log-format json` or convert an `.eval` file with `inspect log convert`.
 They are recognised by content, whatever the file name, and only log
-format version 2 is accepted. The evidence records `eval.task`,
+format version 2 is accepted. Inspect's default binary `.eval` log is not
+read and shows up among the files that matched no parser: rerun
+`inspect eval` with `--log-format json`, or run
+`inspect log convert <log-dir> --to json --output-dir <dir>`, and put the
+JSON log in `--artifacts-dir`. The evidence records `eval.task`,
 `eval.model`, the run status, every metric as `scorer/metric` from
-`results.scores`, and the sample counts. Only a run with
+`results.scores`, and the sample counts. When a task has several epoch
+reducers, the headline reducer Inspect records in `results.headline` (normally the mean)
+keeps `scorer/metric` and each other reducer is recorded as
+`scorer/reducer/metric`. Only a run with
 `status: success` counts; an errored, cancelled or unfinished run is
 recorded as `invalid`, so it stays visible but does not satisfy the
 control. A log that includes every sample can exceed the collector's
