@@ -4,6 +4,37 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.2.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v3.1.0...v3.2.0) (2026-10-04)
+
+
+### Added
+
+* **cli:** list artifacts that no parser claimed ([#129](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/129)) ([89aa5b2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/89aa5b2eff0941061c2e513f9c0b2f919b33650d))
+* **parsers:** read Croissant dataset metadata as training-data lineage ([#126](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/126)) ([70eeaeb](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/70eeaeb9cc42a52ca38ef4494d909977000e913c))
+* **parsers:** read Inspect eval logs as AI safety evaluations ([#127](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/127)) ([6b80f31](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/6b80f319050b87c4b5ecd3caeb209664f9b470d7))
+* **parsers:** read promptfoo eval output as AI safety evaluations ([#128](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/128)) ([3c75a05](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/3c75a05fea66994c01b56151bfa7b54fbe384982))
+
+
+### Fixed
+
+* **cli:** name a rejected option value in one line ([#123](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/123)) ([3fbe509](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/3fbe5095fbdbf066342c60c698676ed86f387755))
+* **controls:** name failed evidence in the control rationale ([#135](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/135)) ([3c5ce9b](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/3c5ce9b61d140a0daaee0aad4454705dc284123d))
+* **parsers:** count promptfoo assertions once and stop treating ungraded runs as passed ([#133](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/133)) ([78c4e20](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/78c4e2066df438d7b809454e8664ebc9a0acd3af))
+* **parsers:** keep Croissant versions, language-tagged names and placeholder licenses honest ([#132](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/132)) ([7eab063](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/7eab06379a1e543295357bd9e9eedb75385c5197))
+* **parsers:** keep every Inspect epoch reducer and the resolved headline ([#134](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/134)) ([6d33ade](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/6d33ade0173e8f098483c9a8485f659d37d7af52))
+* **report:** escape raw HTML and link syntax in untrusted text in report.md ([#136](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/136)) ([3595936](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/35959360d067e83e8a23694254d177d2c13fb40b))
+
+
+### Documentation
+
+* **adr:** record the NIST CSF 2.0 crosswalk for the built-in catalogs ([#125](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/125)) ([84027e2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/84027e26c2c75112d22fa477dff991d491b6419c))
+* **rollback:** describe the reproducible sdist and the Linux rebuild it needs ([#137](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/137)) ([8a9820a](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8a9820a759fbbe423fc274f4c24c094d823c3ac4))
+
+
+### Build
+
+* **release:** make the sdist byte-reproducible ([#122](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/122)) ([68c407f](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/68c407f97abc50f923ff13331dbf07826e6e1a98))
+
 ## [3.1.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v3.0.1...v3.1.0) (2026-09-24)
 
 
