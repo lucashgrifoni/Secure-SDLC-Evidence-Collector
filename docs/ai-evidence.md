@@ -114,7 +114,7 @@ read and shows up among the files that matched no parser: rerun
 JSON log in `--artifacts-dir`. The evidence records `eval.task`,
 `eval.model`, the run status, every metric as `scorer/metric` from
 `results.scores`, and the sample counts. When a task has several epoch
-reducers, the first one Inspect lists (its headline, normally the mean)
+reducers, the headline reducer Inspect records in `results.headline` (normally the mean)
 keeps `scorer/metric` and each other reducer is recorded as
 `scorer/reducer/metric`. Only a run with
 `status: success` counts; an errored, cancelled or unfinished run is

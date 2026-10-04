@@ -238,3 +238,25 @@ def test_a_malformed_log_does_not_stop_the_other_files(
         e for e in report.evidence if e.raw and (e.raw.artifact_path or "").endswith("good.json")
     ]
     assert len(good) == 1
+
+
+def test_the_headline_inspect_resolved_keeps_the_plain_key(tmp_path: Path) -> None:
+    """A task can pick a later reducer as headline; results.headline records it."""
+    log = _log()
+    log["results"]["scores"] = [
+        _reduced("first_epoch_only", "mean", accuracy=0.5),
+        _reduced("first_epoch_only", "max", accuracy=1.0),
+    ]
+    log["results"]["headline"] = {
+        "scorer": "first_epoch_only",
+        "score": "first_epoch_only",
+        "metric": "accuracy",
+        "reducer": "max",
+    }
+
+    parsed = parse_inspect_eval(_write(tmp_path / "logs.json", log))
+
+    assert parsed.metrics == {
+        "first_epoch_only/accuracy": 1.0,
+        "first_epoch_only/mean/accuracy": 0.5,
+    }
