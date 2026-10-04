@@ -78,6 +78,14 @@ resets owners, and writes the gzip header with the epoch and no file name. The
 wheel is not repacked: setuptools already stamps its entries with
 `SOURCE_DATE_EPOCH`.
 
+This describes a run started by pushing the tag, which is how release-please
+publishes. A run started by hand with `workflow_dispatch` saves the `tag`
+input but checks out the ref the run was started from, and takes
+`SOURCE_DATE_EPOCH` from that commit. If it was started from `main` with an
+older tag as input, its assets come from the `main` commit, and a rebuild from
+the tag will not match them. Check the run's trigger and commit before reading
+a mismatch as tampering.
+
 The job builds everything twice from the same checkout and compares the
 hashes. A wheel mismatch fails the release; an sdist mismatch is only a warning
 until a real release has confirmed the normalisation.
