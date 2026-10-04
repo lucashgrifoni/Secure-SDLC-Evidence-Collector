@@ -289,3 +289,135 @@ def test_truncation_is_marked_rather_than_silent() -> None:
     assert "more; see the structured fields" in evaluation.rationale
     # The complete list is still available in structured form.
     assert evaluation.evaluation_status == ControlEvaluationStatus.MISSING
+
+
+# A record that is present but did not satisfy (failed, invalid) never changes
+# the verdict: every required type needs one satisfying record. It used to be
+# dropped in silence, though, so a failing safety suite next to a passing one,
+# or next to an lm-eval file (always `generated`), left a `met` control whose
+# rationale never mentioned it. The rationale now names such records.
+
+
+def _named(
+    evidence_type: EvidenceType,
+    evidence_id: str,
+    status: EvidenceStatus = EvidenceStatus.PASSED,
+) -> NormalizedEvidence:
+    return _evidence(evidence_type, status=status).model_copy(update={"evidence_id": evidence_id})
+
+
+def _safety_control(
+    *,
+    required: tuple[EvidenceType, ...] = (EvidenceType.AI_SAFETY_EVAL,),
+    recommended: tuple[EvidenceType, ...] = (),
+) -> ControlDefinition:
+    return ControlDefinition(
+        control_id="T-SAFETY",
+        framework=ControlFramework.NIST_SSDF,
+        name="Safety evaluation",
+        description="test",
+        criticality=ControlCriticality.HIGH,
+        required_evidence_types=list(required),
+        recommended_evidence_types=list(recommended),
+    )
+
+
+def test_a_met_rationale_names_a_failed_record_beside_a_passing_one() -> None:
+    passing = _named(EvidenceType.AI_SAFETY_EVAL, "promptfoo-pass")
+    failing = _named(EvidenceType.AI_SAFETY_EVAL, "promptfoo-fail", EvidenceStatus.FAILED)
+
+    evaluation, gaps = evaluate_control(_safety_control(), [failing, passing])
+
+    assert evaluation.evaluation_status == ControlEvaluationStatus.MET
+    assert evaluation.evidence_refs == ["promptfoo-pass"]
+    assert evaluation.confidence == ConfidenceLevel.HIGH
+    assert not gaps
+    assert evaluation.rationale == (
+        "Control T-SAFETY is met by evidence promptfoo-pass. "
+        "Evidence promptfoo-fail (failed) of type ai_safety_eval did not count."
+    )
+
+
+def test_a_partial_rationale_names_failed_and_invalid_records_of_both_kinds() -> None:
+    control = _safety_control(recommended=(EvidenceType.MODEL_CARD,))
+    evidence = [
+        _named(EvidenceType.AI_SAFETY_EVAL, "promptfoo-pass"),
+        _named(EvidenceType.AI_SAFETY_EVAL, "promptfoo-fail", EvidenceStatus.FAILED),
+        _named(EvidenceType.MODEL_CARD, "card-1", EvidenceStatus.INVALID),
+    ]
+
+    evaluation, gaps = evaluate_control(control, evidence)
+
+    assert evaluation.evaluation_status == ControlEvaluationStatus.PARTIAL
+    assert evaluation.evidence_refs == ["promptfoo-pass"]
+    assert evaluation.missing_recommended_evidence_types == [EvidenceType.MODEL_CARD]
+    assert evaluation.rationale == (
+        "Control T-SAFETY is partially satisfied: required evidence is present, "
+        "but recommended evidence model_card is missing. "
+        "Evidence promptfoo-fail (failed) of type ai_safety_eval, "
+        "card-1 (invalid) of type model_card did not count."
+    )
+    assert [g.description for g in gaps] == [
+        "Recommended evidence `model_card` for control T-SAFETY is missing. "
+        "Control is still considered partial."
+    ]
+
+
+def test_a_missing_rationale_says_a_failed_record_is_present_but_did_not_satisfy() -> None:
+    failing = _named(EvidenceType.AI_SAFETY_EVAL, "promptfoo-fail", EvidenceStatus.FAILED)
+
+    evaluation, gaps = evaluate_control(_safety_control(), [failing])
+
+    assert evaluation.evaluation_status == ControlEvaluationStatus.MISSING
+    assert evaluation.evidence_refs == []
+    assert evaluation.missing_required_evidence_types == [EvidenceType.AI_SAFETY_EVAL]
+    assert evaluation.confidence == ConfidenceLevel.LOW
+    assert evaluation.rationale == (
+        "Control T-SAFETY is not satisfied: required evidence promptfoo-fail (failed) "
+        "of type ai_safety_eval is present but did not satisfy it."
+    )
+    assert [g.description for g in gaps] == [
+        "Required evidence `ai_safety_eval` for control T-SAFETY (Safety evaluation) "
+        "is missing or failed validation."
+    ]
+
+
+def test_a_missing_rationale_keeps_absent_types_apart_from_failed_ones() -> None:
+    control = _safety_control(required=(EvidenceType.AI_SAFETY_EVAL, EvidenceType.MODEL_CARD))
+    failing = _named(EvidenceType.AI_SAFETY_EVAL, "promptfoo-fail", EvidenceStatus.FAILED)
+
+    evaluation, _ = evaluate_control(control, [failing])
+
+    assert evaluation.rationale == (
+        "Control T-SAFETY is not satisfied: missing required evidence types model_card; "
+        "required evidence promptfoo-fail (failed) of type ai_safety_eval is present "
+        "but did not satisfy it."
+    )
+
+
+def test_rationales_without_unsatisfying_records_keep_their_wording() -> None:
+    met, _ = evaluate_control(
+        _safety_control(), [_named(EvidenceType.AI_SAFETY_EVAL, "promptfoo-pass")]
+    )
+    missing, _ = evaluate_control(_safety_control(), [])
+
+    assert met.rationale == "Control T-SAFETY is met by evidence promptfoo-pass."
+    assert missing.rationale == (
+        "Control T-SAFETY is not satisfied: missing required evidence types ai_safety_eval."
+    )
+
+
+def test_many_failed_records_keep_the_rationale_within_the_cap() -> None:
+    evidence = [
+        _named(EvidenceType.AI_SAFETY_EVAL, f"promptfoo-{index:04d}", EvidenceStatus.FAILED)
+        for index in range(400)
+    ]
+    evidence.append(_named(EvidenceType.AI_SAFETY_EVAL, "promptfoo-pass"))
+
+    evaluation, _ = evaluate_control(_safety_control(), evidence)
+
+    assert evaluation.evaluation_status == ControlEvaluationStatus.MET
+    assert evaluation.evidence_refs == ["promptfoo-pass"]
+    assert len(evaluation.rationale) <= 2000
+    assert "promptfoo-0000 (failed)" in evaluation.rationale
+    assert "more; see the structured fields" in evaluation.rationale

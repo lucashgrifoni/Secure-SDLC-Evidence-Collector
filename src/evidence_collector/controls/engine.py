@@ -15,6 +15,9 @@ Rules (kept intentionally simple and explainable):
 - When everything satisfied, the control is `met`.
 - Evaluation confidence is the lowest confidence across the satisfying
   evidences, with a one-step downgrade if any supporting evidence is manual.
+- Records of a required or recommended type that did not satisfy never change
+  the verdict, but the rationale names each of them with its status, so a
+  failed run next to a passing one is still visible in the evaluation.
 """
 
 from __future__ import annotations
@@ -62,6 +65,23 @@ def _select_by_type(
 
 def _is_satisfying(evidence: NormalizedEvidence) -> bool:
     return evidence.status in _SATISFYING_STATUSES
+
+
+def _note_unsatisfying(
+    candidates: Sequence[NormalizedEvidence], noted: list[NormalizedEvidence]
+) -> None:
+    """Add the candidates that are present but did not satisfy, once each."""
+    seen = {e.evidence_id for e in noted}
+    for candidate in candidates:
+        if not _is_satisfying(candidate) and candidate.evidence_id not in seen:
+            noted.append(candidate)
+            seen.add(candidate.evidence_id)
+
+
+def _describe_unsatisfying(records: Sequence[NormalizedEvidence]) -> str:
+    return _summarize(
+        [f"{e.evidence_id} ({e.status.value}) of type {e.evidence_type.value}" for e in records]
+    )
 
 
 def _lowest_confidence(
@@ -169,11 +189,13 @@ def evaluate_control(
     supporting_evidence: list[NormalizedEvidence] = []
     missing_required: list[EvidenceType] = []
     missing_recommended: list[EvidenceType] = []
+    unsatisfying: list[NormalizedEvidence] = []
     gaps: list[Gap] = []
 
     for evidence_type in control.required_evidence_types:
         candidates = _select_by_type(evidence, evidence_type)
         satisfying = [e for e in candidates if _is_satisfying(e)]
+        _note_unsatisfying(candidates, unsatisfying)
         if not satisfying:
             missing_required.append(evidence_type)
             gaps.append(
@@ -198,6 +220,7 @@ def evaluate_control(
     for evidence_type in control.recommended_evidence_types:
         candidates = _select_by_type(evidence, evidence_type)
         satisfying = [e for e in candidates if _is_satisfying(e)]
+        _note_unsatisfying(candidates, unsatisfying)
         if not satisfying:
             missing_recommended.append(evidence_type)
             gaps.append(
@@ -251,11 +274,21 @@ def evaluate_control(
         ]
     elif missing_required:
         status = ControlEvaluationStatus.MISSING
-        rationale = (
-            f"Control {control.control_id} is not satisfied: missing required "
-            f"evidence types "
-            f"{_summarize([t.value for t in missing_required])}."
-        )
+        # A required type with records that all failed is not absent: say so,
+        # and name the records, instead of calling the type missing.
+        absent = [t for t in missing_required if not _select_by_type(evidence, t)]
+        present = [e for e in unsatisfying if e.evidence_type in missing_required]
+        reasons: list[str] = []
+        if absent:
+            reasons.append(
+                f"missing required evidence types {_summarize([t.value for t in absent])}"
+            )
+        if present:
+            reasons.append(
+                f"required evidence {_describe_unsatisfying(present)} is present "
+                f"but did not satisfy it"
+            )
+        rationale = f"Control {control.control_id} is not satisfied: {'; '.join(reasons)}."
         rejected = _rejected_exceptions_for(
             control.control_id, exceptions, application, release_id, now
         )
@@ -281,6 +314,9 @@ def evaluate_control(
         rationale = (
             f"Control {control.control_id} is met by evidence {_summarize(supporting_refs)}."
         )
+
+    if unsatisfying and status in (ControlEvaluationStatus.MET, ControlEvaluationStatus.PARTIAL):
+        rationale += f" Evidence {_describe_unsatisfying(unsatisfying)} did not count."
 
     evaluation = ControlEvaluation(
         control_id=control.control_id,
