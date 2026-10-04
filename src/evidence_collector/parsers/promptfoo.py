@@ -112,14 +112,24 @@ def parse_promptfoo(path: str | Path) -> ParsedPromptfoo:
         # A malformed row must be skipped, not raise: detection runs on every
         # JSON artifact and an exception here would stop the whole run.
         if not isinstance(components, list):
-            continue
+            # A single assertion can be stored directly in gradingResult with
+            # no componentResults; it is still one graded assertion.
+            if isinstance(grading, dict) and isinstance(grading.get("assertion"), dict):
+                components = [grading]
+            else:
+                continue
         for component in components:
             if not isinstance(component, dict) or not isinstance(component.get("pass"), bool):
                 continue
-            # A component with its own componentResults is an aggregate, such
-            # as an assert-set. promptfoo repeats its children flat right after
-            # it, so they are counted there and the aggregate is not.
-            if isinstance(component.get("componentResults"), list):
+            # An assert-set is written as an aggregate whose children promptfoo
+            # repeats flat in the same list, so they are counted there and the
+            # aggregate is not. A component whose children are not all repeated,
+            # such as a custom assertion returning nested results, counts once.
+            children = component.get("componentResults")
+            if isinstance(children, list) and children:
+                if all(child in components for child in children):
+                    continue
+            elif isinstance(children, list):
                 continue
             if component["pass"]:
                 passed += 1

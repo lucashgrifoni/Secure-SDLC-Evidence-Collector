@@ -302,3 +302,40 @@ def test_a_run_that_graded_no_assertion_does_not_meet_the_ai_safety_control(
     bundle = json.loads(result.json_path.read_text(encoding="utf-8"))
     [safety] = [e for e in bundle["control_evaluations"] if e["control_id"] == "AI-SAFETY-EVAL"]
     assert safety["evaluation_status"] == "missing"
+
+
+def test_a_single_top_level_assertion_is_counted(tmp_path: Path) -> None:
+    """A lone assertion can sit in gradingResult itself, with no componentResults."""
+    doc = _output(1, 0, 0)
+    doc["results"]["results"] = [
+        {"success": True, "score": 1, "gradingResult": _leaf(True, "contains", "Paris")}
+    ]
+
+    evidence = normalize_promptfoo(
+        parse_promptfoo(_write(tmp_path / "results.json", doc)), _release()
+    )
+
+    assert evidence.metadata["assertions_passed"] == 1
+    assert evidence.status == EvidenceStatus.PASSED
+    assert evidence.confidence == ConfidenceLevel.HIGH
+
+
+@pytest.mark.parametrize(("child_passes", "tally"), [(True, (1, 0)), (False, (0, 1))])
+def test_a_custom_assertion_with_nested_results_counts_once(
+    tmp_path: Path, child_passes: bool, tally: tuple[int, int]
+) -> None:
+    """A JavaScript assertion may return componentResults that are not repeated flat."""
+    custom = _leaf(child_passes, "javascript", "output.length > 0")
+    custom["componentResults"] = [{"pass": child_passes, "score": 1, "reason": "sub-check"}]
+    doc = _output(int(child_passes), int(not child_passes), 0)
+    doc["results"]["results"] = [
+        {
+            "success": child_passes,
+            "gradingResult": {"pass": child_passes, "componentResults": [custom]},
+        }
+    ]
+
+    parsed = parse_promptfoo(_write(tmp_path / "results.json", doc))
+
+    assert (parsed.assertions_passed, parsed.assertions_failed) == tally
+    assert parsed.failed_assertion_types == ({} if child_passes else {"javascript": 1})
