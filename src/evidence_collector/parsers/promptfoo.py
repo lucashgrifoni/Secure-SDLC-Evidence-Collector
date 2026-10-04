@@ -23,7 +23,8 @@ the version it was written against. The envelope looks like::
 Only ``results.version == 3`` is read. ``gradingResult`` and its
 ``componentResults`` may be missing on error rows or rows without
 assertions, and are skipped there. Test counts come from ``stats``; the
-per-assertion tally and the failing assertion types come from the rows.
+per-assertion tally and the failing assertion types come from the rows,
+counting each assertion inside an ``assert-set`` once and not the set.
 
 Spec reference: https://www.promptfoo.dev/docs/configuration/outputs/
 """
@@ -111,9 +112,24 @@ def parse_promptfoo(path: str | Path) -> ParsedPromptfoo:
         # A malformed row must be skipped, not raise: detection runs on every
         # JSON artifact and an exception here would stop the whole run.
         if not isinstance(components, list):
-            continue
+            # A single assertion can be stored directly in gradingResult with
+            # no componentResults; it is still one graded assertion.
+            if isinstance(grading, dict) and isinstance(grading.get("assertion"), dict):
+                components = [grading]
+            else:
+                continue
         for component in components:
             if not isinstance(component, dict) or not isinstance(component.get("pass"), bool):
+                continue
+            # An assert-set is written as an aggregate whose children promptfoo
+            # repeats flat in the same list, so they are counted there and the
+            # aggregate is not. A component whose children are not all repeated,
+            # such as a custom assertion returning nested results, counts once.
+            children = component.get("componentResults")
+            if isinstance(children, list) and children:
+                if all(child in components for child in children):
+                    continue
+            elif isinstance(children, list):
                 continue
             if component["pass"]:
                 passed += 1

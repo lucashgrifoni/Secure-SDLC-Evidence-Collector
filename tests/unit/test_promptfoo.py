@@ -17,7 +17,7 @@ from typing import Any
 import pytest
 
 from evidence_collector.collectors.local import LocalArtifactCollector
-from evidence_collector.domain.enums import EvidenceStatus, EvidenceType
+from evidence_collector.domain.enums import ConfidenceLevel, EvidenceStatus, EvidenceType
 from evidence_collector.domain.models import ReleaseContext
 from evidence_collector.normalizers import normalize_promptfoo
 from evidence_collector.parsers import parse_promptfoo
@@ -260,3 +260,152 @@ def test_a_missing_error_count_means_none(tmp_path: Path) -> None:
     doc = _output(3, 0, 0)
     del doc["results"]["stats"]["errors"]
     assert parse_promptfoo(_write(tmp_path / "results.json", doc)).errors == 0
+
+
+def _leaf(passed: bool, kind: str, value: str) -> dict[str, Any]:
+    return {
+        "pass": passed,
+        "score": 1 if passed else 0,
+        "assertion": {"type": kind, "value": value},
+    }
+
+
+def _assert_set_row(berlin_passes: bool) -> dict[str, Any]:
+    """One row in the shape promptfoo 0.123.1 writes for an `assert-set`.
+
+    The set's aggregate result comes first, with no `assertion` of its own
+    and its children nested under `componentResults`; promptfoo then repeats
+    those children flat at the top level, next to the other assertions.
+    """
+    children = [_leaf(True, "contains", "Paris"), _leaf(berlin_passes, "contains", "Berlin")]
+    aggregate = {
+        "pass": berlin_passes,
+        "score": 1 if berlin_passes else 0.5,
+        "componentResults": children,
+        "metadata": {"assertionSet": {"type": "assert-set", "assertionCount": 2}},
+    }
+    return {
+        "success": berlin_passes,
+        "score": 1 if berlin_passes else 0.75,
+        "gradingResult": {
+            "pass": berlin_passes,
+            "componentResults": [aggregate, *children, _leaf(True, "not-contains", "London")],
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    ("berlin_passes", "tally", "failed_types"),
+    [(False, (2, 1), {"contains": 1}), (True, (3, 0), {})],
+)
+def test_an_assert_set_counts_each_of_its_assertions_once(
+    tmp_path: Path, berlin_passes: bool, tally: tuple[int, int], failed_types: dict[str, int]
+) -> None:
+    doc = _output(0, 0, 0)
+    doc["results"]["stats"].update(successes=int(berlin_passes), failures=int(not berlin_passes))
+    doc["results"]["results"] = [_assert_set_row(berlin_passes)]
+
+    parsed = parse_promptfoo(_write(tmp_path / "results.json", doc))
+
+    assert (parsed.assertions_passed, parsed.assertions_failed) == tally
+    assert parsed.failed_assertion_types == failed_types
+
+
+def _unasserted_row() -> dict[str, Any]:
+    """A test with no `assert`: promptfoo passes it with nothing graded."""
+    return {
+        "success": True,
+        "score": 1,
+        "gradingResult": {"pass": True, "score": 1, "reason": "No assertions"},
+    }
+
+
+def test_a_run_that_graded_no_assertion_is_invalid_not_passed(tmp_path: Path) -> None:
+    doc = _output(2, 0, 0)
+    doc["results"]["results"] = [_unasserted_row(), _unasserted_row()]
+
+    evidence = normalize_promptfoo(
+        parse_promptfoo(_write(tmp_path / "results.json", doc)), _release()
+    )
+
+    assert evidence.status == EvidenceStatus.INVALID
+    assert evidence.confidence == ConfidenceLevel.LOW
+    assert evidence.summary == "promptfoo: 2 passed, 0 failed, 0 errored; no assertions were graded"
+    assert (evidence.metadata["tests_passed"], evidence.metadata["assertions_passed"]) == (2, 0)
+
+
+def test_a_run_with_some_asserted_tests_still_passes(tmp_path: Path) -> None:
+    doc = _output(1, 0, 0)
+    doc["results"]["stats"]["successes"] = 2
+    doc["results"]["results"].append(_unasserted_row())
+
+    evidence = normalize_promptfoo(
+        parse_promptfoo(_write(tmp_path / "results.json", doc)), _release()
+    )
+
+    assert evidence.status == EvidenceStatus.PASSED
+    assert evidence.confidence == ConfidenceLevel.HIGH
+    assert evidence.summary == "promptfoo: 2 passed, 0 failed, 0 errored"
+
+
+def test_a_run_that_graded_no_assertion_does_not_meet_the_ai_safety_control(
+    tmp_path: Path,
+) -> None:
+    from evidence_collector.application.orchestrator import run_pipeline
+    from evidence_collector.controls.catalog import bundled_catalog_path
+    from evidence_collector.domain.models import Application
+
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    doc = _output(2, 0, 0)
+    doc["results"]["results"] = [_unasserted_row(), _unasserted_row()]
+    _write(artifacts / "results.json", doc)
+
+    result = run_pipeline(
+        Application(name="support-bot", repository="acme/support-bot"),
+        _release(),
+        artifacts_dirs=[artifacts],
+        output_dir=tmp_path / "out",
+        catalog_path=bundled_catalog_path("catalog-ai.yaml"),
+    )
+    assert result.json_path is not None
+    bundle = json.loads(result.json_path.read_text(encoding="utf-8"))
+    [safety] = [e for e in bundle["control_evaluations"] if e["control_id"] == "AI-SAFETY-EVAL"]
+    assert safety["evaluation_status"] == "missing"
+
+
+def test_a_single_top_level_assertion_is_counted(tmp_path: Path) -> None:
+    """A lone assertion can sit in gradingResult itself, with no componentResults."""
+    doc = _output(1, 0, 0)
+    doc["results"]["results"] = [
+        {"success": True, "score": 1, "gradingResult": _leaf(True, "contains", "Paris")}
+    ]
+
+    evidence = normalize_promptfoo(
+        parse_promptfoo(_write(tmp_path / "results.json", doc)), _release()
+    )
+
+    assert evidence.metadata["assertions_passed"] == 1
+    assert evidence.status == EvidenceStatus.PASSED
+    assert evidence.confidence == ConfidenceLevel.HIGH
+
+
+@pytest.mark.parametrize(("child_passes", "tally"), [(True, (1, 0)), (False, (0, 1))])
+def test_a_custom_assertion_with_nested_results_counts_once(
+    tmp_path: Path, child_passes: bool, tally: tuple[int, int]
+) -> None:
+    """A JavaScript assertion may return componentResults that are not repeated flat."""
+    custom = _leaf(child_passes, "javascript", "output.length > 0")
+    custom["componentResults"] = [{"pass": child_passes, "score": 1, "reason": "sub-check"}]
+    doc = _output(int(child_passes), int(not child_passes), 0)
+    doc["results"]["results"] = [
+        {
+            "success": child_passes,
+            "gradingResult": {"pass": child_passes, "componentResults": [custom]},
+        }
+    ]
+
+    parsed = parse_promptfoo(_write(tmp_path / "results.json", doc))
+
+    assert (parsed.assertions_passed, parsed.assertions_failed) == tally
+    assert parsed.failed_assertion_types == ({} if child_passes else {"javascript": 1})
