@@ -35,11 +35,46 @@ import errno
 import logging
 import os
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 __all__ = ["write_all_or_nothing", "write_atomic"]
+
+
+@contextmanager
+def _output_locks(targets: list[Path]) -> Iterator[None]:
+    """Reject overlapping writers before any payload is staged or moved.
+
+    The exclusive-create lock is advisory and local to each output directory.
+    A killed process may leave it behind: verify that the writer stopped and
+    inspect any backups before removing .sdlc.lock and retrying.
+    """
+    acquired: list[Path] = []
+    try:
+        for parent in sorted({target.parent.resolve() for target in targets}):
+            parent.mkdir(parents=True, exist_ok=True)
+            lock = parent / ".sdlc.lock"
+            try:
+                descriptor = os.open(lock, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            except FileExistsError as exc:
+                raise OSError(
+                    errno.EBUSY,
+                    "Another writer owns this output directory; if it stopped, "
+                    "inspect backups before removing .sdlc.lock and retrying",
+                    str(parent),
+                ) from exc
+            acquired.append(lock)
+            with os.fdopen(descriptor, "w", encoding="ascii") as handle:
+                handle.write(f"pid={os.getpid()}\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+        yield
+    finally:
+        for lock in reversed(acquired):
+            _unlink_quietly(lock)
 
 
 def _scratch(target: Path, kind: str) -> Path:
@@ -121,6 +156,11 @@ def _stage(target: Path, content: str) -> Path:
 
 def write_atomic(target: Path, content: str) -> Path:
     """Replace `target` with `content`, or leave it entirely untouched."""
+    with _output_locks([target]):
+        return _write_atomic_unlocked(target, content)
+
+
+def _write_atomic_unlocked(target: Path, content: str) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     temp = _stage(target, content)
     try:
@@ -163,6 +203,11 @@ def write_all_or_nothing(payloads: dict[Path, str]) -> list[Path]:
     three files disagree about which release they describe, with nothing in
     them saying so.
     """
+    with _output_locks(list(payloads)):
+        return _write_set_unlocked(payloads)
+
+
+def _write_set_unlocked(payloads: dict[Path, str]) -> list[Path]:
     if not payloads:
         return []
 

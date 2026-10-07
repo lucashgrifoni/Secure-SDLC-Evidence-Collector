@@ -15,6 +15,7 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
+from evidence_collector.cli._errors import report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
@@ -52,20 +53,17 @@ def register(app: typer.Typer) -> None:
     ) -> None:
         """Translate BUNDLE_PATH into a GUAC-collector container."""
         try:
-            raw = json.loads(bundle_path.read_text(encoding="utf-8"))
+            raw = json.loads(bundle_path.read_text(encoding="utf-8-sig"))
         except UNREADABLE_INPUT as exc:
             if is_json_logs():
                 emit_event("guac_failed", bundle=str(bundle_path), reason=str(exc))
             else:
-                console.print(f"[red]Could not read {bundle_path}:[/red] {exc}")
+                report_error(f"Could not read {bundle_path}", exc)
             raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
         try:
             bundle = EvidenceBundle.model_validate(raw)
         except ValidationError as exc:
-            if is_json_logs():
-                emit_event("guac_failed", bundle=str(bundle_path), reason=str(exc))
-            else:
-                console.print(f"[red]Bundle does not match the current schema:[/red] {exc}")
+            report_error("Bundle does not match the current schema", exc, event="guac_failed")
             raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
         document = build_guac_collection(bundle)

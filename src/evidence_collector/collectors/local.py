@@ -895,7 +895,7 @@ def _malformed_json_reason(path: Path) -> str | None:
     # worth it: the caller deserves the parse position, and this path is by
     # definition rare.
     try:
-        text = path.read_text(encoding="utf-8")
+        text = path.read_text(encoding="utf-8-sig")
     except (OSError, UnicodeDecodeError):
         # Reported by the encoding probe and the size check, which run first.
         return None
@@ -978,7 +978,7 @@ def _peek_json(path: Path) -> Any:
     value: Any = None
     if key[2] <= MAX_INPUT_BYTES:
         try:
-            with path.open("r", encoding="utf-8") as handle:
+            with path.open("r", encoding="utf-8-sig") as handle:
                 value = json.load(handle)
         # Detection reads every candidate file before any parser sees it, so
         # this is where a hostile document actually lands. `RecursionError`

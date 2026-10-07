@@ -148,7 +148,7 @@ def parse_release_attestations(path: str | Path) -> list[ParsedReleaseAttestatio
     """
     resolved = ensure_file(path)
     try:
-        text = resolved.read_text(encoding="utf-8")
+        text = resolved.read_text(encoding="utf-8-sig")
     except UnicodeDecodeError as exc:
         raise ParseError(f"Invalid text encoding in {resolved}: {exc}") from exc
 

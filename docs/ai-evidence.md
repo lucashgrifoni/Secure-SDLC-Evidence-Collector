@@ -70,7 +70,7 @@ File names recognised: `model-card.json`, `model_card.json`,
 `*.modelcard.json`. Content sniff also matches files that carry
 `model_details` or `model-index` at the top level.
 
-Mapped control: `AI-MODEL-CARD` (SSDF PS.AI.1, OWASP LLM02:2025).
+Mapped control: `AI-MODEL-CARD` (SP 800-218A PO.1.2 N1, partial documentation support).
 
 ### `prompt_injection_test_result`
 
@@ -89,7 +89,7 @@ single failing probe should block the release.
 File names recognised: `*.garak.json`, `*.garak.jsonl`,
 `*.report.jsonl`, `garak.json`, `garak.jsonl`.
 
-Mapped control: `AI-PROMPT-INJ` (SSDF PW.4.AI, OWASP LLM01:2025).
+Mapped control: `AI-PROMPT-INJ` (SP 800-218A PW.8.2, partial vulnerability-test support).
 
 ### `ai_safety_eval`
 
@@ -149,7 +149,7 @@ satisfies it, so a failed promptfoo run beside a passing run or an
 lm-eval file does not block `AI-SAFETY-EVAL`; the rationale names the
 failed run.
 
-Mapped control: `AI-SAFETY-EVAL` (SSDF PW.4.AI).
+Mapped control: `AI-SAFETY-EVAL` (project policy; SP 800-218A PW.8.2 supports only model vulnerability testing).
 
 ### `mcp_tool_inventory`
 
@@ -219,7 +219,7 @@ Recommended fields:
 - `datasets[*].pii_review` — boolean / link to a PII assessment
 - `datasets[*].fingerprint` — content hash, when available
 
-Mapped control: `AI-TRAINING-LINEAGE` (SSDF PS.AI.2, OWASP LLM04:2025).
+Mapped control: `AI-TRAINING-LINEAGE` (SP 800-218A PW.3.2, partial data-provenance support).
 
 ## What the verdict looks like
 

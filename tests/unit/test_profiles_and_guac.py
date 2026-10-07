@@ -8,7 +8,8 @@ from evidence_collector.application.profiles import (
     CRA_DISCLOSURE_WINDOW,
     CRA_FINAL_REPORT_WINDOW,
     CRA_FULL_NOTIFICATION_WINDOW,
-    FEDRAMP_20X_RETENTION_YEARS,
+    FEDRAMP_RULESET_VERSION,
+    CraReportingContext,
     ReleaseProfile,
     apply_profile,
 )
@@ -100,7 +101,13 @@ def _evidence(
 def test_cra_profile_annotates_24h_deadline() -> None:
     fixed_now = datetime(2026, 9, 11, 12, 0, tzinfo=UTC)
     bundle = _bundle([_evidence()])
-    annotated = apply_profile(bundle, ReleaseProfile.CRA_2026, now=fixed_now)
+    context = CraReportingContext(
+        release_id=bundle.release.release_id,
+        commit_sha=bundle.release.commit_sha,
+        notification_type="vulnerability",
+        awareness_at=fixed_now,
+    )
+    annotated = apply_profile(bundle, ReleaseProfile.CRA_2026, cra_context=context)
     cra = annotated.evidence[0].metadata["cra"]
     expected = (fixed_now + CRA_DISCLOSURE_WINDOW).isoformat()
     assert cra["disclosure_deadline"] == expected
@@ -109,7 +116,14 @@ def test_cra_profile_annotates_24h_deadline() -> None:
 
 def test_cra_profile_emits_full_reporting_timeline() -> None:
     fixed_now = datetime(2026, 9, 11, 12, 0, tzinfo=UTC)
-    annotated = apply_profile(_bundle([_evidence()]), ReleaseProfile.CRA_2026, now=fixed_now)
+    bundle = _bundle([_evidence()])
+    context = CraReportingContext(
+        release_id=bundle.release.release_id,
+        commit_sha=bundle.release.commit_sha,
+        notification_type="vulnerability",
+        awareness_at=fixed_now,
+    )
+    annotated = apply_profile(bundle, ReleaseProfile.CRA_2026, cra_context=context)
     deadlines = annotated.evidence[0].metadata["cra"]["reporting_deadlines"]
     assert deadlines["early_warning"] == (fixed_now + CRA_DISCLOSURE_WINDOW).isoformat()
     assert deadlines["full_notification"] == (fixed_now + CRA_FULL_NOTIFICATION_WINDOW).isoformat()
@@ -121,32 +135,38 @@ def test_cra_profile_emits_full_reporting_timeline() -> None:
     assert annotated.evidence[0].metadata["cra"]["reporting_obligation_start"] == "2026-09-11"
 
 
-def test_cra_profile_classifies_kev_ransomware_as_actively_exploited() -> None:
+def test_cra_profile_records_global_kev_without_product_exploitation_claim() -> None:
     bundle = _bundle([_evidence(in_kev=True, known_ransomware=True)])
     annotated = apply_profile(bundle, ReleaseProfile.CRA_2026)
-    assert annotated.evidence[0].metadata["cra"]["exploitation_status"] == "actively_exploited"
+    assert annotated.evidence[0].metadata["cra"]["exploitation_status"] == "not_assessed"
+    assert annotated.evidence[0].metadata["cra"]["global_exploitation_signal"] == "kev_listed"
 
 
-def test_cra_profile_classifies_high_epss_as_known_exploitable() -> None:
+def test_cra_profile_records_high_epss_as_a_tool_signal() -> None:
     bundle = _bundle([_evidence(epss_percentile=0.95)])
     annotated = apply_profile(bundle, ReleaseProfile.CRA_2026)
-    assert annotated.evidence[0].metadata["cra"]["exploitation_status"] == "known_exploitable"
+    assert annotated.evidence[0].metadata["cra"]["exploitation_status"] == "not_assessed"
+    assert (
+        annotated.evidence[0].metadata["cra"]["global_exploitation_signal"]
+        == "high_epss_percentile"
+    )
 
 
 def test_cra_profile_defaults_to_under_investigation() -> None:
     bundle = _bundle([_evidence(epss_percentile=0.1)])
     annotated = apply_profile(bundle, ReleaseProfile.CRA_2026)
-    assert annotated.evidence[0].metadata["cra"]["exploitation_status"] == "under_investigation"
+    assert annotated.evidence[0].metadata["cra"]["exploitation_status"] == "not_assessed"
 
 
 # ---------- FedRAMP profile ----------
 
 
-def test_fedramp_profile_stamps_retention() -> None:
+def test_fedramp_profile_records_the_ruleset() -> None:
     bundle = _bundle([_evidence()])
     annotated = apply_profile(bundle, ReleaseProfile.FEDRAMP_20X)
     fedramp = annotated.evidence[0].metadata["fedramp"]
-    assert fedramp["retention_years"] == FEDRAMP_20X_RETENTION_YEARS
+    assert fedramp["ruleset_version"] == FEDRAMP_RULESET_VERSION
+    assert "retention_years" not in fedramp
     assert fedramp["profile"] == "20x"
 
 

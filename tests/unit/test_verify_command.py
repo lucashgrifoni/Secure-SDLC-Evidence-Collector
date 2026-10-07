@@ -109,10 +109,18 @@ def runner() -> CliRunner:
 @pytest.fixture
 def stable_bundle(tmp_path: Path) -> tuple[Path, str]:
     """Write a stable sample bundle and return (path, structural sha)."""
-    payload = _sample_bundle_dict()
+    from evidence_collector.application.orchestrator import build_bundle
+    from evidence_collector.domain.models import Application, ReleaseContext
+
+    bundle, _ = build_bundle(
+        Application(name="sample", repository="acme/sample"),
+        ReleaseContext(release_id="1", commit_sha="abcdef1234567890", branch="main"),
+        [],
+    )
+    payload = bundle.model_dump(mode="json")
     bundle_path = tmp_path / "bundle.json"
     bundle_path.write_text(json.dumps(payload), encoding="utf-8")
-    sha = hashlib.sha256(normalize_bundle(_sample_bundle_dict())).hexdigest()
+    sha = hashlib.sha256(normalize_bundle(payload)).hexdigest()
     return bundle_path, sha
 
 

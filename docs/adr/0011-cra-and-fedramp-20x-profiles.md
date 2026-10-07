@@ -1,10 +1,15 @@
 # ADR 0011 — CRA + FedRAMP 20x profiles (T6.8)
 
-- Status: accepted (preview; payload formats subject to regulator updates)
+- Status: superseded by ADR 0015 for profile metadata and regulatory references
 - Date: 2026-05-19
 - Deciders: Lucas Henrique Grifoni
 
 ## Context
+
+The sections below record the May preview decision, not the current regulatory
+requirements. Unsupported exploitation classifications and 10-year retention
+claims are removed by ADR 0015. Use [migration and limits](../evidence-profile-migration.md)
+for the current operator-context contract.
 
 Two regulatory deadlines are landing within three weeks of each
 other in 2026:

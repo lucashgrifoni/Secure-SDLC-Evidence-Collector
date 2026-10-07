@@ -8,8 +8,8 @@ version = "3.2.0"
 description = "CLI-first tool to collect, normalize, evaluate and bundle Secure SDLC evidence per release."
 readme = "README.md"
 requires-python = ">=3.12"
-license = "Apache-2.0"
-license-files = ["LICENSE"]
+license = "Apache-2.0 AND BSD-2-Clause"
+license-files = ["LICENSE", "THIRD_PARTY_LICENSES.md"]
 authors = [
     { name = "Lucas Henrique Grifoni", email = "lucas.henriquegrifoni@gmail.com" },
 ]

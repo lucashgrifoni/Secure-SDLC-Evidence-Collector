@@ -82,7 +82,7 @@ def _load_jsonl(path: Path) -> list[dict[str, Any]]:
     """
     records: list[dict[str, Any]] = []
     try:
-        with path.open("r", encoding="utf-8") as handle:
+        with path.open("r", encoding="utf-8-sig") as handle:
             for line in handle:
                 line = line.strip()
                 if not line:

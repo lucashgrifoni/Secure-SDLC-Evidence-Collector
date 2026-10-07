@@ -25,6 +25,7 @@ the wrapped shape and ``osv`` for the single-record shape.
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -37,6 +38,7 @@ from evidence_collector.parsers._common import (
     ensure_file,
     load_json,
 )
+from evidence_collector.parsers._cvss4 import score_cvss4
 
 _CVE_PATTERN = re.compile(r"\bCVE-(?:19|20)\d{2}-\d{4,7}\b", re.IGNORECASE)
 
@@ -142,9 +144,9 @@ def _extract_cvss_score(severity_entry: Any) -> float | None:
     OSV severity entries are ``{"type": "CVSS_V3" | "CVSS_V4", "score":
     "CVSS:3.1/AV:N/AC:L/..."}``. A v3.0 or v3.1 vector is scored with the
     specification's base equations. A bare number (``"7.5"``) is still
-    accepted. A v4.0 vector is not scored here, because its score comes from
-    the specification's lookup table rather than a formula; the caller falls
-    back to the advisory's own rating or to ``medium``.
+    accepted when finite and between 0 and 10. CVSS 4.0 uses the pinned FIRST
+    reference tables and interpolation, including supplied Threat and
+    Environmental metrics. Invalid vectors still use the advisory fallback.
     """
     if not isinstance(severity_entry, dict):
         return None
@@ -154,18 +156,14 @@ def _extract_cvss_score(severity_entry: Any) -> float | None:
     score_raw = score_raw.strip()
     # Plain numeric score, e.g. "7.5".
     try:
-        return float(score_raw)
+        numeric = float(score_raw)
+        return numeric if math.isfinite(numeric) and 0 <= numeric <= 10 else None
     except ValueError:
         pass
     if score_raw.startswith("CVSS:3."):
         return _cvss3_base_score(score_raw)
-    # Anything else: extract a trailing numeric component when present.
-    match = re.search(r"/([0-9](?:\.[0-9]+)?)\b", score_raw)
-    if match is not None:
-        try:
-            return float(match.group(1))
-        except ValueError:
-            return None
+    if score_raw.startswith("CVSS:4.0/"):
+        return score_cvss4(score_raw)
     return None
 
 

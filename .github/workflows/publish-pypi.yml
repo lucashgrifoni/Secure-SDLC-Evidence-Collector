@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to release (e.g. v1.0.1). Required when running manually."
+        description: "Tag to release (e.g. v1.0.1). Dispatch --ref must select this same tag."
         required: true
         type: string
 
@@ -24,6 +24,8 @@ env:
 jobs:
   quality:
     name: Quality gates
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -34,10 +36,57 @@ jobs:
         with:
           egress-policy: audit
 
+      # `inputs.tag` reaches the shell through the environment, never through
+      # the script text. `${{ }}` is substituted before the shell parses the
+      # line, so quoting it is not protection: a dispatch input of
+      # `v1.0.0"; curl … | sh; #` closed the assignment and ran. Only someone
+      # with write access can dispatch this workflow, and `main` requires no
+      # review, so today that person can already push a tag this pipeline will
+      # sign and publish — the injection grants nothing extra. It is fixed
+      # because the step feeds the `python-dist` artifact that is later signed
+      # with Sigstore and pushed to PyPI, so it stops being harmless the moment
+      # a second collaborator or an automation account can dispatch.
+      - name: Resolve tag
+        id: resolve
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            tag="$INPUT_TAG"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+          if [ -z "$tag" ]; then
+            echo "Could not resolve tag" >&2
+            exit 1
+          fi
+          # The push trigger only ever fires on `v*.*.*`; a manually dispatched
+          # tag is held to the same shape so both paths agree. Anchored at both
+          # ends on purpose — the first version of this check was anchored only
+          # at the start, which accepted `v1.0.0"; curl … | sh; #` as a valid
+          # tag. The env indirection above already stops that from executing, so
+          # the guard was not load-bearing, but a check that looks like
+          # validation and passes anything with the right prefix is worse than
+          # no check at all.
+          if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
+            echo "Refusing tag '$tag': expected the v<major>.<minor>.<patch> form" >&2
+            exit 1
+          fi
+          # Provenance uses the event ref/commit. Building another ref would
+          # sign an artifact whose recorded source does not describe its code.
+          if [ "$GITHUB_REF" != "refs/tags/$tag" ]; then
+            echo "Run this workflow on refs/tags/$tag (gh workflow run --ref $tag --field tag=$tag)." >&2
+            exit 1
+          fi
+          echo "tag=$tag" >>"$GITHUB_OUTPUT"
+
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
+          ref: ${{ github.sha }}
 
       - name: Setup Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -74,7 +123,7 @@ jobs:
     permissions:
       contents: read
     outputs:
-      tag: ${{ steps.resolve.outputs.tag }}
+      tag: ${{ needs.quality.outputs.tag }}
       hashes: ${{ steps.subject-hashes.outputs.hashes }}
     steps:
       - name: Harden runner
@@ -86,45 +135,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-
-      # `inputs.tag` reaches the shell through the environment, never through
-      # the script text. `${{ }}` is substituted before the shell parses the
-      # line, so quoting it is not protection: a dispatch input of
-      # `v1.0.0"; curl … | sh; #` closed the assignment and ran. Only someone
-      # with write access can dispatch this workflow, and `main` requires no
-      # review, so today that person can already push a tag this pipeline will
-      # sign and publish — the injection grants nothing extra. It is fixed
-      # because the step feeds the `python-dist` artifact that is later signed
-      # with Sigstore and pushed to PyPI, so it stops being harmless the moment
-      # a second collaborator or an automation account can dispatch.
-      - name: Resolve tag
-        id: resolve
-        env:
-          INPUT_TAG: ${{ inputs.tag }}
-        run: |
-          set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            tag="$INPUT_TAG"
-          else
-            tag="${GITHUB_REF_NAME}"
-          fi
-          if [ -z "$tag" ]; then
-            echo "Could not resolve tag" >&2
-            exit 1
-          fi
-          # The push trigger only ever fires on `v*.*.*`; a manually dispatched
-          # tag is held to the same shape so both paths agree. Anchored at both
-          # ends on purpose — the first version of this check was anchored only
-          # at the start, which accepted `v1.0.0"; curl … | sh; #` as a valid
-          # tag. The env indirection above already stops that from executing, so
-          # the guard was not load-bearing, but a check that looks like
-          # validation and passes anything with the right prefix is worse than
-          # no check at all.
-          if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
-            echo "Refusing tag '$tag': expected the v<major>.<minor>.<patch> form" >&2
-            exit 1
-          fi
-          echo "tag=$tag" >>"$GITHUB_OUTPUT"
+          ref: ${{ github.sha }}
 
       - name: Setup Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -150,7 +161,7 @@ jobs:
       #     do honour the epoch.
       #
       # Both builds below therefore pass the sdist through
-      # scripts/normalize_sdist.py, which clamps every entry's mtime to
+      # scripts/normalize_sdist.py, which sets every entry's mtime to
       # SOURCE_DATE_EPOCH, resets owners, and writes the gzip header with the
       # epoch and no file name. Two builds of the same tree then give the
       # same sdist bytes, measured locally before this step was added.
@@ -186,52 +197,38 @@ jobs:
           python -m build --wheel --sdist --outdir dist-recheck
           python scripts/normalize_sdist.py dist-recheck
 
-      # Gate behaviour: wheel must be bit-for-bit identical (hard fail).
-      # The normalised sdist is expected to match too, but a mismatch stays a
-      # warning until a real release has confirmed the normalisation: this
-      # job runs after the tag exists, so a hard failure here would leave a
-      # tag with nothing published, which is how 3.0.0 was lost.
+      # Both distributions must match before hashing, signing or publication.
       - name: Compare SHA-256 between back-to-back builds
         run: |
           set -euo pipefail
-          wheel_fail=0
-          for artifact in dist/*.whl; do
-            base="$(basename "$artifact")"
-            other="dist-recheck/$base"
-            if [ ! -f "$other" ]; then
-              echo "::error::Missing wheel $other in second build — non-reproducible filenames."
-              wheel_fail=1
-              continue
+          shopt -s nullglob
+          artifact_fail=0
+          for suffix in whl tar.gz; do
+            originals=(dist/*."$suffix")
+            rebuilt=(dist-recheck/*."$suffix")
+            if [ "${#originals[@]}" -eq 0 ] || [ "${#originals[@]}" -ne "${#rebuilt[@]}" ]; then
+              echo "::error::Missing or extra $suffix distribution in reproducibility check."
+              artifact_fail=1
             fi
-            a="$(sha256sum "$artifact" | cut -d' ' -f1)"
-            b="$(sha256sum "$other" | cut -d' ' -f1)"
-            if [ "$a" != "$b" ]; then
-              echo "::error::Non-reproducible wheel: $base — $a vs $b"
-              wheel_fail=1
-            else
-              echo "Reproducible wheel: $base ($a)"
-            fi
+            for artifact in "${originals[@]}"; do
+              base="$(basename "$artifact")"
+              other="dist-recheck/$base"
+              if [ ! -f "$other" ]; then
+                echo "::error::Missing $other in second build."
+                artifact_fail=1
+                continue
+              fi
+              a="$(sha256sum "$artifact" | cut -d' ' -f1)"
+              b="$(sha256sum "$other" | cut -d' ' -f1)"
+              if [ "$a" != "$b" ]; then
+                echo "::error::Non-reproducible distribution: $base — $a vs $b"
+                artifact_fail=1
+              else
+                echo "Reproducible distribution: $base ($a)"
+              fi
+            done
           done
-
-          for artifact in dist/*.tar.gz; do
-            base="$(basename "$artifact")"
-            other="dist-recheck/$base"
-            if [ ! -f "$other" ]; then
-              echo "::warning::Missing sdist $other in second build."
-              continue
-            fi
-            a="$(sha256sum "$artifact" | cut -d' ' -f1)"
-            b="$(sha256sum "$other" | cut -d' ' -f1)"
-            if [ "$a" != "$b" ]; then
-              echo "::warning::Non-reproducible sdist: $base — $a vs $b (normalize_sdist.py did not converge)"
-            else
-              echo "Reproducible sdist: $base ($a)"
-            fi
-          done
-
-          if [ "$wheel_fail" -ne 0 ]; then
-            exit 1
-          fi
+          exit "$artifact_fail"
 
       # Hashes for the SLSA generic-generator reusable workflow.
       # `base64-subjects` expects newline-separated `sha256(file)  name`
@@ -292,6 +289,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
+          ref: ${{ github.sha }}
 
       - name: Setup Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -425,6 +423,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
+          ref: ${{ github.sha }}
 
       - name: Download distribution
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -598,6 +597,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
+          ref: ${{ github.sha }}
 
       - name: Setup QEMU (for arm64 emulation)
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0

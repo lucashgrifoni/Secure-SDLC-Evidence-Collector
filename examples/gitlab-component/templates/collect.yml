@@ -1,0 +1,83 @@
+spec:
+  inputs:
+    stage:
+      default: test
+      description: Stage that receives scanner artifacts from earlier jobs.
+    job-name:
+      default: sdlc-evidence
+      description: Unique job name when including multiple collector jobs.
+    application:
+      default: $CI_PROJECT_NAME
+      description: Application label stored in the bundle.
+    repository:
+      default: $CI_PROJECT_PATH
+      description: Repository identity stored in the bundle.
+    release-id:
+      default: $CI_COMMIT_REF_NAME
+      description: Release identifier stored in the bundle.
+    artifacts-dir:
+      default: artifacts
+      description: Directory containing existing scanner artifacts.
+    attestations-dir:
+      default: ""
+      description: Optional directory containing release attestations.
+    exceptions-dir:
+      default: ""
+      description: Optional directory containing approved waiver files.
+    catalog:
+      default: ""
+      description: Optional path to a control catalog YAML.
+    collector-version:
+      default: "3.2.0"
+      regex: '^\d+\.\d+\.\d+$'
+      description: Exact published collector version.
+    fail-on:
+      default: conditional
+      options: [ready, conditional, not_ready]
+      description: Lowest release status that causes the job to fail.
+---
+"$[[ inputs.job-name ]]":
+  stage: $[[ inputs.stage ]]
+  image: python:3.12-alpine@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4
+  timeout: 5m
+  variables:
+    PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    PIP_NO_CACHE_DIR: "1"
+    EVIDENCE_APPLICATION: $[[ inputs.application ]]
+    EVIDENCE_REPOSITORY: $[[ inputs.repository ]]
+    EVIDENCE_RELEASE_ID: $[[ inputs.release-id ]]
+    EVIDENCE_ARTIFACTS_DIR: $[[ inputs.artifacts-dir ]]
+    EVIDENCE_ATTESTATIONS_DIR: $[[ inputs.attestations-dir ]]
+    EVIDENCE_EXCEPTIONS_DIR: $[[ inputs.exceptions-dir ]]
+    EVIDENCE_CATALOG: $[[ inputs.catalog ]]
+    EVIDENCE_COLLECTOR_VERSION: $[[ inputs.collector-version ]]
+    EVIDENCE_FAIL_ON: $[[ inputs.fail-on ]]
+  before_script:
+    - python -m pip install --upgrade "pip==26.2.1"
+    - python -m pip install "secure-sdlc-evidence-collector==$EVIDENCE_COLLECTOR_VERSION"
+  script:
+    - |
+      set -eu
+      set -- --application "$EVIDENCE_APPLICATION" \
+        --repository "$EVIDENCE_REPOSITORY" \
+        --release-id "$EVIDENCE_RELEASE_ID" \
+        --commit-sha "$CI_COMMIT_SHA" \
+        --branch "$CI_COMMIT_REF_NAME" \
+        --output-dir release-evidence \
+        --artifact-root "$CI_PROJECT_DIR" \
+        --artifacts-dir "$EVIDENCE_ARTIFACTS_DIR" \
+        --fail-on "$EVIDENCE_FAIL_ON"
+      if [ -n "$EVIDENCE_ATTESTATIONS_DIR" ]; then
+        set -- "$@" --attestations-dir "$EVIDENCE_ATTESTATIONS_DIR"
+      fi
+      if [ -n "$EVIDENCE_EXCEPTIONS_DIR" ]; then
+        set -- "$@" --exceptions-dir "$EVIDENCE_EXCEPTIONS_DIR"
+      fi
+      if [ -n "$EVIDENCE_CATALOG" ]; then
+        set -- "$@" --catalog "$EVIDENCE_CATALOG"
+      fi
+      sdlc-evidence run "$@"
+  artifacts:
+    when: always
+    paths: [release-evidence/]
+    expire_in: 30 days

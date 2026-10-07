@@ -35,6 +35,7 @@ controls:
     description: >-
       Static analysis evidence must be produced against the release commit to
       identify implementation-level vulnerabilities before deployment.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.7: none listed. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["sast_scan"]
     recommended_evidence_types: []
@@ -45,6 +46,7 @@ controls:
     description: >-
       Third-party and open source dependencies must be scanned for known
       vulnerabilities before release.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.4: GV.SC-03, GV.SC-07, ID.AM-08. Snapshot 2026-09-24, SHA-256 7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["sca_scan"]
     recommended_evidence_types: []
@@ -67,6 +69,7 @@ controls:
       SSDF 1.2 strengthens PS.3: the release must carry both a Software Bill
       of Materials AND a verifiable build attestation (SLSA / in-toto /
       Sigstore). An SBOM alone is no longer sufficient.
+      NIST CSF 2.0 informative references for SSDF 1.1 PS.3: PR.DS-01, PR.DS-11. Snapshot 2026-09-24, SHA-256 7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0. See ADR-0014; references support traceability, not compliance.
     criticality: "critical"
     required_evidence_types: ["sbom", "artifact_attestation"]
     recommended_evidence_types: ["artifact_signature"]
@@ -77,6 +80,7 @@ controls:
     description: >-
       Automated tests (unit or higher) must be executed against the release
       commit with their results archived.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.8: none listed. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["test_result"]
     recommended_evidence_types: []
@@ -97,6 +101,7 @@ controls:
     description: >-
       A threat model (or a justified non-applicability attestation) must exist
       for the feature scope covered by this release.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.1: ID.RA-05. Snapshot 2026-09-24, SHA-256 7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0. See ADR-0014; references support traceability, not compliance.
     criticality: "medium"
     required_evidence_types: ["threat_model"]
     recommended_evidence_types: []
@@ -110,6 +115,7 @@ controls:
       executable security (hardened compiler flags, reproducible builds,
       controlled toolchain). The release must carry an attestation of the
       build process and ideally test evidence that the hardening is in place.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.6: none listed. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["artifact_attestation"]
     recommended_evidence_types: ["test_result"]
@@ -140,6 +146,7 @@ controls:
     description: >-
       The published artifact must carry a signature, attestation, or
       equivalent integrity proof.
+      NIST CSF 2.0 informative references for SSDF 1.1 PS.2: PR.DS-01. Snapshot 2026-09-24, SHA-256 7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0. See ADR-0014; references support traceability, not compliance.
     criticality: "critical"
     required_evidence_types: ["artifact_signature"]
     recommended_evidence_types: ["artifact_attestation"]
@@ -150,6 +157,7 @@ controls:
     description: >-
       OWASP SAMM secondary mapping: threat modeling activity performed for
       the release scope. Complements SSDF-PW.1 with a practice-based view.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.1: ID.RA-05. Snapshot 2026-09-24, SHA-256 7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0. See ADR-0014; references support traceability, not compliance.
     criticality: "medium"
     required_evidence_types: ["threat_model"]
     recommended_evidence_types: []

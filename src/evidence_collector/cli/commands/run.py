@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal, cast
 
 import typer
 
 from evidence_collector.application.orchestrator import run_pipeline
-from evidence_collector.application.profiles import ReleaseProfile
+from evidence_collector.application.profiles import ReleaseProfile, load_cra_context
 from evidence_collector.cli._builders import build_application, build_release
 from evidence_collector.cli._exit_codes import fail_on_exit_code, validate_fail_on
 from evidence_collector.cli._render import (
@@ -149,12 +149,26 @@ def register(app: typer.Typer) -> None:
                 "--profile",
                 help=(
                     "Regulatory profile: 'none' (default), 'cra-2026' (EU CRA "
-                    "24h disclosure annotations), or 'fedramp-20x' (FedRAMP 20x "
-                    "retention metadata). Annotates evidence; does not change "
+                    "reporting context), or 'fedramp-20x' (FedRAMP CR26 "
+                    "reference metadata). Annotates evidence; does not change "
                     "the verdict."
                 ),
             ),
         ] = "none",
+        cra_context_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--cra-context",
+                help="Release-bound CRA operator context JSON; requires --profile cra-2026",
+            ),
+        ] = None,
+        fedramp_class: Annotated[
+            str | None,
+            typer.Option(
+                "--fedramp-class",
+                help="Operator-selected CR26 class A, B, C or D; requires --profile fedramp-20x",
+            ),
+        ] = None,
     ) -> None:
         """Run the full pipeline: collect, evaluate, and export the bundle."""
         fail_on = validate_fail_on(fail_on)
@@ -171,6 +185,19 @@ def register(app: typer.Typer) -> None:
         release = build_release(
             release_id, commit_sha, branch, pipeline_run_id, build_id, artifact_digest, tag
         )
+        if cra_context_path is not None and profile != "cra-2026":
+            raise typer.BadParameter("--cra-context requires --profile cra-2026")
+        cra_context = load_cra_context(str(cra_context_path)) if cra_context_path else None
+        if cra_context and (
+            cra_context.release_id != release_id or cra_context.commit_sha != commit_sha
+        ):
+            raise typer.BadParameter("CRA context must match --release-id and --commit-sha")
+        if fedramp_class is not None and (
+            profile != "fedramp-20x" or fedramp_class not in {"A", "B", "C", "D"}
+        ):
+            raise typer.BadParameter(
+                "--fedramp-class requires --profile fedramp-20x and a class A, B, C or D"
+            )
 
         extra_evidence: list[NormalizedEvidence] = []
         if pull_request is not None or workflow_run is not None:
@@ -194,6 +221,8 @@ def register(app: typer.Typer) -> None:
             risk_mode=RiskMode(risk_mode),
             risk_thresholds=RiskThresholds(epss_percentile_threshold=epss_percentile_threshold),
             profile=ReleaseProfile(profile),
+            cra_context=cra_context,
+            fedramp_class=cast(Literal["A", "B", "C", "D"] | None, fedramp_class),
         )
         render_summary(result)
         render_collection_errors(result)

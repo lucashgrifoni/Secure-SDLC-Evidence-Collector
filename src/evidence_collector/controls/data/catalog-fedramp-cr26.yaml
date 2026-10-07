@@ -1,0 +1,77 @@
+# Opt-in partial release evidence for selected actual FedRAMP CR26 KSIs.
+# This is a supporting evidence catalog, not a KSI compliance verdict.
+controls:
+- control_id: KSI-SCR-MIT
+  framework: ORG_INTERNAL
+  name: Supporting evidence for supply chain risk review
+  description: 'Partial, project-defined release evidence mapping to FedRAMP CR26 KSI-SCR-MIT. Presence
+    of these records cannot establish persistent measures, automation, cryptographic verification,
+    independent assessment, or authorization. Review relevance, scope, frequency, and effectiveness
+    separately. Source: FedRAMP/rules 2026.10.05.01, commit 1c33385a06acf4faf50da2b9b4dc31cd826e5b91.'
+  criticality: high
+  required_evidence_types:
+  - sbom
+  - sca_scan
+  recommended_evidence_types:
+  - artifact_attestation
+- control_id: KSI-SCR-MON
+  framework: ORG_INTERNAL
+  name: Supporting evidence for upstream vulnerability monitoring
+  description: 'Partial, project-defined release evidence mapping to FedRAMP CR26 KSI-SCR-MON. Presence
+    of these records cannot establish persistent measures, automation, cryptographic verification,
+    independent assessment, or authorization. Review relevance, scope, frequency, and effectiveness
+    separately. Source: FedRAMP/rules 2026.10.05.01, commit 1c33385a06acf4faf50da2b9b4dc31cd826e5b91.'
+  criticality: high
+  required_evidence_types:
+  - sca_scan
+  recommended_evidence_types:
+  - sbom
+- control_id: KSI-CMT-VTD
+  framework: ORG_INTERNAL
+  name: Supporting evidence for deployment change testing
+  description: 'Partial, project-defined release evidence mapping to FedRAMP CR26 KSI-CMT-VTD. Presence
+    of these records cannot establish persistent measures, automation, cryptographic verification,
+    independent assessment, or authorization. Review relevance, scope, frequency, and effectiveness
+    separately. Source: FedRAMP/rules 2026.10.05.01, commit 1c33385a06acf4faf50da2b9b4dc31cd826e5b91.'
+  criticality: high
+  required_evidence_types:
+  - test_result
+  recommended_evidence_types:
+  - artifact_attestation
+- control_id: KSI-PIY-RSD
+  framework: ORG_INTERNAL
+  name: Supporting evidence for security and privacy in development
+  description: 'Partial, project-defined release evidence mapping to FedRAMP CR26 KSI-PIY-RSD. Presence
+    of these records cannot establish persistent measures, automation, cryptographic verification,
+    independent assessment, or authorization. Review relevance, scope, frequency, and effectiveness
+    separately. Source: FedRAMP/rules 2026.10.05.01, commit 1c33385a06acf4faf50da2b9b4dc31cd826e5b91.'
+  criticality: high
+  required_evidence_types:
+  - threat_model
+  - code_review
+  recommended_evidence_types:
+  - release_approval
+- control_id: KSI-RPL-TRC
+  framework: ORG_INTERNAL
+  name: Supporting evidence for recovery capability testing
+  description: 'Partial, project-defined release evidence mapping to FedRAMP CR26 KSI-RPL-TRC. Presence
+    of these records cannot establish persistent measures, automation, cryptographic verification,
+    independent assessment, or authorization. Review relevance, scope, frequency, and effectiveness
+    separately. Source: FedRAMP/rules 2026.10.05.01, commit 1c33385a06acf4faf50da2b9b4dc31cd826e5b91.'
+  criticality: high
+  required_evidence_types:
+  - rollback_plan
+  - test_result
+  recommended_evidence_types: []
+- control_id: KSI-SVC-VRI
+  framework: ORG_INTERNAL
+  name: Supporting evidence for cryptographic resource integrity
+  description: 'Partial, project-defined release evidence mapping to FedRAMP CR26 KSI-SVC-VRI. Presence
+    of these records cannot establish persistent measures, automation, cryptographic verification,
+    independent assessment, or authorization. Review relevance, scope, frequency, and effectiveness
+    separately. Source: FedRAMP/rules 2026.10.05.01, commit 1c33385a06acf4faf50da2b9b4dc31cd826e5b91.'
+  criticality: high
+  required_evidence_types:
+  - artifact_signature
+  recommended_evidence_types:
+  - artifact_attestation

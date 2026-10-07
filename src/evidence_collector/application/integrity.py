@@ -39,7 +39,7 @@ VOLATILE_CONTROL: Final[frozenset[str]] = frozenset({"evaluated_at"})
 # which DO contribute to the structural hash so a feed bump is detectable).
 VOLATILE_VULN_INTEL: Final[frozenset[str]] = frozenset({"enriched_at"})
 
-# Deadlines the ``cra-2026`` profile derives from the run clock and writes into
+# Legacy deadlines the ``cra-2026`` profile derived from the run clock and wrote into
 # ``evidence[*].metadata.cra``. Each one is the run timestamp plus a fixed
 # window — ``disclosure_deadline`` is literally ``generated_at + 24h`` — so
 # they are exactly as volatile as ``generated_at``, which VOLATILE_TOP already
@@ -114,12 +114,16 @@ def _strip_volatile_in_vuln_intel(entry: dict[str, object]) -> None:
 
 
 def _strip_volatile_in_metadata(entry: dict[str, object]) -> None:
-    """Drop clock-derived deadlines from ``metadata.cra`` if present."""
+    """Drop only legacy run-clock deadlines; operator-anchored data is content."""
     metadata = entry.get("metadata")
     if not isinstance(metadata, dict):
         return
     cra = metadata.get("cra")
     if not isinstance(cra, dict):
+        return
+    if "awareness_source" in cra:
+        # Current profiles never use the run clock. Retain relative and absolute
+        # deadlines so a modified clock or deadline changes the digest.
         return
     for key in VOLATILE_CRA:
         cra.pop(key, None)
@@ -172,7 +176,13 @@ def normalize_bundle(data: dict[str, object]) -> bytes:
     return json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
 
 
-def structural_sha256(bundle_path: Path) -> str:
+def structural_sha256(bundle_path: Path, *, validate_schema: bool = False) -> str:
     """Return the structural SHA-256 of a bundle JSON file."""
-    data = json.loads(bundle_path.read_text(encoding="utf-8"))
+    data = json.loads(bundle_path.read_text(encoding="utf-8-sig"))
+    if validate_schema:
+        from evidence_collector.domain.models import EvidenceBundle
+
+        EvidenceBundle.model_validate(data)
+    if not isinstance(data, dict):
+        raise ValueError("the bundle must be a JSON object")
     return hashlib.sha256(normalize_bundle(data)).hexdigest()

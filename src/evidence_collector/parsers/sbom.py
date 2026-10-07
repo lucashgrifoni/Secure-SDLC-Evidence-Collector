@@ -20,6 +20,7 @@ from evidence_collector.parsers._common import (
     ensure_file,
     load_json,
 )
+from evidence_collector.parsers._sbom_presence import cisa_presence, g7_ai_presence
 
 SbomFormat = Literal["cyclonedx", "spdx"]
 
@@ -57,6 +58,8 @@ class ParsedSbom:
     lifecycle_phases: list[str] = field(default_factory=list)
     vulnerability_analyses: list[CycloneDxVulnerabilityAnalysis] = field(default_factory=list)
     cisa_minimum_elements: dict[str, bool] = field(default_factory=dict)
+    cisa_2026_presence: dict[str, Any] = field(default_factory=dict)
+    g7_ai_presence: dict[str, Any] = field(default_factory=dict)
     ml_model_count: int = 0
     dataset_count: int = 0
     crypto_asset_count: int = 0
@@ -676,6 +679,17 @@ def parse_sbom(path: str | Path) -> ParsedSbom:
         content_type = "application/spdx+json"
         cisa_elements = _spdx_cisa_elements(data)
 
+    if sbom_format == "cyclonedx":
+        presence_components = _cyclonedx_components(data, path=path)
+        subject = _subject_component(data)
+        if subject is not None and subject not in presence_components:
+            presence_components.insert(0, subject)
+    elif is_spdx3(data):
+        presence_components = [e for e in _spdx3_elements(data) if _type_contains(e, "Package")]
+    else:
+        presence_components = [p for p in _as_list(data.get("packages")) if isinstance(p, dict)]
+    cisa_2026 = cisa_presence(data, sbom_format, presence_components, spdx3=is_spdx3(data))
+    g7_ai = g7_ai_presence(data, sbom_format, presence_components, cisa_2026, spdx3=is_spdx3(data))
     artifact = describe(resolved, content_type=content_type)
     return ParsedSbom(
         artifact=artifact,
@@ -688,6 +702,8 @@ def parse_sbom(path: str | Path) -> ParsedSbom:
         lifecycle_phases=lifecycle_phases,
         vulnerability_analyses=vulnerability_analyses,
         cisa_minimum_elements=cisa_elements,
+        cisa_2026_presence=cisa_2026,
+        g7_ai_presence=g7_ai,
         ml_model_count=object_counts.ml_model_count,
         dataset_count=object_counts.dataset_count,
         crypto_asset_count=object_counts.crypto_asset_count,

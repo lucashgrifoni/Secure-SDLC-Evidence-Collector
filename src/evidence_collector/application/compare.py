@@ -170,6 +170,6 @@ def compare_bundles(before: EvidenceBundle, after: EvidenceBundle) -> BundleComp
 
 
 def load_bundle(path: str | Path) -> EvidenceBundle:
-    with Path(path).open("r", encoding="utf-8") as handle:
+    with Path(path).open("r", encoding="utf-8-sig") as handle:
         data = json.load(handle)
     return EvidenceBundle.model_validate(data)

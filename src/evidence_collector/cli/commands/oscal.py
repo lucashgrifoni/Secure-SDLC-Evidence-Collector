@@ -10,8 +10,10 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
+from evidence_collector.cli._errors import report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
-from evidence_collector.cli._state import console
+from evidence_collector.cli._logging import emit_event
+from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.exporters._atomic import write_atomic
 
 
@@ -93,8 +95,9 @@ def register(app: typer.Typer) -> None:
             return
 
         if bundle_path is None or not bundle_path.is_file():
-            console.print(
-                "[red]--bundle is required and must exist for --kind assessment-results[/red]"
+            report_error(
+                "--bundle is required and must exist for --kind assessment-results",
+                event="oscal_failed",
             )
             raise typer.Exit(code=EXIT_INPUT_ERROR)
 
@@ -102,16 +105,16 @@ def register(app: typer.Typer) -> None:
         from evidence_collector.exporters.oscal import export_oscal_assessment_results
 
         try:
-            raw = json.loads(bundle_path.read_text(encoding="utf-8"))
+            raw = json.loads(bundle_path.read_text(encoding="utf-8-sig"))
             bundle = EvidenceBundle.model_validate(raw)
         # Both clauses hang off one `try` here, and `ValidationError` is a
         # `ValueError` subclass, so it has to be matched before the broader
         # tuple or a schema mismatch gets reported as an unreadable file.
         except ValidationError as exc:
-            console.print(f"[red]Bundle does not match the current schema:[/red] {exc}")
+            report_error("Bundle does not match the current schema", exc, event="oscal_failed")
             raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
         except UNREADABLE_INPUT as exc:
-            console.print(f"[red]Could not read {bundle_path}:[/red] {exc}")
+            report_error(f"Could not read {bundle_path}", exc, event="oscal_failed")
             raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
         payload = json.dumps(
@@ -125,7 +128,13 @@ def register(app: typer.Typer) -> None:
 
 def _write_or_echo(payload: str, output_path: Path | None, *, label: str) -> None:
     if output_path is None:
-        typer.echo(payload)
+        if is_json_logs():
+            emit_event("oscal_emitted", kind=label, document=json.loads(payload))
+        else:
+            typer.echo(payload)
         return
     write_atomic(output_path, payload + "\n")
-    console.print(f"[green]{label}[/green] → {output_path}")
+    if is_json_logs():
+        emit_event("oscal_emitted", kind=label, output=str(output_path))
+    else:
+        console.print(f"[green]{label}[/green] → {output_path}")

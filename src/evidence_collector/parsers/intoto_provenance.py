@@ -137,7 +137,7 @@ def parse_provenances(path: str | Path) -> list[ParsedProvenance]:
     """
     resolved = ensure_file(path)
     try:
-        text = resolved.read_text(encoding="utf-8")
+        text = resolved.read_text(encoding="utf-8-sig")
     except UnicodeDecodeError as exc:
         raise ParseError(f"Invalid text encoding in {resolved}: {exc}") from exc
     records = iter_record_dicts(text)

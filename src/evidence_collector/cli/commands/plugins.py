@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import json
-
 import typer
 from rich.table import Table
 
+from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 
 
@@ -20,7 +19,7 @@ def register(app: typer.Typer) -> None:
 
         listing = list_plugins()
         if is_json_logs():
-            typer.echo(json.dumps(listing, indent=2, sort_keys=True))
+            emit_event("plugins_listed", plugins=listing)
             return
         table = Table(title="Discovered plugins", show_header=True)
         table.add_column("Group")

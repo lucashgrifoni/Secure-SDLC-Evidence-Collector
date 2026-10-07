@@ -54,7 +54,7 @@ def ensure_file(path: str | Path) -> Path:
 
 def load_json(path: Path) -> dict[str, Any]:
     try:
-        with path.open("r", encoding="utf-8") as handle:
+        with path.open("r", encoding="utf-8-sig") as handle:
             data = json.load(handle)
     except json.JSONDecodeError as exc:
         raise ParseError(f"Invalid JSON in {path}: {exc}") from exc
@@ -82,7 +82,7 @@ def load_json(path: Path) -> dict[str, Any]:
 
 def load_yaml_or_json(path: Path) -> dict[str, Any]:
     try:
-        with path.open("r", encoding="utf-8") as handle:
+        with path.open("r", encoding="utf-8-sig") as handle:
             data = yaml.safe_load(handle)
     except yaml.YAMLError as exc:
         raise ParseError(f"Invalid YAML in {path}: {exc}") from exc

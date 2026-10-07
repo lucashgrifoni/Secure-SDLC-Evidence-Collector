@@ -82,6 +82,15 @@ The collector checks **presence**, not correctness.
   as `metadata.spdx_profiles`. The CISA presence check above is shaped for
   SPDX 2.x / CycloneDX and is **not** applied to SPDX 3.0 documents.
 
+### Current development additions
+
+The new CISA 2026 map covers 17 elements with explicit unsupported states.
+AI-bearing SBOMs also have 50 G7 presence states. Both are project mappings;
+neither verifies accuracy, completeness, signatures or regulatory compliance.
+SPDX 3 mappings are partial. Legacy 2025 fields remain for compatibility.
+See [migration and limits](evidence-profile-migration.md) for CRA operator
+context, CR26 source versions, catalog changes and output-lock recovery.
+
 ## 4 · Control catalog is small on purpose
 
 - The default catalog has **13 controls** focused on widely supported
@@ -316,9 +325,9 @@ These are explicitly out of scope for security reports (see
   because it requires an optional ``[watch]`` extra (FastAPI +
   uvicorn + watchdog) and durable cursor persistence the
   file-first collector deliberately avoids.
-- The GUAC adapter and the CRA / FedRAMP profiles cover the
-  immediate regulator-driven use cases for set/2026. The watch
-  daemon is a continuous-ATO accelerator, not a v2.0 blocker.
+- GUAC and regulatory profiles provide projections of supplied evidence;
+  they do not establish authorization or reporting compliance. Watch remains
+  deferred and is not part of the current delivery boundary.
 
 ## 16 · Multi-VEX consumer trusts the upstream verdict (T6.7)
 

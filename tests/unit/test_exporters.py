@@ -520,3 +520,10 @@ def test_a_value_cannot_forge_a_markdown_link_or_image(value: str) -> None:
     assert "<a " not in rendered
     assert "<img" not in rendered
     assert "clk" in rendered or "p.png" in rendered or "ref" in rendered
+
+
+@pytest.mark.parametrize("value", ["**approved**", "_approved_", "`approved`", "~~approved~~"])
+def test_plain_summary_values_do_not_create_markdown_formatting(value: str) -> None:
+    escaped = md_escape(value)
+    rendered = MarkdownIt("commonmark").enable("strikethrough").renderInline(escaped)
+    assert rendered == value

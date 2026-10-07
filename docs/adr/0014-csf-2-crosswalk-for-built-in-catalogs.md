@@ -41,6 +41,10 @@ authority it claims. The source used here is NIST's own:
 
 ## Decision
 
+Update 2026-10-07: ADR 0015 implements the descriptions alongside the intentional
+CISA 2026 digest change. The source snapshot below remains the authority for
+SSDF 1.1 references; it is not an AI-specific crosswalk.
+
 Record the crosswalk in this ADR, using only relationships NIST itself lists.
 Where NIST lists no CSF 2.0 reference for an SSDF task, the table says so
 rather than filling the gap with a judgment call.
@@ -84,7 +88,7 @@ Controls, per catalog:
 | `catalog-ai.yaml` | `AI-SBOM` | PS.3 | PR.DS-01, PR.DS-11 |
 | | `AI-SCA` | PW.4 | GV.SC-03, GV.SC-07, ID.AM-08 |
 | | `AI-SAST` | PW.7 | none listed |
-| | `AI-MODEL-CARD`, `AI-PROMPT-INJ`, `AI-SAFETY-EVAL`, `AI-TRAINING-LINEAGE`, `AI-MCP-INVENTORY`, `AI-THREAT-MODEL` | SP 800-218A AI-profile tasks (PS.AI.1, PS.AI.2, PW.1.AI, PW.4.AI) | none listed: the export has no SP 800-218A references |
+| | AI-specific mappings | PO.1.2 N1, PW.3.2, PW.1.1, PW.8.2; MCP is internal policy | the export has no SP 800-218A references; current descriptions explicitly use SSDF 1.1 references only |
 | | `AI-RELEASE-APPROVAL` | none | no NIST reference |
 | `catalog-fedramp-20x-ksi.yaml` | all `KSI-*` controls | none: they cite FedRAMP 20x Key Security Indicators | no NIST reference in the export |
 

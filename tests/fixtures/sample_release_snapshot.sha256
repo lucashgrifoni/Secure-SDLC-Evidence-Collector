@@ -108,4 +108,8 @@
 # inside the structural hash, so part of this bump is that. Minor rather than
 # major: a 2.1.0 consumer reads a 2.0.0 bundle fine, while a validator pinned to
 # 2.0.0 rejects a 2.1.0 one, which is what the version field is for saying.
-861b285dd8cb8427484e4ac64317675e48588b050e405916a90e18e5b04e3007
+# 2026-10-07 (unreleased): CISA 2026 presence metadata and the recorded
+# CSF 2.0 references in catalog descriptions intentionally change both
+# SBOM metadata and catalog.sha256. Existing bundle verification remains
+# valid; regenerate pins only when producing a bundle with this version.
+6c9664455ca5bd2c0536d62417175e4305d105f808daffc33b55fc130873620e

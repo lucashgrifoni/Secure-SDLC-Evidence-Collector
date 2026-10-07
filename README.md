@@ -624,4 +624,9 @@ load-bearing for their use case.
 
 ## License
 
-[Apache-2.0](./LICENSE) © Lucas Henrique Grifoni.
+[Apache-2.0](./LICENSE) © Lucas Henrique Grifoni. The development branch also
+includes a BSD-2-Clause FIRST CVSS reference port; see
+[third-party notices](./THIRD_PARTY_LICENSES.md). Published 3.2.0 predates that port.
+
+Development changes and digest migration are documented in
+[evidence profile migration](./docs/evidence-profile-migration.md).

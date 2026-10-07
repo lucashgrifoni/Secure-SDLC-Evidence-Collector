@@ -90,8 +90,8 @@ def test_contents_survive_and_no_entry_is_newer_than_the_epoch(tmp_path: Path) -
             "pkg-1.0/tools/run.sh",
         ]
         assert max(m.mtime for m in members) <= _EPOCH
-        # An older mtime from the repository is kept, not raised to the epoch.
-        assert tar.getmember("pkg-1.0/src/pkg/__init__.py").mtime == _EPOCH - 100
+        # Checkout timestamps are not part of the canonical source contract.
+        assert {m.mtime for m in members} == {_EPOCH}
         assert {(m.uid, m.gid, m.uname, m.gname) for m in members} == {(0, 0, "", "")}
         member = tar.extractfile("pkg-1.0/PKG-INFO")
         assert member is not None
@@ -127,5 +127,36 @@ def test_permission_modes_from_different_umasks_converge(tmp_path: Path) -> None
         "pkg-1.0": 0o755,
         "pkg-1.0/PKG-INFO": 0o644,
         "pkg-1.0/src/pkg/__init__.py": 0o644,
-        "pkg-1.0/tools/run.sh": 0o755,
+        "pkg-1.0/tools/run.sh": 0o644,
     }
+
+
+def test_old_checkout_times_and_executable_bits_do_not_change_the_sdist(tmp_path: Path) -> None:
+    first = _sdist(
+        tmp_path / "a/pkg.tar.gz", stamp=_EPOCH - 50, header_time=_EPOCH, file_mode=0o644
+    )
+    second = _sdist(
+        tmp_path / "b/pkg.tar.gz", stamp=_EPOCH - 500, header_time=_EPOCH, file_mode=0o755
+    )
+    script = _script()
+    script.normalize(first, _EPOCH)
+    script.normalize(second, _EPOCH)
+    assert first.read_bytes() == second.read_bytes()
+
+
+def test_empty_distribution_directory_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", str(_EPOCH))
+    assert _script().main([str(tmp_path)]) != 0
+
+
+@pytest.mark.parametrize("epoch", ["-1", str(2**32)])
+def test_epoch_outside_the_gzip_range_fails_without_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, epoch: str
+) -> None:
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", epoch)
+    sdist = _sdist(tmp_path / "pkg.tar.gz", stamp=_EPOCH, header_time=_EPOCH)
+    original = sdist.read_bytes()
+    assert _script().main([str(tmp_path)]) == 2
+    assert sdist.read_bytes() == original

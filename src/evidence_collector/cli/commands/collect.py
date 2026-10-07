@@ -9,8 +9,9 @@ from typing import Annotated
 import typer
 
 from evidence_collector.cli._builders import build_release
+from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._render import render_ignored_artifacts
-from evidence_collector.cli._state import EVIDENCE_ADAPTER, console
+from evidence_collector.cli._state import EVIDENCE_ADAPTER, console, is_json_logs
 from evidence_collector.domain.models import CollectionError
 from evidence_collector.exporters._atomic import write_atomic
 
@@ -88,11 +89,18 @@ def register(app: typer.Typer) -> None:
             ],
         }
         write_atomic(output_path, json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
-        console.print(
-            f"[green]Collected[/green] {len(report.evidence)} evidence records → {output_path}"
-        )
-        if report.errors:
-            console.print("[yellow]Collection warnings:[/yellow]")
+        if is_json_logs():
+            emit_event(
+                "evidence_collected", evidence_count=len(report.evidence), output=str(output_path)
+            )
             for error in report.errors:
-                console.print(f"  - {error.path}: {error.reason}")
+                emit_event("collection_error", path=str(error.path), reason=error.reason)
+        else:
+            console.print(
+                f"[green]Collected[/green] {len(report.evidence)} evidence records → {output_path}"
+            )
+            if report.errors:
+                console.print("[yellow]Collection warnings:[/yellow]")
+                for error in report.errors:
+                    console.print(f"  - {error.path}: {error.reason}", soft_wrap=True)
         render_ignored_artifacts(report.ignored)

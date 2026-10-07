@@ -74,7 +74,7 @@ def test_an_incomplete_vector_is_not_scored(tmp_path: Path) -> None:
     assert _bucket(path) == "medium"
 
 
-def test_a_v4_only_record_uses_the_advisory_severity(tmp_path: Path) -> None:
+def test_a_v4_only_record_is_scored_with_the_reference(tmp_path: Path) -> None:
     """GitHub advisories carry a qualitative rating next to the vector."""
     path = _record(
         tmp_path,
@@ -94,7 +94,7 @@ def test_moderate_maps_to_medium(tmp_path: Path) -> None:
     assert _bucket(path) == "medium"
 
 
-def test_a_v4_only_record_without_a_rating_still_falls_back_to_medium(tmp_path: Path) -> None:
+def test_a_v4_only_record_without_a_rating_is_critical(tmp_path: Path) -> None:
     path = _record(
         tmp_path,
         [
@@ -104,7 +104,7 @@ def test_a_v4_only_record_without_a_rating_still_falls_back_to_medium(tmp_path: 
             }
         ],
     )
-    assert _bucket(path) == "medium"
+    assert _bucket(path) == "critical"
 
 
 def test_changed_scope_uses_the_base_equation() -> None:
