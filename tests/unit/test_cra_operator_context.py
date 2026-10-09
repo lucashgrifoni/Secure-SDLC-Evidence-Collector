@@ -242,12 +242,26 @@ def test_incident_notification_cannot_precede_awareness() -> None:
 def test_reporter_note_field_40_is_optional_but_csirt_note_is_rejected() -> None:
     cra = _cra(notification_type="incident", srp_fields={"40": "Supplementary note"})
     assert "40" in cra["srp_declared_field_ids"]
-    with pytest.raises(ValidationError, match="SRP field"):
+    with pytest.raises(ValidationError, match=r"SRP field '41' \(CSIRT Note\) is written by"):
         profiles.CraReportingContext(
             release_id="1",
             commit_sha="a",
             notification_type="incident",
             srp_fields={"41": "CSIRT-authored"},
+        )
+
+
+@pytest.mark.parametrize(
+    ("fields", "message"),
+    [
+        ({"v999": "x"}, r"Unknown SRP field identifier 'v999'; expected one of 1-18"),
+        ({"2": "x" * 4001}, r"SRP field '2' is 4001 characters; the limit is 4000"),
+    ],
+)
+def test_srp_field_errors_name_the_field(fields: dict[str, str], message: str) -> None:
+    with pytest.raises(ValidationError, match=message):
+        profiles.CraReportingContext(
+            release_id="1", commit_sha="a", notification_type="vulnerability", srp_fields=fields
         )
 
 
