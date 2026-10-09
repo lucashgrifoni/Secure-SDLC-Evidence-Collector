@@ -122,7 +122,9 @@ by theme rather than by ID.
 - **Add arbitrary evaluation thresholds to the catalog.** Rejected for
   this contract. Catalogs select evidence types; they do not decide whether
   an accuracy metric is acceptable. Use the producing evaluation tool's
-  explicit result and a human review of the metric and threshold.
+  explicit result and a human review of the metric and threshold. Since
+  lm-eval reports no pass/fail of its own, its evidence satisfies
+  `AI-SAFETY-EVAL` on presence alone; see `docs/limitations.md` §21.
 
 ## Verification
 

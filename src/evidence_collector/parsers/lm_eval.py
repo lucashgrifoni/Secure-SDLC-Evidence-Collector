@@ -17,12 +17,13 @@ This parser extracts:
 
 * model identifier (from ``config.model``)
 * per-task metric values (``results[<task>]``)
-* a small ``findings_count`` rollup so downstream controls can decide
-  pass/fail without re-reading the raw metrics.
+* a small ``findings_count`` rollup that keeps the per-severity shape
+  every evidence record carries.
 
 We do NOT interpret metric semantics (whether 0.83 acc is good or
-bad). Pass/fail thresholds belong in the control catalog, not in the
-parser.
+bad), and neither does anything downstream: control catalogs cannot
+express metric thresholds, so the evidence satisfies its control on
+presence alone (docs/limitations.md §21).
 """
 
 from __future__ import annotations
@@ -60,8 +61,8 @@ class ParsedLmEval:
 
 def _empty_findings() -> dict[str, int]:
     # lm-eval does not emit severities. We surface ``info`` per task
-    # so the bundle keeps a stable per-severity shape while the
-    # actual evaluation lives in control thresholds.
+    # so the bundle keeps a stable per-severity shape; no threshold is
+    # applied to the metrics anywhere (docs/limitations.md §21).
     return {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
 
 

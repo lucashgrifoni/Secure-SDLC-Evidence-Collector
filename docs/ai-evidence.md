@@ -103,8 +103,13 @@ reads the top-level JSON object and extracts:
   identifier; `config.model_args` wins when both exist because it
   carries the more specific id.
 
-Pass / fail is **not** decided by the parser. lm-eval surfaces raw
-metrics; threshold logic lives in the control catalog.
+Pass / fail is **not** decided anywhere. lm-eval surfaces raw metrics,
+the evidence is always recorded as `generated`, and control catalogs have
+no way to express a metric threshold. Any parseable lm-eval report
+therefore satisfies `AI-SAFETY-EVAL`, whatever its scores: a model with
+near-zero safety or bias accuracy meets the control exactly like a good
+one. Review the metrics in `evidence.metadata.tasks` yourself before
+treating the control as passed (see [limitations §21](limitations.md)).
 
 File names recognised: `*.lm-eval.json`, `*.lm_eval.json`,
 `lm-eval.json`. Content sniff also matches files that carry

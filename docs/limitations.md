@@ -515,3 +515,23 @@ Markdown renderer displays `model_card`. Scripts that grep or diff the raw
 `report.md` must expect the escaped form; read `bundle.json` for the
 unescaped values. Values inside code spans (control IDs, paths, digests) are
 not backslash-escaped; only backticks and pipes are altered there.
+
+## 21 · lm-eval results satisfy `AI-SAFETY-EVAL` on presence alone
+
+- An lm-evaluation-harness report becomes an `ai_safety_eval` record
+  with status `generated`, and `generated` satisfies a control. The
+  parser keeps the raw per-task metrics in `evidence.metadata.tasks`
+  but never judges them.
+- Control catalogs select evidence types only. `ControlDefinition` has
+  no threshold field (and rejects unknown keys), so no catalog,
+  `catalog-ai.yaml` included, can say "toxigen accuracy must be at
+  least X".
+- Result: any parseable lm-eval output meets `AI-SAFETY-EVAL`, even one
+  whose safety and bias scores are near zero. The control proves an
+  evaluation was run and shipped with the release, not that the model
+  passed it. A reviewer has to read the metrics and decide, or a
+  pipeline step has to enforce its own thresholds on the raw report
+  before the collector runs.
+- Inspect logs differ only in that an errored, cancelled or unfinished
+  run is recorded as `invalid`; a successful run is likewise accepted
+  whatever its scores.
