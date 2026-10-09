@@ -50,8 +50,8 @@ and strikethrough as well as links, HTML and table separators.
 
 ## SBOM minimum element presence
 
-`metadata.cisa_2026_presence` reports all 17 elements of the final 2026
-guidance under `metadata.cisa_2026_presence.elements.<name>`, each with a
+`evidence[].metadata.cisa_2026_presence` reports all 17 elements of the final 2026
+guidance under `evidence[].metadata.cisa_2026_presence.elements.<name>`, each with a
 `status` and a `source` path. The status is one of:
 
 - `present`: the field holds a value.
@@ -85,8 +85,8 @@ for the other to operate: `DEPENDS_ON`, `DEPENDENCY_OF`,
 derivation do not count. One such relationship is enough for SPDX 2.3, while
 CycloneDX needs a `dependencies[]` entry for every component.
 
-AI-bearing SBOMs get `metadata.g7_ai_presence`: 50 elements across seven
-clusters under `metadata.g7_ai_presence.clusters.<cluster>.<name>`, with the
+AI-bearing SBOMs get `evidence[].metadata.g7_ai_presence`: 50 elements across seven
+clusters under `evidence[].metadata.g7_ai_presence.clusters.<cluster>.<name>`, with the
 same statuses. This is a project interpretation of CycloneDX/SPDX fields, not
 an official format crosswalk or G7 conformance assessment. Elements that need
 semantic review are `not_machine_checkable`. G7 derivation links and CISA
@@ -131,7 +131,7 @@ Article 14 supplies 24-hour and 72-hour windows from awareness. A vulnerability
 final report is due 14 days after a corrective or mitigating measure becomes
 available. An incident final report uses one calendar month after actual
 72-hour notification submission, supplied as `notification_72h_submitted_at`.
-Month-end dates clamp to the last valid day. `metadata.cra.article` cites
+Month-end dates clamp to the last valid day. `evidence[].metadata.cra.article` cites
 `14(2)` for a vulnerability context, `14(4)` for an incident context and
 `14(2),14(4)` when no context is supplied.
 
@@ -147,7 +147,7 @@ Submission stays `not_submitted`.
 Operator-derived deadlines participate in the structural hash. Only obsolete
 collection-clock deadlines in legacy bundles remain excluded for compatibility.
 
-Changed `metadata.cra` and `metadata.fedramp` keys. The bundle schema types
+Changed `evidence[].metadata.cra` and `evidence[].metadata.fedramp` keys. The bundle schema types
 `metadata` as a free-form object, so schema validation does not catch these:
 
 | Key | 3.2.0 | This release |
@@ -187,7 +187,11 @@ now named `Legacy internal check: <topic>`.
 SP 800-218A references now use actual IDs: documentation PO.1.2 N1, provenance
 PW.3.2, risk assessment PW.1.1 and vulnerability testing PW.8.2. Safety and bias
 requirements remain project policy. Deployed-agent tool inventory is outside
-that publication's model-development scope. No official AI 600-1 crosswalk is
+that publication's model-development scope, so `AI-MCP-INVENTORY` in
+`catalog-ai.yaml` moved from `NIST_SSDF` to `ORG_INTERNAL` and no longer cites
+an SSDF AI Profile practice. Its criticality and required evidence are
+unchanged; anything that filters or groups controls by `framework`
+now sees it under `ORG_INTERNAL`. No official AI 600-1 crosswalk is
 claimed. CSF 2.0 descriptions use the SSDF 1.1 references preserved in ADR 0014;
 they are not an AI-specific crosswalk or proof of control effectiveness.
 

@@ -36,13 +36,13 @@ Introduce a thin **profile layer** in
 verdict). Two profiles ship today:
 
 - **``cra-2026``** — stamps each evidence with
-  ``metadata.cra.exploitation_status`` and
-  ``metadata.cra.disclosure_deadline``. The status follows CRA
+  ``evidence[].metadata.cra.exploitation_status`` and
+  ``evidence[].metadata.cra.disclosure_deadline``. The status follows CRA
   vocabulary: ``actively_exploited`` for KEV ransomware + KEV;
   ``known_exploitable`` for EPSS percentile ≥ 0.9 outside KEV;
   ``under_investigation`` otherwise.
 - **``fedramp-20x``** — stamps each evidence with
-  ``metadata.fedramp.retention_years = 10`` and ``profile = "20x"``
+  ``evidence[].metadata.fedramp.retention_years = 10`` and ``profile = "20x"``
   so the OSCAL Assessment Results exporter has the retention
   metadata at hand.
 
