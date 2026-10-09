@@ -81,6 +81,24 @@ def test_normalize_garak_passes_when_no_hits(tmp_path: Path) -> None:
     assert evidence.status == EvidenceStatus.PASSED
 
 
+def test_normalize_garak_fails_on_exactly_one_hit(tmp_path: Path) -> None:
+    """A single successful attack is enough: the gate is ``hits > 0``, not ``> 1``."""
+    report = tmp_path / "one-hit.garak.jsonl"
+    report.write_text(
+        "\n".join(
+            [
+                '{"entry_type":"init","garak_version":"0.10.0","model_name":"y"}',
+                '{"entry_type":"digest","probe":"promptinject.Z","attempts":10,"hits":1}',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    evidence = normalize_garak(parse_garak(report), _release())
+    assert evidence.metadata["total_hits"] == 1
+    assert evidence.status == EvidenceStatus.FAILED
+
+
 def test_normalize_lm_eval_produces_ai_safety_eval(tmp_path: Path) -> None:
     report = tmp_path / "model.lm-eval.json"
     report.write_text(_LM_EVAL_REPORT, encoding="utf-8")
