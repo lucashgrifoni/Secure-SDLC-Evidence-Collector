@@ -114,14 +114,15 @@ _CYCLONEDX_JUSTIFICATION_TO_OPENVEX: dict[str, str] = {
 }
 
 
-def _vex_id(bundle: EvidenceBundle, statements: list[dict[str, Any]]) -> str:
+def _vex_id(bundle: EvidenceBundle, statements: list[dict[str, Any]], timestamp: str) -> str:
     """Deterministic OpenVEX document id derived from bundle inputs and content.
 
     Using ``uuid5`` over a stable concatenation of bundle fields keeps
     the id reproducible across runs on identical inputs, which matters
     for downstream verifiers that hash the VEX document. The statements'
-    digest is part of the payload so two documents with different content
-    for the same release never share an id (the ``version`` stays 1).
+    digest and the document ``timestamp`` are part of the payload so two
+    documents with different content for the same release never share an
+    id (the ``version`` stays 1).
     """
     statements_digest = hashlib.sha256(
         json.dumps(statements, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -133,6 +134,7 @@ def _vex_id(bundle: EvidenceBundle, statements: list[dict[str, Any]]) -> str:
             bundle.release.release_id,
             bundle.release.commit_sha,
             statements_digest,
+            timestamp,
         ]
     )
     return f"https://openvex.dev/docs/{uuid5(NAMESPACE_URL, payload)}"
@@ -371,7 +373,7 @@ def build_openvex(bundle: EvidenceBundle, *, now: datetime | None = None) -> dic
 
     return {
         "@context": OPENVEX_CONTEXT,
-        "@id": _vex_id(bundle, statements),
+        "@id": _vex_id(bundle, statements, fixed_now.isoformat()),
         "author": OPENVEX_AUTHOR,
         "timestamp": fixed_now.isoformat(),
         "version": 1,
@@ -453,5 +455,7 @@ def merge_consumed_vex(
 
     bundle_document["statements"] = [by_cve[k] for k in sorted(by_cve.keys())]
     # The content changed, so the content-derived id must follow it.
-    bundle_document["@id"] = _vex_id(bundle, bundle_document["statements"])
+    bundle_document["@id"] = _vex_id(
+        bundle, bundle_document["statements"], bundle_document["timestamp"]
+    )
     return bundle_document

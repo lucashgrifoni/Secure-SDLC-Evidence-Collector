@@ -592,6 +592,14 @@ def test_different_statements_produce_different_ids() -> None:
     assert build_openvex(base, now=_NOW)["@id"] != build_openvex(other, now=_NOW)["@id"]
 
 
+def test_different_timestamps_produce_different_ids() -> None:
+    bundle = _bundle([_evidence(["CVE-2024-4444"])])
+    first = build_openvex(bundle, now=_NOW)
+    later = build_openvex(bundle, now=_NOW + timedelta(hours=1))
+    assert first["statements"] == later["statements"]
+    assert first["@id"] != later["@id"]
+
+
 def test_merge_recomputes_the_document_id() -> None:
     bundle = _bundle([_evidence(["CVE-2024-4444"])])
     doc = build_openvex(bundle, now=_NOW)
