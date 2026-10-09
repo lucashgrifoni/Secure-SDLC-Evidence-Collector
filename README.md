@@ -379,7 +379,8 @@ evidence does not claim an environment nobody asserted.
 ### Ingestion options
 
 - `--artifacts-dir PATH` — folder with SARIF, SBOM, JUnit files
-  (repeatable).
+  (repeatable). Directory links (symlinks, junctions) inside it are not
+  followed; each one is reported as a collection error.
 - `--attestations-dir PATH` — folder with YAML/JSON attestations
   (repeatable).
 - `--catalog FILE.yaml` — override the default control catalog.

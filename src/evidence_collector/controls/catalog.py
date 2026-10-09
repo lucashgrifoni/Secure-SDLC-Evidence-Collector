@@ -19,6 +19,7 @@ import yaml
 from pydantic import TypeAdapter
 
 from evidence_collector.domain.models import CatalogRef, ControlDefinition
+from evidence_collector.parsers._common import safe_load_yaml
 
 
 def bundled_catalog_names() -> list[str]:
@@ -77,7 +78,7 @@ def _coerce_path(path: str | Path) -> Path:
 
 def _parse_catalog(content: str, source: str) -> list[ControlDefinition]:
     try:
-        raw = yaml.safe_load(content) or {}
+        raw = safe_load_yaml(content) or {}
     except yaml.YAMLError as exc:
         raise ValueError(f"Invalid YAML in control catalog {source}: {exc}") from exc
 

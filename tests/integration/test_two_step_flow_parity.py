@@ -147,3 +147,50 @@ def test_collect_can_strip_local_paths(tmp_path: Path, sample_release_root: Path
     for path in recorded:
         assert not Path(path).is_absolute(), path
         assert str(sample_release_root) not in path
+
+
+def test_evaluate_strips_local_paths_from_waiver_errors(tmp_path: Path) -> None:
+    """`evaluate --exceptions-dir` recorded unreadable waivers by absolute path.
+
+    The collector it builds for the waivers had no artifact root, and
+    `evaluate` had no `--artifact-root` to give it, so a malformed waiver put
+    the operator's local filesystem location into the published bundle.
+    """
+    waivers = tmp_path / "waivers"
+    waivers.mkdir()
+    (waivers / "broken.yaml").write_text("exception_id: [unclosed\n", encoding="utf-8")
+    evidence = tmp_path / "evidence.json"
+    evidence.write_text('{"evidence": [], "collection_errors": []}', encoding="utf-8")
+    out = tmp_path / "out"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "evaluate",
+            "--evidence",
+            str(evidence),
+            "--application",
+            "payments-api",
+            "--repository",
+            "acme/payments-api",
+            "--release-id",
+            "1.0.0",
+            "--commit-sha",
+            "abcdef1234567890",
+            "--exceptions-dir",
+            str(waivers),
+            "--artifact-root",
+            str(tmp_path),
+            "--output-dir",
+            str(out),
+        ],
+    )
+    assert (out / "bundle.json").is_file(), result.output
+
+    errors = _bundle(out)["collection_errors"]
+    assert errors, "the malformed waiver should be recorded as a collection error"
+    for error in errors:
+        assert not Path(error["path"]).is_absolute(), error
+        assert str(tmp_path) not in error["path"]
+        assert str(tmp_path) not in error["reason"]
+    assert any(Path(error["path"]) == Path("waivers") / "broken.yaml" for error in errors)

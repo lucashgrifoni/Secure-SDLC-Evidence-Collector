@@ -264,6 +264,16 @@ class LocalArtifactCollector:
         ``os.walk`` with an ``onerror`` callback turns that back into a
         recorded failure. Sorting is preserved so ordering stays deterministic
         (docs/limitations.md §8).
+
+        A directory *link* below the walked directory is not followed, and is
+        recorded rather than dropped. ``os.walk`` lists a symlinked
+        subdirectory but never enters it, so the evidence behind it vanished
+        with no trace — the same silent false negative as above. It also
+        entered Windows junctions (``islink`` is false for them), so the same
+        layout behaved differently per platform and a junction back to an
+        ancestor recursed until the path grew too long. Both kinds are pruned
+        and reported; the directory passed on the command line may itself be a
+        link, as before.
         """
         found: list[Path] = []
 
@@ -274,8 +284,20 @@ class LocalArtifactCollector:
             self._record_error(report, path, reason)
 
         for root, dir_names, file_names in os.walk(directory, onerror=_on_error):
-            dir_names.sort()
             root_path = Path(root)
+            kept: list[str] = []
+            for name in sorted(dir_names):
+                subdirectory = root_path / name
+                if _is_directory_link(subdirectory):
+                    self._record_error(
+                        report,
+                        subdirectory,
+                        f"{subdirectory} is a directory link and was not followed; "
+                        "pass the link target directly to collect what it holds",
+                    )
+                else:
+                    kept.append(name)
+            dir_names[:] = kept
             for name in sorted(file_names):
                 candidate = root_path / name
                 if self._is_ingestable_file(candidate, report):
@@ -707,6 +729,14 @@ class LocalArtifactCollector:
         except _INGEST_FAILURES as exc:
             logger.warning("Failed to ingest attestation %s: %s", file_path, exc)
             self._record_error(report, file_path, str(exc))
+
+
+def _is_directory_link(path: Path) -> bool:
+    """Whether ``path`` is a symlink or a Windows junction (never followed)."""
+    try:
+        return path.is_symlink() or path.is_junction()
+    except OSError:
+        return False
 
 
 def _looks_like_sarif(path: Path) -> bool:

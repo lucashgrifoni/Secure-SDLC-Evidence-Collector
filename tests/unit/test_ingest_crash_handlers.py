@@ -319,7 +319,7 @@ def test_attestation_metadata_with_a_yaml_cycle_is_a_parse_error(
         "evidence_type: release_approval\nproducer: p\nsubject_ref: r\n" + extra,
         encoding="utf-8",
     )
-    with pytest.raises(ParseError, match="cycle"):
+    with pytest.raises(ParseError, match=r"cycle|recursive alias"):
         parse_attestation(path)
 
 
