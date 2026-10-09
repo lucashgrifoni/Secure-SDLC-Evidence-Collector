@@ -24,13 +24,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Step 1 — produce raw artifacts with your own scanners
+      # Step 1 — produce raw artifacts with your own scanners.
+      # Install your project and its test dependencies here as well.
       - run: |
           mkdir -p artifacts
-          pip install bandit[sarif] cyclonedx-bom pip-audit
-          python -m bandit -r src -f sarif -o artifacts/bandit.sarif
+          pip install "bandit[sarif]" cyclonedx-bom pytest
+          # --exit-zero: findings must not abort the step before the
+          # collector runs; their severities still reach the bundle.
+          python -m bandit -r src -f sarif -o artifacts/bandit.sarif --exit-zero
           python -m cyclonedx_py environment --of JSON -o artifacts/sbom.cdx.json
-          python -m pytest --junitxml=artifacts/junit.xml
+          python -m pytest --junitxml=artifacts/junit.xml || true
+
+      # SCA: the collector reads SARIF, not pip-audit's native JSON, so
+      # use a scanner that writes SARIF (Trivy here).
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
+        with:
+          scan-type: fs
+          scanners: vuln
+          format: sarif
+          output: artifacts/trivy-deps.sarif
 
       # Step 2 — assemble the evidence bundle
       - id: collect
@@ -40,7 +52,10 @@ jobs:
           release-id: ${{ github.ref_name }}
           artifacts-dir: artifacts
           attestations-dir: attestations
-          pull-request: ${{ github.event.number }}
+          # No `pull-request:` here: a tag push carries no PR number
+          # (`github.event.number` is empty outside `pull_request` events),
+          # so ORG-CODE-REVIEW has to come from a `code_review` attestation
+          # in `attestations/`. See "Collecting PR evidence" below.
           fail-on: not_ready
 
       - name: Upload bundle
@@ -50,6 +65,31 @@ jobs:
           name: sdlc-evidence
           path: output/sdlc-evidence
 ```
+
+`python -m pytest ... || true` keeps a failing test run from skipping the
+collector: the JUnit file records the failures and the bundle reflects them.
+
+### Collecting PR evidence
+
+The PR approval collector needs a pull request number, and only
+`pull_request` events provide one in `github.event.number`. Run the action on
+pull requests to collect it:
+
+```yaml
+on:
+  pull_request:
+
+# ...same steps as above, with:
+      - uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.0.0 # x-release-please-version
+        with:
+          application: "payments-api"
+          release-id: pr-${{ github.event.number }}
+          artifacts-dir: artifacts
+          pull-request: ${{ github.event.number }}
+```
+
+On a tag push, either look the merged PR number up yourself and pass it, or
+record the review in a `code_review` attestation.
 
 ## Inputs
 
@@ -63,7 +103,7 @@ jobs:
 | `environment` | no | `production` | |
 | `artifacts-dir` | no | `artifacts` | Walked recursively |
 | `attestations-dir` | no | `attestations` | YAML or JSON |
-| `pull-request` | no | — | Enables PR approval collector |
+| `pull-request` | no | — | Enables PR approval collector. An empty value is ignored, so `${{ github.event.number }}` only works on `pull_request` events |
 | `workflow-run` | no | — | Enables workflow metadata collector. Only a run that concluded with `success` satisfies a control; the run executing the action is still in progress, so `${{ github.run_id }}` from the same job never does. Pass a finished run |
 | `exceptions-dir` | no | — | Directory with waiver (exception) files |
 | `catalog` | no | — | Your own controls YAML, **or** the bare name of a bundled catalog |
@@ -179,15 +219,21 @@ No token is logged by the collector.
 
 An OCI image is also provided (`Dockerfile` in the repo root). It runs as
 a non-root UID (`10001:10001`) and expects evidence volumes mounted into
-`/workspace`:
+`/workspace`. The output mount must be writable by the user the container
+runs as. On a Linux host a fresh `output/` directory belongs to you (or to
+root, if Docker creates it), not to UID 10001, and the run fails with
+`PermissionError` (exit `3`). Create the directory first and run the
+container with your own UID and GID:
 
 ```bash
-docker build -t sdlc-evidence:2.0.5 .
+docker build -t sdlc-evidence:local .
+mkdir -p output
 docker run --rm \
+  --user "$(id -u):$(id -g)" \
   -v "$PWD/artifacts:/workspace/artifacts:ro" \
   -v "$PWD/attestations:/workspace/attestations:ro" \
   -v "$PWD/output:/workspace/output" \
-  sdlc-evidence:2.0.5 run \
+  sdlc-evidence:local run \
     --application payments-api \
     --repository acme/payments-api \
     --release-id 2026.04.10 \
@@ -196,3 +242,8 @@ docker run --rm \
     --attestations-dir /workspace/attestations \
     --output-dir /workspace/output
 ```
+
+Alternatively keep the image's UID and give it the directory
+(`sudo chown 10001:10001 output`). Docker Desktop on Windows and macOS
+maps bind-mount ownership, so the command also works there without
+`--user`.
