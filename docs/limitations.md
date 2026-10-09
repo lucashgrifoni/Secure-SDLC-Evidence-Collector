@@ -376,6 +376,13 @@ These are explicitly out of scope for security reports (see
   starting from `risk_assessment.base_release_status`. Re-enriching with
   a newer feed reflects that feed. A bundle built with the default
   `--risk-mode off` keeps its verdict and summary unchanged by `enrich`.
+- When `enrich` changes `release_status` or `risk_assessment`, it also
+  re-renders `report.md` and `summary.html` with the same renderers
+  `run` uses, written together with the bundle (all or nothing). In
+  place, the reports that exist next to the bundle are overwritten. With
+  a different `--output`, each report is written next to the output only
+  if the input bundle's directory had it; no report is created out of
+  nothing. When the verdict does not change, the reports are left alone.
 - `enrich` with neither `--epss-feed` nor `--kev-feed` consults no
   source, so it leaves the bundle unchanged (copying it to `--output`
   when given), prints a warning, and keeps the prior intelligence and

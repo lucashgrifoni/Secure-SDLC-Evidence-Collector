@@ -14,6 +14,11 @@ default mode keeps its verdict and summary unchanged. For a bundle built with
 ``--profile cra-2026``, each record's ``metadata.cra.global_exploitation_signal``
 is recomputed from the new intelligence.
 
+When the verdict or risk assessment changes, ``report.md`` and ``summary.html``
+are re-rendered and written with the bundle as one set: next to the bundle when
+writing in place, or next to ``--output`` for each report the input directory
+had. Otherwise the reports are not touched.
+
 With neither ``--epss-feed`` nor ``--kev-feed`` there is no source to consult:
 the bundle is left unchanged (copied to ``--output`` when given), a warning is
 printed, and the prior intelligence and verdict are kept.
@@ -45,7 +50,9 @@ from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPU
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
-from evidence_collector.exporters._atomic import write_atomic
+from evidence_collector.exporters._atomic import write_all_or_nothing, write_atomic
+from evidence_collector.exporters.html import bundle_to_html
+from evidence_collector.exporters.markdown import bundle_to_markdown
 from evidence_collector.intelligence import (
     EpssFeed,
     KevFeed,
@@ -165,7 +172,15 @@ def register(app: typer.Typer) -> None:
             raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
         enriched = refresh_cra_exploitation_signals(enriched)
         assessment = enriched.summary.risk_assessment
-        write_atomic(destination, enriched.model_dump_json(indent=2, exclude_none=False))
+        payloads = {destination: enriched.model_dump_json(indent=2, exclude_none=False)}
+        if (
+            enriched.summary.release_status != bundle.summary.release_status
+            or assessment != bundle.summary.risk_assessment
+        ):
+            payloads.update(_sibling_reports(enriched, bundle_path, destination))
+        # One set: the bundle and its reports reach disk together or not at all.
+        write_all_or_nothing(payloads)
+        regenerated = sorted(path.name for path in payloads if path != destination)
 
         if is_json_logs():
             emit_event(
@@ -179,6 +194,7 @@ def register(app: typer.Typer) -> None:
                 kev_feed_date=report.kev_feed_date,
                 risk_mode=assessment.mode if assessment else "off",
                 release_status=enriched.summary.release_status.value,
+                reports_regenerated=regenerated,
             )
         else:
             console.print(
@@ -194,7 +210,26 @@ def register(app: typer.Typer) -> None:
                     f"risk mode {assessment.mode}: "
                     f"release_status={enriched.summary.release_status.value}"
                 )
+            for name in regenerated:
+                console.print(f"{name} regenerated → {destination.parent / name}")
             console.print(f"bundle.json → {destination}")
+
+
+_REPORT_RENDERERS = {"report.md": bundle_to_markdown, "summary.html": bundle_to_html}
+
+
+def _sibling_reports(bundle: EvidenceBundle, source: Path, destination: Path) -> dict[Path, str]:
+    """Re-render the reports ``run`` wrote next to ``source``, placed next to ``destination``.
+
+    Only reports that exist next to the input bundle are rendered: in place
+    that overwrites the stale siblings, and with a different ``--output`` it
+    writes the same set next to the output. Nothing is created out of thin air.
+    """
+    return {
+        destination.parent / name: render(bundle)
+        for name, render in _REPORT_RENDERERS.items()
+        if (source.parent / name).is_file()
+    }
 
 
 def _require_usable[FeedT: (EpssFeed, KevFeed)](feed: FeedT, path: Path, label: str) -> FeedT:

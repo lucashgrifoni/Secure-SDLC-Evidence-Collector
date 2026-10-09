@@ -412,3 +412,107 @@ def test_enrich_refreshes_the_cra_global_exploitation_signal(
         b.pop("global_exploitation_signal")
         a.pop("global_exploitation_signal")
         assert a == b
+
+
+# ---------------------------------------------------------------------------
+# report.md / summary.html are renderings of the same verdict as bundle.json.
+# When enrich changes the verdict they must follow it (Codex P1 on #147).
+# Rule: only when release_status or risk_assessment changed; in place, the
+# siblings that exist are overwritten; with a different --output, a report is
+# written next to it only if the input directory had that report.
+# ---------------------------------------------------------------------------
+
+
+def _assert_reports_say(directory: Path, status: str) -> None:
+    assert f"**Release status:** `{status}`" in (directory / "report.md").read_text(
+        encoding="utf-8"
+    )
+    assert f"status-{status}" in (directory / "summary.html").read_text(encoding="utf-8")
+
+
+@pytest.mark.integration
+def test_enrich_in_place_regenerates_reports_when_the_verdict_changes(
+    runner: CliRunner, sample_release_root: Path, tmp_path: Path
+) -> None:
+    out = tmp_path / "out"
+    _run(runner, sample_release_root, out, "--risk-mode", "epss-weighted")
+    _assert_reports_say(out, "ready")
+    result = runner.invoke(
+        app,
+        [
+            "enrich",
+            str(out / "bundle.json"),
+            "--kev-feed",
+            str(_kev_feed(tmp_path, ransomware=True)),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    bundle = EvidenceBundle.model_validate_json((out / "bundle.json").read_text(encoding="utf-8"))
+    assert bundle.summary.release_status is ReleaseStatus.NOT_READY
+    _assert_reports_say(out, "not_ready")
+
+
+@pytest.mark.integration
+def test_enrich_to_another_output_writes_reports_the_input_directory_had(
+    runner: CliRunner, sample_release_root: Path, tmp_path: Path
+) -> None:
+    out = tmp_path / "out"
+    _run(runner, sample_release_root, out, "--risk-mode", "epss-weighted")
+    (out / "summary.html").unlink()
+    dest = tmp_path / "dest"
+    dest.mkdir()
+    _enrich(
+        runner,
+        out / "bundle.json",
+        dest / "enriched.json",
+        "--kev-feed",
+        str(_kev_feed(tmp_path, ransomware=True)),
+    )
+    assert "**Release status:** `not_ready`" in (dest / "report.md").read_text(encoding="utf-8")
+    assert not (dest / "summary.html").exists()
+    # The input's own report is left alone when the output goes elsewhere.
+    assert "**Release status:** `ready`" in (out / "report.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.integration
+def test_enrich_writes_no_reports_when_the_input_directory_had_none(
+    runner: CliRunner, sample_release_root: Path, tmp_path: Path
+) -> None:
+    _run(runner, sample_release_root, tmp_path / "out", "--risk-mode", "epss-weighted")
+    lone = tmp_path / "lone"
+    lone.mkdir()
+    (lone / "bundle.json").write_bytes((tmp_path / "out" / "bundle.json").read_bytes())
+    dest = tmp_path / "dest"
+    dest.mkdir()
+    _enrich(
+        runner,
+        lone / "bundle.json",
+        dest / "bundle.json",
+        "--kev-feed",
+        str(_kev_feed(tmp_path, ransomware=True)),
+    )
+    assert sorted(p.name for p in dest.iterdir()) == ["bundle.json"]
+
+
+@pytest.mark.integration
+def test_enrich_leaves_reports_alone_when_the_verdict_is_unchanged(
+    runner: CliRunner, sample_release_root: Path, tmp_path: Path
+) -> None:
+    out = tmp_path / "out"
+    _run(runner, sample_release_root, out)  # default mode: verdict never changes
+    before = {name: (out / name).read_bytes() for name in ("report.md", "summary.html")}
+    result = runner.invoke(
+        app,
+        [
+            "enrich",
+            str(out / "bundle.json"),
+            "--kev-feed",
+            str(_kev_feed(tmp_path, ransomware=True)),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert {name: (out / name).read_bytes() for name in before} == before
+    # And the no-feed no-op touches nothing either.
+    result = runner.invoke(app, ["enrich", str(out / "bundle.json")])
+    assert result.exit_code == 0, result.output
+    assert {name: (out / name).read_bytes() for name in before} == before
