@@ -219,3 +219,21 @@ def test_cra_profile_reports_kev_cve_that_has_no_epss_record() -> None:
     bundle = _bundle([evidence.model_copy(update={"vulnerability_intelligence": intel})])
     annotated = apply_profile(bundle, ReleaseProfile.CRA_2026)
     assert annotated.evidence[0].metadata["cra"]["global_exploitation_signal"] == "kev_listed"
+
+
+def test_refresh_cra_signal_updates_only_cra_annotated_records() -> None:
+    from evidence_collector.application.profiles import refresh_cra_exploitation_signals
+
+    annotated = apply_profile(_bundle([_evidence(in_kev=True)]), ReleaseProfile.CRA_2026)
+    stale_meta = dict(annotated.evidence[0].metadata)
+    stale_meta["cra"] = {**stale_meta["cra"], "global_exploitation_signal": "unavailable"}
+    stale = annotated.model_copy(
+        update={"evidence": [annotated.evidence[0].model_copy(update={"metadata": stale_meta})]}
+    )
+    refreshed = refresh_cra_exploitation_signals(stale)
+    assert refreshed.evidence[0].metadata["cra"]["global_exploitation_signal"] == "kev_listed"
+    # The input is not mutated.
+    assert stale.evidence[0].metadata["cra"]["global_exploitation_signal"] == "unavailable"
+    # A bundle without the CRA profile is returned as-is.
+    plain = _bundle([_evidence(in_kev=True)])
+    assert refresh_cra_exploitation_signals(plain) is plain

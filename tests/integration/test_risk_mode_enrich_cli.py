@@ -318,3 +318,97 @@ def test_enrich_exits_three_on_an_unknown_recorded_risk_mode(
     )
     assert result.exit_code == 3, result.output
     assert not target.exists()
+
+
+# ---------------------------------------------------------------------------
+# enrich with no feed consults no source: it must not overwrite intelligence or
+# re-derive the verdict (Codex P1 on #147). Re-enriching a not_ready bundle with
+# plain `enrich bundle.json` replaced every CVE's intelligence with data from two
+# empty feeds and promoted the release back to its presence-based status, with a
+# rationale claiming no exploitable CVEs.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_enrich_without_feeds_keeps_the_prior_risk_verdict_and_intelligence(
+    runner: CliRunner, sample_release_root: Path, tmp_path: Path
+) -> None:
+    _run(runner, sample_release_root, tmp_path / "out", "--risk-mode", "epss-weighted")
+    blocked = _enrich(
+        runner,
+        tmp_path / "out" / "bundle.json",
+        tmp_path / "blocked.json",
+        "--kev-feed",
+        str(_kev_feed(tmp_path, ransomware=True)),
+    )
+    assert blocked.summary.release_status is ReleaseStatus.NOT_READY
+
+    target = tmp_path / "again.json"
+    result = runner.invoke(app, ["enrich", str(tmp_path / "blocked.json"), "--output", str(target)])
+    assert result.exit_code == 0, result.output
+    assert "no feed" in result.output.lower()
+    again = EvidenceBundle.model_validate_json(target.read_text(encoding="utf-8"))
+    assert again.summary == blocked.summary
+    assert again.summary.release_status is ReleaseStatus.NOT_READY
+    assert again.evidence == blocked.evidence
+
+
+@pytest.mark.integration
+def test_enrich_without_feeds_in_place_leaves_the_bundle_unchanged(
+    runner: CliRunner, sample_release_root: Path, tmp_path: Path
+) -> None:
+    _run(runner, sample_release_root, tmp_path / "out", "--risk-mode", "epss-weighted")
+    blocked = tmp_path / "blocked.json"
+    _enrich(
+        runner,
+        tmp_path / "out" / "bundle.json",
+        blocked,
+        "--kev-feed",
+        str(_kev_feed(tmp_path, ransomware=True)),
+    )
+    before = blocked.read_bytes()
+    result = runner.invoke(app, ["enrich", str(blocked)])
+    assert result.exit_code == 0, result.output
+    assert blocked.read_bytes() == before
+
+
+# ---------------------------------------------------------------------------
+# The CRA projection's exploitation signal is computed by `run --profile
+# cra-2026` before any intelligence exists ("unavailable"); enrich must refresh
+# it (Codex P2 on #147).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_enrich_refreshes_the_cra_global_exploitation_signal(
+    runner: CliRunner, sample_release_root: Path, tmp_path: Path
+) -> None:
+    built = _run(runner, sample_release_root, tmp_path / "out", "--profile", "cra-2026")
+
+    def signals(bundle: EvidenceBundle) -> dict[str, str]:
+        return {
+            e.evidence_id: e.metadata["cra"]["global_exploitation_signal"] for e in bundle.evidence
+        }
+
+    cve_ids = {e.evidence_id for e in built.evidence if SAMPLE_CVE in e.cve_ids}
+    assert cve_ids
+    assert set(signals(built).values()) == {"unavailable"}
+
+    enriched = _enrich(
+        runner,
+        tmp_path / "out" / "bundle.json",
+        tmp_path / "enriched.json",
+        "--kev-feed",
+        str(_kev_feed(tmp_path, ransomware=False)),
+    )
+    after = signals(enriched)
+    assert {after[i] for i in cve_ids} == {"kev_listed"}
+    # Records without CVEs received no intelligence and stay unavailable.
+    assert {v for i, v in after.items() if i not in cve_ids} <= {"unavailable"}
+    # Nothing else in the CRA projection moves.
+    for before_e, after_e in zip(built.evidence, enriched.evidence, strict=True):
+        b = dict(before_e.metadata["cra"])
+        a = dict(after_e.metadata["cra"])
+        b.pop("global_exploitation_signal")
+        a.pop("global_exploitation_signal")
+        assert a == b

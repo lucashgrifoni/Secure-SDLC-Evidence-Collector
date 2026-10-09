@@ -376,6 +376,13 @@ These are explicitly out of scope for security reports (see
   starting from `risk_assessment.base_release_status`. Re-enriching with
   a newer feed reflects that feed. A bundle built with the default
   `--risk-mode off` keeps its verdict and summary unchanged by `enrich`.
+- `enrich` with neither `--epss-feed` nor `--kev-feed` consults no
+  source, so it leaves the bundle unchanged (copying it to `--output`
+  when given), prints a warning, and keeps the prior intelligence and
+  verdict. It never turns "no feed" into a clean assessment.
+- For a bundle built with `--profile cra-2026`, `enrich` also recomputes
+  each record's `metadata.cra.global_exploitation_signal`, which `run`
+  could only set to `unavailable`.
 - `enrich` exits `0` whatever the verdict. To gate a pipeline on the
   risk-weighted verdict, read `summary.release_status` from the enriched
   bundle, or pass its evidence (`{"evidence": [...]}`) to

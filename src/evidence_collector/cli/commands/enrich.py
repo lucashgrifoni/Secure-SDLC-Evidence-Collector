@@ -10,11 +10,18 @@ collector remains side-effect-free and air-gap-friendly.
 When the bundle was built with ``--risk-mode epss-weighted`` (it carries a
 ``summary.risk_assessment``), the verdict is re-derived under that recorded
 mode and threshold once the intelligence is attached. A bundle built in the
-default mode keeps its verdict and summary unchanged.
+default mode keeps its verdict and summary unchanged. For a bundle built with
+``--profile cra-2026``, each record's ``metadata.cra.global_exploitation_signal``
+is recomputed from the new intelligence.
+
+With neither ``--epss-feed`` nor ``--kev-feed`` there is no source to consult:
+the bundle is left unchanged (copied to ``--output`` when given), a warning is
+printed, and the prior intelligence and verdict are kept.
 
 Exit codes:
 
-* 0 — enrichment ran (with or without matches); bundle written to ``--output``.
+* 0 — enrichment ran (with or without matches), or was skipped because no
+  feed was supplied; bundle written to ``--output``.
   The exit code does not reflect ``release_status``; gate on the bundle.
 * 3 — bundle path missing or malformed (including an unknown recorded risk
   mode), or a feed path was supplied but the file is unreadable / malformed.
@@ -32,6 +39,7 @@ from pydantic import ValidationError
 from rich.markup import escape
 
 from evidence_collector.application.orchestrator import rederive_risk_verdict
+from evidence_collector.application.profiles import refresh_cra_exploitation_signals
 from evidence_collector.cli._errors import report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
 from evidence_collector.cli._logging import emit_event
@@ -82,7 +90,8 @@ def register(app: typer.Typer) -> None:
                 "--epss-feed",
                 help=(
                     "Local EPSS feed file (CSV or .csv.gz). Without this flag "
-                    "the enrichment runs with an empty EPSS feed (KEV-only). "
+                    "the enrichment runs with an empty EPSS feed (KEV-only); with "
+                    "neither feed the bundle is left unchanged. "
                     "Download from https://epss.cyentia.com/."
                 ),
             ),
@@ -93,7 +102,8 @@ def register(app: typer.Typer) -> None:
                 "--kev-feed",
                 help=(
                     "Local CISA KEV catalog JSON. Without this flag the "
-                    "enrichment runs with an empty KEV catalog (EPSS-only). "
+                    "enrichment runs with an empty KEV catalog (EPSS-only); with "
+                    "neither feed the bundle is left unchanged. "
                     "Download from https://www.cisa.gov/sites/default/files/"
                     "feeds/known_exploited_vulnerabilities.json."
                 ),
@@ -111,6 +121,21 @@ def register(app: typer.Typer) -> None:
     ) -> None:
         """Attach EPSS + CISA KEV intelligence to a bundle.json."""
         bundle = _load_bundle(bundle_path)
+        destination = output or bundle_path
+        if epss_feed is None and kev_feed is None:
+            # No source to consult. Enriching with two empty feeds would replace
+            # every CVE's intelligence with nothing and re-derive the verdict as
+            # if a clean assessment had been made: a not_ready KEV-ransomware
+            # bundle came back at its presence-based status. Keep it as it is.
+            report_error(
+                f"enrich: no feed supplied (--epss-feed / --kev-feed); {bundle_path} "
+                "left unchanged, prior intelligence and verdict kept",
+                event="enrich_skipped",
+                bundle=str(destination),
+            )
+            if destination != bundle_path:
+                write_atomic(destination, bundle_path.read_text(encoding="utf-8-sig"))
+            return
         # A feed that was asked for but could not be used must fail loudly.
         # The loaders degrade an unreadable feed into an empty one so the
         # library never raises; at the CLI boundary that would be
@@ -138,8 +163,8 @@ def register(app: typer.Typer) -> None:
                 bundle=str(bundle_path),
             )
             raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
+        enriched = refresh_cra_exploitation_signals(enriched)
         assessment = enriched.summary.risk_assessment
-        destination = output or bundle_path
         write_atomic(destination, enriched.model_dump_json(indent=2, exclude_none=False))
 
         if is_json_logs():

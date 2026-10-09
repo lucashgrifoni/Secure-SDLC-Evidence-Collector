@@ -241,6 +241,31 @@ def _cra_metadata(context: CraReportingContext | None) -> dict[str, Any]:
     return metadata
 
 
+def refresh_cra_exploitation_signals(bundle: EvidenceBundle) -> EvidenceBundle:
+    """Recompute ``metadata.cra.global_exploitation_signal`` from current intelligence.
+
+    ``run --profile cra-2026`` computes the signal before any EPSS / KEV data
+    exists, so every record says ``unavailable``. ``enrich`` attaches the
+    intelligence later and calls this to bring the CRA projection in line.
+    Only that one key changes; a bundle with no CRA-annotated record is
+    returned as-is, and the input is never mutated.
+    """
+    if not any(isinstance(e.metadata.get("cra"), dict) for e in bundle.evidence):
+        return bundle
+    new_evidence = []
+    for evidence in bundle.evidence:
+        cra = evidence.metadata.get("cra")
+        if isinstance(cra, dict):
+            metadata = dict(evidence.metadata)
+            metadata["cra"] = {
+                **cra,
+                "global_exploitation_signal": _global_exploitation_signal(evidence),
+            }
+            evidence = evidence.model_copy(update={"metadata": metadata})
+        new_evidence.append(evidence)
+    return bundle.model_copy(update={"evidence": new_evidence})
+
+
 def apply_profile(
     bundle: EvidenceBundle,
     profile: ReleaseProfile,
