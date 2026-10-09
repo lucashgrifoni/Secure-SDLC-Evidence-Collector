@@ -236,3 +236,79 @@ def test_met_control_carries_no_risk_or_reason() -> None:
     assert "related-risks" not in finding
     assert all(p["name"] != "not_satisfied_reason" for p in finding["props"])
     assert "risks" not in _results(doc)
+
+
+def _all_uuids(node: Any, key: str = "uuid") -> set[str]:
+    """Every value stored under ``key`` anywhere in ``node``."""
+    found: set[str] = set()
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k == key and isinstance(v, str):
+                found.add(v)
+            found |= _all_uuids(v, key)
+    elif isinstance(node, list):
+        for item in node:
+            found |= _all_uuids(item, key)
+    return found
+
+
+def _waived_bundle(application: str, repository: str) -> EvidenceBundle:
+    waived = _evaluation("SSDF-PW.1", ControlEvaluationStatus.WAIVED).model_copy(
+        update={"exception_refs": ["EXC-7"]}
+    )
+    bundle = _bundle(
+        [_evaluation("SSDF-PW.4", ControlEvaluationStatus.MET), waived],
+        [_waiver("EXC-7", "SSDF-PW.1")],
+    )
+    return bundle.model_copy(
+        update={"application": Application(name=application, repository=repository)}
+    )
+
+
+def test_uuids_do_not_collide_across_applications_sharing_a_release_id() -> None:
+    # Two services cut on the same calendar release id are two OSCAL subjects.
+    # A GRC store keyed on uuid used to merge one service's findings into the
+    # other's, because only the release id and control id seeded the uuids.
+    billing = export_oscal_assessment_results(_waived_bundle("billing-api", "acme/billing-api"))
+    payments = export_oscal_assessment_results(_waived_bundle("payments-api", "acme/payments-api"))
+
+    assert _all_uuids(billing).isdisjoint(_all_uuids(payments))
+
+
+def test_uuids_differ_for_the_same_application_name_in_another_repository() -> None:
+    first = export_oscal_assessment_results(_waived_bundle("api", "acme/api"))
+    second = export_oscal_assessment_results(_waived_bundle("api", "other-org/api"))
+
+    assert _all_uuids(first).isdisjoint(_all_uuids(second))
+
+
+def test_every_internal_reference_resolves_inside_the_document() -> None:
+    doc = export_oscal_assessment_results(_waived_bundle("acme-api", "acme/api"))
+    ar = doc["assessment-results"]
+    result = ar["results"][0]
+    observation_uuids = {o["uuid"] for o in result["observations"]}
+    risk_uuids = {r["uuid"] for r in result["risks"]}
+    resource_uuids = {r["uuid"] for r in ar["back-matter"]["resources"]}
+
+    assert _all_uuids(doc, "observation-uuid") <= observation_uuids
+    assert _all_uuids(doc, "risk-uuid") <= risk_uuids
+    # No reference may point at a uuid the document does not define.
+    assert _all_uuids(doc, "subject-uuid") == set()
+
+    fragments = {href[1:] for href in _all_uuids(doc, "href") if href.startswith("#")}
+    assert ar["import-ap"]["href"].startswith("#")
+    assert fragments, "import-ap and the evidence links are fragment references"
+    assert fragments <= resource_uuids
+
+
+def test_observation_links_each_evidence_ref_to_a_back_matter_resource() -> None:
+    doc = export_oscal_assessment_results(_waived_bundle("acme-api", "acme/api"))
+    ar = doc["assessment-results"]
+    resources = {r["uuid"]: r for r in ar["back-matter"]["resources"]}
+    observation = ar["results"][0]["observations"][0]
+
+    links = observation["relevant-evidence"]
+    assert len(links) == 1
+    resource = resources[links[0]["href"][1:]]
+    assert {"name": "evidence_id", "value": "sca-1"} in resource["props"]
+    assert links[0]["description"]
