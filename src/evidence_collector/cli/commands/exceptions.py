@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from pydantic import ValidationError
 from rich.table import Table
 
 from evidence_collector.cli._errors import report_error
@@ -45,6 +46,18 @@ def _window_note(exception: EvidenceException, now: datetime) -> str:
             f"{exception.approved_at.isoformat()} — waives nothing)[/yellow]"
         )
     return ""
+
+
+def _file_prefix(verb: str, path: Path, exc: BaseException) -> str:
+    """Name the file once in a parse failure.
+
+    Parser messages already name the file they rejected, so prefixing them
+    with the path printed it twice. Pydantic details are reported without the
+    parser's wrapper (see ``error_detail``), so only they need the path here.
+    """
+    if isinstance(exc.__cause__, ValidationError):
+        return f"{verb} exception file {path}"
+    return f"{verb} exception file"
 
 
 def register(app: typer.Typer) -> None:
@@ -90,7 +103,10 @@ def register(app: typer.Typer) -> None:
             except (ParseError, FileNotFoundError) as exc:
                 invalid += 1
                 report_error(
-                    f"Invalid exception file {path}", exc, event="exception_invalid", path=str(path)
+                    _file_prefix("Invalid", path, exc),
+                    exc,
+                    event="exception_invalid",
+                    path=str(path),
                 )
                 continue
             # Expiry is not a schema error, so it must not change this
@@ -152,7 +168,10 @@ def register(app: typer.Typer) -> None:
             except (ParseError, FileNotFoundError) as err:
                 invalid += 1
                 report_error(
-                    f"Skipped exception file {path}", err, event="exception_invalid", path=str(path)
+                    _file_prefix("Skipped", path, err),
+                    err,
+                    event="exception_invalid",
+                    path=str(path),
                 )
                 continue
             parseable += 1

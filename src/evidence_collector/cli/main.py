@@ -24,7 +24,7 @@ import typer
 from evidence_collector import __version__
 from evidence_collector.cli._errors import error_console, report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
-from evidence_collector.cli._logging import configure_logging
+from evidence_collector.cli._logging import configure_logging, emit_event
 from evidence_collector.cli._state import console, is_json_logs, set_json_logs
 from evidence_collector.cli.commands import register_all
 from evidence_collector.cli.commands.doctor import doctor_checks as _doctor_checks
@@ -62,7 +62,10 @@ def main_callback(
     """Secure SDLC Evidence Collector CLI."""
     set_json_logs(json_logs)
     if version:
-        typer.echo(__version__)
+        if is_json_logs():
+            emit_event("version", version=__version__)
+        else:
+            typer.echo(__version__)
         raise typer.Exit(code=0)
     configure_logging(verbose)
     if ctx.invoked_subcommand is None:

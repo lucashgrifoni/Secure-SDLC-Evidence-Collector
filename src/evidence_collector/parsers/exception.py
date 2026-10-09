@@ -54,9 +54,7 @@ def _parse_datetime(value: Any, source: Path, field_name: str) -> datetime:
         try:
             return datetime.fromisoformat(value.replace("Z", "+00:00"))
         except ValueError as exc:
-            raise ParseError(
-                f"Invalid ISO 8601 datetime in '{field_name}' in {source}: {value}"
-            ) from exc
+            raise ParseError(f"Invalid ISO 8601 datetime in '{field_name}' in {source}") from exc
     raise ParseError(f"Unsupported {field_name} type in {source}: {type(value).__name__}")
 
 
@@ -87,5 +85,7 @@ def parse_exception(path: str | Path) -> EvidenceException:
             reference=(str(data["reference"]) if data.get("reference") is not None else None),
             scope=scope,
         )
+    except ParseError:
+        raise
     except ValueError as exc:
         raise ParseError(f"Invalid exception file {resolved}: {exc}") from exc

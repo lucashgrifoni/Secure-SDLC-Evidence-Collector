@@ -185,3 +185,172 @@ def test_evaluate_surfaces_foreign_release_evidence_in_its_result(
     else:
         assert "other-release" in result.stdout
         assert "Collection warnings" in result.stdout
+
+
+def _conflicting_vex(tmp_path: Path, bundle_file: Path) -> Path:
+    """A consumed OpenVEX statement that disagrees with the bundle's own one."""
+    bundle = json.loads(bundle_file.read_text(encoding="utf-8"))
+    cve = next(cve for item in bundle["evidence"] for cve in item.get("cve_ids") or [])
+    source = tmp_path / "vendor.openvex.json"
+    source.write_text(
+        json.dumps(
+            {
+                "@context": "https://openvex.dev/ns/v0.2.0",
+                "statements": [
+                    {
+                        "vulnerability": {"name": cve},
+                        "status": "not_affected",
+                        "justification": "vulnerable_code_not_present",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return source
+
+
+@pytest.mark.parametrize("command", ["statement", "enrich", "vex"])
+@pytest.mark.parametrize("json_logs", [False, True])
+def test_command_specific_failures_use_the_right_stream(
+    command: str, json_logs: bool, bundle_file: Path, tmp_path: Path
+) -> None:
+    args = {
+        "statement": ["statement", str(bundle_file), "--predicate-type", "bogus"],
+        "enrich": ["enrich", str(bundle_file), "--epss-feed", str(tmp_path / "nofeed.csv")],
+        "vex": [
+            "vex",
+            str(bundle_file),
+            "--output",
+            str(tmp_path / "openvex.json"),
+            "--consume",
+            str(_conflicting_vex(tmp_path, bundle_file)),
+            "--policy",
+            "fail",
+        ],
+    }[command]
+    result = _run(*(["--json-logs"] if json_logs else []), *args)
+    assert result.returncode == 3, result.stdout + result.stderr
+    if json_logs:
+        assert result.stderr == ""
+        events = [json.loads(line) for line in result.stdout.splitlines()]
+        assert len(events) == 1
+        assert events[0]["event"] == f"{command}_failed"
+    else:
+        assert result.stdout == ""
+        assert len(result.stderr.splitlines()) == 1
+
+
+def test_verify_accepts_an_algorithm_prefixed_pin(bundle_file: Path) -> None:
+    digest = structural_sha256(bundle_file)
+    assert _run("verify", str(bundle_file), "--expected", f"sha256:{digest}").returncode == 0
+    assert _run("verify", str(bundle_file), "--expected", f"SHA256:{digest}").returncode == 0
+    assert _run("verify", str(bundle_file), "--expected", f"sha256:{'0' * 64}").returncode == 2
+    assert _run("verify", str(bundle_file), "--expected", "sha256:").returncode == 3
+    assert _run("verify", str(bundle_file), "--expected", f"md5:{digest}").returncode == 3
+
+
+def test_verify_help_states_the_pin_format_and_exit_codes() -> None:
+    help_text = " ".join(_run("verify", "--help").stdout.split())
+    assert "sha256:" in help_text
+    assert "64 hexadecimal" in help_text
+    assert "exit" in help_text.lower() and "3" in help_text
+
+
+def test_json_logs_version_is_an_event() -> None:
+    result = _run("--json-logs", "--version")
+    assert result.returncode == 0
+    event = json.loads(result.stdout)
+    assert event["event"] == "version"
+    assert event["version"] == _run("--version").stdout.strip()
+
+
+# Commands whose stdout is a document or data payload, and the event that
+# carries it under --json-logs: (argv, event name, payload key).
+_JSON_LOGS_PAYLOADS: dict[str, tuple[list[str], str, str]] = {
+    "schema": (["schema"], "schema_emitted", "schema"),
+    "oscal": (["oscal", "--kind", "catalog"], "oscal_emitted", "document"),
+    "plugins": (["plugins"], "plugins_listed", "plugins"),
+    "controls": (["controls"], "controls_listed", "controls"),
+    "doctor": (["doctor", "--json"], "doctor_checked", "checks"),
+    "compare": (["compare", "{bundle}", "{bundle}", "--format", "json"], "bundles_compared", ""),
+    "verify": (["verify", "{bundle}"], "verify_computed", "sha256"),
+    "exceptions": (["exceptions", "list", "{exceptions}"], "exception_listed", "exception"),
+}
+
+
+@pytest.mark.parametrize("command", sorted(_JSON_LOGS_PAYLOADS))
+def test_json_logs_payload_shapes_are_pinned_and_documented(
+    command: str, bundle_file: Path, sample_release_root: Path
+) -> None:
+    argv, event_name, key = _JSON_LOGS_PAYLOADS[command]
+    argv = [
+        arg.format(bundle=bundle_file, exceptions=sample_release_root / "exceptions")
+        for arg in argv
+    ]
+    result = _run("--json-logs", *argv)
+    assert result.returncode == 0, result.stderr
+    events = [json.loads(line) for line in result.stdout.splitlines()]
+    event = next(item for item in events if item["event"] == event_name)
+    if key:
+        assert key in event
+    doc = (
+        Path(__file__).resolve().parents[2] / "docs" / "evidence-profile-migration.md"
+    ).read_text(encoding="utf-8")
+    assert f"`{event_name}`" in doc
+    if key:
+        assert f"`.{key}`" in doc
+
+
+def test_documents_stay_raw_when_json_logs_are_off(bundle_file: Path) -> None:
+    from evidence_collector.schema import bundle_json_schema_text
+
+    assert _run("schema").stdout == bundle_json_schema_text()
+    catalog = json.loads(_run("oscal", "--kind", "catalog").stdout)
+    assert "event" not in catalog and "catalog" in catalog
+    comparison = json.loads(
+        _run("compare", str(bundle_file), str(bundle_file), "--format", "json").stdout
+    )
+    assert "event" not in comparison
+    doctor = json.loads(_run("doctor", "--json").stdout)
+    assert set(doctor) == {"checks", "failed"}
+
+
+def test_exception_errors_name_the_file_once_and_do_not_echo_values(
+    tmp_path: Path, sample_release_root: Path
+) -> None:
+    template = next((sample_release_root / "exceptions").glob("*.yaml")).read_text(encoding="utf-8")
+    lines = [
+        'expires_at: "SECRETDATE-ghp_xyz"' if line.startswith("expires_at:") else line
+        for line in template.splitlines()
+    ]
+    bad = tmp_path / "bad_exc.yaml"
+    bad.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    for args in (["exceptions", "validate", str(bad)], ["exceptions", "list", str(tmp_path)]):
+        result = _run(*args)
+        assert "SECRETDATE" not in result.stdout + result.stderr
+        assert len(result.stderr.splitlines()) == 1
+        assert result.stderr.count("exception file") == 1
+        assert "expires_at" in result.stderr
+
+
+def test_attestation_errors_name_the_field_without_echoing_the_value(tmp_path: Path) -> None:
+    from evidence_collector.parsers import parse_attestation
+    from evidence_collector.parsers._common import ParseError
+
+    base = {
+        "evidence_type": "code_review",
+        "producer": "p",
+        "subject_type": "pull_request",
+        "subject_ref": "PR-1",
+    }
+    for field, value in (
+        ("confidence", "extremely-high-SECRETVALUE"),
+        ("generated_at", "SECRETVALUE"),
+    ):
+        source = tmp_path / f"{field}.json"
+        source.write_text(json.dumps({**base, field: value}), encoding="utf-8")
+        with pytest.raises(ParseError) as caught:
+            parse_attestation(source)
+        assert field in str(caught.value)
+        assert "SECRETVALUE" not in str(caught.value)

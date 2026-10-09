@@ -160,10 +160,12 @@ def _require_usable[FeedT: (EpssFeed, KevFeed)](feed: FeedT, path: Path, label: 
         reason = "file not found"
     else:
         reason = "no usable records (unreadable, empty, or malformed)"
-    if is_json_logs():
-        emit_event("enrich_failed", feed=str(path), feed_kind=label, reason=reason)
-    else:
-        console.print(f"[red]{label} feed {path} could not be used:[/red] {reason}")
+    report_error(
+        f"{label} feed {path} could not be used: {reason}",
+        event="enrich_failed",
+        feed=str(path),
+        feed_kind=label,
+    )
     raise typer.Exit(code=EXIT_INPUT_ERROR)
 
 

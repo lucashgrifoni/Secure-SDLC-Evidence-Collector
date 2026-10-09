@@ -18,9 +18,32 @@ regenerating evidence.
 
 `verify` checks the bundle schema before computing a digest. Invalid input or a
 pin other than 64 hexadecimal characters exits 3; a different valid pin exits 2;
-a match exits 0. Uppercase hexadecimal and surrounding whitespace are accepted.
-JSON logging emits one JSON event per stdout line, including usage errors.
-Human errors use stderr.
+a match exits 0. Uppercase hexadecimal, surrounding whitespace and a
+case-insensitive `sha256:` prefix are accepted.
+
+With `--json-logs` or `SDLC_JSON_LOGS=1`, every stdout line is one JSON event,
+including usage errors. `--version` prints `{"event": "version", "version": ...}`.
+`--help` is exempt and stays plain text. Human errors use stderr.
+
+Commands that print a document or data on stdout now wrap it in an event under
+JSON logs. A pipeline that sets `SDLC_JSON_LOGS=1` globally and redirects one of
+these commands into a file gets the event line, so read the payload key:
+
+| Command | Event | Payload |
+|---|---|---|
+| `schema` without `--output` | `schema_emitted` | `.schema` holds the JSON Schema |
+| `oscal` without `--output` | `oscal_emitted` | `.document` holds the OSCAL document, `.kind` names it |
+| `plugins` | `plugins_listed` | `.plugins` maps each group to its names |
+| `controls` | `controls_listed` | `.controls` lists the catalog |
+| `doctor`, `doctor --json` | `doctor_checked` | `.checks` and `.failed`, as printed by `--json` |
+| `compare`, `compare --format json` | `bundles_compared` | the comparison fields sit at the top level beside `event` |
+| `exceptions list` | `exception_listed` per file, then `exceptions_summary` | `.exception` |
+| `exceptions validate` | `exception_validated` per file | `.exception` |
+| `verify` without `--expected` | `verify_computed` | `.sha256`, unchanged from 3.2.0 |
+
+With `--output`, `schema` and `oscal` write the bare document to the file and
+emit only the event naming it. When JSON logs are off, `schema`, `oscal`,
+`compare --format json` and `doctor --json` still print the raw document.
 
 Inputs accept UTF-8 with or without a BOM; raw hashes include the original BOM.
 UTF-16 remains unsupported. Markdown reports escape untrusted emphasis, code

@@ -90,10 +90,7 @@ def register(app: typer.Typer) -> None:
                 f"Unknown --predicate-type '{predicate_type}'. Valid values: "
                 f"{', '.join(PREDICATE_TYPE_NAMES)}."
             )
-            if is_json_logs():
-                emit_event("statement_failed", bundle=str(bundle_path), reason=message)
-            else:
-                console.print(f"[red]{message}[/red]")
+            report_error(message, event="statement_failed", bundle=str(bundle_path))
             raise typer.Exit(code=EXIT_INPUT_ERROR)
         try:
             raw = json.loads(bundle_path.read_text(encoding="utf-8-sig"))

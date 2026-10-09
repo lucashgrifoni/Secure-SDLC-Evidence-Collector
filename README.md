@@ -225,6 +225,21 @@ Usage errors exit `3` as well: an unknown flag, a missing required option, or a
 rejected value such as `--fail-on banana`. The CLI replaces Click's default of
 `2` for them, because `2` is the `not_ready` verdict.
 
+### JSON logs (`--json-logs`)
+
+`--json-logs`, or `SDLC_JSON_LOGS=1` in the environment, turns stdout into
+NDJSON: one JSON object per line, each with an `event` field, failures and
+usage errors included. `--version` prints a `version` event; `--help` stays
+plain text. Without JSON logs, human-readable errors go to stderr.
+
+Commands whose output is a document wrap it in an event under JSON logs:
+`schema` prints `schema_emitted` with the schema under `.schema`, and `oscal`
+prints `oscal_emitted` with the document under `.document`. Use `--output` to
+write the bare document to a file, or leave JSON logs off for that step.
+`compare --format json` and `doctor --json` print the raw document only when
+JSON logs are off. The full list of events and payload keys is in
+[the evidence profile migration notes](docs/evidence-profile-migration.md#bundle-pins-and-cli).
+
 ### Migrating to 3.0.0
 
 These changes are observable to existing callers. The first two change exit

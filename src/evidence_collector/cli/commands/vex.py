@@ -113,12 +113,13 @@ def register(app: typer.Typer) -> None:
                     policy=MergeConflictPolicy(policy),
                 )
             except VexMergeConflictError as exc:
-                if is_json_logs():
-                    emit_event(
-                        "vex_failed", bundle=str(bundle_path), reason=str(exc), policy=policy
-                    )
-                else:
-                    console.print(f"[red]VEX merge conflict:[/red] {exc}")
+                report_error(
+                    "VEX merge conflict",
+                    exc,
+                    event="vex_failed",
+                    bundle=str(bundle_path),
+                    policy=policy,
+                )
                 raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
         write_atomic(output, json.dumps(document, indent=2, sort_keys=False))
