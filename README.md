@@ -192,13 +192,20 @@ a `conditional` release exits `0`.** Pass `--fail-on conditional` if a condition
 verdict must stop the pipeline.
 
 `bundle` is a partial alias of `evaluate`: it always runs with `--fail-on
-not_ready` and does not accept `--owner-team`. Use `evaluate` when you need
-either.
+not_ready` and does not accept `--owner-team` or `--exceptions-dir`, so
+waivers cannot be applied through it. Use `evaluate` when you need any of
+them.
 
 Every other command reports a verdict but never encodes it in the exit status —
 `compare`, `controls`, `plugins`, `schema`, `oscal` and `doctor` exit `0` on
 success regardless of the release status, and `compare` in particular does
 **not** fail a build on regression.
+
+`doctor` is the one exception to the taxonomy below: it exits `0` when every
+required check passes and `1` when any required check fails (optional checks,
+such as a missing token or `cosign`, never fail). That `1` is not a
+`conditional` verdict. It is kept for compatibility in the 4.x line and will
+move to `3` in the next major release, in line with every other failure.
 
 **Every failure that is not a release verdict exits `3`.** A missing or
 malformed bundle, an unreadable catalog, an invalid `--commit-sha`, an
@@ -209,12 +216,13 @@ traceback). The full taxonomy:
 | Code | Meaning | Where |
 |---|---|---|
 | `0` | `ready`, or a command that does not gate | everywhere |
-| `1` | `conditional` | `run`, `evaluate`, `bundle` (subject to `--fail-on`) |
+| `1` | `conditional`; for `doctor`, a failed required check (see above) | `run`, `evaluate`, `bundle` (subject to `--fail-on`), `doctor` |
 | `2` | `not_ready`; for `verify --expected`, a digest that does not match | `run`, `evaluate`, `bundle`, `verify --expected` |
 | `3` | the command could not run: bad input, unreadable file, failed validation | every command |
 
-A wrapper can therefore branch on the code alone. `1` means `conditional` and
-nothing else; `3` means "nothing was produced, do not read this as a verdict".
+A wrapper can therefore branch on the code alone. Outside `doctor`, `1` means
+`conditional` and nothing else; `3` means "nothing was produced, do not read
+this as a verdict".
 
 > Before `3.0.0` this was inconsistent: `vex`, `guac`, `statement`, `enrich`
 > and `oscal` returned `2` for a malformed input — the same code as a
@@ -347,7 +355,7 @@ environment for you. Add to your `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector
-    rev: v2.2.0            # first tag that ships .pre-commit-hooks.yaml
+    rev: v4.0.0            # pin the release you run; the schema hook writes that release's contract
     hooks:
       - id: sdlc-evidence-validate-exceptions   # validate staged waiver files
       - id: sdlc-evidence-doctor                # smoke-test the pinned release
