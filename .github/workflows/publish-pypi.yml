@@ -197,19 +197,17 @@ jobs:
           python -m build --wheel --sdist --outdir dist-recheck
           python scripts/normalize_sdist.py dist-recheck
 
-      # Gate behaviour: the wheel must be bit-for-bit identical (hard fail).
-      # The normalised sdist is expected to match too, but a mismatch stays a
-      # warning until a real release has confirmed the rewritten
-      # scripts/normalize_sdist.py: this job runs after the tag exists, so a
-      # hard failure here would leave a tag with nothing published, which is
-      # how 3.0.0 was lost. A first build with no sdist at all still fails.
+      # Gate behaviour: the wheel and the normalised sdist must both be
+      # bit-for-bit identical (hard fail). The sdist mismatch was a warning
+      # until 4.0.0 confirmed the rewritten scripts/normalize_sdist.py in a
+      # real release ("Reproducible distribution" for both files).
       - name: Compare SHA-256 between back-to-back builds
         run: |
           set -euo pipefail
           shopt -s nullglob
           artifact_fail=0
           for suffix in whl tar.gz; do
-            if [ "$suffix" = whl ]; then level=error; else level=warning; fi
+            level=error
             report() {
               echo "::$level::$1"
               if [ "$level" = error ]; then artifact_fail=1; fi

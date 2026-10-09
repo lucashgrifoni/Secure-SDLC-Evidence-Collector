@@ -85,13 +85,10 @@ comes from that commit. Historical workflows had different behavior;
 inspect the workflow at the release tag when rebuilding older versions.
 
 The job builds everything twice from the same checkout and compares the
-hashes. A missing distribution or a wheel mismatch fails publication. An sdist
-mismatch between the two builds is reported as a `::warning::` and does not
-block publication, because the job runs after the tag exists and a failure
-would burn the version, as it did for 3.0.0. `scripts/normalize_sdist.py` was
-rewritten for 4.0.0 and has not yet run in a real release. Once a release log
-shows `Reproducible distribution` for the sdist, the sdist mismatch becomes
-fatal like the wheel's.
+hashes. A missing distribution, a wheel mismatch or an sdist mismatch fails
+publication. The sdist mismatch was only a warning until 4.0.0, the first
+release built with the rewritten `scripts/normalize_sdist.py`, logged
+`Reproducible distribution` for both files.
 
 To match the published files, your rebuild has to repeat the job's conditions:
 
