@@ -28,6 +28,7 @@ from evidence_collector.parsers._common import ParseError, load_yaml_or_json
 from evidence_collector.parsers._intoto import decode_b64_statement
 from evidence_collector.parsers.garak import parse_garak
 from evidence_collector.parsers.junit import parse_junit
+from evidence_collector.parsers.model_card import parse_model_card
 from evidence_collector.parsers.sarif import parse_sarifs
 
 _GOOD_OSV = (
@@ -193,3 +194,27 @@ def test_garak_skips_a_garbled_record_as_its_docstring_promises(
     )
     parsed = parse_garak(path)
     assert [p.probe for p in parsed.probes] == ["p.b"]
+
+
+# ---------------------------------------------------------------------------
+# D18 — model card list fields that hold a scalar
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "card",
+    [
+        {"model_id": "m", "model-index": [{"results": [{"metrics": 5}]}]},
+        {"model_details": {"name": "m"}, "considerations": {"use_cases": 1.5}},
+        {"model_details": {"name": "m"}, "quantitative_analysis": {"performance_metrics": True}},
+    ],
+    ids=["hf-metrics-int", "mct-use-cases-float", "mct-performance-metrics-bool"],
+)
+def test_model_card_scalar_in_a_list_field_is_ignored_not_fatal(
+    tmp_path: Path, card: dict[str, object]
+) -> None:
+    path = tmp_path / "model_card.json"
+    path.write_text(json.dumps(card), encoding="utf-8")
+    parsed = parse_model_card(path)
+    assert parsed.model_id == "m"
+    assert parsed.metrics == {}
