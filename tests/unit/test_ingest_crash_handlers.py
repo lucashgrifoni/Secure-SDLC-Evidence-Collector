@@ -15,13 +15,14 @@ the paths that run during detection.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import pytest
 
 from evidence_collector.collectors.local import LocalArtifactCollector, LocalCollectionReport
 from evidence_collector.domain.models import ReleaseContext
-from evidence_collector.parsers._common import ParseError
+from evidence_collector.parsers._common import ParseError, load_yaml_or_json
 from evidence_collector.parsers.junit import parse_junit
 
 _GOOD_OSV = (
@@ -68,3 +69,46 @@ def test_junit_with_an_undecodable_xml_encoding_is_a_parse_error(
     )
     with pytest.raises(ParseError, match=r"report\.xml"):
         parse_junit(path)
+
+
+# ---------------------------------------------------------------------------
+# D11 — YAML scalars PyYAML's SafeLoader turns into a bare ValueError
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "generated_at: 2026-04-10T24:00:00Z",
+        "approved_at: 2026-04-31T10:00:00Z",
+        "generated_at: 2026-04-10T10:00:00+25:00",
+        "count: " + "9" * 5000,
+    ],
+    ids=["hour-24", "april-31", "tz-plus-25", "overlong-int"],
+)
+def test_yaml_scalar_that_safeloader_cannot_construct_is_a_parse_error(
+    tmp_path: Path, line: str
+) -> None:
+    path = tmp_path / "attestation.yaml"
+    path.write_text(f"evidence_type: release_approval\n{line}\n", encoding="utf-8")
+    with pytest.raises(ParseError, match=r"attestation\.yaml"):
+        load_yaml_or_json(path)
+
+
+def test_attestation_with_an_impossible_date_is_recorded_not_fatal(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    attestations = tmp_path / "attestations"
+    attestations.mkdir()
+    (attestations / "bad.yaml").write_text(
+        "evidence_type: release_approval\nproducer: p\nsubject_ref: r\n"
+        "generated_at: 2026-04-31T10:00:00Z\n",
+        encoding="utf-8",
+    )
+    (attestations / "good.yaml").write_text(
+        "evidence_type: release_approval\nproducer: p\nsubject_ref: r\n", encoding="utf-8"
+    )
+    with caplog.at_level(logging.CRITICAL):
+        report = LocalArtifactCollector(_release(), attestations_dirs=[attestations]).collect()
+    assert len(report.evidence) == 1
+    assert [e.path.name for e in report.errors] == ["bad.yaml"]

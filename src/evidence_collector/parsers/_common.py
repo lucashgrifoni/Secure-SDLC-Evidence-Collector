@@ -90,6 +90,12 @@ def load_yaml_or_json(path: Path) -> dict[str, Any]:
         raise ParseError(f"Invalid text encoding in {path}: {exc}") from exc
     except RecursionError as exc:
         raise ParseError(f"YAML in {path} is nested too deeply to parse") from exc
+    except ValueError as exc:
+        # SafeLoader builds datetimes and ints itself, and an impossible value
+        # (`24:00`, April 31, a `+25:00` offset, an int past CPython's
+        # 4300-digit cap) raises a bare ValueError from the constructor rather
+        # than a YAMLError. Same escape as in `load_json`, same treatment.
+        raise ParseError(f"Invalid YAML value in {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise ParseError(
             f"Expected top-level mapping in {path}, got {type(data).__name__ if data else 'empty'}"
