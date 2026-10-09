@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from evidence_collector.domain.enums import ControlEvaluationStatus, ReleaseStatus
-from evidence_collector.domain.models import EvidenceBundle
+from evidence_collector.domain.models import CatalogRef, EvidenceBundle
 
 
 @dataclass
@@ -47,6 +47,31 @@ class BundleComparison:
     control_deltas: list[ControlDelta] = field(default_factory=list)
     before_epss_model_versions: list[str] = field(default_factory=list)
     after_epss_model_versions: list[str] = field(default_factory=list)
+    before_catalog: CatalogRef | None = None
+    after_catalog: CatalogRef | None = None
+
+    @property
+    def catalog_drift(self) -> bool:
+        """True when the two bundles were evaluated against different catalogs.
+
+        Every verdict is relative to a catalog. Against a catalog that moved a
+        control's required evidence to recommended, identical evidence reads
+        missing -> partial, and the diff presented that as a release-over-release
+        improvement. The digest decides: the name collides between the shipped
+        `catalog.yaml` and an operator's own file of the same name.
+
+        Like EPSS drift it needs a record on both sides. A bundle that predates
+        the catalog block carries none, which is unknown rather than changed.
+        """
+        if self.before_catalog is None or self.after_catalog is None:
+            return False
+        return self.before_catalog.sha256 != self.after_catalog.sha256
+
+    def catalog_drift_controls(self) -> list[str]:
+        """Controls whose movement may come from the catalog, not the evidence."""
+        if not self.catalog_drift:
+            return []
+        return [c.control_id for c in self.control_deltas if c.category != "unchanged"]
 
     @property
     def epss_model_drift(self) -> bool:
@@ -75,6 +100,11 @@ class BundleComparison:
             "after_release_status": self.after_release_status.value,
             "coverage_delta": self.coverage_delta,
             "confidence_delta": self.confidence_delta,
+            "catalog": {
+                "before": self.before_catalog.model_dump() if self.before_catalog else None,
+                "after": self.after_catalog.model_dump() if self.after_catalog else None,
+                "changed": self.catalog_drift,
+            },
             "epss": {
                 "before_model_versions": list(self.before_epss_model_versions),
                 "after_model_versions": list(self.after_epss_model_versions),
@@ -96,6 +126,7 @@ class BundleComparison:
                 "unchanged": [
                     c.control_id for c in self.control_deltas if c.category == "unchanged"
                 ],
+                "catalog_drift": self.catalog_drift_controls(),
             },
         }
 
@@ -166,6 +197,8 @@ def compare_bundles(before: EvidenceBundle, after: EvidenceBundle) -> BundleComp
         control_deltas=deltas,
         before_epss_model_versions=_epss_model_versions(before),
         after_epss_model_versions=_epss_model_versions(after),
+        before_catalog=before.catalog,
+        after_catalog=after.catalog,
     )
 
 
