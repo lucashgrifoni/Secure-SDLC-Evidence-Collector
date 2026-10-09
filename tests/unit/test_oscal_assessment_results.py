@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from evidence_collector.domain.enums import (
     ConfidenceLevel,
@@ -181,11 +182,12 @@ def _waiver(exception_id: str, control_id: str) -> EvidenceException:
     )
 
 
-def _results(doc: dict) -> dict:
-    return doc["assessment-results"]["results"][0]
+def _results(doc: dict[str, Any]) -> dict[str, Any]:
+    result: dict[str, Any] = doc["assessment-results"]["results"][0]
+    return result
 
 
-def _finding(doc: dict, control_id: str) -> dict:
+def _finding(doc: dict[str, Any], control_id: str) -> dict[str, Any]:
     return next(
         f
         for f in _results(doc)["findings"]

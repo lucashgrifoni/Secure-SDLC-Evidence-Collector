@@ -10,7 +10,7 @@ import pytest
 from evidence_collector.controls import default_catalog
 from evidence_collector.controls.engine import evaluate_control
 from evidence_collector.domain.enums import ControlEvaluationStatus, EvidenceStatus, EvidenceType
-from evidence_collector.domain.models import ReleaseContext
+from evidence_collector.domain.models import ControlDefinition, ReleaseContext
 from evidence_collector.normalizers import (
     normalize_attestation,
     normalize_junit,
@@ -231,7 +231,7 @@ _NOT_A_PASS: list[dict[str, object]] = [
 ]
 
 
-def _osps_qa_03_01():
+def _osps_qa_03_01() -> ControlDefinition:
     from evidence_collector.controls.catalog import bundled_catalog_path, load_catalog
 
     controls = load_catalog(bundled_catalog_path("catalog-osps-baseline.yaml"))
@@ -245,6 +245,7 @@ def test_normalize_workflow_run_unfinished_or_inconclusive_is_unknown(
     payload = {"run_id": 1001, "workflow_name": "ci.yml", **fields}
     evidence = normalize_workflow_run(payload, sample_release)
     assert evidence.status is EvidenceStatus.UNKNOWN
+    assert evidence.summary is not None
     assert "none" not in evidence.summary.split("(")[0].lower()
 
 
