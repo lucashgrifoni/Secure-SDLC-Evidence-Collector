@@ -15,6 +15,7 @@ from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPU
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.enums import ReleaseStatus
+from evidence_collector.domain.models import CatalogRef
 
 _FORMATS = ("table", "json")
 
@@ -41,6 +42,11 @@ def _status_delta(before: ReleaseStatus, after: ReleaseStatus) -> str:
     if _RELEASE_STATUS_RANK[after] > _RELEASE_STATUS_RANK[before]:
         return "⬇ regressed"
     return "="
+
+
+def _describe_catalog(catalog: CatalogRef) -> str:
+    # The name comes from the bundle file: escaped like every other bundle value.
+    return f"{catalog.origin} {escape(catalog.name)} (sha256 {catalog.sha256[:12]})"
 
 
 def register(app: typer.Typer) -> None:
@@ -114,14 +120,28 @@ def register(app: typer.Typer) -> None:
         control_table.add_column("Before")
         control_table.add_column("After")
         control_table.add_column("Change")
+        catalog_drift = set(comparison.catalog_drift_controls())
         for delta in comparison.control_deltas:
             control_table.add_row(
                 escape(delta.control_id),
                 delta.before.value if delta.before else "-",
                 delta.after.value if delta.after else "-",
-                delta.category,
+                f"{delta.category} (catalog)"
+                if delta.control_id in catalog_drift
+                else delta.category,
             )
         console.print(control_table)
+
+        # Every verdict is relative to a catalog: identical evidence evaluated
+        # against a weakened one reads as an improvement. Name both catalogs
+        # so the control movement above is not mistaken for evidence movement.
+        if comparison.catalog_drift and comparison.before_catalog and comparison.after_catalog:
+            console.print(
+                "[yellow]Catalog changed:[/yellow] baseline was evaluated against "
+                f"{_describe_catalog(comparison.before_catalog)}; candidate against "
+                f"{_describe_catalog(comparison.after_catalog)}. Control changes marked "
+                "'(catalog)' may come from the catalog rather than the evidence."
+            )
 
         # EPSS scores are not comparable across model versions: v5 re-fits
         # the model rather than re-scoring under the old one, so exposure

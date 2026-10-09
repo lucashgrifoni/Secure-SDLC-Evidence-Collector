@@ -558,7 +558,11 @@ Bundle comparison across runs is available via `sdlc-evidence compare
 before.json after.json`. It reports what changed but never fails a build, and
 no workflow in this repository runs it. What CI does enforce is the
 structural-determinism gate: it rebuilds the sample bundle and compares the
-normalized SHA-256 across runs and operating systems.
+normalized SHA-256 across runs and operating systems. When the two bundles
+were evaluated against different control catalogs (different SHA-256),
+`compare` names both catalogs and marks each control change `(catalog)`, since
+the movement may come from the catalog rather than the evidence. The JSON output
+carries the same facts under `catalog` and `controls.catalog_drift`.
 
 ---
 
