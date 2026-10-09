@@ -79,8 +79,10 @@ The collector checks **presence**, not correctness.
 - SPDX 3.0.x JSON-LD documents (a `@context` + `@graph` of typed
   elements, rather than the 2.x `packages[]` shape) are detected and
   ingested; their AI / Dataset / Security profile element counts surface
-  as `metadata.spdx_profiles`. The CISA presence check above is shaped for
-  SPDX 2.x / CycloneDX and is **not** applied to SPDX 3.0 documents.
+  as `metadata.spdx_profiles`. The legacy CISA 2025 presence check above is
+  shaped for SPDX 2.x / CycloneDX and is **not** applied to SPDX 3.0
+  documents. The CISA 2026 map is applied to SPDX 3.0, but most of its
+  elements report `unsupported_mapping`.
 
 ### Current development additions
 

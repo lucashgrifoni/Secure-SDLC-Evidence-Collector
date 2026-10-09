@@ -10,7 +10,7 @@ semantics and newly generated digest pins change. The bundle schema stays at
 2.1.0. New SBOM metadata and catalog descriptions
 intentionally change newly generated structural digests. The sample moves from
 `861b285dd8cb8427484e4ac64317675e48588b050e405916a90e18e5b04e3007` to
-`6c9664455ca5bd2c0536d62417175e4305d105f808daffc33b55fc130873620e`.
+`e859f47511065d3119c73b47b7290aef552fdbfdf9d7b4fc3711cfff8e5fb729`.
 Previously generated bundles retain their own pins: verification does not
 re-run parsers or load a new catalog. Review and pin a new digest when
 regenerating evidence.
@@ -50,19 +50,49 @@ and strikethrough as well as links, HTML and table separators.
 
 ## SBOM minimum element presence
 
-`metadata.cisa_2026_minimum_elements` reports all 17 elements of the final 2026
-guidance. Entries have source paths and states `present`, `absent` or
-`not_machine_checkable`. Values, authorship, signatures, license correctness
-and dependency accuracy are not verified. A signature object alone does not
-establish an author's signature. CycloneDX checks include root and child
-components; paired hash algorithm and value must exist in the same entry.
-An implicit document version is not explicit evidence.
+`metadata.cisa_2026_presence` reports all 17 elements of the final 2026
+guidance under `metadata.cisa_2026_presence.elements.<name>`, each with a
+`status` and a `source` path. The status is one of:
 
-AI-bearing SBOMs get `metadata.g7_2026_ai_minimum_elements`: 50 elements across
-seven clusters. This is a project interpretation of CycloneDX/SPDX fields, not
-an official format crosswalk or G7 conformance assessment. Unsupported fields
-require manual review. G7 derivation links and CISA runtime dependencies use
-separate checks. SPDX 3 support remains partial.
+- `present`: the field holds a value.
+- `declared_unknown`: the author wrote an explicit `NOASSERTION`, `NONE` or
+  `UNKNOWN`, as CISA 2026 asks authors to do for unknown information.
+- `absent`: the field is missing or empty.
+- `not_machine_checkable`: the input cannot show it, such as a document
+  version in SPDX, a detached signature, or free-text generation context.
+- `unsupported_mapping`: the format has a field the collector does not map yet
+  (most SPDX 3 elements).
+
+For per-component elements, one component without the field makes the element
+`absent`; otherwise any explicit unknown makes it `declared_unknown`.
+Values, authorship, signatures, license correctness and dependency accuracy
+are not verified. A signature object alone does not establish an author's
+signature, and a missing inline signature is `not_machine_checkable`, not
+`absent`. CycloneDX checks include root and child components; paired hash
+algorithm and value must exist in the same entry. An implicit document
+version is not explicit evidence.
+
+Component identifiers must work as a lookup key outside the document:
+CycloneDX `purl`, `cpe`, `swid.tagId`, `swhid` or `omniborId`; SPDX 2.3
+`externalRefs` of type purl, cpe22Type, cpe23Type, swid, swh, gitoid or a
+package-manager coordinate; SPDX 3 `software_packageUrl` or an
+`externalIdentifier`. Document-local `bom-ref`, `SPDXID` and `spdxId` do not
+count. SPDX 2.3 dependency relationships count when one element is needed
+for the other to operate: `DEPENDS_ON`, `DEPENDENCY_OF`,
+`RUNTIME_DEPENDENCY_OF`, `PROVIDED_DEPENDENCY_OF`, `STATIC_LINK`,
+`DYNAMIC_LINK`, `PREREQUISITE_FOR`, `HAS_PREREQUISITE`, `CONTAINS` and
+`CONTAINED_BY`. Build, development, test and optional dependencies and
+derivation do not count. One such relationship is enough for SPDX 2.3, while
+CycloneDX needs a `dependencies[]` entry for every component.
+
+AI-bearing SBOMs get `metadata.g7_ai_presence`: 50 elements across seven
+clusters under `metadata.g7_ai_presence.clusters.<cluster>.<name>`, with the
+same statuses. This is a project interpretation of CycloneDX/SPDX fields, not
+an official format crosswalk or G7 conformance assessment. Elements that need
+semantic review are `not_machine_checkable`. G7 derivation links and CISA
+runtime dependencies use separate checks; the G7 dependency element needs a
+`dependencies[]` entry with a known `ref` and `dependsOn`, or a non-empty
+pedigree ancestor, descendant or variant list. SPDX 3 support remains partial.
 
 Legacy `cisa_2025_*` fields remain for consumers. The old
 `cisa_2025_conformant` name denotes a historical presence check, not compliance.

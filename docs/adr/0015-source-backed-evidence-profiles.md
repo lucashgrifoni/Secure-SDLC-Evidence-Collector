@@ -9,7 +9,9 @@
 ## Decision
 
 Use the published CISA 2026 list and G7 AI SBOM paper to report presence states,
-not compliance. Keep unsupported format fields explicit. Retain the legacy
+not compliance. Keep unsupported format fields explicit: each element is
+`present`, `declared_unknown` (an explicit NOASSERTION/NONE/UNKNOWN), `absent`,
+`not_machine_checkable` or `unsupported_mapping`. Retain the legacy
 2025 keys for compatibility. Add no evidence type or framework enum.
 
 Use release-bound operator context for CRA clocks and SRP 1.4 completeness.

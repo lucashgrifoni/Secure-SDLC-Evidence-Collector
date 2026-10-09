@@ -112,4 +112,7 @@
 # CSF 2.0 references in catalog descriptions intentionally change both
 # SBOM metadata and catalog.sha256. Existing bundle verification remains
 # valid; regenerate pins only when producing a bundle with this version.
-6c9664455ca5bd2c0536d62417175e4305d105f808daffc33b55fc130873620e
+# Same unreleased change, review fixes: the SBOM author signature without an
+# inline signature is not_machine_checkable rather than absent, and element
+# sources name the lookup identifiers that count (bom-ref no longer does).
+e859f47511065d3119c73b47b7290aef552fdbfdf9d7b4fc3711cfff8e5fb729
