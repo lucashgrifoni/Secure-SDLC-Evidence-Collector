@@ -516,3 +516,58 @@ def test_enrich_leaves_reports_alone_when_the_verdict_is_unchanged(
     result = runner.invoke(app, ["enrich", str(out / "bundle.json")])
     assert result.exit_code == 0, result.output
     assert {name: (out / name).read_bytes() for name in before} == before
+
+
+@pytest.mark.integration
+def test_enrich_to_another_file_in_the_same_directory_leaves_the_reports_alone(
+    runner: CliRunner, sample_release_root: Path, tmp_path: Path
+) -> None:
+    """The reports there describe the input bundle, which keeps its old verdict."""
+    out = tmp_path / "out"
+    _run(runner, sample_release_root, out, "--risk-mode", "epss-weighted")
+    before = {name: (out / name).read_bytes() for name in ("report.md", "summary.html")}
+    result = runner.invoke(
+        app,
+        [
+            "--json-logs",
+            "enrich",
+            str(out / "bundle.json"),
+            "--output",
+            str(out / "enriched.json"),
+            "--kev-feed",
+            str(_kev_feed(tmp_path, ransomware=True)),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    enriched = EvidenceBundle.model_validate_json(
+        (out / "enriched.json").read_text(encoding="utf-8")
+    )
+    assert enriched.summary.release_status is ReleaseStatus.NOT_READY
+    assert {name: (out / name).read_bytes() for name in before} == before
+    events = [json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]
+    completed = [e for e in events if e.get("event") == "enrich_completed"]
+    assert completed, result.stdout
+    assert completed[0]["reports_regenerated"] == []
+    assert completed[0]["reports_left_alone"] == ["report.md", "summary.html"]
+
+
+@pytest.mark.integration
+def test_enrich_same_directory_warning_in_plain_output(
+    runner: CliRunner, sample_release_root: Path, tmp_path: Path
+) -> None:
+    out = tmp_path / "out"
+    _run(runner, sample_release_root, out, "--risk-mode", "epss-weighted")
+    result = runner.invoke(
+        app,
+        [
+            "enrich",
+            str(out / "bundle.json"),
+            "--output",
+            str(out / "enriched.json"),
+            "--kev-feed",
+            str(_kev_feed(tmp_path, ransomware=True)),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "left alone" in result.output
+    assert "**Release status:** `ready`" in (out / "report.md").read_text(encoding="utf-8")

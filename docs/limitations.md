@@ -380,9 +380,13 @@ These are explicitly out of scope for security reports (see
   re-renders `report.md` and `summary.html` with the same renderers
   `run` uses, written together with the bundle (all or nothing). In
   place, the reports that exist next to the bundle are overwritten. With
-  a different `--output`, each report is written next to the output only
-  if the input bundle's directory had it; no report is created out of
-  nothing. When the verdict does not change, the reports are left alone.
+  `--output` in another directory, each report is written next to the
+  output only if the input bundle's directory had it; no report is
+  created out of nothing. With `--output` as a different file in the
+  input's own directory, the reports there still describe the input
+  bundle (which keeps its old verdict), so they are left alone and a
+  warning says so (`reports_left_alone` under `--json-logs`). When the
+  verdict does not change, the reports are left alone.
 - `enrich` with neither `--epss-feed` nor `--kev-feed` consults no
   source, so it leaves the bundle unchanged (copying it to `--output`
   when given), prints a warning, and keeps the prior intelligence and

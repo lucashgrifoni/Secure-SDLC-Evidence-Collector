@@ -16,8 +16,10 @@ is recomputed from the new intelligence.
 
 When the verdict or risk assessment changes, ``report.md`` and ``summary.html``
 are re-rendered and written with the bundle as one set: next to the bundle when
-writing in place, or next to ``--output`` for each report the input directory
-had. Otherwise the reports are not touched.
+writing in place, or next to ``--output`` in another directory for each report
+the input directory had. When ``--output`` is a different file in the input's
+directory, the reports there belong to the input bundle, so they are left alone
+and a warning says so. Otherwise the reports are not touched.
 
 With neither ``--epss-feed`` nor ``--kev-feed`` there is no source to consult:
 the bundle is left unchanged (copied to ``--output`` when given), a warning is
@@ -173,11 +175,18 @@ def register(app: typer.Typer) -> None:
         enriched = refresh_cra_exploitation_signals(enriched)
         assessment = enriched.summary.risk_assessment
         payloads = {destination: enriched.model_dump_json(indent=2, exclude_none=False)}
+        left_alone: list[str] = []
         if (
             enriched.summary.release_status != bundle.summary.release_status
             or assessment != bundle.summary.risk_assessment
         ):
-            payloads.update(_sibling_reports(enriched, bundle_path, destination))
+            reports = _sibling_reports(enriched, bundle_path, destination)
+            if _shares_reports_with_input(bundle_path, destination):
+                # A different file in the input's directory: the reports there
+                # belong to the input bundle, which keeps its old verdict.
+                left_alone = sorted(path.name for path in reports)
+            else:
+                payloads.update(reports)
         # One set: the bundle and its reports reach disk together or not at all.
         write_all_or_nothing(payloads)
         regenerated = sorted(path.name for path in payloads if path != destination)
@@ -195,6 +204,7 @@ def register(app: typer.Typer) -> None:
                 risk_mode=assessment.mode if assessment else "off",
                 release_status=enriched.summary.release_status.value,
                 reports_regenerated=regenerated,
+                reports_left_alone=left_alone,
             )
         else:
             console.print(
@@ -212,18 +222,35 @@ def register(app: typer.Typer) -> None:
                 )
             for name in regenerated:
                 console.print(f"{name} regenerated → {destination.parent / name}")
+            if left_alone:
+                report_error(
+                    f"enrich: {', '.join(left_alone)} in {destination.parent} left alone: "
+                    f"they belong to the input bundle {bundle_path.name}, which keeps its "
+                    "old verdict. Write --output to another directory to get reports for "
+                    "the enriched bundle.",
+                    event="enrich_reports_left_alone",
+                )
             console.print(f"bundle.json → {destination}")
 
 
 _REPORT_RENDERERS = {"report.md": bundle_to_markdown, "summary.html": bundle_to_html}
 
 
+def _shares_reports_with_input(source: Path, destination: Path) -> bool:
+    """True when ``destination`` is a different file in the input's directory."""
+    if destination.resolve() == source.resolve():
+        return False
+    return destination.parent.resolve() == source.parent.resolve()
+
+
 def _sibling_reports(bundle: EvidenceBundle, source: Path, destination: Path) -> dict[Path, str]:
     """Re-render the reports ``run`` wrote next to ``source``, placed next to ``destination``.
 
     Only reports that exist next to the input bundle are rendered: in place
-    that overwrites the stale siblings, and with a different ``--output`` it
-    writes the same set next to the output. Nothing is created out of thin air.
+    that overwrites the stale siblings, and with ``--output`` in another
+    directory it writes the same set next to the output. Nothing is created out
+    of thin air. The caller skips them when the output is a different file in
+    the input's directory (see ``_shares_reports_with_input``).
     """
     return {
         destination.parent / name: render(bundle)
