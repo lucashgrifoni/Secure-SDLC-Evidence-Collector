@@ -305,6 +305,15 @@ These are explicitly out of scope for security reports (see
 - `not_ready` does **not** automatically mean "the release is
   broken". A critical control without evidence may also reflect an
   immature evidence pipeline rather than an unsafe release.
+- A `waived` or `not_applicable` control is not a demonstrated one. In
+  `oscal --kind assessment-results` only `met` becomes `satisfied`;
+  waived and not-applicable findings are `not-satisfied` with a
+  `not_satisfied_reason` property (`waived` / `not_applicable`). A waived
+  finding also lists its `exception_id` values and links to an OSCAL risk
+  with status `deviation-approved` that carries the justification,
+  approver, reference and earliest expiry. Before this, both mapped to
+  `satisfied`. The in-toto SVR statement likewise leaves both out of the
+  properties it asserts.
 
 ## 12 · When results need human interpretation
 
