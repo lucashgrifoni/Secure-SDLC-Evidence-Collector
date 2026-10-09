@@ -163,6 +163,18 @@ context, CR26 source versions, catalog changes and output-lock recovery.
   the control: that run is in progress when it is read. Pass the id of a
   run that has already finished, such as the CI run of the released
   commit.
+- A workflow run or GitLab pipeline is bound to the commit it ran on. When
+  its `head_sha` (GitLab `sha`) is not the release `--commit-sha` (an
+  abbreviated SHA matches by prefix), the run is recorded as `unknown`
+  whatever its conclusion, the summary names both commits, and
+  `metadata.release_commit_match` is `false`. A run whose payload reports
+  no SHA is not compared (`release_commit_match` is `null`).
+- Pull and merge request evidence is not bound the same way, because a
+  release is usually a later commit that contains the merge, and equality
+  cannot tell that apart from an unrelated PR. `metadata.release_commit_match`
+  records whether the PR head or merge (or squash) commit is the release
+  commit, and the summary says so when it is not, but the verdict is
+  unchanged.
 
 ## 6 · DAST coverage
 

@@ -154,6 +154,8 @@ class GitLabCollector:
             "reviewers_approved": approvals_approved,
             "last_approval_after_last_commit": last_approval_after_last_commit,
             "head_sha": head_sha,
+            "merge_commit_sha": mr_payload.get("merge_commit_sha"),
+            "squash_commit_sha": mr_payload.get("squash_commit_sha"),
             "collected_at": datetime.now(tz=UTC).isoformat(),
             "platform": "gitlab",
         }

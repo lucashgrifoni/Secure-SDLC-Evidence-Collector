@@ -96,7 +96,9 @@ def test_collect_workflow_run(sample_release) -> None:
                     "conclusion": "success",
                     "status": "completed",
                     "event": "push",
-                    "head_sha": "abcdef1234567890",
+                    # The full SHA of the release commit, which the release
+                    # context names by a 16-character prefix.
+                    "head_sha": f"{sample_release.commit_sha}{'0' * 24}",
                     "html_url": "https://github.com/acme/payments-api/actions/runs/1001",
                     "created_at": "2026-04-10T12:00:00Z",
                     "updated_at": "2026-04-10T12:05:00Z",
@@ -121,6 +123,80 @@ def test_collect_workflow_run(sample_release) -> None:
     assert evidence.evidence_type == EvidenceType.WORKFLOW_RUN
     assert evidence.status == EvidenceStatus.PASSED
     assert evidence.metadata["workflow_name"] == "ci.yml"
+    assert evidence.metadata["release_commit_match"] is True
+
+
+# ---------------------------------------------------------------------------
+# A workflow run is evidence for the commit it ran on. The run's head_sha was
+# fetched but never compared with the release commit, so a green run of any
+# other commit became PASSED evidence stamped with the release commit_sha and
+# met OSPS-QA-03.01 ("status checks pass") on its own.
+# ---------------------------------------------------------------------------
+
+
+def _collect_run(sample_release, **fields: object):
+    run = {
+        "name": "ci.yml",
+        "conclusion": "success",
+        "status": "completed",
+        "event": "push",
+        "head_sha": "f" * 40,
+        "head_branch": "some-other-branch",
+        "html_url": "https://github.com/acme/payments-api/actions/runs/1001",
+        **fields,
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/actions/runs/1001"):
+            return httpx.Response(200, json=run)
+        return httpx.Response(404)
+
+    client = httpx.Client(base_url="https://api.github.com", transport=_mock_transport(handler))
+    try:
+        collector = GitHubCollector(
+            config=GitHubCollectorConfig(repository="acme/payments-api"),
+            release=sample_release,
+            client=client,
+        )
+        return collector.collect_workflow_run(1001)
+    finally:
+        client.close()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("conclusion", ["success", "failure"])
+def test_workflow_run_of_another_commit_is_not_evidence_for_the_release(
+    sample_release, conclusion: str
+) -> None:
+    from evidence_collector.controls.catalog import bundled_catalog_path, load_catalog
+    from evidence_collector.controls.engine import evaluate_control
+    from evidence_collector.domain.enums import ControlEvaluationStatus
+
+    evidence = _collect_run(sample_release, conclusion=conclusion)
+
+    assert evidence.status is EvidenceStatus.UNKNOWN
+    assert evidence.metadata["release_commit_match"] is False
+    assert evidence.metadata["head_sha"] == "f" * 40
+    assert evidence.summary is not None
+    assert "f" * 40 in evidence.summary
+    assert sample_release.commit_sha in evidence.summary
+    control = next(
+        c
+        for c in load_catalog(bundled_catalog_path("catalog-osps-baseline.yaml"))
+        if c.control_id == "OSPS-QA-03.01"
+    )
+    evaluation, _gaps = evaluate_control(control, [evidence])
+    assert evaluation.evaluation_status is not ControlEvaluationStatus.MET
+    assert evaluation.evidence_refs == []
+
+
+@pytest.mark.unit
+def test_workflow_run_sha_comparison_ignores_case(sample_release) -> None:
+    evidence = _collect_run(
+        sample_release, head_sha=f"{sample_release.commit_sha}{'0' * 24}".upper()
+    )
+    assert evidence.status is EvidenceStatus.PASSED
+    assert evidence.metadata["release_commit_match"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +274,51 @@ def _collect(
         return collector.collect_pull_request(200)
     finally:
         client.close()
+
+
+# A PR is not required to sit on the release commit: the release is usually a
+# later commit that contains the merge. Whether it does is recorded, additively,
+# so a reviewer can see when the reviewed PR is not the released commit.
+
+
+@pytest.mark.unit
+def test_pr_merged_as_the_release_commit_is_recorded_as_bound(sample_release) -> None:
+    payload = {**_pr_payload(), "merged": True, "merge_commit_sha": sample_release.commit_sha}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == _PR_PATH:
+            return httpx.Response(200, json=payload)
+        if request.url.path == f"{_PR_PATH}/reviews":
+            return httpx.Response(
+                200, json=[_review("bob", "APPROVED", _HEAD, "2026-04-10T12:30:00Z")]
+            )
+        return httpx.Response(404, json={"message": "not found"})
+
+    client = httpx.Client(base_url=_API, transport=_mock_transport(handler))
+    try:
+        evidence = GitHubCollector(
+            config=GitHubCollectorConfig(repository="acme/payments-api"),
+            release=sample_release,
+            client=client,
+        ).collect_pull_request(200)
+    finally:
+        client.close()
+
+    assert evidence.status == EvidenceStatus.PASSED
+    assert evidence.metadata["merge_commit_sha"] == sample_release.commit_sha
+    assert evidence.metadata["release_commit_match"] is True
+
+
+@pytest.mark.unit
+def test_pr_on_another_commit_is_flagged_without_changing_its_verdict(sample_release) -> None:
+    evidence = _collect(
+        sample_release,
+        [[_review("bob", "APPROVED", _HEAD, "2026-04-10T12:30:00Z")]],
+    )
+    assert evidence.status == EvidenceStatus.PASSED
+    assert evidence.metadata["release_commit_match"] is False
+    assert evidence.summary is not None
+    assert f"not the release commit {sample_release.commit_sha}" in evidence.summary
 
 
 @pytest.mark.unit
