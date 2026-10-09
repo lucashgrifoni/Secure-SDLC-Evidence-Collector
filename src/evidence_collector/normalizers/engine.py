@@ -1445,14 +1445,32 @@ def normalize_workflow_run(
     payload: dict[str, Any],
     release: ReleaseContext,
 ) -> NormalizedEvidence:
-    """Normalize a GitHub Actions workflow run payload."""
-    conclusion = str(payload.get("conclusion", "")).lower()
+    """Normalize a GitHub Actions workflow run payload.
+
+    Only ``success`` is a pass. GitHub reports ``conclusion: null`` while a run
+    is queued or in progress, and ``skipped``, ``neutral``, ``action_required``
+    and ``stale`` say the checks did not pass either; those, and any value
+    this code does not know, become UNKNOWN, which no control counts as
+    satisfying. They used to become COMPLETED, which does count, so a run that
+    had not finished met "status checks pass".
+    """
+    # `or ""` because the key is present with a null value while the run is
+    # unfinished; `str(None)` would read as the conclusion "none".
+    conclusion = str(payload.get("conclusion") or "").lower()
     if conclusion == "success":
         status = EvidenceStatus.PASSED
     elif conclusion in {"failure", "timed_out", "cancelled", "startup_failure"}:
         status = EvidenceStatus.FAILED
     else:
-        status = EvidenceStatus.COMPLETED
+        status = EvidenceStatus.UNKNOWN
+    if status is EvidenceStatus.UNKNOWN:
+        run_state = str(payload.get("status") or "").lower()
+        detail = conclusion or (
+            f"no conclusion, status {run_state}" if run_state else "no conclusion"
+        )
+        outcome = f"did not conclude with success ({detail})"
+    else:
+        outcome = f"ended with {conclusion}"
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
             "wf",
@@ -1475,9 +1493,6 @@ def normalize_workflow_run(
         release_id=release.release_id,
         commit_sha=release.commit_sha,
         generated_at=None,
-        summary=(
-            f"workflow {payload.get('workflow_name')} run "
-            f"{payload.get('run_id')} ended with {conclusion or 'unknown'}"
-        ),
+        summary=f"workflow {payload.get('workflow_name')} run {payload.get('run_id')} {outcome}",
         metadata=payload,
     )

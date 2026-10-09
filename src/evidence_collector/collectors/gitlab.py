@@ -169,15 +169,15 @@ class GitLabCollector:
         pipeline_payload: dict[str, Any] = self._get(f"/projects/{project}/pipelines/{pipeline_id}")
         # GitLab uses `status` (success, failed, canceled, skipped, …). We
         # map it to the `conclusion`-style field the normalizer expects.
+        # Unfinished states (created, pending, running, manual, scheduled, …)
+        # pass through unchanged: the normalizer records anything other than
+        # success or a failure as UNKNOWN, which never satisfies a control.
         status = str(pipeline_payload.get("status") or "").lower()
         conclusion = {
             "success": "success",
             "failed": "failure",
             "canceled": "cancelled",
             "skipped": "cancelled",
-            "running": "",
-            "pending": "",
-            "manual": "",
         }.get(status, status)
         payload = {
             "run_id": pipeline_id,

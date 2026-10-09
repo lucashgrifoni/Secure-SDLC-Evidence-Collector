@@ -346,7 +346,7 @@ def test_missing_head_version_fails_closed(sample_release) -> None:
 
 # ---------------------------------------------------------------------------
 # collect_pipeline — status mapping table (success / failed / canceled /
-# skipped / running) is the public contract.
+# skipped / running / manual) is the public contract.
 # ---------------------------------------------------------------------------
 
 
@@ -360,10 +360,15 @@ def test_missing_head_version_fails_closed(sample_release) -> None:
         # FAILED (same bucket as GitHub Actions `cancelled`).
         ("canceled", EvidenceStatus.FAILED),
         ("skipped", EvidenceStatus.FAILED),
-        # `running` / `pending` / `manual` map to "" (in-progress) — the
-        # normalizer falls through to COMPLETED.
-        ("running", EvidenceStatus.COMPLETED),
-        ("pending", EvidenceStatus.COMPLETED),
+        # A pipeline that has not finished, or waits on a person, has not
+        # passed: it must not satisfy a "status checks pass" control.
+        ("running", EvidenceStatus.UNKNOWN),
+        ("pending", EvidenceStatus.UNKNOWN),
+        ("manual", EvidenceStatus.UNKNOWN),
+        ("created", EvidenceStatus.UNKNOWN),
+        ("waiting_for_resource", EvidenceStatus.UNKNOWN),
+        ("preparing", EvidenceStatus.UNKNOWN),
+        ("scheduled", EvidenceStatus.UNKNOWN),
     ],
 )
 def test_collect_pipeline_maps_gitlab_status_to_evidence_status(

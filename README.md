@@ -407,6 +407,14 @@ sdlc-evidence run \
 
 The GitHub collector never logs tokens and reads them from environment only.
 
+`--workflow-run` evidence passes only when that run concluded with
+`success`. A run that is queued, in progress, skipped, neutral, waiting on
+an approval (`action_required`) or `stale` is recorded as `unknown` and
+satisfies no control. The run executing the collector is still in progress
+when it is read, so passing its own id (for example `${{ github.run_id }}`
+from the same job) cannot satisfy a control such as OSPS-QA-03.01. Pass the
+id of a run that has already finished.
+
 ---
 
 ## Control catalog

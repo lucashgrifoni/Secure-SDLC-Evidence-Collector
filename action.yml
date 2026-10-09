@@ -44,7 +44,10 @@ inputs:
     required: false
     default: ""
   workflow-run:
-    description: "GitHub Actions run ID to attach workflow evidence from"
+    description: >-
+      GitHub Actions run ID to attach workflow evidence from. Only a run that
+      concluded with success satisfies a control; the run executing this
+      action is still in progress, so its own run ID never does
     required: false
     default: ""
   catalog:

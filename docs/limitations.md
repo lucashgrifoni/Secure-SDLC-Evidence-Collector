@@ -140,6 +140,19 @@ context, CR26 source versions, catalog changes and output-lock recovery.
 - Code-review evidence from providers without reviewer metadata (e.g.
   signed-off-by on plain git) is not parsed; supply a
   `code_review.yaml` attestation instead.
+- Workflow-run evidence passes only when the run concluded with
+  `success`. A GitHub run that is queued or in progress (no conclusion
+  yet), or that ended `skipped`, `neutral`, `action_required` or `stale`,
+  is recorded as `unknown`, and so is a GitLab pipeline that is
+  `created`, `pending`, `running`, `manual`, `scheduled` or otherwise
+  unfinished. Failure-like conclusions (`failure`, `timed_out`,
+  `cancelled`, `startup_failure`; GitLab `failed`, `canceled`, `skipped`)
+  are `failed`. Neither satisfies a control such as OSPS-QA-03.01.
+  Consequently, passing the id of the run that is executing the collector
+  (for example `${{ github.run_id }}` from the same job) can never satisfy
+  the control: that run is in progress when it is read. Pass the id of a
+  run that has already finished, such as the CI run of the released
+  commit.
 
 ## 6 · DAST coverage
 

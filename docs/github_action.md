@@ -64,7 +64,7 @@ jobs:
 | `artifacts-dir` | no | `artifacts` | Walked recursively |
 | `attestations-dir` | no | `attestations` | YAML or JSON |
 | `pull-request` | no | — | Enables PR approval collector |
-| `workflow-run` | no | — | Enables workflow metadata collector |
+| `workflow-run` | no | — | Enables workflow metadata collector. Only a run that concluded with `success` satisfies a control; the run executing the action is still in progress, so `${{ github.run_id }}` from the same job never does. Pass a finished run |
 | `exceptions-dir` | no | — | Directory with waiver (exception) files |
 | `catalog` | no | — | Your own controls YAML, **or** the bare name of a bundled catalog |
 | `artifact-root` | no | `github.workspace` | Paths recorded relative to this; set to `""` to keep absolute paths |
