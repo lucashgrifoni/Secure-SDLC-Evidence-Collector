@@ -77,7 +77,7 @@ itself.
 | **Malicious YAML deserialization** | `SafeLoader` exclusively (via `safe_load_yaml` in `_common.py`); never the full or unsafe loaders.                                                      |
 | **YAML alias expansion / billion laughs** | Every YAML read (attestations, waivers, `--catalog`) goes through `safe_load_yaml`, which refuses a document whose aliases would grow it by more than `MAX_YAML_ALIAS_EXPANSION` (1,000,000 nodes plus scalar characters) and any recursive alias, as a parse error. The on-disk cap alone cannot see this: a 421-byte file expanded to a 34.6 MB bundle. |
 | **Path traversal via `../` in attestation paths** | Paths in attestations are stored verbatim in metadata but never resolved or read by the collector.                        |
-| **Symbolic link target outside artifacts dir** | Directory links (symlinks and Windows junctions) below a walked directory are never followed; each is recorded as a collection error instead of being skipped silently. A directory passed on the command line may itself be a link. |
+| **Symbolic link target outside artifacts dir** | Directory links (symlinks and Windows junctions) below a walked directory are never followed; each is recorded as a collection error instead of being skipped silently. A directory passed on the command line may itself be a link. File links are followed and ingested: `ensure_file()` neither resolves the path nor checks containment (residual risk below). |
 | **Pydantic validation bypass via `extra` fields** | Every domain model sets `extra="forbid"`; unknown keys are a hard error.                                                  |
 
 Residual risk: a malformed file that satisfies the formal schema but
@@ -88,12 +88,12 @@ artifact's SHA-256 so tampering after-the-fact is detectable.
 Residual risk: **file** links are followed by design. A symbolic link
 to a file inside an artifacts directory is ingested like a regular file
 wherever its target lives, including outside the artifacts directory or
-on another filesystem.
-`ensure_file()` only expands `~`, checks that the path is a regular
-file and applies the size cap; it does not resolve the path or check
-containment. Only directory links are treated specially (see the
-symbolic-link row above). Keeping links that point outside the tree out
-of the artifacts directory is the operator's responsibility; the
+on another filesystem. `ensure_file()` only expands `~`, checks that
+the path is a regular file and applies the size cap; it does not
+resolve the path or check containment. Directory links inside the tree
+are the opposite case: they are not followed, and each one is reported
+as a collection error. Keeping file links that point outside the tree
+out of the artifacts directory is the operator's responsibility; the
 recorded SHA-256 identifies what was actually read.
 
 ### 2.2 Collectors (`src/evidence_collector/collectors/`)
