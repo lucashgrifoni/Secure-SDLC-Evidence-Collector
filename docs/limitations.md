@@ -34,13 +34,16 @@ and emits **one evidence record per run**.
 - **False-negative risk**: an unknown driver defaults to `sast_scan`.
   If the driver was actually a DAST tool, the `sast_scan` control is
   credited while `dast_scan` remains missing.
-- OpenSSF Scorecard SARIF (driver `Scorecard`) is the one known
-  exception to that default: its results are repository posture checks
-  that no evidence type models, so the run is skipped instead of being
-  recorded as `sast_scan`. A file holding only Scorecard runs is listed
-  among the ignored artifacts; in a merged file the other runs are
-  collected and the skip is logged as a warning. Before this, a Scorecard
-  upload with no high or critical result satisfied SSDF-PW.7.
+- Two known drivers are exceptions to that default, and their runs are
+  skipped instead of being recorded as `sast_scan`. OpenSSF Scorecard SARIF
+  (driver `Scorecard`) holds repository posture checks that no evidence
+  type models. The collector's own gap log from `sdlc-evidence sarif`
+  (driver `secure-sdlc-evidence-collector`) lists unmet controls, not scan
+  results. A file holding only such runs is listed among the ignored
+  artifacts; in a merged file the other runs are collected and the skip is
+  logged as a warning. Before this, a Scorecard upload with no high or
+  critical result satisfied SSDF-PW.7, and so did a gap log from an
+  earlier ready release left in the artifacts directory.
 - Mitigation: the classification heuristic and the fallback label are
   both documented in the bundle's `evidence[*].rationale` field, so
   reviewers can see why the collector chose a label.

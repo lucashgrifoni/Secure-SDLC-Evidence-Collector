@@ -103,6 +103,12 @@ _SECRETS_TOOLS: frozenset[str] = frozenset(
 # pinned dependencies, ...); with no token matching it fell back to
 # `sast_scan` and, lacking high/critical results, satisfied SSDF-PW.7.
 _UNSUPPORTED_SARIF_TOOLS: frozenset[str] = frozenset({"scorecard"})
+# The driver name of the gap log `sdlc-evidence sarif` writes (TOOL_NAME in
+# exporters/sarif_gaps.py). That log reports unmet controls; it is not a scan.
+# Left in a later --artifacts-dir it fell back to `sast_scan`, and a log from
+# a ready release, having no results, met SSDF-PW.7 as a passing SAST scan.
+# Matched exactly: it is a name this tool writes, not a family of producers.
+_SELF_SARIF_DRIVER = "secure-sdlc-evidence-collector"
 
 
 def _driver_matches(tool_name: str, tokens: frozenset[str]) -> bool:
@@ -125,14 +131,23 @@ def _driver_matches(tool_name: str, tokens: frozenset[str]) -> bool:
     return False
 
 
-def is_unsupported_sarif_driver(tool_name: str) -> bool:
-    """Whether a SARIF run comes from a tool no evidence type models.
+def unsupported_sarif_reason(tool_name: str) -> str | None:
+    """Why a SARIF run is not scan evidence of any modelled type, or ``None``.
 
     Such a run must not be classified at all: the fallback would record it
     as `sast_scan`. The local collector skips these runs; see
     docs/limitations.md §2.
     """
-    return _driver_matches(tool_name, _UNSUPPORTED_SARIF_TOOLS)
+    if tool_name.strip().lower() == _SELF_SARIF_DRIVER:
+        return "this collector's own gap report lists unmet controls, not scan results"
+    if _driver_matches(tool_name, _UNSUPPORTED_SARIF_TOOLS):
+        return "OpenSSF Scorecard reports repository posture checks, which no evidence type models"
+    return None
+
+
+def is_unsupported_sarif_driver(tool_name: str) -> bool:
+    """Whether a SARIF run comes from a tool no evidence type models."""
+    return unsupported_sarif_reason(tool_name) is not None
 
 
 def _new_evidence_id(prefix: str, *parts: str) -> str:
@@ -321,10 +336,10 @@ def normalize_sarif(
     evidence_type_override: EvidenceType | None = None,
     artifact_root: str | None = None,
 ) -> NormalizedEvidence:
-    if evidence_type_override is None and is_unsupported_sarif_driver(parsed.tool_name):
+    unsupported = unsupported_sarif_reason(parsed.tool_name)
+    if evidence_type_override is None and unsupported is not None:
         raise ValueError(
-            f"SARIF from {parsed.tool_name!r} (OpenSSF Scorecard) reports repository "
-            "posture checks, which no evidence type models; it is not classified as a scan"
+            f"SARIF from {parsed.tool_name!r} is not classified as a scan: {unsupported}"
         )
     evidence_type, classification = _classify_sarif_with_provenance(
         parsed.tool_name, evidence_type_override
