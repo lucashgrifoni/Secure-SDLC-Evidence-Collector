@@ -130,7 +130,7 @@
     <div class="label">Controls</div>
     <div class="value">{{ bundle.summary.total_controls }}</div>
     <div class="meta">
-      {{ bundle.summary.controls_met }} met · {{ bundle.summary.controls_partial }} partial · {{ bundle.summary.controls_missing }} missing
+      {{ bundle.summary.controls_met }} met · {{ bundle.summary.controls_partial }} partial · {{ bundle.summary.controls_missing }} missing · {{ bundle.summary.controls_waived }} waived · {{ bundle.summary.controls_not_applicable }} n/a
     </div>
   </div>
   {#- Which catalog produced the verdict belongs beside the verdict, not in an
@@ -210,7 +210,8 @@
   </tbody>
 </table>
 
-{% if bundle.exceptions %}
+{% set exceptions_in_force, exceptions_not_in_force = split_exceptions(bundle) %}
+{% if exceptions_in_force %}
 <h2>Approved exceptions</h2>
 <table>
   <thead>
@@ -223,13 +224,40 @@
     </tr>
   </thead>
   <tbody>
-    {% for exception in bundle.exceptions %}
+    {% for exception in exceptions_in_force %}
     <tr>
       <td><code>{{ exception.exception_id }}</code></td>
       <td><code>{{ exception.control_id }}</code></td>
       <td>{{ exception.approver }}</td>
       <td>{{ exception.expires_at.isoformat() }}</td>
       <td>{{ exception.reference or "-" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if exceptions_not_in_force %}
+<h2>Exceptions not in force</h2>
+<p class="meta">Supplied with the evidence but not applied to this release.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Exception</th>
+      <th>Control</th>
+      <th>Approver</th>
+      <th>Expires</th>
+      <th>Why it does not apply</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for exception, reason in exceptions_not_in_force %}
+    <tr>
+      <td><code>{{ exception.exception_id }}</code></td>
+      <td><code>{{ exception.control_id }}</code></td>
+      <td>{{ exception.approver }}</td>
+      <td>{{ exception.expires_at.isoformat() }}</td>
+      <td>{{ reason }}</td>
     </tr>
     {% endfor %}
   </tbody>

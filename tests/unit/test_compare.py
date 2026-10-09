@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -32,6 +33,7 @@ from evidence_collector.domain.enums import (
 )
 from evidence_collector.domain.models import (
     Application,
+    CatalogRef,
     ControlEvaluation,
     EvidenceBundle,
     EvidenceSource,
@@ -464,3 +466,99 @@ def test_epss_block_is_in_the_json_contract() -> None:
         "after_model_versions": ["v2026.06.15"],
         "model_drift": True,
     }
+
+
+# ---------------------------------------------------------------------------
+# Catalog drift
+# ---------------------------------------------------------------------------
+
+_BUILTIN = CatalogRef(origin="builtin", name="catalog.yaml", sha256="b" * 64, control_count=13)
+_WEAKENED = CatalogRef(origin="custom", name="weak-catalog.yaml", sha256="3" * 64, control_count=13)
+
+
+def _catalog_pair(
+    before_catalog: CatalogRef | None, after_catalog: CatalogRef | None
+) -> tuple[EvidenceBundle, EvidenceBundle]:
+    # Identical evidence; only the catalog moved ORG-CODE-REVIEW's required
+    # evidence to recommended, so the control reads missing -> partial.
+    before = _make_bundle(
+        "before",
+        release_status=ReleaseStatus.NOT_READY,
+        coverage=50,
+        confidence=60,
+        evaluations=[
+            _make_evaluation("ORG-CODE-REVIEW", status=ControlEvaluationStatus.MISSING),
+            _make_evaluation("SSDF-PS.3", status=ControlEvaluationStatus.MET),
+        ],
+    )
+    after = _make_bundle(
+        "after",
+        release_status=ReleaseStatus.CONDITIONAL,
+        coverage=51,
+        confidence=56,
+        evaluations=[
+            _make_evaluation("ORG-CODE-REVIEW", status=ControlEvaluationStatus.PARTIAL),
+            _make_evaluation("SSDF-PS.3", status=ControlEvaluationStatus.MET),
+        ],
+    )
+    return (
+        before.model_copy(update={"catalog": before_catalog}),
+        after.model_copy(update={"catalog": after_catalog}),
+    )
+
+
+def test_a_catalog_change_is_reported_and_labels_the_control_movement() -> None:
+    comparison = compare_bundles(*_catalog_pair(_BUILTIN, _WEAKENED))
+
+    assert comparison.catalog_drift is True
+    payload = comparison.to_dict()
+    assert payload["catalog"] == {
+        "before": _BUILTIN.model_dump(),
+        "after": _WEAKENED.model_dump(),
+        "changed": True,
+    }
+    # Still reported as movement, but labelled as not attributable to evidence.
+    controls = cast(dict[str, list[str]], payload["controls"])
+    assert controls["improved"] == ["ORG-CODE-REVIEW"]
+    assert controls["catalog_drift"] == ["ORG-CODE-REVIEW"]
+
+
+def test_the_same_catalog_on_both_sides_is_not_drift() -> None:
+    comparison = compare_bundles(*_catalog_pair(_BUILTIN, _BUILTIN))
+
+    assert comparison.catalog_drift is False
+    payload = comparison.to_dict()
+    assert cast(dict[str, object], payload["catalog"])["changed"] is False
+    assert cast(dict[str, list[str]], payload["controls"])["catalog_drift"] == []
+
+
+def test_a_bundle_without_a_catalog_record_is_not_called_drift() -> None:
+    # Bundles older than the catalog block carry none: unknown, not changed.
+    comparison = compare_bundles(*_catalog_pair(None, _WEAKENED))
+
+    assert comparison.catalog_drift is False
+    assert comparison.to_dict()["catalog"] == {
+        "before": None,
+        "after": _WEAKENED.model_dump(),
+        "changed": False,
+    }
+
+
+def test_compare_table_warns_when_the_catalog_changed(tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from evidence_collector.cli.main import app
+
+    before, after = _catalog_pair(_BUILTIN, _WEAKENED)
+    paths = []
+    for bundle in (before, after):
+        path = tmp_path / f"{bundle.bundle_id}.json"
+        path.write_text(bundle.model_dump_json(), encoding="utf-8", newline="\n")
+        paths.append(str(path))
+
+    result = CliRunner().invoke(app, ["compare", *paths], terminal_width=200)
+
+    assert result.exit_code == 0, result.output
+    assert "Catalog changed" in result.output
+    assert "weak-catalog.yaml" in result.output
+    assert "changed (catalog)" in result.output

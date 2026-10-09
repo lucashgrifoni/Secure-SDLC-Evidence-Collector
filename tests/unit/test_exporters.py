@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import re
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -22,7 +24,9 @@ from evidence_collector.domain.models import (
     Application,
     ControlEvaluation,
     EvidenceBundle,
+    EvidenceException,
     EvidenceSource,
+    ExceptionScope,
     NormalizedEvidence,
     RawEvidenceRef,
     ReleaseContext,
@@ -30,6 +34,8 @@ from evidence_collector.domain.models import (
 )
 from evidence_collector.exporters import export_html, export_json, export_markdown
 from evidence_collector.exporters._jinja import md_code, md_escape
+from evidence_collector.exporters.html import bundle_to_html
+from evidence_collector.exporters.markdown import bundle_to_markdown
 from evidence_collector.normalizers import normalize_croissant
 from evidence_collector.parsers import parse_croissant
 
@@ -527,3 +533,192 @@ def test_plain_summary_values_do_not_create_markdown_formatting(value: str) -> N
     escaped = md_escape(value)
     rendered = MarkdownIt("commonmark").enable("strikethrough").renderInline(escaped)
     assert rendered == value
+
+
+def _waiver(
+    exception_id: str,
+    *,
+    approved_at: datetime,
+    expires_at: datetime,
+    scope: ExceptionScope | None = None,
+) -> EvidenceException:
+    return EvidenceException(
+        exception_id=exception_id,
+        control_id="SSDF-PS.3",
+        approver="appsec-lead@example.com",
+        approved_at=approved_at,
+        expires_at=expires_at,
+        justification="Compensating control documented in the risk register.",
+        scope=scope or ExceptionScope(),
+    )
+
+
+def _waived_by(bundle: EvidenceBundle, *exception_ids: str) -> EvidenceBundle:
+    """Record SSDF-PS.3 as waived by ``exception_ids``, as the engine would."""
+    evaluation = bundle.control_evaluations[0].model_copy(
+        update={
+            "evaluation_status": ControlEvaluationStatus.WAIVED,
+            "exception_refs": list(exception_ids),
+        }
+    )
+    summary = bundle.summary.model_copy(update={"controls_met": 0, "controls_waived": 1})
+    return bundle.model_copy(update={"control_evaluations": [evaluation], "summary": summary})
+
+
+def _bundle_with_mixed_waivers() -> EvidenceBundle:
+    # One waiver the engine applied, one expired before the bundle was
+    # generated, one scoped to another application.
+    return _waived_by(_build_bundle(), "EXC-IN-FORCE").model_copy(
+        update={
+            "generated_at": datetime(2026, 6, 1, tzinfo=UTC),
+            "exceptions": [
+                _waiver(
+                    "EXC-IN-FORCE",
+                    approved_at=datetime(2026, 1, 1, tzinfo=UTC),
+                    expires_at=datetime(2026, 12, 31, tzinfo=UTC),
+                ),
+                _waiver(
+                    "EXC-EXPIRED",
+                    approved_at=datetime(2025, 1, 1, tzinfo=UTC),
+                    expires_at=datetime(2025, 6, 1, tzinfo=UTC),
+                ),
+                _waiver(
+                    "EXC-OTHER-APP",
+                    approved_at=datetime(2026, 1, 1, tzinfo=UTC),
+                    expires_at=datetime(2026, 12, 31, tzinfo=UTC),
+                    scope=ExceptionScope(application="exceptions-demo"),
+                ),
+            ],
+        }
+    )
+
+
+def _markdown_section(markdown: str, heading: str) -> str:
+    start = markdown.index(f"## {heading}\n")
+    rest = markdown[start + len(heading) + 4 :]
+    end = re.search(r"^## ", rest, flags=re.MULTILINE)
+    return rest[: end.start()] if end else rest
+
+
+def _html_section(html: str, heading: str) -> str:
+    start = html.index(f"<h2>{heading}</h2>")
+    rest = html[start + len(heading) + 9 :]
+    end = rest.find("<h2>")
+    return rest if end == -1 else rest[:end]
+
+
+def test_markdown_lists_only_waivers_in_force_as_approved() -> None:
+    markdown = bundle_to_markdown(_bundle_with_mixed_waivers())
+
+    approved = _markdown_section(markdown, "Approved exceptions")
+    assert "EXC-IN-FORCE" in approved
+    assert "EXC-EXPIRED" not in approved
+    assert "EXC-OTHER-APP" not in approved
+
+    not_in_force = _markdown_section(markdown, "Exceptions not in force")
+    assert "EXC-IN-FORCE" not in not_in_force
+    assert re.search(r"EXC-EXPIRED.*expired 2025-06-01", not_in_force)
+    assert re.search(r"EXC-OTHER-APP.*out of scope", not_in_force)
+
+
+def test_html_lists_only_waivers_in_force_as_approved() -> None:
+    html = bundle_to_html(_bundle_with_mixed_waivers())
+
+    approved = _html_section(html, "Approved exceptions")
+    assert "EXC-IN-FORCE" in approved
+    assert "EXC-EXPIRED" not in approved
+    assert "EXC-OTHER-APP" not in approved
+
+    not_in_force = _html_section(html, "Exceptions not in force")
+    assert "EXC-IN-FORCE" not in not_in_force
+    assert re.search(r"EXC-EXPIRED.*?expired 2025-06-01", not_in_force, flags=re.DOTALL)
+    assert re.search(r"EXC-OTHER-APP.*?out of scope", not_in_force, flags=re.DOTALL)
+
+
+def test_reports_omit_the_approved_section_when_no_waiver_is_in_force() -> None:
+    bundle = _bundle_with_mixed_waivers()
+    bundle = bundle.model_copy(
+        update={
+            "exceptions": bundle.exceptions[1:],
+            "control_evaluations": _build_bundle().control_evaluations,
+            "summary": _build_bundle().summary,
+        }
+    )
+
+    assert "Approved exceptions" not in bundle_to_markdown(bundle)
+    assert "Approved exceptions" not in bundle_to_html(bundle)
+    assert "Exceptions not in force" in bundle_to_markdown(bundle)
+    assert "Exceptions not in force" in bundle_to_html(bundle)
+
+
+def test_a_waiver_applied_at_evaluation_stays_approved_after_it_expires() -> None:
+    # The control was evaluated while the waiver was in force and recorded as
+    # waived by it; the bundle was generated a moment after the expiry. The
+    # report must follow the recorded verdict, not re-judge the waiver.
+    expires = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
+    bundle = _waived_by(_build_bundle(), "EXC-STRADDLE").model_copy(
+        update={
+            "generated_at": datetime(2026, 6, 1, 12, 0, 1, tzinfo=UTC),
+            "exceptions": [
+                _waiver(
+                    "EXC-STRADDLE",
+                    approved_at=datetime(2026, 1, 1, tzinfo=UTC),
+                    expires_at=expires,
+                )
+            ],
+        }
+    )
+
+    for rendered, section in (
+        (bundle_to_markdown(bundle), _markdown_section),
+        (bundle_to_html(bundle), _html_section),
+    ):
+        assert "EXC-STRADDLE" in section(rendered, "Approved exceptions")
+        assert "Exceptions not in force" not in rendered
+
+
+def test_a_valid_waiver_no_control_relied_on_is_not_listed_as_approved() -> None:
+    # In force by its dates and scope, but the control was met on evidence, so
+    # nothing in this release was waived by it.
+    bundle = _build_bundle().model_copy(
+        update={
+            "generated_at": datetime(2026, 6, 1, tzinfo=UTC),
+            "exceptions": [
+                _waiver(
+                    "EXC-UNUSED",
+                    approved_at=datetime(2026, 1, 1, tzinfo=UTC),
+                    expires_at=datetime(2026, 12, 31, tzinfo=UTC),
+                )
+            ],
+        }
+    )
+    markdown = bundle_to_markdown(bundle)
+
+    assert "Approved exceptions" not in markdown
+    assert re.search(
+        r"EXC-UNUSED.*not applied", _markdown_section(markdown, "Exceptions not in force")
+    )
+
+
+def test_html_controls_tile_breakdown_adds_up_to_the_total() -> None:
+    # The tile showed met, partial and missing only, so a waived or n/a control
+    # left its breakdown one short of the total printed above it.
+    bundle = _build_bundle()
+    summary = bundle.summary.model_copy(
+        update={
+            "total_controls": 5,
+            "controls_met": 1,
+            "controls_partial": 1,
+            "controls_missing": 1,
+            "controls_waived": 1,
+            "controls_not_applicable": 1,
+        }
+    )
+    html = bundle_to_html(bundle.model_copy(update={"summary": summary}))
+
+    breakdown = re.search(
+        r'<div class="label">Controls</div>.*?<div class="meta">(.*?)</div>', html, flags=re.DOTALL
+    )
+    assert breakdown is not None
+    text = " ".join(breakdown.group(1).split())
+    assert text == "1 met · 1 partial · 1 missing · 1 waived · 1 n/a"

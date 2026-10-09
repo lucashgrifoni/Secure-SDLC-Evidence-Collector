@@ -537,7 +537,11 @@ The collector is dogfooded on every push and on every release:
   boundaries are documented in [`docs/limitations.md`](./docs/limitations.md).
 
 Bundle comparison across runs is available via `sdlc-evidence compare
-before.json after.json` and is used in CI to catch regressions.
+before.json after.json` and is used in CI to catch regressions. When the two
+bundles were evaluated against different control catalogs (different SHA-256),
+`compare` names both catalogs and marks each control change `(catalog)`, since
+the movement may come from the catalog rather than the evidence. The JSON output
+carries the same facts under `catalog` and `controls.catalog_drift`.
 
 ---
 

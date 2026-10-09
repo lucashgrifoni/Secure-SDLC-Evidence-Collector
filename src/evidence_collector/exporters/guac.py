@@ -1,13 +1,11 @@
 """GUAC (Graph for Understanding Artifact Composition) adapter. T6.9.
 
-GUAC (https://docs.guac.sh) ingests supply-chain metadata as JSON
-documents and stitches them into a graph. The native ingest format
-is **the document itself** (an SBOM, a SARIF run, an attestation,
-…); GUAC's ``collector/`` family knows how to read each shape. The
-adapter here speaks the same dialect: it emits a single JSON
-container with one entry per upstream document the bundle carries,
-so ``guacone collect files`` can ingest the entire release in one
-shot without the consumer having to disassemble the bundle first.
+GUAC (https://docs.guac.sh) ingests supply-chain documents (SBOMs,
+in-toto attestations, VEX, ...) and stitches them into a graph. Its
+native ingest format is **the document itself**. This adapter emits
+a single JSON index of the documents a bundle carries, so a consumer
+can pick out the ones GUAC can ingest and feed each to ``guacone
+collect files``. GUAC does not read the index itself.
 
 Schema
 ------
@@ -24,45 +22,64 @@ Schema
       },
       "documents": [
         {
-          "type": "sbom" | "sarif" | "attestation" | "vex" | "evidence",
+          "type": "sbom" | "sarif" | "attestation" | "evidence",
           "evidence_id": "...",
           "evidence_type": "<canonical EvidenceType>",
           "subject": {"type": "<SubjectType>", "ref": "..."},
-          "artifact_path": "...",
+          "artifact_path": "<POSIX path>",
           "integrity_hash": "sha256:..."
         },
         ...
       ]
     }
 
-GUAC's API is still pre-1.0 at the time of writing; the container
-format here is intentionally minimal so the JSON survives the next
-GUAC schema bump without a major rewrite on our side.
+``type`` names the format of the file at ``artifact_path``, not the
+kind of evidence it supports: a ZAP, Trivy or OSV-Scanner JSON report
+is ``evidence``, not ``sarif``, because it is not SARIF. The container
+is intentionally minimal so it survives a GUAC schema change without
+a rewrite on our side.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from evidence_collector.domain.enums import EvidenceType
 from evidence_collector.domain.models import EvidenceBundle, NormalizedEvidence
 
-_EVIDENCE_TYPE_TO_GUAC_DOCUMENT_TYPE: dict[EvidenceType, str] = {
-    EvidenceType.SBOM: "sbom",
-    EvidenceType.SAST_SCAN: "sarif",
-    EvidenceType.SCA_SCAN: "sarif",
-    EvidenceType.SECRETS_SCAN: "sarif",
-    EvidenceType.DAST_SCAN: "sarif",
-    EvidenceType.ARTIFACT_ATTESTATION: "attestation",
-    EvidenceType.ARTIFACT_SIGNATURE: "attestation",
-    EvidenceType.GENERIC_ATTESTATION: "attestation",
-}
+# Every value `type` can take, in the order the docs list them.
+GUAC_DOCUMENT_TYPES: tuple[str, ...] = ("sbom", "sarif", "attestation", "evidence")
+
+# The source kinds whose file is an in-toto Statement, bare or wrapped in a
+# DSSE envelope or a Sigstore bundle. `attestation` (no prefix) is the
+# collector's own YAML/JSON attestation format, which is not in-toto.
+# `registry-attestation` is left out on purpose: those files are registry API
+# wrappers (a PyPI Integrity API provenance object, an npm or GitHub
+# `attestations[]` response) around the statements, a shape GUAC's file
+# collector does not read, so they are `evidence`.
+_INTOTO_SOURCE_KINDS = frozenset({"slsa-provenance", "slsa-vsa", "release-attestation"})
 
 
 def _document_type_for(evidence: NormalizedEvidence) -> str:
-    mapped = _EVIDENCE_TYPE_TO_GUAC_DOCUMENT_TYPE.get(evidence.evidence_type)
-    if mapped is not None:
-        return mapped
+    """Label a document by the format of its file.
+
+    The label used to follow the evidence type, so every scan was "sarif"
+    and every attestation "attestation": a ZAP, Trivy or OSV-Scanner JSON
+    report was announced as SARIF and the collector's own YAML attestation
+    as in-toto. A consumer dispatching on `type` handed them to the wrong
+    parser. The parser that read the file knows its format, recorded in
+    `source.kind` and `raw.content_type`.
+    """
+    kind = evidence.source.kind
+    content_type = (evidence.raw.content_type if evidence.raw else None) or ""
+    if kind == "sbom" or content_type in {
+        "application/vnd.cyclonedx+json",
+        "application/spdx+json",
+    }:
+        return "sbom"
+    if kind == "sarif" or content_type == "application/sarif+json":
+        return "sarif"
+    if kind in _INTOTO_SOURCE_KINDS or kind.startswith("in-toto-"):
+        return "attestation"
     return "evidence"
 
 
@@ -80,7 +97,9 @@ def _document_entry(evidence: NormalizedEvidence) -> dict[str, Any]:
     }
     if evidence.raw is not None:
         if evidence.raw.artifact_path:
-            entry["artifact_path"] = evidence.raw.artifact_path
+            # A Windows run records backslashes; the container is consumed
+            # by POSIX tooling, so it carries forward slashes everywhere.
+            entry["artifact_path"] = evidence.raw.artifact_path.replace("\\", "/")
         if evidence.raw.integrity_hash:
             entry["integrity_hash"] = evidence.raw.integrity_hash
     if evidence.cve_ids:

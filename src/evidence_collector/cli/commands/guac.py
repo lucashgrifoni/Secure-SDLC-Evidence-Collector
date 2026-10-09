@@ -1,9 +1,10 @@
 """``sdlc-evidence guac`` — emit a GUAC-collector container for a bundle (T6.9).
 
-Reads an existing bundle.json and writes a JSON container that
-``guacone collect files`` can ingest. The container is a thin
-projection of the bundle (one entry per evidence) so GUAC stitches
-the release into its supply-chain graph without bespoke parsers.
+Reads an existing bundle.json and writes a JSON container: a thin
+projection of the bundle (one entry per evidence, labelled with its
+file format). GUAC does not read the container itself; it says which
+files are SBOMs and in-toto attestations, the formats
+``guacone collect files`` ingests. See docs/guac.md.
 """
 
 from __future__ import annotations
@@ -39,7 +40,7 @@ def register(app: typer.Typer) -> None:
                 file_okay=True,
                 dir_okay=False,
                 readable=True,
-                help="Path to the bundle.json to translate into GUAC ingest format.",
+                help="Path to the bundle.json to index for GUAC ingestion.",
             ),
         ],
         output: Annotated[

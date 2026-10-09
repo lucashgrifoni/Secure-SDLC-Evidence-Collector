@@ -17,7 +17,10 @@ Tests use Typer's CliRunner to avoid spawning subprocesses.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+from typing import Any
+from unittest import mock
 
 import pytest
 from typer.testing import CliRunner
@@ -97,6 +100,48 @@ def test_statement_dsse_envelope_is_written_alongside(
     # A DSSE envelope has a base64 payload and a payloadType.
     assert "payload" in payload
     assert payload["payloadType"] == "application/vnd.in-toto+json"
+
+
+@pytest.mark.integration
+def test_a_failed_envelope_write_leaves_the_previous_pair_untouched(
+    runner: CliRunner, sample_bundle: Path, tmp_path: Path
+) -> None:
+    """The statement and its envelope describe one bundle, or neither changes.
+
+    They were written by two independent atomic writes, statement first. When
+    the envelope could not be replaced (on Windows, another process holding it
+    open is enough) the command exited 3 having already published the NEW
+    statement beside the PREVIOUS bundle's envelope.
+    """
+    target = tmp_path / "st" / "statement.intoto.json"
+    envelope = target.with_suffix(".dsse.json")
+    args = ["statement", "--output", str(target), "--dsse-envelope"]
+    first = runner.invoke(app, [args[0], str(sample_bundle), *args[1:]])
+    assert first.exit_code == 0, first.output
+    before = {path: path.read_text(encoding="utf-8") for path in (target, envelope)}
+
+    raw = json.loads(sample_bundle.read_text(encoding="utf-8"))
+    raw["bundle_id"] = "bundle-a-later-run"
+    later = tmp_path / "later" / "bundle.json"
+    later.parent.mkdir()
+    later.write_text(json.dumps(raw), encoding="utf-8", newline="\n")
+
+    real_replace = os.replace
+
+    def _envelope_is_locked(src: Any, dst: Any, **kwargs: Any) -> None:
+        if Path(str(dst)) == envelope and "~n" in Path(str(src)).name:
+            raise PermissionError(13, "Permission denied")
+        real_replace(src, dst, **kwargs)
+
+    with mock.patch("os.replace", _envelope_is_locked):
+        second = runner.invoke(app, [args[0], str(later), *args[1:]])
+
+    assert second.exit_code != 0
+    for path, content in before.items():
+        assert path.read_text(encoding="utf-8") == content, f"{path.name} changed"
+    assert sorted(p.name for p in target.parent.iterdir()) == sorted(
+        [target.name, envelope.name]
+    ), "scratch files were left behind"
 
 
 @pytest.mark.integration
