@@ -344,6 +344,27 @@ These are explicitly out of scope for security reports (see
   unexpected disagreement is itself a finding.
 - SPDX VEX is deferred (low industry adoption). Tracked in the v2.1
   backlog.
+- Exceptions waive controls, not CVEs. The bundle-derived document marks a
+  CVE `not_affected` only when a waiver actually applies to it: the
+  exception is in force for the bundle's application, release and clock;
+  the bundle records it in `exception_refs` on a `waived` evaluation of the
+  control the exception names; and the CVE is reported by evidence whose
+  type is among that control's `missing_required_evidence_types`, the
+  evidence the waiver stands in for. Every other exception leaves the CVE
+  as it would be with no waivers (`under_investigation`, or `affected`
+  when CISA KEV lists it). Examples: a waiver of `ORG-REL-ROLLBACK` never
+  touches a CVE; a waiver listed on a `met` control waived nothing; a
+  control waived for a missing SBOM does not cover CVEs from a passing SCA
+  scan. An applied waiver keeps its precedence over KEV and over CycloneDX
+  inline analysis. There is no per-CVE waiver field: waiving one CVE means
+  waiving the control its evidence feeds, for the whole release.
+- The output is reproducible. The clock is the bundle's `generated_at`,
+  used for both `timestamp` and waiver validity, so a waiver that expired
+  after the bundle was generated still counts, matching the verdict the
+  bundle recorded. `@id` is a UUIDv5 over the application, repository,
+  release, commit and a SHA-256 of the statements, so two runs on one
+  bundle are byte-identical and different statements (including after
+  `--consume` merges) never share an id; `version` stays `1`.
 
 ## 10 · The bundle carries the identifiers you put in it
 
