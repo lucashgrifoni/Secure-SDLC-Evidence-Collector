@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import builtins
 import os
+import subprocess
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -767,3 +768,85 @@ def test_a_recognized_artifact_is_read_a_bounded_number_of_times(
         "the artifact must be recognised for this bound to mean anything"
     )
     assert opens <= max_opens, f"{filename} was opened {opens} times, budget is {max_opens}"
+
+
+def _nested_link_layout(tmp_path: Path) -> tuple[Path, Path]:
+    """`artifacts/` holding one real SARIF, plus a directory to link to."""
+    artifacts_dir = tmp_path / "artifacts"
+    artifacts_dir.mkdir()
+    (artifacts_dir / "semgrep.sarif").write_text(_sarif_bytes(), encoding="utf-8")
+    elsewhere = tmp_path / "shared-cache"
+    elsewhere.mkdir()
+    (elsewhere / "codeql.sarif").write_text(_sarif_bytes(), encoding="utf-8")
+    return artifacts_dir, elsewhere
+
+
+def _junction(link: Path, target: Path) -> None:
+    result = subprocess.run(
+        ["cmd", "/c", "mklink", "/J", str(link), str(target)],
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0 or not link.exists():
+        pytest.skip("this machine does not allow creating directory junctions")
+
+
+def _link_reasons(report: Any) -> list[str]:
+    """Reasons recorded against the `linked` directory entry."""
+    return [error.reason for error in report.errors if Path(error.path).name == "linked"]
+
+
+def test_a_symlinked_subdirectory_is_reported_not_silently_skipped(tmp_path: Path) -> None:
+    """`os.walk` lists a symlinked subdirectory but never enters it.
+
+    Nothing was recorded, so evidence the operator placed behind the link read
+    as "never supplied" — the false negative `_usable_directory` calls worse
+    than an error. The link is still not followed; it is now reported.
+    """
+    artifacts_dir, elsewhere = _nested_link_layout(tmp_path)
+    try:
+        (artifacts_dir / "linked").symlink_to(elsewhere, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("this machine does not allow creating symlinks")
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir]).collect()
+
+    reasons = _link_reasons(report)
+    assert reasons, f"the directory link was skipped silently: {report.errors!r}"
+    assert "not followed" in reasons[0]
+    # Not followed: only the real file directly under artifacts/ was ingested.
+    assert report.inspected_files == 1
+
+
+@pytest.mark.skipif(os.name != "nt", reason="directory junctions are a Windows construct")
+def test_a_junctioned_subdirectory_is_reported_not_followed(tmp_path: Path) -> None:
+    """A junction is the directory link Windows allows without Developer Mode.
+
+    `os.walk` does not treat it as a link, so it was entered — the opposite of
+    a POSIX symlink in the same place, and a loop when the junction points at
+    an ancestor. Both kinds are now reported and left unentered.
+    """
+    artifacts_dir, elsewhere = _nested_link_layout(tmp_path)
+    _junction(artifacts_dir / "linked", elsewhere)
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir]).collect()
+
+    reasons = _link_reasons(report)
+    assert reasons, f"the directory link was skipped silently: {report.errors!r}"
+    assert "not followed" in reasons[0]
+    # Not followed: only the real file directly under artifacts/ was ingested.
+    assert report.inspected_files == 1
+
+
+@pytest.mark.skipif(os.name != "nt", reason="directory junctions are a Windows construct")
+def test_a_junction_back_to_an_ancestor_does_not_loop(tmp_path: Path) -> None:
+    artifacts_dir, _ = _nested_link_layout(tmp_path)
+    _junction(artifacts_dir / "linked", artifacts_dir)
+
+    report = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts_dir]).collect()
+
+    reasons = _link_reasons(report)
+    assert reasons, f"the directory link was skipped silently: {report.errors!r}"
+    assert "not followed" in reasons[0]
+    # Not followed: only the real file directly under artifacts/ was ingested.
+    assert report.inspected_files == 1
