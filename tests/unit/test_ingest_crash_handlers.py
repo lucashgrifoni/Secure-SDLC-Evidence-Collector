@@ -27,6 +27,7 @@ from evidence_collector.domain.models import ReleaseContext
 from evidence_collector.parsers._common import ParseError, load_yaml_or_json
 from evidence_collector.parsers._intoto import decode_b64_statement
 from evidence_collector.parsers.junit import parse_junit
+from evidence_collector.parsers.sarif import parse_sarifs
 
 _GOOD_OSV = (
     '{"results": [{"packages": [{"package": {"name": "lodash", "version": '
@@ -136,3 +137,21 @@ def test_deeply_nested_dsse_payload_does_not_abort_the_run(
         report = _collect_beside_good_osv(tmp_path, "build.intoto.json", envelope)
     paths = [e.raw.artifact_path for e in report.evidence if e.raw is not None]
     assert any(p and p.endswith("osv.json") for p in paths), paths
+
+
+# ---------------------------------------------------------------------------
+# D16 — SARIF tool.driver that is not an object
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("driver", ["semgrep", ["semgrep"], 5], ids=["str", "list", "int"])
+def test_sarif_driver_that_is_not_an_object_falls_back_to_unknown_tool(
+    tmp_path: Path, driver: object
+) -> None:
+    path = tmp_path / "scan.sarif"
+    path.write_text(
+        json.dumps({"version": "2.1.0", "runs": [{"tool": {"driver": driver}, "results": []}]}),
+        encoding="utf-8",
+    )
+    parsed = parse_sarifs(path)
+    assert [p.tool_name for p in parsed] == ["unknown-sarif-tool"]

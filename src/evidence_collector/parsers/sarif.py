@@ -71,6 +71,9 @@ def parse_sarifs(path: str | Path) -> list[ParsedSarif]:
             continue
         tool = run.get("tool", {})
         driver = tool.get("driver", {}) if isinstance(tool, dict) else {}
+        if not isinstance(driver, dict):
+            # A string, list or number here raised AttributeError on `.get`.
+            driver = {}
         tool_name = str(driver.get("name") or "unknown-sarif-tool")
         tool_version_raw = driver.get("version") or driver.get("semanticVersion")
 
