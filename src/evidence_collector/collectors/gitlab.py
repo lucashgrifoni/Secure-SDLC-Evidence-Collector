@@ -22,6 +22,7 @@ from typing import Any
 
 import httpx
 
+from evidence_collector.collectors._pagination import get_all_pages
 from evidence_collector.domain.models import NormalizedEvidence, ReleaseContext
 from evidence_collector.normalizers import (
     normalize_pr_metadata,
@@ -112,10 +113,12 @@ class GitLabCollector:
         approvals_payload: dict[str, Any] = self._get(
             f"/projects/{project}/merge_requests/{mr_iid}/approvals"
         )
-        commits_payload: list[dict[str, Any]] = self._get(
-            f"/projects/{project}/merge_requests/{mr_iid}/commits",
-            params={"per_page": 100},
+        # Diff versions carry the head SHA and the time GitLab recorded it,
+        # which the author cannot set (unlike commit dates).
+        versions_payload = get_all_pages(
+            self._client, f"/projects/{project}/merge_requests/{mr_iid}/versions"
         )
+        head_sha = mr_payload.get("sha")
 
         approvals_required = int(approvals_payload.get("approvals_required") or 1)
         approvals_left = int(approvals_payload.get("approvals_left") or 0)
@@ -129,13 +132,14 @@ class GitLabCollector:
                 if isinstance(entry, dict)
             ]
         )
-        last_commit_at = _max_datetime(
-            [c.get("committed_date") or c.get("authored_date") for c in commits_payload]
-        )
+        head_recorded_at = _head_recorded_at(versions_payload, head_sha)
+        # GitLab does not bind an approval to a commit. The closest server-side
+        # signal is: the latest approval came after GitLab recorded the head.
+        # A missing approval timestamp or head version fails closed.
         last_approval_after_last_commit = (
-            last_commit_at is not None
+            head_recorded_at is not None
             and last_approval_at is not None
-            and last_approval_at >= last_commit_at
+            and last_approval_at >= head_recorded_at
         )
 
         payload = {
@@ -149,6 +153,7 @@ class GitLabCollector:
             "reviewers_required": approvals_required,
             "reviewers_approved": approvals_approved,
             "last_approval_after_last_commit": last_approval_after_last_commit,
+            "head_sha": head_sha,
             "collected_at": datetime.now(tz=UTC).isoformat(),
             "platform": "gitlab",
         }
@@ -191,6 +196,19 @@ class GitLabCollector:
         evidence.source.uri = pipeline_payload.get("web_url")
         evidence.producer = "gitlab-ci"
         return evidence
+
+
+def _head_recorded_at(versions: list[Any], head_sha: Any) -> datetime | None:
+    """Earliest time GitLab recorded a diff version whose head is `head_sha`."""
+    if not isinstance(head_sha, str) or not head_sha:
+        return None
+    stamps = [
+        v.get("created_at")
+        for v in versions
+        if isinstance(v, dict) and v.get("head_commit_sha") == head_sha
+    ]
+    parsed = [d for d in (_max_datetime([s]) for s in stamps) if d is not None]
+    return min(parsed) if parsed else None
 
 
 def _max_datetime(values: Sequence[str | None]) -> datetime | None:

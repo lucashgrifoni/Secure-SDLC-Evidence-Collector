@@ -1391,15 +1391,20 @@ def normalize_pr_metadata(
 
     Expected keys (see `collectors.github`): `number`, `reviewers_required`,
     `reviewers_approved`, `last_approval_after_last_commit`, `html_url`,
-    `merged`, `base`, `head`, `title`, `author`.
+    `merged`, `base`, `head`, `title`, `author`. Optional: `head_sha`,
+    `stale_approvals`, `changes_requested`.
     """
     approved = int(payload.get("reviewers_approved", 0))
     required = int(payload.get("reviewers_required", 1))
     after_last_commit = bool(payload.get("last_approval_after_last_commit", False))
+    # Optional, additive fields from the GitHub collector: approvals given on
+    # an older commit, and reviewers whose current decision is a change request.
+    stale_approvals = int(payload.get("stale_approvals", 0) or 0)
+    changes_requested = int(payload.get("changes_requested", 0) or 0)
     status: EvidenceStatus
-    if approved >= required and after_last_commit:
+    if approved >= required and after_last_commit and changes_requested == 0:
         status = EvidenceStatus.PASSED
-    elif approved > 0:
+    elif approved > 0 or stale_approvals > 0 or changes_requested > 0:
         status = EvidenceStatus.FAILED
     else:
         status = EvidenceStatus.MISSING
