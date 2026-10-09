@@ -32,6 +32,7 @@ from evidence_collector.parsers.garak import parse_garak
 from evidence_collector.parsers.junit import parse_junit
 from evidence_collector.parsers.model_card import parse_model_card
 from evidence_collector.parsers.sarif import parse_sarifs
+from evidence_collector.parsers.vex import parse_vex
 
 _GOOD_OSV = (
     '{"results": [{"packages": [{"package": {"name": "lodash", "version": '
@@ -283,3 +284,29 @@ def test_exception_scope_with_a_non_string_release_id_is_a_parse_error(tmp_path:
     path.write_text(_EXCEPTION_BODY + "scope:\n  release_id: 2026.04\n", encoding="utf-8")
     with pytest.raises(ParseError, match=r"waiver\.yaml"):
         parse_exception(path)
+
+
+# ---------------------------------------------------------------------------
+# D50 — OpenVEX statement whose status is not a string
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("status", [["fixed"], {"s": "fixed"}], ids=["list", "dict"])
+def test_openvex_statement_with_an_unhashable_status_is_skipped(
+    tmp_path: Path, status: object
+) -> None:
+    path = tmp_path / "doc.openvex.json"
+    path.write_text(
+        json.dumps(
+            {
+                "@context": "https://openvex.dev/ns/v0.2.0",
+                "statements": [
+                    {"vulnerability": {"name": "CVE-2024-0001"}, "status": status},
+                    {"vulnerability": {"name": "CVE-2024-0002"}, "status": "fixed"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    statements = parse_vex(path)
+    assert [(s.cve_id, s.status) for s in statements] == [("CVE-2024-0002", "fixed")]
