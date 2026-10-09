@@ -421,3 +421,54 @@ def test_many_failed_records_keep_the_rationale_within_the_cap() -> None:
     assert len(evaluation.rationale) <= 2000
     assert "promptfoo-0000 (failed)" in evaluation.rationale
     assert "more; see the structured fields" in evaluation.rationale
+
+
+# ---------------------------------------------------------------------------
+# The satisfying-status allowlist is closed (D42)
+#
+# Widening `_SATISFYING_STATUSES` with UNKNOWN or MISSING survived the whole
+# suite on 4.0.0: a record the engine could not classify, or one that says it
+# is missing, would then meet a control. The allowlist is written out here on
+# purpose, and the negative cases are the enum minus that literal, so a new
+# member or a widened allowlist fails rather than silently joining the set.
+# ---------------------------------------------------------------------------
+
+_EXPECTED_SATISFYING = frozenset(
+    {EvidenceStatus.PASSED, EvidenceStatus.COMPLETED, EvidenceStatus.GENERATED}
+)
+_NON_SATISFYING = sorted(set(EvidenceStatus) - _EXPECTED_SATISFYING)
+
+
+def _single_required_control() -> ControlDefinition:
+    return ControlDefinition(
+        control_id="T-ALLOWLIST",
+        framework=ControlFramework.NIST_SSDF,
+        name="Allowlist",
+        description="test",
+        criticality=ControlCriticality.CRITICAL,
+        required_evidence_types=[EvidenceType.SAST_SCAN],
+    )
+
+
+def test_non_satisfying_statuses_cover_the_rest_of_the_enum() -> None:
+    assert _NON_SATISFYING
+    assert {EvidenceStatus.UNKNOWN, EvidenceStatus.MISSING} <= set(_NON_SATISFYING)
+
+
+@pytest.mark.parametrize("status", _NON_SATISFYING, ids=str)
+def test_a_record_outside_the_allowlist_never_meets_a_control(status: EvidenceStatus) -> None:
+    control = _single_required_control()
+    evaluation, gaps = evaluate_control(control, [_evidence(EvidenceType.SAST_SCAN, status=status)])
+    assert evaluation.evaluation_status == ControlEvaluationStatus.MISSING
+    assert evaluation.missing_required_evidence_types == [EvidenceType.SAST_SCAN]
+    assert evaluation.evidence_refs == []
+    assert [g.criticality for g in gaps] == [ControlCriticality.CRITICAL]
+    assert f"({status.value})" in evaluation.rationale
+
+
+@pytest.mark.parametrize("status", sorted(_EXPECTED_SATISFYING))
+def test_a_record_inside_the_allowlist_meets_a_control(status: EvidenceStatus) -> None:
+    control = _single_required_control()
+    evaluation, gaps = evaluate_control(control, [_evidence(EvidenceType.SAST_SCAN, status=status)])
+    assert evaluation.evaluation_status == ControlEvaluationStatus.MET
+    assert not gaps
