@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.0.1](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.0.0...v4.0.1) (2026-10-09)
+
+
+### Fixed
+
+* **collectors:** count only head-bound latest approvals and read every page ([#143](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/143)) ([1b9d370](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/1b9d370a9a7df02839b5309a9fd1595b227ce37e))
+* **vex:** scope waivers to the CVEs they cover and make output reproducible ([#142](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/142)) ([f5f5997](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/f5f59979c99574bd816fe16f19da0a6cb6f5bf16))
+
+
+### CI
+
+* **release:** fail publication on an sdist rebuild mismatch ([#140](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/140)) ([5c2096b](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/5c2096b5e93b3db4393d7809d44fb872fd12c0c7))
+
 ## [4.0.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v3.2.0...v4.0.0) (2026-10-09)
 
 
