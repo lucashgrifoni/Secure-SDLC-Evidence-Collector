@@ -56,7 +56,10 @@ def decode_b64_statement(value: Any) -> dict[str, Any] | None:
         return None
     try:
         obj = json.loads(base64.b64decode(value, validate=True))
-    except (binascii.Error, ValueError):
+    # A deeply nested payload exhausts the stack inside `json.loads`. This
+    # runs during collector detection, so letting RecursionError out aborted
+    # the run before any parser had a chance to reject the file.
+    except (binascii.Error, ValueError, RecursionError):
         return None
     return obj if isinstance(obj, dict) else None
 

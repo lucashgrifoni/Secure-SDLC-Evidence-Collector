@@ -15,6 +15,8 @@ the paths that run during detection.
 
 from __future__ import annotations
 
+import base64
+import json
 import logging
 from pathlib import Path
 
@@ -23,6 +25,7 @@ import pytest
 from evidence_collector.collectors.local import LocalArtifactCollector, LocalCollectionReport
 from evidence_collector.domain.models import ReleaseContext
 from evidence_collector.parsers._common import ParseError, load_yaml_or_json
+from evidence_collector.parsers._intoto import decode_b64_statement
 from evidence_collector.parsers.junit import parse_junit
 
 _GOOD_OSV = (
@@ -112,3 +115,24 @@ def test_attestation_with_an_impossible_date_is_recorded_not_fatal(
         report = LocalArtifactCollector(_release(), attestations_dirs=[attestations]).collect()
     assert len(report.evidence) == 1
     assert [e.path.name for e in report.errors] == ["bad.yaml"]
+
+
+# ---------------------------------------------------------------------------
+# D15 — DSSE payload nested deeply enough to exhaust the stack
+# ---------------------------------------------------------------------------
+
+_DEEP_PAYLOAD = base64.b64encode(("[" * 3000 + "]" * 3000).encode()).decode()
+
+
+def test_decode_b64_statement_returns_none_for_a_deeply_nested_payload() -> None:
+    assert decode_b64_statement(_DEEP_PAYLOAD) is None
+
+
+def test_deeply_nested_dsse_payload_does_not_abort_the_run(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    envelope = json.dumps({"payloadType": "application/vnd.in-toto+json", "payload": _DEEP_PAYLOAD})
+    with caplog.at_level(logging.CRITICAL):
+        report = _collect_beside_good_osv(tmp_path, "build.intoto.json", envelope)
+    paths = [e.raw.artifact_path for e in report.evidence if e.raw is not None]
+    assert any(p and p.endswith("osv.json") for p in paths), paths
