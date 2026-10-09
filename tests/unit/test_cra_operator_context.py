@@ -111,7 +111,7 @@ def test_awareness_and_remediation_anchor_vulnerability_clocks() -> None:
 @pytest.mark.parametrize(
     ("submitted", "expected"),
     [
-        ("2026-01-31T12:00:00Z", "2026-02-28T12:00:00+00:00"),
+        ("2027-01-31T12:00:00Z", "2027-02-28T12:00:00+00:00"),
         ("2028-01-31T12:00:00Z", "2028-02-29T12:00:00+00:00"),
         ("2026-12-10T12:00:00Z", "2027-01-10T12:00:00+00:00"),
     ],
@@ -182,3 +182,101 @@ def test_context_is_rejected_for_another_profile() -> None:
         profiles.apply_profile(
             _bundle([_evidence()]), profiles.ReleaseProfile.NONE, cra_context=context
         )
+
+
+def _cra(**values: Any) -> dict[str, Any]:
+    base = {"release_id": "2026.05.19", "commit_sha": "abcdef1234567890"}
+    context = profiles.CraReportingContext(**(base | values))
+    metadata: dict[str, Any] = (
+        profiles.apply_profile(
+            _bundle([_evidence()]), profiles.ReleaseProfile.CRA_2026, cra_context=context
+        )
+        .evidence[0]
+        .metadata["cra"]
+    )
+    return metadata
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {
+            "notification_type": "vulnerability",
+            "awareness_at": "2025-01-01T00:00:00Z",
+            "corrective_measure_available_at": "2025-01-03T00:00:00Z",
+        },
+        {
+            "notification_type": "incident",
+            "awareness_at": "2026-09-10T23:59:59Z",
+            "notification_72h_submitted_at": "2026-09-12T00:00:00Z",
+        },
+    ],
+)
+def test_awareness_before_article_14_applies_yields_no_deadlines(values: dict[str, Any]) -> None:
+    deadlines = _cra(**values)["reporting_deadlines"]
+    expected = {"status": "not_applicable", "reason": "awareness_precedes_obligation_start"}
+    assert deadlines["early_warning"] == expected
+    assert deadlines["full_notification"] == expected
+    assert deadlines["final_report"]["status"] == "not_applicable"
+    assert "due_at" not in deadlines["final_report"]
+
+
+def test_awareness_on_the_application_date_keeps_deadlines() -> None:
+    deadlines = _cra(notification_type="vulnerability", awareness_at="2026-09-11T00:00:00Z")[
+        "reporting_deadlines"
+    ]
+    assert deadlines["early_warning"] == "2026-09-12T00:00:00+00:00"
+
+
+def test_incident_notification_cannot_precede_awareness() -> None:
+    with pytest.raises(ValidationError, match=r"notification_72h_submitted_at.*awareness_at"):
+        profiles.CraReportingContext(
+            release_id="1",
+            commit_sha="a",
+            notification_type="incident",
+            awareness_at="2026-10-05T00:00:00Z",
+            notification_72h_submitted_at="2026-10-01T00:00:00Z",
+        )
+
+
+def test_reporter_note_field_40_is_optional_but_csirt_note_is_rejected() -> None:
+    cra = _cra(notification_type="incident", srp_fields={"40": "Supplementary note"})
+    assert "40" in cra["srp_declared_field_ids"]
+    with pytest.raises(ValidationError, match="SRP field"):
+        profiles.CraReportingContext(
+            release_id="1",
+            commit_sha="a",
+            notification_type="incident",
+            srp_fields={"41": "CSIRT-authored"},
+        )
+
+
+@pytest.mark.parametrize(("kind", "article"), [("vulnerability", "14(2)"), ("incident", "14(4)")])
+def test_article_follows_the_notification_type(kind: str, article: str) -> None:
+    assert _cra(notification_type=kind)["article"] == article
+
+
+def test_article_lists_both_paragraphs_without_context() -> None:
+    cra = (
+        profiles.apply_profile(_bundle([_evidence()]), profiles.ReleaseProfile.CRA_2026)
+        .evidence[0]
+        .metadata["cra"]
+    )
+    assert cra["article"] == "14(2),14(4)"
+
+
+def test_notification_type_is_case_insensitive() -> None:
+    assert _cra(notification_type="Incident")["notification_type"] == "incident"
+
+
+def test_context_commit_sha_matches_case_insensitively() -> None:
+    bundle = _bundle([_evidence()])
+    context = profiles.CraReportingContext(
+        release_id=bundle.release.release_id,
+        commit_sha=bundle.release.commit_sha.upper(),
+        notification_type="vulnerability",
+    )
+    annotated = profiles.apply_profile(
+        bundle, profiles.ReleaseProfile.CRA_2026, cra_context=context
+    )
+    assert annotated.evidence[0].metadata["cra"]["notification_type"] == "vulnerability"

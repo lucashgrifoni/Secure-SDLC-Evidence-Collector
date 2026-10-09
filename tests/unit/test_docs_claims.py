@@ -155,3 +155,15 @@ def test_shipped_pages_do_not_describe_an_unreleased_branch(path: Path) -> None:
     assert "development branch" not in doc
     assert "Published 3.2.0" not in doc
     assert "PyPI 3.2.0 remains" not in doc
+
+
+def test_action_docs_list_every_bundled_catalog() -> None:
+    from evidence_collector.controls.catalog import bundled_catalog_names
+
+    docs = Path("docs/github_action.md").read_text(encoding="utf-8")
+    action = Path("action.yml").read_text(encoding="utf-8")
+    for name in bundled_catalog_names():
+        assert name in docs, f"docs/github_action.md does not list {name}"
+        assert name in action, f"action.yml does not list {name}"
+    for flag in ("cra-context", "fedramp-class"):
+        assert f"`{flag}`" in docs

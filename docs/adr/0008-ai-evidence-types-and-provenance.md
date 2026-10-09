@@ -23,8 +23,9 @@ shipping AI / LLM / agentic systems:
 
 The market direction in 2026 makes this gap costly:
 
-- NIST published **SP 800-218A "SSDF Community Profile for Generative
-  AI"** in 2024-07. Its PO.1.2 N1, PW.3.2 and PW.8.2 recommendations
+- NIST published **SP 800-218A "Secure Software Development Practices
+  for Generative AI and Dual-Use Foundation Models: An SSDF Community
+  Profile"** in 2024-07. Its PO.1.2 N1, PW.3.2 and PW.8.2 recommendations
   support model documentation, data provenance and vulnerability testing.
 - OWASP **Top 10 for LLM Applications** (2025 edition: LLM01 prompt
   injection through LLM10 unbounded consumption) and the OWASP **Top

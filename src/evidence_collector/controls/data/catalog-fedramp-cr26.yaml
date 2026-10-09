@@ -1,5 +1,7 @@
 # Opt-in partial release evidence for selected actual FedRAMP CR26 KSIs.
 # This is a supporting evidence catalog, not a KSI compliance verdict.
+# It is class-agnostic: --fedramp-class does not change which KSIs are evaluated,
+# and none of these six KSIs is in the Class A mandatory set (CR26 FRC-CLA-MFR).
 controls:
 - control_id: KSI-SCR-MIT
   framework: ORG_INTERNAL
@@ -53,16 +55,17 @@ controls:
   - release_approval
 - control_id: KSI-RPL-TRC
   framework: ORG_INTERNAL
-  name: Supporting evidence for recovery capability testing
-  description: 'Partial, project-defined release evidence mapping to FedRAMP CR26 KSI-RPL-TRC. Presence
-    of these records cannot establish persistent measures, automation, cryptographic verification,
-    independent assessment, or authorization. Review relevance, scope, frequency, and effectiveness
-    separately. Source: FedRAMP/rules 2026.10.05.01, commit 1c33385a06acf4faf50da2b9b4dc31cd826e5b91.'
+  name: Supporting evidence for recovery capability testing (manual review)
+  description: 'Partial, project-defined release evidence mapping to FedRAMP CR26 KSI-RPL-TRC, which
+    requires persistent testing of recovery against defined recovery objectives. Manual review required:
+    no collected evidence type establishes that. A rollback plan is partial support only, and a generic
+    test result is not counted. The control is met only by a generic_attestation that a reviewer supplies
+    for a recovery exercise. Source: FedRAMP/rules 2026.10.05.01, commit 1c33385a06acf4faf50da2b9b4dc31cd826e5b91.'
   criticality: high
   required_evidence_types:
   - rollback_plan
-  - test_result
-  recommended_evidence_types: []
+  recommended_evidence_types:
+  - generic_attestation
 - control_id: KSI-SVC-VRI
   framework: ORG_INTERNAL
   name: Supporting evidence for cryptographic resource integrity

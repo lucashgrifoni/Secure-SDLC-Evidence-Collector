@@ -17,7 +17,9 @@
 #
 # Adopters who need the AI or FedRAMP catalog pass ``catalog`` with
 # the bundled-catalog name (``catalog-ai.yaml`` /
-# ``catalog-ssdf-1.2.yaml`` / ``catalog-fedramp-20x-ksi.yaml``).
+# ``catalog-ssdf-1.2.yaml`` / ``catalog-fedramp-cr26.yaml``; the older
+# ``catalog-fedramp-20x-ksi.yaml`` is deprecated). ``cra-context`` and
+# ``fedramp-class`` forward ``--cra-context`` and ``--fedramp-class``.
 name: Secure SDLC Evidence Collection (reusable)
 
 on:
@@ -66,8 +68,9 @@ on:
         description: >-
           Optional bundled catalog name. Accepted values:
           'catalog-ai.yaml', 'catalog-ssdf-1.2.yaml',
-          'catalog-fedramp-20x-ksi.yaml'. Leave empty for the default
-          SSDF 1.1 catalog.
+          'catalog-fedramp-cr26.yaml', 'catalog-osps-baseline.yaml', or the
+          deprecated 'catalog-fedramp-20x-ksi.yaml'. Leave empty for the
+          default SSDF 1.1 catalog.
       risk-mode:
         type: string
         required: false
@@ -78,6 +81,16 @@ on:
         required: false
         default: "none"
         description: "'none', 'cra-2026', or 'fedramp-20x' (T6.8)."
+      cra-context:
+        type: string
+        required: false
+        default: ""
+        description: "Optional CRA operator context JSON path (requires profile cra-2026)."
+      fedramp-class:
+        type: string
+        required: false
+        default: ""
+        description: "Optional CR26 class A-D, metadata only (requires profile fedramp-20x)."
       collector-version:
         type: string
         required: false
@@ -160,6 +173,8 @@ jobs:
           ATTESTATIONS_DIR: ${{ inputs.attestations-dir }}
           EXCEPTIONS_DIR: ${{ inputs.exceptions-dir }}
           CATALOG_PATH: ${{ steps.catalog.outputs.catalog_path }}
+          CRA_CONTEXT: ${{ inputs.cra-context }}
+          FEDRAMP_CLASS: ${{ inputs.fedramp-class }}
         run: |
           set -euo pipefail
           args=(
@@ -182,6 +197,12 @@ jobs:
           fi
           if [ -n "$CATALOG_PATH" ]; then
             args+=( --catalog "$CATALOG_PATH" )
+          fi
+          if [ -n "$CRA_CONTEXT" ]; then
+            args+=( --cra-context "$CRA_CONTEXT" )
+          fi
+          if [ -n "$FEDRAMP_CLASS" ]; then
+            args+=( --fedramp-class "$FEDRAMP_CLASS" )
           fi
           sdlc-evidence run "${args[@]}"
 

@@ -37,6 +37,11 @@ Use an exact component version or reviewed commit SHA in production.
 | collector-version | 3.2.0 | Exact package version |
 | fail-on | conditional | Failure threshold |
 
+Version 1.0.0 has no `profile`, CRA context or FedRAMP class input, and its
+pinned collector 3.2.0 has no `--cra-context` or `--fedramp-class` option.
+The repository's `examples/gitlab-ci` template forwards `CRA_CONTEXT` and
+`FEDRAMP_CLASS` for collector releases that provide those options.
+
 The job records the pipeline commit SHA, the pipeline ID as the pipeline run
 and the job ID as the build. On a tag pipeline the tag is recorded as the
 release tag. GitLab gives tag pipelines no branch, so the branch field takes

@@ -85,20 +85,31 @@ With 4.0.0 or later, use
 }
 ```
 
-Release ID and SHA must match the CLI release. Choose `vulnerability` or
-`incident`; timestamps require time zones. Without awareness evidence, the
-profile records relative windows and no absolute early-warning deadline.
+Release ID and SHA must match the CLI release; SHA case is ignored. Choose
+`vulnerability` or `incident` (any case); timestamps require time zones.
+`notification_72h_submitted_at` earlier than `awareness_at` exits 3 with an
+error naming both fields. Without awareness evidence, the profile records
+relative windows and no absolute early-warning deadline.
+
+Article 14 applies from 11 September 2026 (Article 71(2)). ENISA's SRP FAQ
+(Q13) states that awareness before that date carries no retrospective
+reporting duty. Awareness before 2026-09-11T00:00Z, taken as UTC, therefore
+records every stage as `{"status": "not_applicable", "reason":
+"awareness_precedes_obligation_start"}` instead of due dates.
 
 Article 14 supplies 24-hour and 72-hour windows from awareness. A vulnerability
 final report is due 14 days after a corrective or mitigating measure becomes
 available. An incident final report uses one calendar month after actual
 72-hour notification submission, supplied as `notification_72h_submitted_at`.
-Month-end dates clamp to the last valid day.
+Month-end dates clamp to the last valid day. `metadata.cra.article` cites
+`14(2)` for a vulnerability context, `14(4)` for an incident context and
+`14(2),14(4)` when no context is supplied.
 
 KEV and EPSS do not establish exploitation in this product, manufacturer
 awareness or legal applicability; those states remain `not_assessed`.
 Completeness uses ENISA SRP glossary 1.4, dated 1 October 2026, and records
-required field IDs by stage. Narrative adequacy and operator timestamps need
+required field IDs by stage. Optional field `40` (AR Note) is accepted; field
+`41` (CSIRT Note) is written by the CSIRT and is rejected. Narrative adequacy and operator timestamps need
 human review. Context is hashed; supplied narratives are not repeated per
 evidence. This is release context, not a per-CVE case or SRP submission payload.
 Submission stays `not_submitted`.
@@ -106,18 +117,42 @@ Submission stays `not_submitted`.
 Operator-derived deadlines participate in the structural hash. Only obsolete
 collection-clock deadlines in legacy bundles remain excluded for compatibility.
 
+Changed `metadata.cra` and `metadata.fedramp` keys. The bundle schema types
+`metadata` as a free-form object, so schema validation does not catch these:
+
+| Key | 3.2.0 | This release |
+| --- | --- | --- |
+| `cra.exploitation_status` | `actively_exploited`, `known_exploitable` or `under_investigation` from KEV/EPSS | always `not_assessed` |
+| `cra.global_exploitation_signal` | absent | `kev_listed`, `high_epss_percentile`, `no_kev_or_high_epss_in_top_risk_cves` or `unavailable` |
+| `cra.disclosure_deadline`, `cra.reporting_deadlines.early_warning`, `.full_notification` | ISO string from the collection clock | ISO string from operator awareness; `{relative_to, window_hours}` without awareness; `{status, reason}` before 11 September 2026 |
+| `cra.reporting_deadlines.final_report` | `{relative_to, window_days}` | type-specific object, optional `due_at`; both variants without context |
+| `cra.notification_type`, `awareness_at`, `awareness_source`, `annotation_scope`, `legal_applicability`, `article`, `srp_glossary_*`, `submission_status` | absent | added; `canonical_context_sha256`, `euvd_ids`, `srp_*` only with a context |
+| `fedramp.retention_years` | `10` | removed |
+| `fedramp.ruleset`, `ruleset_version`, `ruleset_commit`, `class`, `certification_status`, `retention_policy` | absent | added |
+
+The GitHub Action and reusable workflow accept optional `cra-context` and
+`fedramp-class` inputs; the `examples/gitlab-ci` template accepts
+`CRA_CONTEXT` and `FEDRAMP_CLASS`. All default to unset.
+
 ## FedRAMP and framework references
 
 `run --profile fedramp-20x --fedramp-class A` records operator-selected class
-A–D and CR26 version 2026.10.05.01 at commit
+A–D (any case) and CR26 version 2026.10.05.01 at commit
 `1c33385a06acf4faf50da2b9b4dc31cd826e5b91`. No automatic class or 10-year
-retention rule is imposed.
+retention rule is imposed. The class is metadata only: it does not change
+which controls are evaluated or the verdict.
 
 Opt-in `catalog-fedramp-cr26.yaml` requests supporting evidence for six actual
 KSI IDs. It does not verify persistent monitoring, validated automation,
-cryptography, independent assessment or authorization. A generic test result
-does not establish a recovery exercise. The legacy 20x catalog remains a
-deprecated internal release-check catalog; its IDs are not official CR26 KSIs.
+cryptography, independent assessment or authorization. The catalog is
+class-agnostic, and none of its six KSIs is in the Class A mandatory set
+(CR26 `FRC-CLA-MFR`), so it neither covers nor scopes Class A. KSI-RPL-TRC
+needs manual review: a generic test result is not counted, a rollback plan
+alone is partial, and only a reviewer-supplied `generic_attestation` for a
+recovery exercise meets it. The legacy 20x catalog remains a deprecated
+internal release-check catalog; its IDs are not official CR26 KSIs. Its ten
+controls moved from `NIST_SSDF` or `ORG_INTERNAL` to `ORG_INTERNAL` and are
+now named `Legacy internal check: <topic>`.
 
 SP 800-218A references now use actual IDs: documentation PO.1.2 N1, provenance
 PW.3.2, risk assessment PW.1.1 and vulnerability testing PW.8.2. Safety and bias

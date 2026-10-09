@@ -16,7 +16,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal, Self
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from evidence_collector.domain.models import EvidenceBundle, NormalizedEvidence
 from evidence_collector.parsers._common import ensure_file, load_json
@@ -32,6 +32,10 @@ CRA_DISCLOSURE_WINDOW = timedelta(hours=24)
 CRA_FULL_NOTIFICATION_WINDOW = timedelta(hours=72)
 CRA_FINAL_REPORT_WINDOW = timedelta(days=14)
 CRA_REPORTING_OBLIGATION_START = "2026-09-11"
+# Art. 71(2): Article 14 applies from 11 September 2026. ENISA FAQ Q13: awareness
+# before that date carries no retrospective reporting obligation. Taken as UTC.
+_CRA_OBLIGATION_START_AT = datetime(2026, 9, 11, tzinfo=UTC)
+_NOT_APPLICABLE = {"status": "not_applicable", "reason": "awareness_precedes_obligation_start"}
 FEDRAMP_RULESET_VERSION = "2026.10.05.01"
 FEDRAMP_RULESET_COMMIT = "1c33385a06acf4faf50da2b9b4dc31cd826e5b91"
 SRP_GLOSSARY_URL = "https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2"
@@ -40,6 +44,9 @@ _SRP_FIELD_IDS = frozenset(
     + [f"v{i}" for i in range(19, 31)]
     + ["v26a"]
     + [f"i{i}" for i in range(31, 40)]
+    # 40 (AR Note) is optional reporter text. 41 (CSIRT Note) is written by the
+    # designated CSIRT, not the reporter, so it stays unknown here.
+    + ["40"]
 )
 
 
@@ -55,6 +62,11 @@ class CraReportingContext(BaseModel):
     notification_72h_submitted_at: AwareDatetime | None = None
     euvd_ids: list[str] = Field(default_factory=list, max_length=100)
     srp_fields: dict[str, str] = Field(default_factory=dict, max_length=40)
+
+    @field_validator("notification_type", mode="before")
+    @classmethod
+    def _lowercase_type(cls, value: object) -> object:
+        return value.lower() if isinstance(value, str) else value
 
     @model_validator(mode="after")
     def validate_scope(self) -> Self:
@@ -75,6 +87,12 @@ class CraReportingContext(BaseModel):
             )
         if self.notification_type == "vulnerability" and self.notification_72h_submitted_at:
             raise ValueError("The submitted-notification clock belongs to incident final reports")
+        if (
+            self.awareness_at
+            and self.notification_72h_submitted_at
+            and self.notification_72h_submitted_at < self.awareness_at
+        ):
+            raise ValueError("notification_72h_submitted_at cannot be earlier than awareness_at")
         if any(
             key not in _SRP_FIELD_IDS or len(value) > 4000 for key, value in self.srp_fields.items()
         ):
@@ -154,6 +172,8 @@ def _cra_metadata(context: CraReportingContext | None) -> dict[str, Any]:
             },
         }
     deadlines["final_report"] = final
+    if awareness and awareness < _CRA_OBLIGATION_START_AT:
+        deadlines = {stage: dict(_NOT_APPLICABLE) for stage in deadlines}
     metadata: dict[str, Any] = {
         "notification_type": kind,
         "awareness_at": _iso(awareness) if awareness else None,
@@ -165,7 +185,7 @@ def _cra_metadata(context: CraReportingContext | None) -> dict[str, Any]:
         "disclosure_deadline": deadlines["early_warning"],
         "reporting_obligation_start": CRA_REPORTING_OBLIGATION_START,
         "regulation": "EU CRA 2024/2847",
-        "article": "14(2),14(4)",
+        "article": {"vulnerability": "14(2)", "incident": "14(4)"}.get(kind or "", "14(2),14(4)"),
         "srp_glossary_version": "1.4",
         "srp_glossary_date": "2026-10-01",
         "srp_glossary_url": SRP_GLOSSARY_URL,
@@ -221,7 +241,7 @@ def apply_profile(
             raise ValueError("CRA context requires the cra-2026 profile")
         if (
             cra_context.release_id != bundle.release.release_id
-            or cra_context.commit_sha != bundle.release.commit_sha
+            or cra_context.commit_sha.lower() != bundle.release.commit_sha.lower()
         ):
             raise ValueError("CRA context must match the bundle release_id and commit_sha")
     if fedramp_class and profile != ReleaseProfile.FEDRAMP_20X:

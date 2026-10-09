@@ -2,8 +2,9 @@
 #
 # Status: preview. Mappings are partial supporting evidence, not conformance.
 # SP 800-218A applies to AI model development; deployment and operation of AI
-# systems are outside its scope. Maps to NIST SP 800-218A "SSDF Community Profile
-# for Generative AI" (published 2024-07) practices, the OWASP Top 10
+# systems are outside its scope. Maps to NIST SP 800-218A "Secure Software
+# Development Practices for Generative AI and Dual-Use Foundation Models: An
+# SSDF Community Profile" (published 2024-07) practices, the OWASP Top 10
 # for LLM Applications (2025), and the OWASP Top 10 for Agentic
 # Applications (2026). The default ``catalog.yaml`` still encodes
 # generic NIST SSDF 1.1 because most projects do not ship AI
@@ -93,7 +94,7 @@ controls:
       Maps to SP 800-218A PW.3.2 (training, testing, fine-tuning and aligning data provenance) and OWASP LLM04:2025 (data and model poisoning). The
       release must carry a manifest describing training datasets, with
       provenance and licensing.
-      NIST CSF 2.0 informative references for SSDF 1.1 PW.3: none listed. See ADR-0014; references support traceability, not compliance.
+      PW.3 is a practice SP 800-218A adds; SSDF 1.1 has no PW.3, so no CSF 2.0 SSDF 1.1 reference applies. See ADR-0014; references support traceability, not compliance.
     criticality: "medium"
     required_evidence_types: ["ai_training_data_lineage"]
     recommended_evidence_types: []

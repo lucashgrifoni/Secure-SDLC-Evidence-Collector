@@ -4,7 +4,7 @@
 controls:
   - control_id: "KSI-LOW-SBOM"
     framework: "ORG_INTERNAL"
-    name: "Legacy internal release evidence check"
+    name: "Legacy internal check: SBOM published per release"
     description: >-
       Legacy internal preview control retained for compatibility. Its identifier
       is not an official FedRAMP KSI. This checks release evidence presence;
@@ -16,7 +16,7 @@ controls:
 
   - control_id: "KSI-LOW-INTEGRITY"
     framework: "ORG_INTERNAL"
-    name: "Legacy internal release evidence check"
+    name: "Legacy internal check: release integrity (signature + attestation)"
     description: >-
       Legacy internal preview control retained for compatibility. Its identifier
       is not an official FedRAMP KSI. This checks release evidence presence;
@@ -28,7 +28,7 @@ controls:
 
   - control_id: "KSI-LOW-SCA"
     framework: "ORG_INTERNAL"
-    name: "Legacy internal release evidence check"
+    name: "Legacy internal check: dependency vulnerability scanning"
     description: >-
       Legacy internal preview control retained for compatibility. Its identifier
       is not an official FedRAMP KSI. This checks release evidence presence;
@@ -40,7 +40,7 @@ controls:
 
   - control_id: "KSI-LOW-SAST"
     framework: "ORG_INTERNAL"
-    name: "Legacy internal release evidence check"
+    name: "Legacy internal check: static analysis"
     description: >-
       Legacy internal preview control retained for compatibility. Its identifier
       is not an official FedRAMP KSI. This checks release evidence presence;
@@ -52,7 +52,7 @@ controls:
 
   - control_id: "KSI-LOW-SECRETS"
     framework: "ORG_INTERNAL"
-    name: "Legacy internal release evidence check"
+    name: "Legacy internal check: secrets scanning"
     description: >-
       Legacy internal preview control retained for compatibility. Its identifier
       is not an official FedRAMP KSI. This checks release evidence presence;
@@ -64,7 +64,7 @@ controls:
 
   - control_id: "KSI-LOW-CODEREVIEW"
     framework: "ORG_INTERNAL"
-    name: "Legacy internal release evidence check"
+    name: "Legacy internal check: peer code review"
     description: >-
       Legacy internal preview control retained for compatibility. Its identifier
       is not an official FedRAMP KSI. This checks release evidence presence;
@@ -76,7 +76,7 @@ controls:
 
   - control_id: "KSI-LOW-APPROVAL"
     framework: "ORG_INTERNAL"
-    name: "Legacy internal release evidence check"
+    name: "Legacy internal check: documented release approval"
     description: >-
       Legacy internal preview control retained for compatibility. Its identifier
       is not an official FedRAMP KSI. This checks release evidence presence;
@@ -88,7 +88,7 @@ controls:
 
   - control_id: "KSI-LOW-ROLLBACK"
     framework: "ORG_INTERNAL"
-    name: "Legacy internal release evidence check"
+    name: "Legacy internal check: rollback plan present"
     description: >-
       Legacy internal preview control retained for compatibility. Its identifier
       is not an official FedRAMP KSI. This checks release evidence presence;
@@ -100,7 +100,7 @@ controls:
 
   - control_id: "KSI-MOD-DAST"
     framework: "ORG_INTERNAL"
-    name: "Legacy internal release evidence check"
+    name: "Legacy internal check: dynamic security testing"
     description: >-
       Legacy internal preview control retained for compatibility. Its identifier
       is not an official FedRAMP KSI. This checks release evidence presence;
@@ -112,7 +112,7 @@ controls:
 
   - control_id: "KSI-MOD-THREATMODEL"
     framework: "ORG_INTERNAL"
-    name: "Legacy internal release evidence check"
+    name: "Legacy internal check: threat model on file"
     description: >-
       Legacy internal preview control retained for compatibility. Its identifier
       is not an official FedRAMP KSI. This checks release evidence presence;

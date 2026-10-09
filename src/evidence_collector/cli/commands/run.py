@@ -166,7 +166,10 @@ def register(app: typer.Typer) -> None:
             str | None,
             typer.Option(
                 "--fedramp-class",
-                help="Operator-selected CR26 class A, B, C or D; requires --profile fedramp-20x",
+                help=(
+                    "Operator-selected CR26 class A, B, C or D (any case), recorded as "
+                    "metadata only; requires --profile fedramp-20x"
+                ),
             ),
         ] = None,
     ) -> None:
@@ -189,9 +192,11 @@ def register(app: typer.Typer) -> None:
             raise typer.BadParameter("--cra-context requires --profile cra-2026")
         cra_context = load_cra_context(str(cra_context_path)) if cra_context_path else None
         if cra_context and (
-            cra_context.release_id != release_id or cra_context.commit_sha != commit_sha
+            cra_context.release_id != release_id
+            or cra_context.commit_sha.lower() != commit_sha.lower()
         ):
             raise typer.BadParameter("CRA context must match --release-id and --commit-sha")
+        fedramp_class = fedramp_class.upper() if fedramp_class is not None else None
         if fedramp_class is not None and (
             profile != "fedramp-20x" or fedramp_class not in {"A", "B", "C", "D"}
         ):

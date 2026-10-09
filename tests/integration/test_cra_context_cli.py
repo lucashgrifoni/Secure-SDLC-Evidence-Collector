@@ -73,7 +73,7 @@ def test_context_produces_verified_release_metadata(tmp_path: Path) -> None:
     assert _run("verify", str(output / "bundle.json")).returncode == 0
 
 
-@pytest.mark.parametrize("change", ["release", "timezone", "extra"])
+@pytest.mark.parametrize("change", ["release", "timezone", "extra", "chronology"])
 @pytest.mark.parametrize("json_mode", [False, True])
 def test_bad_context_is_rejected_without_partial_outputs(
     tmp_path: Path, change: str, json_mode: bool
@@ -84,6 +84,8 @@ def test_bad_context_is_rejected_without_partial_outputs(
         payload["release_id"] = "another"
     elif change == "timezone":
         payload["awareness_at"] = "2026-10-01T10:00:00"
+    elif change == "chronology":
+        payload["notification_72h_submitted_at"] = "2026-09-30T10:00:00Z"
     else:
         payload["unexpected"] = "PRIVATE-NARRATIVE-MARKER"
     context.write_text(json.dumps(payload), encoding="utf-8")
@@ -119,3 +121,52 @@ def test_bad_context_is_rejected_without_partial_outputs(
         assert events and result.stderr == ""
     else:
         assert result.stdout == "" and result.stderr
+    if change == "chronology":
+        first_line = (result.stdout + result.stderr).splitlines()[0]
+        assert "notification_72h_submitted_at" in first_line
+        assert "awareness_at" in first_line
+
+
+def _run_with(tmp_path: Path, *extra: str, commit_sha: str = "abcdef1234567890") -> Path:
+    artifacts, catalog, _ = _inputs(tmp_path)
+    output = tmp_path / "output"
+    result = _run(
+        "run",
+        "--application",
+        "demo",
+        "--repository",
+        "demo/demo",
+        "--release-id",
+        "1",
+        "--commit-sha",
+        commit_sha,
+        "--artifacts-dir",
+        str(artifacts),
+        "--catalog",
+        str(catalog),
+        "--output-dir",
+        str(output),
+        *extra,
+    )
+    assert result.returncode == 0, result.stderr
+    return output / "bundle.json"
+
+
+def test_fedramp_class_is_case_insensitive(tmp_path: Path) -> None:
+    bundle = _run_with(tmp_path, "--profile", "fedramp-20x", "--fedramp-class", "b")
+    payload = json.loads(bundle.read_text(encoding="utf-8"))
+    assert payload["evidence"][0]["metadata"]["fedramp"]["class"] == "B"
+
+
+def test_context_sha_case_does_not_matter(tmp_path: Path) -> None:
+    (tmp_path / "ctx").mkdir()
+    _, _, context = _inputs(tmp_path / "ctx")
+    bundle = _run_with(
+        tmp_path,
+        "--profile",
+        "cra-2026",
+        "--cra-context",
+        str(context),
+        commit_sha="ABCDEF1234567890",
+    )
+    assert bundle.is_file()

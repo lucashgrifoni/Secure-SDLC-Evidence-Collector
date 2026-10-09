@@ -32,9 +32,11 @@
     ARTIFACTS_DIR: artifacts
     ATTESTATIONS_DIR: ""
     EXCEPTIONS_DIR: ""
-    CATALOG: ""            # e.g. catalog-ai.yaml | catalog-ssdf-1.2.yaml | catalog-fedramp-20x-ksi.yaml
+    CATALOG: ""            # e.g. catalog-ai.yaml | catalog-ssdf-1.2.yaml | catalog-fedramp-cr26.yaml
     RISK_MODE: "off"       # 'off' | 'epss-weighted'
     PROFILE: "none"        # 'none' | 'cra-2026' | 'fedramp-20x'
+    CRA_CONTEXT: ""        # CRA operator context JSON; needs PROFILE cra-2026
+    FEDRAMP_CLASS: ""      # A | B | C | D, metadata only; needs PROFILE fedramp-20x
     COLLECTOR_VERSION: ""  # leave empty for latest; pin in production
     FAIL_ON: not_ready
   before_script:
@@ -65,6 +67,12 @@
       fi;
       if [ -n "$CATALOG" ]; then
         args="$args --catalog $CATALOG";
+      fi;
+      if [ -n "$CRA_CONTEXT" ]; then
+        args="$args --cra-context $CRA_CONTEXT";
+      fi;
+      if [ -n "$FEDRAMP_CLASS" ]; then
+        args="$args --fedramp-class $FEDRAMP_CLASS";
       fi;
       sdlc-evidence run $args
   artifacts:

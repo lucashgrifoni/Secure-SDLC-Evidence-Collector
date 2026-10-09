@@ -100,10 +100,11 @@
         "ir-3.2"
       ],
       "required_evidence_types": [
-        "rollback_plan",
-        "test_result"
+        "rollback_plan"
       ],
-      "recommended_evidence_types": []
+      "recommended_evidence_types": [
+        "generic_attestation"
+      ]
     },
     "KSI-SVC-VRI": {
       "source_controls": [
