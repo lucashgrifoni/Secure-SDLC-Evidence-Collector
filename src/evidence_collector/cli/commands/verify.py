@@ -13,12 +13,14 @@ on drift so it can be wired into CI as a hard gate.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
 from evidence_collector.application.integrity import structural_sha256
+from evidence_collector.cli._errors import report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
@@ -47,8 +49,9 @@ def register(app: typer.Typer) -> None:
             typer.Option(
                 "--expected",
                 help=(
-                    "Expected structural SHA-256. When provided, the command "
-                    "exits with code 2 on mismatch."
+                    "Expected structural SHA-256: 64 hexadecimal characters, "
+                    "optionally prefixed with 'sha256:' (case-insensitive). "
+                    "Exits 0 on match, 2 on mismatch and 3 for a malformed pin."
                 ),
             ),
         ] = None,
@@ -59,17 +62,26 @@ def register(app: typer.Typer) -> None:
         With ``--expected``, exits 0 on match and 2 on drift.
         Malformed JSON or unreadable files exit with code 3.
         """
+        expected_norm = expected.strip().lower() if expected is not None else None
+        if expected_norm is not None:
+            expected_norm = expected_norm.removeprefix("sha256:")
+        if expected_norm is not None and re.fullmatch(r"[0-9a-f]{64}", expected_norm) is None:
+            report_error(
+                "--expected must contain exactly 64 hexadecimal SHA-256 characters, "
+                "optionally prefixed with sha256:",
+                event="verify_failed",
+                bundle=str(bundle_path),
+            )
+            raise typer.Exit(code=EXIT_INPUT_ERROR)
         try:
-            actual = structural_sha256(bundle_path)
+            actual = structural_sha256(bundle_path, validate_schema=True)
         except UNREADABLE_INPUT as exc:
-            if is_json_logs():
-                emit_event(
-                    "verify_failed",
-                    bundle=str(bundle_path),
-                    reason=str(exc),
-                )
-            else:
-                console.print(f"[red]Could not read {bundle_path}:[/red] {exc}")
+            report_error(
+                f"Could not read or validate {bundle_path} against the bundle schema",
+                exc,
+                event="verify_failed",
+                bundle=str(bundle_path),
+            )
             raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
         if expected is None:
@@ -79,7 +91,6 @@ def register(app: typer.Typer) -> None:
                 console.print(actual)
             raise typer.Exit(code=0)
 
-        expected_norm = expected.strip().lower()
         match = actual == expected_norm
         if is_json_logs():
             emit_event(

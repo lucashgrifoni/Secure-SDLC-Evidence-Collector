@@ -108,4 +108,11 @@
 # inside the structural hash, so part of this bump is that. Minor rather than
 # major: a 2.1.0 consumer reads a 2.0.0 bundle fine, while a validator pinned to
 # 2.0.0 rejects a 2.1.0 one, which is what the version field is for saying.
-861b285dd8cb8427484e4ac64317675e48588b050e405916a90e18e5b04e3007
+# 2026-10-07 (unreleased): CISA 2026 presence metadata and the recorded
+# CSF 2.0 references in catalog descriptions intentionally change both
+# SBOM metadata and catalog.sha256. Existing bundle verification remains
+# valid; regenerate pins only when producing a bundle with this version.
+# Same unreleased change, review fixes: the SBOM author signature without an
+# inline signature is not_machine_checkable rather than absent, and element
+# sources name the lookup identifiers that count (bom-ref no longer does).
+e859f47511065d3119c73b47b7290aef552fdbfdf9d7b4fc3711cfff8e5fb729

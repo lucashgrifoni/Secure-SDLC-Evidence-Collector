@@ -192,7 +192,7 @@ def read_records(path: Path) -> list[dict[str, Any]] | None:
     value: list[dict[str, Any]] | None = None
     if key[2] <= MAX_INPUT_BYTES:
         try:
-            value = iter_record_dicts(path.read_text(encoding="utf-8"))
+            value = iter_record_dicts(path.read_text(encoding="utf-8-sig"))
         except (OSError, UnicodeDecodeError, RecursionError, ValueError):
             value = None
     _LAST_RECORDS["key"] = key

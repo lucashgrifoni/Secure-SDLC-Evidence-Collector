@@ -69,6 +69,8 @@ jobs:
 | `catalog` | no | — | Your own controls YAML, **or** the bare name of a bundled catalog |
 | `artifact-root` | no | `github.workspace` | Paths recorded relative to this; set to `""` to keep absolute paths |
 | `profile` | no | `none` | `none` / `cra-2026` / `fedramp-20x` |
+| `cra-context` | no | — | CRA operator context JSON, forwarded as `--cra-context`; requires `profile: cra-2026` |
+| `fedramp-class` | no | — | CR26 class `A`–`D`, forwarded as `--fedramp-class`; requires `profile: fedramp-20x`. Metadata only: it does not change which controls are evaluated |
 | `risk-mode` | no | `off` | `off` / `epss-weighted` |
 | `epss-percentile-threshold` | no | — | Only meaningful with `risk-mode: epss-weighted` |
 | `output-dir` | no | `output/sdlc-evidence` | |
@@ -76,9 +78,12 @@ jobs:
 | `python-version` | no | `3.12` | |
 | `version` | no | — | Git ref of the collector to install |
 
-The five bundled catalogs can be selected by name, without a path:
+The six bundled catalogs can be selected by name, without a path:
 `catalog.yaml`, `catalog-ssdf-1.2.yaml`, `catalog-ai.yaml`,
-`catalog-fedramp-20x-ksi.yaml`, `catalog-osps-baseline.yaml`.
+`catalog-fedramp-cr26.yaml`, `catalog-osps-baseline.yaml` and the deprecated
+`catalog-fedramp-20x-ksi.yaml`, whose IDs are not official FedRAMP KSIs.
+The reusable workflow accepts the same `cra-context` and `fedramp-class`
+inputs.
 
 ### Applying waivers in CI
 

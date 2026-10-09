@@ -1,0 +1,72 @@
+stages: [prepare, test, verify, release]
+
+include:
+  - component: $CI_SERVER_FQDN/$CI_PROJECT_PATH/collect@$CI_COMMIT_SHA
+    inputs:
+      application: Demo release with spaces
+      artifacts-dir: scanner output
+      catalog: tests/catalog.yaml
+      fail-on: not_ready
+
+prepare-fixtures:
+  stage: prepare
+  image: python:3.12-alpine@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4
+  timeout: 2m
+  script:
+    - |
+      python - <<'PY'
+      import json
+      from pathlib import Path
+      Path("scanner output").mkdir()
+      Path("tests").mkdir()
+      Path("scanner output/sbom.json").write_text(json.dumps({
+          "bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1,
+          "metadata": {"component": {"type": "application", "name": "demo", "version": "1.0"}},
+          "components": [{"type": "library", "name": "dependency", "version": "1.0"}]
+      }), encoding="utf-8")
+      Path("tests/catalog.yaml").write_text(
+          "controls:\n  - control_id: DEMO-SBOM\n    framework: ORG_INTERNAL\n"
+          "    name: Demo SBOM evidence\n    description: Presence check for component testing.\n"
+          "    criticality: high\n    required_evidence_types: [sbom]\n"
+          "    recommended_evidence_types: []\n", encoding="utf-8")
+      PY
+  artifacts:
+    paths: [scanner output/, tests/catalog.yaml]
+    expire_in: 1 day
+
+verify-bundle:
+  stage: verify
+  image: python:3.12-alpine@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4
+  timeout: 3m
+  needs: [sdlc-evidence]
+  before_script:
+    - python -m pip install --upgrade "pip==26.2.1"
+    - python -m pip install "secure-sdlc-evidence-collector==3.2.0"
+  script:
+    - sdlc-evidence verify release-evidence/bundle.json
+    - |
+      python - <<'PY'
+      import json, os
+      from pathlib import Path
+      bundle = json.loads(Path("release-evidence/bundle.json").read_text())
+      assert bundle["application"]["name"] == "Demo release with spaces"
+      assert bundle["release"]["commit_sha"] == os.environ["CI_COMMIT_SHA"]
+      assert bundle["release"]["tag"] == (os.environ.get("CI_COMMIT_TAG") or None)
+      assert bundle["release"]["pipeline_run_id"] == os.environ["CI_PIPELINE_ID"]
+      assert bundle["summary"]["release_status"] == "ready"
+      assert Path(bundle["evidence"][0]["raw"]["artifact_path"]).as_posix() == "scanner output/sbom.json"
+      assert Path("release-evidence/report.md").is_file()
+      assert Path("release-evidence/summary.html").is_file()
+      PY
+
+publish-component:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/cli@sha256:e91e763502738e976f8d4fda0152877d8d3baf8d22e9e3e78168167d3c1862cd
+  timeout: 3m
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+$/'
+  script:
+    - echo "Publishing component $CI_COMMIT_TAG"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    description: "Secure SDLC evidence collection component. Collector package version 3.2.0; local artifacts only."

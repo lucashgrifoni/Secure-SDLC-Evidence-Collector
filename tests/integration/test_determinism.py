@@ -183,5 +183,6 @@ def test_cra_profile_keeps_its_deadlines_in_the_written_bundle(
     assert cra["disclosure_deadline"]
     assert cra["reporting_deadlines"]["early_warning"]
     assert cra["reporting_deadlines"]["full_notification"]
-    assert cra["reporting_deadlines"]["final_report"]["window_days"]
+    assert cra["reporting_deadlines"]["final_report"]["vulnerability"]["window_days"] == 14
+    assert cra["reporting_deadlines"]["final_report"]["incident"]["window_calendar_months"] == 1
     assert cra["exploitation_status"]

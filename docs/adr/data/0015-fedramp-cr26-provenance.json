@@ -1,0 +1,127 @@
+{
+  "source": "https://raw.githubusercontent.com/FedRAMP/rules/1c33385a06acf4faf50da2b9b4dc31cd826e5b91/fedramp-consolidated-rules.json",
+  "commit": "1c33385a06acf4faf50da2b9b4dc31cd826e5b91",
+  "ruleset_version": "2026.10.05.01",
+  "source_sha256": "d8a1cd5513fb0e1ecebf2ad8a74259c4b74900e8f7b4b429d6d6741bf9fe555f",
+  "mapping_authority": "project_interpretation",
+  "assessment": "partial_supporting_evidence",
+  "selected_indicators": {
+    "KSI-SCR-MIT": {
+      "source_controls": [
+        "ac-20",
+        "ra-3.1",
+        "sa-9",
+        "sa-10",
+        "sa-11",
+        "sa-15.3",
+        "sa-22",
+        "si-7.1",
+        "sr-5",
+        "sr-6",
+        "ca-7.4",
+        "sc-18"
+      ],
+      "required_evidence_types": [
+        "sbom",
+        "sca_scan"
+      ],
+      "recommended_evidence_types": [
+        "artifact_attestation"
+      ]
+    },
+    "KSI-SCR-MON": {
+      "source_controls": [
+        "ac-20",
+        "ca-3",
+        "ir-6.3",
+        "ps-7",
+        "ra-5",
+        "sa-9",
+        "si-5",
+        "sr-5",
+        "sr-6",
+        "sr-8"
+      ],
+      "required_evidence_types": [
+        "sca_scan"
+      ],
+      "recommended_evidence_types": [
+        "sbom"
+      ]
+    },
+    "KSI-CMT-VTD": {
+      "source_controls": [
+        "cm-3",
+        "cm-3.2",
+        "cm-4.2",
+        "si-2"
+      ],
+      "required_evidence_types": [
+        "test_result"
+      ],
+      "recommended_evidence_types": [
+        "artifact_attestation"
+      ]
+    },
+    "KSI-PIY-RSD": {
+      "source_controls": [
+        "ac-5",
+        "au-3.3",
+        "cm-3.4",
+        "pl-8",
+        "pm-7",
+        "sa-3",
+        "sa-8",
+        "sc-4",
+        "sc-18",
+        "si-10",
+        "si-11",
+        "si-16"
+      ],
+      "required_evidence_types": [
+        "threat_model",
+        "code_review"
+      ],
+      "recommended_evidence_types": [
+        "release_approval"
+      ]
+    },
+    "KSI-RPL-TRC": {
+      "source_controls": [
+        "cp-2.1",
+        "cp-2.3",
+        "cp-4",
+        "cp-4.1",
+        "cp-6",
+        "cp-6.1",
+        "cp-9.1",
+        "cp-10",
+        "ir-3",
+        "ir-3.2"
+      ],
+      "required_evidence_types": [
+        "rollback_plan"
+      ],
+      "recommended_evidence_types": [
+        "generic_attestation"
+      ]
+    },
+    "KSI-SVC-VRI": {
+      "source_controls": [
+        "cm-2.2",
+        "cm-8.3",
+        "sc-13",
+        "sc-23",
+        "si-7",
+        "si-7.1",
+        "sr-10"
+      ],
+      "required_evidence_types": [
+        "artifact_signature"
+      ],
+      "recommended_evidence_types": [
+        "artifact_attestation"
+      ]
+    }
+  }
+}

@@ -23,6 +23,7 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
+from evidence_collector.cli._errors import report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
@@ -159,27 +160,28 @@ def _require_usable[FeedT: (EpssFeed, KevFeed)](feed: FeedT, path: Path, label: 
         reason = "file not found"
     else:
         reason = "no usable records (unreadable, empty, or malformed)"
-    if is_json_logs():
-        emit_event("enrich_failed", feed=str(path), feed_kind=label, reason=reason)
-    else:
-        console.print(f"[red]{label} feed {path} could not be used:[/red] {reason}")
+    report_error(
+        f"{label} feed {path} could not be used: {reason}",
+        event="enrich_failed",
+        feed=str(path),
+        feed_kind=label,
+    )
     raise typer.Exit(code=EXIT_INPUT_ERROR)
 
 
 def _load_bundle(path: Path) -> EvidenceBundle:
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        raw = json.loads(path.read_text(encoding="utf-8-sig"))
     except UNREADABLE_INPUT as exc:
         if is_json_logs():
             emit_event("enrich_failed", bundle=str(path), reason=str(exc))
         else:
-            console.print(f"[red]Could not read {path}:[/red] {exc}")
+            report_error(f"Could not read {path}", exc)
         raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
     try:
         return EvidenceBundle.model_validate(raw)
     except ValidationError as exc:
-        if is_json_logs():
-            emit_event("enrich_failed", bundle=str(path), reason=str(exc))
-        else:
-            console.print(f"[red]Bundle does not match the current schema:[/red] {exc}")
+        report_error(
+            "Bundle does not match the current schema", exc, event="enrich_failed", bundle=str(path)
+        )
         raise typer.Exit(code=EXIT_INPUT_ERROR) from exc

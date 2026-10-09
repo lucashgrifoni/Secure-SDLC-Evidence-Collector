@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -60,11 +61,14 @@ class ParsedAttestation:
 _REQUIRED = ("evidence_type", "producer", "subject_ref")
 
 
-def _coerce_enum(enum_cls: type, value: Any, field_name: str, source: Path) -> Any:
+def _coerce_enum(enum_cls: type[Enum], value: Any, field_name: str, source: Path) -> Any:
     try:
         return enum_cls(value)
     except (ValueError, TypeError) as exc:
-        raise ParseError(f"Invalid {field_name} value '{value}' in attestation {source}") from exc
+        allowed = ", ".join(str(member.value) for member in enum_cls)
+        raise ParseError(
+            f"Invalid {field_name} value in attestation {source}; expected one of: {allowed}"
+        ) from exc
 
 
 def _parse_datetime(value: Any, source: Path) -> datetime | None:
@@ -77,7 +81,7 @@ def _parse_datetime(value: Any, source: Path) -> datetime | None:
             return datetime.fromisoformat(value.replace("Z", "+00:00"))
         except ValueError as exc:
             raise ParseError(
-                f"Invalid ISO 8601 datetime '{value}' in attestation {source}"
+                f"Invalid ISO 8601 datetime in 'generated_at' in attestation {source}"
             ) from exc
     raise ParseError(
         f"Unsupported datetime value type {type(value).__name__} in attestation {source}"

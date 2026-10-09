@@ -50,6 +50,7 @@ class ParsedInspectEval:
     model: str
     status: str
     metrics: dict[str, float] = field(default_factory=dict)
+    headline: dict[str, str] = field(default_factory=dict)
     total_samples: int | None = None
     completed_samples: int | None = None
 
@@ -135,12 +136,23 @@ def parse_inspect_eval(path: str | Path) -> ParsedInspectEval:
             f"only version {SUPPORTED_LOG_VERSION} is supported."
         )
     results = data.get("results")
+    declared = results.get("headline") if isinstance(results, dict) else None
+    headline = (
+        {
+            key: value
+            for key, value in declared.items()
+            if key in {"scorer", "reducer", "metric"} and isinstance(value, str)
+        }
+        if isinstance(declared, dict)
+        else {}
+    )
     return ParsedInspectEval(
         artifact=describe(resolved, content_type="application/json"),
         task=data["eval"]["task"],
         model=data["eval"]["model"],
         status=data["status"],
         metrics=_metrics(results),
+        headline=headline,
         total_samples=_count(results, "total_samples"),
         completed_samples=_count(results, "completed_samples"),
     )

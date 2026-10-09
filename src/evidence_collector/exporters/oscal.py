@@ -7,15 +7,15 @@ Model JSON document conformant with the OSCAL 1.1.x schema and the
 per-release control evaluations as an OSCAL Assessment Results (AR)
 Model document.
 
-The AR exporter is the closing leg of the FedRAMP 20x story: by
-2026-09 every CSP must submit machine-readable AR packages alongside
-the SSP. This module emits the AR model that fits that contract.
+FedRAMP CR26 asks providers for machine-readable JSON that validates
+against FedRAMP JSON schemas (FRC-CSO-JSN). This module emits OSCAL AR
+documents; it does not produce or validate a FedRAMP schema package.
 
 References
 
 * OSCAL Catalog Model — https://pages.nist.gov/OSCAL/learn/concepts/layer/control/catalog/
 * OSCAL Assessment Results Model — https://pages.nist.gov/OSCAL/learn/concepts/layer/assessment/assessment-results/
-* FedRAMP 20x machine-readable packages — https://www.workstreet.com/blog/fedramp-20x-requirements
+* FedRAMP CR26 rules 2026.10.05.01 — https://github.com/FedRAMP/rules/blob/1c33385a06acf4faf50da2b9b4dc31cd826e5b91/fedramp-consolidated-rules.json
 """
 
 from __future__ import annotations

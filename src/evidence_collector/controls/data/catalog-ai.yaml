@@ -1,7 +1,10 @@
 # Secure SDLC for AI / LLM systems — OPT-IN catalog.
 #
-# Status: preview. Maps to NIST SP 800-218A "SSDF Community Profile
-# for Generative AI" (published 2024-07) practices, the OWASP Top 10
+# Status: preview. Mappings are partial supporting evidence, not conformance.
+# SP 800-218A applies to AI model development; deployment and operation of AI
+# systems are outside its scope. Maps to NIST SP 800-218A "Secure Software
+# Development Practices for Generative AI and Dual-Use Foundation Models: An
+# SSDF Community Profile" (published 2024-07) practices, the OWASP Top 10
 # for LLM Applications (2025), and the OWASP Top 10 for Agentic
 # Applications (2026). The default ``catalog.yaml`` still encodes
 # generic NIST SSDF 1.1 because most projects do not ship AI
@@ -49,10 +52,11 @@ controls:
     framework: "NIST_SSDF"
     name: "Model card present and machine-readable"
     description: >-
-      Maps to SSDF AI Profile PS.AI.1 (document the model) and
+      Maps to SP 800-218A PO.1.2 N1 (model documentation) and
       OWASP LLM02:2025 (sensitive information disclosure). The shipped
       model must carry a machine-readable model card with intended
       use, evaluation metrics, and known limitations.
+      NIST CSF 2.0 informative references for SSDF 1.1 PO.1: GV.OC-03, GV.SC-05. Snapshot 2026-09-24, SHA-256 7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["model_card"]
     recommended_evidence_types: []
@@ -61,10 +65,11 @@ controls:
     framework: "NIST_SSDF"
     name: "Prompt-injection test coverage"
     description: >-
-      Maps to SSDF AI Profile PW.4.AI and OWASP LLM01:2025 (prompt
+      Maps to SP 800-218A PW.8.2 (AI model vulnerability testing) and OWASP LLM01:2025 (prompt
       injection). The release must carry test results from a
       prompt-injection harness (garak or equivalent) executed
       against the shipped model + system prompt.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.8: none listed. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["prompt_injection_test_result"]
     recommended_evidence_types: ["threat_model"]
@@ -73,9 +78,11 @@ controls:
     framework: "NIST_SSDF"
     name: "Safety / bias / refusal evaluation"
     description: >-
-      Maps to SSDF AI Profile PW.4.AI. The release must carry safety
+      Project policy includes safety and bias metrics. SP 800-218A PW.8.2 supports the
+      model vulnerability testing portion only. The release must carry safety
       and bias evaluation results from lm-eval-harness (or
       equivalent) on the shipped model.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.8: none listed. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["ai_safety_eval"]
     recommended_evidence_types: []
@@ -84,21 +91,22 @@ controls:
     framework: "NIST_SSDF"
     name: "Training data lineage manifest"
     description: >-
-      Maps to SSDF AI Profile PS.AI.2 (track provenance of training
-      data) and OWASP LLM04:2025 (data and model poisoning). The
+      Maps to SP 800-218A PW.3.2 (training, testing, fine-tuning and aligning data provenance) and OWASP LLM04:2025 (data and model poisoning). The
       release must carry a manifest describing training datasets, with
       provenance and licensing.
+      PW.3 is a practice SP 800-218A adds; SSDF 1.1 has no PW.3, so no CSF 2.0 SSDF 1.1 reference applies. See ADR-0014; references support traceability, not compliance.
     criticality: "medium"
     required_evidence_types: ["ai_training_data_lineage"]
     recommended_evidence_types: []
 
   - control_id: "AI-MCP-INVENTORY"
-    framework: "NIST_SSDF"
+    framework: "ORG_INTERNAL"
     name: "MCP / agent tool inventory"
     description: >-
       Maps to the OWASP Top 10 for Agentic Applications (2026)
       (excessive tool reach / tool misuse), OWASP LLM06:2025
-      (excessive agency), and SSDF AI Profile PW.4.AI. Agentic
+      (excessive agency). This is project policy for deployed agents, outside
+      SP 800-218A model-development scope. Agentic
       systems must declare the full MCP / tool surface (allow-list of
       tools, scopes, network reach) so reviewers can bound blast
       radius.
@@ -110,10 +118,11 @@ controls:
     framework: "NIST_SSDF"
     name: "AI-aware threat model"
     description: >-
-      Maps to SSDF AI Profile PW.1.AI. The threat model must cover
+      Maps to SP 800-218A PW.1.1 (AI model risk assessment). The threat model must cover
       LLM-specific risks (prompt injection, output handling, supply
       chain of model weights, agentic blast radius) in addition to
       the generic Secure SDLC threats.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.1: ID.RA-05. Snapshot 2026-09-24, SHA-256 7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0. See ADR-0014; references support traceability, not compliance.
     criticality: "medium"
     required_evidence_types: ["threat_model"]
     recommended_evidence_types: ["mcp_tool_inventory"]
@@ -126,6 +135,7 @@ controls:
       cover both the runtime (inference engine, retrieval stack,
       tool-use libraries) and any pinned model weights described as
       components. Defended against OWASP LLM03:2025 (supply chain).
+      NIST CSF 2.0 informative references for SSDF 1.1 PS.3: PR.DS-01, PR.DS-11. Snapshot 2026-09-24, SHA-256 7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0. See ADR-0014; references support traceability, not compliance.
     criticality: "critical"
     required_evidence_types: ["sbom"]
     recommended_evidence_types: ["artifact_attestation"]
@@ -138,6 +148,7 @@ controls:
       scanning must cover AI runtime packages (transformers,
       langchain, etc.) whose CVE surface changes faster than typical
       app stacks.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.4: GV.SC-03, GV.SC-07, ID.AM-08. Snapshot 2026-09-24, SHA-256 7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["sca_scan"]
     recommended_evidence_types: []
@@ -151,6 +162,7 @@ controls:
       the code that wires the model into prompts, tools, and user
       inputs — most improper-output-handling bugs live in this
       orchestration layer, not in the model itself.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.7: none listed. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["sast_scan"]
     recommended_evidence_types: []

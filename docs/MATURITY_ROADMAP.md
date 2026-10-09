@@ -1,5 +1,26 @@
 # Maturity Roadmap
 
+## Current delivery boundary — 7 October 2026
+
+The historical tiers below retain the original planning sequence. Development
+now targets the collector's documented CLI contracts and source-backed evidence
+annotations; shipped versions are recorded in CHANGELOG.md.
+
+| Wave 4 item | Current development disposition |
+|---|---|
+| A1 | CISA 2026 (17 elements) and G7 AI (50 elements) presence states; no conformance gate |
+| B1 | Automatic BOD/SSVC engine deferred; deployed exposure and missing decisions are not inferred |
+| B2 | FIRST reference CVSS 4.0 scoring implemented |
+| D1 | CRA operator context and SRP 1.4 completeness; no submission or applicability verdict |
+| D2 | Pinned CR26 profile and six supporting-evidence controls; no authorization verdict |
+| D3 | Correct actual 218A IDs and add preserved CSF references; no invented AI 600-1 crosswalk |
+| E1 | Automatic GPAI compliance verdict dropped from this release; manual review remains |
+| F1 | Separately versioned GitLab Catalog component; published collector version independent |
+
+See [migration and limits](evidence-profile-migration.md) and
+[ADR 0015](adr/0015-source-backed-evidence-profiles.md). Changes in this branch
+await collector release gates; implemented does not mean published on PyPI.
+
 This document is the canonical plan for hardening the Secure SDLC Evidence
 Collector beyond a stable v1.x release. It complements `CHANGELOG.md`
 (what shipped) with **what we still want to ship and why**.
@@ -92,8 +113,8 @@ collector's evidence-first nicho without growing the public surface.
 | T5.5 | in-toto Statement v1 wrapper (`sdlc-evidence statement`)      | Bundle becomes natively consumable by Sigstore cosign, GUAC, Kyverno, OPA Gatekeeper. No bespoke envelope code downstream.  |
 | T5.6 | SSDF 1.2 catalog upgrade (`catalog-v1.2.yaml`)                | NIST SP 800-218r1 is in final review; current catalog tracks 1.1.                                                            |
 | T5.7 | SSDF AI Profile (`catalog-ai.yaml`)                           | SP 800-218A enumerates AI-specific controls (training data lineage, model card, red team). Empty space in the scanner market.|
-| T5.8 | EU CRA mode (`--profile cra-2026`)                            | Filters and packages evidence to meet the 24h vuln reporting + 10y retention windows.                                       |
-| T5.9 | FedRAMP 20x KSI mapping (`catalog-fedramp-20x-ksi.yaml`)      | Translates internal controls to Key Security Indicators FedRAMP 20x will validate automatically.                            |
+| T5.8 | EU CRA mode (`--profile cra-2026`)                            | Records operator context and reporting clocks; no submission, applicability or retention verdict. |
+| T5.9 | FedRAMP supporting evidence (`catalog-fedramp-cr26.yaml`)     | Opt-in source-backed KSI references; no automated authorization or control-effectiveness claim. |
 | T5.10| GUAC ingestion adapter                                        | Collector becomes a producer of canonical evidence; GUAC remains the graph view across all producers.                       |
 | T5.11| Continuous mode (`sdlc-evidence watch`)                       | Daemon that re-runs on webhook events; persists historical bundles. Aligns with continuous ATO and CRA reporting.            |
 | T5.12| Risk-based release status (EPSS-weighted)                     | Today `ready/conditional/not_ready` only sees evidence presence. Folding EPSS/KEV in resolves "checklist theater" critique.  |
@@ -141,7 +162,7 @@ notes are not part of the public repository.
 
 | ID    | Item                                                          | Driver                                                                                              |
 |-------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| T6.8  | EU CRA mode (`run --profile cra-2026`) + FedRAMP 20x KSI catalog | EU CRA reporting starts 2026-09-11; FedRAMP 20x mandates OSCAL AR 2026-09-30. Same release.        |
+| T6.8  | CRA context + FedRAMP supporting evidence | Profiles annotate supplied evidence; regulatory obligations and authorization require separate assessment. |
 | T6.9  | GUAC ingestion adapter + watch daemon (`[watch]` extra)       | GUAC OpenSSF Incubating; "continuous ATO" is the operational pattern CRA codifies.                  |
 
 ### Phase E — Community / sustainability (~6 days, parallel)

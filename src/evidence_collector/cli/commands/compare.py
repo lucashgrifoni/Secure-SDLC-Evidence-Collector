@@ -9,8 +9,10 @@ import typer
 from rich.table import Table
 
 from evidence_collector.application.compare import compare_bundles, load_bundle
+from evidence_collector.cli._errors import report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
-from evidence_collector.cli._state import console
+from evidence_collector.cli._logging import emit_event
+from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.enums import ReleaseStatus
 
 _FORMATS = ("table", "json")
@@ -64,10 +66,15 @@ def register(app: typer.Typer) -> None:
             baseline = load_bundle(before)
             candidate = load_bundle(after)
         except UNREADABLE_INPUT as exc:
-            console.print(f"[red]Could not load bundles:[/red] {exc}")
+            report_error(
+                "Could not load bundles against the current schema", exc, event="compare_failed"
+            )
             raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
         comparison = compare_bundles(baseline, candidate)
+        if is_json_logs():
+            emit_event("bundles_compared", **comparison.to_dict())
+            return
         if normalized_format == "json":
             console.print_json(data=comparison.to_dict())
             return

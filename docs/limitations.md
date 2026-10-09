@@ -79,8 +79,19 @@ The collector checks **presence**, not correctness.
 - SPDX 3.0.x JSON-LD documents (a `@context` + `@graph` of typed
   elements, rather than the 2.x `packages[]` shape) are detected and
   ingested; their AI / Dataset / Security profile element counts surface
-  as `metadata.spdx_profiles`. The CISA presence check above is shaped for
-  SPDX 2.x / CycloneDX and is **not** applied to SPDX 3.0 documents.
+  as `metadata.spdx_profiles`. The legacy CISA 2025 presence check above is
+  shaped for SPDX 2.x / CycloneDX and is **not** applied to SPDX 3.0
+  documents. The CISA 2026 map is applied to SPDX 3.0, but most of its
+  elements report `unsupported_mapping`.
+
+### Current development additions
+
+The new CISA 2026 map covers 17 elements with explicit unsupported states.
+AI-bearing SBOMs also have 50 G7 presence states. Both are project mappings;
+neither verifies accuracy, completeness, signatures or regulatory compliance.
+SPDX 3 mappings are partial. Legacy 2025 fields remain for compatibility.
+See [migration and limits](evidence-profile-migration.md) for CRA operator
+context, CR26 source versions, catalog changes and output-lock recovery.
 
 ## 4 · Control catalog is small on purpose
 
@@ -316,9 +327,9 @@ These are explicitly out of scope for security reports (see
   because it requires an optional ``[watch]`` extra (FastAPI +
   uvicorn + watchdog) and durable cursor persistence the
   file-first collector deliberately avoids.
-- The GUAC adapter and the CRA / FedRAMP profiles cover the
-  immediate regulator-driven use cases for set/2026. The watch
-  daemon is a continuous-ATO accelerator, not a v2.0 blocker.
+- GUAC and regulatory profiles provide projections of supplied evidence;
+  they do not establish authorization or reporting compliance. Watch remains
+  deferred and is not part of the current delivery boundary.
 
 ## 16 · Multi-VEX consumer trusts the upstream verdict (T6.7)
 
@@ -384,3 +395,18 @@ uvicorn evidence_collector.api.app:app --host 127.0.0.1 --port 8000
   is set or the app is built with `expose_docs=True`.
 - The collector does not refuse a public bind. That choice stays with whoever
   runs the server.
+
+## 19 · Output locks are per file and advisory
+
+Every write takes an exclusive `.<name>.lock` beside the file it replaces, and
+fails with exit 3 if that lock already exists. Writers of different files in
+one directory do not block each other. The lock is advisory, local to the
+filesystem and unverified on network shares.
+
+A process killed mid-write (`kill -9`, the OOM killer, a CI timeout) leaves its
+lock behind, and every later write of that file exits 3 until it is removed.
+Confirm that no sdlc-evidence process is still running (the lock records `pid`,
+`host` and `started`), then **delete only the lock file** named in the error.
+Never delete the output files: if one is missing, the `.<name>~o??????` file
+beside it holds the previous output and is restored by renaming it back. See
+[migration and limits](evidence-profile-migration.md#output-locking-and-recovery).

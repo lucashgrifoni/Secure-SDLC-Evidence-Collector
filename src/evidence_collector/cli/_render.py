@@ -33,6 +33,7 @@ def render_summary(result: BundleBuildResult) -> None:
             controls_waived=summary.controls_waived,
             controls_not_applicable=summary.controls_not_applicable,
             evidence_count=len(result.bundle.evidence),
+            collection_error_count=len(result.bundle.collection_errors),
             missing_critical_evidence=list(summary.missing_critical_evidence),
             bundle_json=str(result.json_path) if result.json_path else None,
             report_md=str(result.markdown_path) if result.markdown_path else None,
@@ -73,9 +74,7 @@ def render_summary(result: BundleBuildResult) -> None:
 
 def render_collection_errors(result: BundleBuildResult) -> None:
     """Surface collection errors either as NDJSON events or a Rich warning block."""
-    if result.collection_report is None:
-        return
-    errors = result.collection_report.errors
+    errors = result.bundle.collection_errors
     if not errors:
         return
     if is_json_logs():

@@ -120,6 +120,8 @@ def md_escape(value: object) -> str:
         return ""
     text = str(value).translate(_MD_CONTROL_CHARS)
     text = text.replace("\\", "\\\\").replace("|", "\\|")
+    for character in "*_`~":
+        text = text.replace(character, "\\" + character)
     text = text.replace("[", "\\[").replace("]", "\\]")
     text = _MD_ENTITY_START.sub("&amp;", text)
     return text.replace("<", "&lt;").replace(">", "&gt;")

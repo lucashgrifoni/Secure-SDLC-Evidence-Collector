@@ -384,12 +384,14 @@ def normalize_sbom(
             for a in sorted(parsed.vulnerability_analyses, key=lambda x: x.cve_id)
         ]
     if parsed.cisa_minimum_elements:
-        # Presence check against CISA's 2025 Minimum Elements for an SBOM.
-        # Turns "an SBOM exists" into "the SBOM is shaped like a conformant
-        # one"; the booleans are content-derived so the bundle stays
-        # byte-stable across runs on the same input.
+        # Legacy presence-only keys retained for consumer compatibility.
+        # The historical "conformant" name does not establish compliance.
         metadata["cisa_2025_minimum_elements"] = dict(parsed.cisa_minimum_elements)
         metadata["cisa_2025_conformant"] = all(parsed.cisa_minimum_elements.values())
+    if parsed.cisa_2026_presence:
+        metadata["cisa_2026_presence"] = parsed.cisa_2026_presence
+    if parsed.g7_ai_presence:
+        metadata["g7_ai_presence"] = parsed.g7_ai_presence
     # CycloneDX 1.6/1.7 evidence-bearing objects, surfaced only when present so
     # a classic dependency SBOM stays byte-identical to pre-1.7 bundles.
     if parsed.ml_model_count or parsed.dataset_count:
@@ -1060,6 +1062,8 @@ def normalize_inspect_eval(
         "eval_status": parsed.status,
         "metrics": dict(parsed.metrics),
     }
+    if parsed.headline:
+        metadata["inspect_headline"] = dict(parsed.headline)
     if parsed.total_samples is not None:
         metadata["total_samples"] = parsed.total_samples
     if parsed.completed_samples is not None:

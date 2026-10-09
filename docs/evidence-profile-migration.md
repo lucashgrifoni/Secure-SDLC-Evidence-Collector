@@ -1,0 +1,257 @@
+# Evidence profile migration and limits
+
+These changes ship in collector 4.0.0. The GitLab component has its own
+version and installs the published collector.
+
+## Bundle pins and CLI
+
+4.0.0 is a major version because existing profile
+semantics and newly generated digest pins change. The bundle schema stays at
+2.1.0. New SBOM metadata and catalog descriptions
+intentionally change newly generated structural digests. The sample moves from
+`861b285dd8cb8427484e4ac64317675e48588b050e405916a90e18e5b04e3007` to
+`e859f47511065d3119c73b47b7290aef552fdbfdf9d7b4fc3711cfff8e5fb729`.
+Previously generated bundles retain their own pins: verification does not
+re-run parsers or load a new catalog. Review and pin a new digest when
+regenerating evidence.
+
+`verify` checks the bundle schema before computing a digest. Invalid input or a
+pin other than 64 hexadecimal characters exits 3; a different valid pin exits 2;
+a match exits 0. Uppercase hexadecimal, surrounding whitespace and a
+case-insensitive `sha256:` prefix are accepted.
+
+With `--json-logs` or `SDLC_JSON_LOGS=1`, every stdout line is one JSON event,
+including usage errors. `--version` prints `{"event": "version", "version": ...}`.
+`--help` is exempt and stays plain text. Human errors use stderr.
+
+Commands that print a document or data on stdout now wrap it in an event under
+JSON logs. A pipeline that sets `SDLC_JSON_LOGS=1` globally and redirects one of
+these commands into a file gets the event line, so read the payload key:
+
+| Command | Event | Payload |
+|---|---|---|
+| `schema` without `--output` | `schema_emitted` | `.schema` holds the JSON Schema |
+| `oscal` without `--output` | `oscal_emitted` | `.document` holds the OSCAL document, `.kind` names it |
+| `plugins` | `plugins_listed` | `.plugins` maps each group to its names |
+| `controls` | `controls_listed` | `.controls` lists the catalog |
+| `doctor`, `doctor --json` | `doctor_checked` | `.checks` and `.failed`, as printed by `--json` |
+| `compare`, `compare --format json` | `bundles_compared` | the comparison fields sit at the top level beside `event` |
+| `exceptions list` | `exception_listed` per file, then `exceptions_summary` | `.exception` |
+| `exceptions validate` | `exception_validated` per file | `.exception` |
+| `verify` without `--expected` | `verify_computed` | `.sha256`, unchanged from 3.2.0 |
+
+With `--output`, `schema` and `oscal` write the bare document to the file and
+emit only the event naming it. When JSON logs are off, `schema`, `oscal`,
+`compare --format json` and `doctor --json` still print the raw document.
+
+Inputs accept UTF-8 with or without a BOM; raw hashes include the original BOM.
+UTF-16 remains unsupported. Markdown reports escape untrusted emphasis, code
+and strikethrough as well as links, HTML and table separators.
+
+## SBOM minimum element presence
+
+`metadata.cisa_2026_presence` reports all 17 elements of the final 2026
+guidance under `metadata.cisa_2026_presence.elements.<name>`, each with a
+`status` and a `source` path. The status is one of:
+
+- `present`: the field holds a value.
+- `declared_unknown`: the author wrote an explicit `NOASSERTION`, `NONE` or
+  `UNKNOWN`, as CISA 2026 asks authors to do for unknown information.
+- `absent`: the field is missing or empty.
+- `not_machine_checkable`: the input cannot show it, such as a document
+  version in SPDX, a detached signature, or free-text generation context.
+- `unsupported_mapping`: the format has a field the collector does not map yet
+  (most SPDX 3 elements).
+
+For per-component elements, one component without the field makes the element
+`absent`; otherwise any explicit unknown makes it `declared_unknown`.
+Values, authorship, signatures, license correctness and dependency accuracy
+are not verified. A signature object alone does not establish an author's
+signature, and a missing inline signature is `not_machine_checkable`, not
+`absent`. CycloneDX checks include root and child components; paired hash
+algorithm and value must exist in the same entry. An implicit document
+version is not explicit evidence.
+
+Component identifiers must work as a lookup key outside the document:
+CycloneDX `purl`, `cpe`, `swid.tagId`, `swhid` or `omniborId`; SPDX 2.3
+`externalRefs` of type purl, cpe22Type, cpe23Type, swid, swh, gitoid or a
+package-manager coordinate; SPDX 3 `software_packageUrl` or an
+`externalIdentifier`. Document-local `bom-ref`, `SPDXID` and `spdxId` do not
+count. SPDX 2.3 dependency relationships count when one element is needed
+for the other to operate: `DEPENDS_ON`, `DEPENDENCY_OF`,
+`RUNTIME_DEPENDENCY_OF`, `PROVIDED_DEPENDENCY_OF`, `STATIC_LINK`,
+`DYNAMIC_LINK`, `PREREQUISITE_FOR`, `HAS_PREREQUISITE`, `CONTAINS` and
+`CONTAINED_BY`. Build, development, test and optional dependencies and
+derivation do not count. One such relationship is enough for SPDX 2.3, while
+CycloneDX needs a `dependencies[]` entry for every component.
+
+AI-bearing SBOMs get `metadata.g7_ai_presence`: 50 elements across seven
+clusters under `metadata.g7_ai_presence.clusters.<cluster>.<name>`, with the
+same statuses. This is a project interpretation of CycloneDX/SPDX fields, not
+an official format crosswalk or G7 conformance assessment. Elements that need
+semantic review are `not_machine_checkable`. G7 derivation links and CISA
+runtime dependencies use separate checks; the G7 dependency element needs a
+`dependencies[]` entry with a known `ref` and `dependsOn`, or a non-empty
+pedigree ancestor, descendant or variant list. SPDX 3 support remains partial.
+
+Legacy `cisa_2025_*` fields remain for consumers. The old
+`cisa_2025_conformant` name denotes a historical presence check, not compliance.
+No G7 gate, evidence type or framework enum is added.
+
+## CRA operator context
+
+With 4.0.0 or later, use
+`run --profile cra-2026 --cra-context cra-context.json`. Example:
+
+```json
+{
+  "release_id": "release-2026-10",
+  "commit_sha": "abcdef1234567890",
+  "notification_type": "vulnerability",
+  "awareness_at": "2026-10-01T10:00:00Z",
+  "corrective_measure_available_at": "2026-10-04T12:00:00Z",
+  "euvd_ids": ["EUVD-2026-4893"],
+  "srp_fields": {"2": "Operator-supplied notification title"}
+}
+```
+
+Release ID and SHA must match the CLI release; SHA case is ignored. Choose
+`vulnerability` or `incident` (any case); timestamps require time zones.
+`notification_72h_submitted_at` earlier than `awareness_at` exits 3 with an
+error naming both fields. Without awareness evidence, the profile records
+relative windows and no absolute early-warning deadline.
+
+Article 14 applies from 11 September 2026 (Article 71(2)). ENISA's SRP FAQ
+(Q13) states that awareness before that date carries no retrospective
+reporting duty. Awareness before 2026-09-11T00:00Z, taken as UTC, therefore
+records every stage as `{"status": "not_applicable", "reason":
+"awareness_precedes_obligation_start"}` instead of due dates.
+
+Article 14 supplies 24-hour and 72-hour windows from awareness. A vulnerability
+final report is due 14 days after a corrective or mitigating measure becomes
+available. An incident final report uses one calendar month after actual
+72-hour notification submission, supplied as `notification_72h_submitted_at`.
+Month-end dates clamp to the last valid day. `metadata.cra.article` cites
+`14(2)` for a vulnerability context, `14(4)` for an incident context and
+`14(2),14(4)` when no context is supplied.
+
+KEV and EPSS do not establish exploitation in this product, manufacturer
+awareness or legal applicability; those states remain `not_assessed`.
+Completeness uses ENISA SRP glossary 1.4, dated 1 October 2026, and records
+required field IDs by stage. Optional field `40` (AR Note) is accepted; field
+`41` (CSIRT Note) is written by the CSIRT and is rejected. Narrative adequacy and operator timestamps need
+human review. Context is hashed; supplied narratives are not repeated per
+evidence. This is release context, not a per-CVE case or SRP submission payload.
+Submission stays `not_submitted`.
+
+Operator-derived deadlines participate in the structural hash. Only obsolete
+collection-clock deadlines in legacy bundles remain excluded for compatibility.
+
+Changed `metadata.cra` and `metadata.fedramp` keys. The bundle schema types
+`metadata` as a free-form object, so schema validation does not catch these:
+
+| Key | 3.2.0 | This release |
+| --- | --- | --- |
+| `cra.exploitation_status` | `actively_exploited`, `known_exploitable` or `under_investigation` from KEV/EPSS | always `not_assessed` |
+| `cra.global_exploitation_signal` | absent | `kev_listed`, `high_epss_percentile`, `no_kev_or_high_epss_in_top_risk_cves` or `unavailable` |
+| `cra.disclosure_deadline`, `cra.reporting_deadlines.early_warning`, `.full_notification` | ISO string from the collection clock | ISO string from operator awareness; `{relative_to, window_hours}` without awareness; `{status, reason}` before 11 September 2026 |
+| `cra.reporting_deadlines.final_report` | `{relative_to, window_days}` | type-specific object, optional `due_at`; both variants without context |
+| `cra.notification_type`, `awareness_at`, `awareness_source`, `annotation_scope`, `legal_applicability`, `article`, `srp_glossary_*`, `submission_status` | absent | added; `canonical_context_sha256`, `euvd_ids`, `srp_*` only with a context |
+| `fedramp.retention_years` | `10` | removed |
+| `fedramp.ruleset`, `ruleset_version`, `ruleset_commit`, `class`, `certification_status`, `retention_policy` | absent | added |
+
+The GitHub Action and reusable workflow accept optional `cra-context` and
+`fedramp-class` inputs; the `examples/gitlab-ci` template accepts
+`CRA_CONTEXT` and `FEDRAMP_CLASS`. All default to unset.
+
+## FedRAMP and framework references
+
+`run --profile fedramp-20x --fedramp-class A` records operator-selected class
+A–D (any case) and CR26 version 2026.10.05.01 at commit
+`1c33385a06acf4faf50da2b9b4dc31cd826e5b91`. No automatic class or 10-year
+retention rule is imposed. The class is metadata only: it does not change
+which controls are evaluated or the verdict.
+
+Opt-in `catalog-fedramp-cr26.yaml` requests supporting evidence for six actual
+KSI IDs. It does not verify persistent monitoring, validated automation,
+cryptography, independent assessment or authorization. The catalog is
+class-agnostic, and none of its six KSIs is in the Class A mandatory set
+(CR26 `FRC-CLA-MFR`), so it neither covers nor scopes Class A. KSI-RPL-TRC
+needs manual review: a generic test result is not counted, a rollback plan
+alone is partial, and only a reviewer-supplied `generic_attestation` for a
+recovery exercise meets it. The legacy 20x catalog remains a deprecated
+internal release-check catalog; its IDs are not official CR26 KSIs. Its ten
+controls moved from `NIST_SSDF` or `ORG_INTERNAL` to `ORG_INTERNAL` and are
+now named `Legacy internal check: <topic>`.
+
+SP 800-218A references now use actual IDs: documentation PO.1.2 N1, provenance
+PW.3.2, risk assessment PW.1.1 and vulnerability testing PW.8.2. Safety and bias
+requirements remain project policy. Deployed-agent tool inventory is outside
+that publication's model-development scope. No official AI 600-1 crosswalk is
+claimed. CSF 2.0 descriptions use the SSDF 1.1 references preserved in ADR 0014;
+they are not an AI-specific crosswalk or proof of control effectiveness.
+
+## Scope decisions
+
+B1's automatic BOD/SSVC decision engine is deferred. Supplied EPSS/KEV signals
+remain available. The collector does not decide deployed-asset exposure,
+agency obligations, missing decision points or SSVC outcomes. A future reader
+of published SSVC assertions needs a separate input contract and pinned schemas.
+
+E1's automatic GPAI compliance verdict is dropped from this release. Existing
+model cards, lineage, evaluations and attestations support a manual review;
+they do not establish provider role, applicable duties, documentation
+completeness or delivery to regulators. Do not substitute an SBOM, Croissant
+manifest or generic attestation for required regulatory documents.
+
+D3 is limited to corrected official IDs and CSF traceability. Broader AI 600-1
+risk mappings require explicit project judgment and are not generated.
+
+## Output locking and recovery
+
+Each writer holds an exclusive `.<name>.lock` beside every file it is about
+to write (`.bundle.json.lock`, `.gaps.sarif.lock`) before staging or replacing
+it. Two writers of the same file, or of overlapping report sets such as two
+`run` commands into one `--output-dir`, conflict: the later one exits 3 with
+`Another writer owns <lock path>`. Writers of different files in one directory,
+for example `run`, `sarif` and `vex` sharing an output directory, do not block
+each other. Normal completion and rollback remove the writer's own locks.
+
+A killed process may leave locks and scratch files behind. To recover:
+
+1. Confirm that no sdlc-evidence process is still running. The lock records
+   the writer's `pid`, `host` and `started` time.
+2. If an output file is missing and a `.<name>~o??????` file sits beside it,
+   that file is the previous output and may be the only copy. Rename it back
+   to `<name>`. `.<name>~n??????` files are staged new output and can be
+   deleted.
+3. Delete only the `.<name>.lock` file named in the error, then retry. Never
+   delete the output files to clear a lock.
+
+Never remove a live writer's lock. Network filesystem behavior is unverified.
+Readers can observe the interval between replacements; this guarantees writer
+consistency, not a transactional reader snapshot.
+
+## CVSS and publication
+
+OSV CVSS 4.0 scoring ports the FIRST reference at commit
+`c5b0d409ae9f57c44264c6ce5f27d89298e1d32a`, with BSD-2-Clause notices in
+THIRD_PARTY_LICENSES.md. Mandatory metrics, duplicates and invalid values are
+checked; CVSS 3.x behavior stays unchanged.
+
+Source archives normalize timestamps, modes, owners, order and gzip metadata
+while preserving payload bytes. A missing or differing wheel blocks
+publication; a differing sdist rebuild only warns until a release confirms the
+new normaliser (see [rollback](rollback.md)). Manual publication requires the
+requested tag to be the workflow's selected tag ref; every checkout uses the
+triggering commit.
+
+## Primary sources
+
+- [CISA/ASD 2026 SBOM elements](https://www.cyber.gov.au/publication/2026-minimum-elements-for-a-software-bill-of-materials-sbom)
+- [G7 SBOM for AI](https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/KI/SBOM-for-AI_minimum-elements.pdf?__blob=publicationFile&v=4)
+- [CRA Article 14](https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32024R2847)
+- [ENISA SRP 1.4](https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2)
+- [Pinned FedRAMP CR26](https://github.com/FedRAMP/rules/blob/1c33385a06acf4faf50da2b9b4dc31cd826e5b91/fedramp-consolidated-rules.json)
+- [NIST SP 800-218A](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-218A.pdf)
+- [Preserved CSF references](adr/0014-csf-2-crosswalk-for-built-in-catalogs.md)

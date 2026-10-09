@@ -17,8 +17,13 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
-from evidence_collector.application.profiles import ReleaseProfile, apply_profile
+from evidence_collector.application.profiles import (
+    CraReportingContext,
+    ReleaseProfile,
+    apply_profile,
+)
 from evidence_collector.collectors.local import (
     LocalArtifactCollector,
     LocalCollectionReport,
@@ -180,6 +185,8 @@ def run_pipeline(
     risk_mode: RiskMode = RiskMode.OFF,
     risk_thresholds: RiskThresholds | None = None,
     profile: ReleaseProfile = ReleaseProfile.NONE,
+    cra_context: CraReportingContext | None = None,
+    fedramp_class: Literal["A", "B", "C", "D"] | None = None,
 ) -> BundleBuildResult:
     """Collect, evaluate, and export a bundle end-to-end."""
     collector = LocalArtifactCollector(
@@ -212,7 +219,7 @@ def run_pipeline(
             CollectionError.clipped(str(error.path), error.reason) for error in report.errors
         ],
     )
-    bundle = apply_profile(bundle, profile)
+    bundle = apply_profile(bundle, profile, cra_context=cra_context, fedramp_class=fedramp_class)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     reports = export_report_set(bundle, output_dir)

@@ -7,10 +7,13 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from pydantic import ValidationError
 from rich.table import Table
 
+from evidence_collector.cli._errors import report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
-from evidence_collector.cli._state import console
+from evidence_collector.cli._logging import emit_event
+from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceException
 from evidence_collector.parsers import parse_exception
 from evidence_collector.parsers._common import ParseError
@@ -43,6 +46,18 @@ def _window_note(exception: EvidenceException, now: datetime) -> str:
             f"{exception.approved_at.isoformat()} — waives nothing)[/yellow]"
         )
     return ""
+
+
+def _file_prefix(verb: str, path: Path, exc: BaseException) -> str:
+    """Name the file once in a parse failure.
+
+    Parser messages already name the file they rejected, so prefixing them
+    with the path printed it twice. Pydantic details are reported without the
+    parser's wrapper (see ``error_detail``), so only they need the path here.
+    """
+    if isinstance(exc.__cause__, ValidationError):
+        return f"{verb} exception file {path}"
+    return f"{verb} exception file"
 
 
 def register(app: typer.Typer) -> None:
@@ -79,7 +94,7 @@ def register(app: typer.Typer) -> None:
         so the taxonomy wins.
         """
         if not paths:
-            console.print("[red]No exception files given.[/red]")
+            report_error("No exception files given.", event="exception_invalid")
             raise typer.Exit(code=EXIT_INPUT_ERROR)
         invalid = 0
         for path in paths:
@@ -87,13 +102,28 @@ def register(app: typer.Typer) -> None:
                 exception = parse_exception(path)
             except (ParseError, FileNotFoundError) as exc:
                 invalid += 1
-                console.print(f"[red]Invalid exception file[/red] {path}: {exc}")
+                report_error(
+                    _file_prefix("Invalid", path, exc),
+                    exc,
+                    event="exception_invalid",
+                    path=str(path),
+                )
                 continue
             # Expiry is not a schema error, so it must not change this
             # command's exit contract (it ships as a pre-commit hook). It is
             # still worth saying out loud: a well-formed waiver that expired
             # waives nothing, and silence here reads as approval.
-            expiry_note = _window_note(exception, datetime.now(tz=UTC))
+            now = datetime.now(tz=UTC)
+            if is_json_logs():
+                emit_event(
+                    "exception_validated",
+                    path=str(path),
+                    exception=exception.model_dump(mode="json"),
+                    in_force=_in_force(exception, now),
+                    scope_evaluated=False,
+                )
+                continue
+            expiry_note = _window_note(exception, now)
             console.print(
                 f"[green]{exception.exception_id}[/green] valid · "
                 f"control={exception.control_id} · approver={exception.approver} "
@@ -118,7 +148,7 @@ def register(app: typer.Typer) -> None:
         a stronger claim than the command can make.
         """
         if not directory.is_dir():
-            console.print(f"[red]Not a directory:[/red] {directory}")
+            report_error(f"Not a directory: {directory}", event="exceptions_failed")
             raise typer.Exit(code=EXIT_INPUT_ERROR)
         table = Table(title=f"Exceptions in {directory}")
         table.add_column("Exception ID")
@@ -137,7 +167,12 @@ def register(app: typer.Typer) -> None:
                 exc = parse_exception(path)
             except (ParseError, FileNotFoundError) as err:
                 invalid += 1
-                console.print(f"[yellow]skipped[/yellow] {path}: {err}")
+                report_error(
+                    _file_prefix("Skipped", path, err),
+                    err,
+                    event="exception_invalid",
+                    path=str(path),
+                )
                 continue
             parseable += 1
             in_force = _in_force(exc, now)
@@ -159,6 +194,15 @@ def register(app: typer.Typer) -> None:
                     f"[yellow]{expires_cell} (not yet in effect until "
                     f"{exc.approved_at.isoformat()})[/yellow]"
                 )
+            if is_json_logs():
+                emit_event(
+                    "exception_listed",
+                    path=str(path),
+                    exception=exc.model_dump(mode="json"),
+                    in_force=in_force,
+                    scope_evaluated=False,
+                )
+                continue
             table.add_row(
                 exc.exception_id,
                 exc.control_id,
@@ -166,6 +210,15 @@ def register(app: typer.Typer) -> None:
                 expires_cell,
                 ", ".join(scope_bits) or "global",
             )
+        if is_json_logs():
+            emit_event(
+                "exceptions_summary",
+                active=parseable - dormant,
+                not_in_force=dormant,
+                unparseable=invalid,
+                scope_evaluated=False,
+            )
+            return
         console.print(table)
         # "valid" used to mean "parsed", so an expired waiver was reported as
         # `1 valid · 0 invalid` — the opposite of what a reader needs, and this

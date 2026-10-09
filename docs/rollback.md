@@ -72,23 +72,26 @@ To investigate a bad release you can rebuild its wheel and sdist from the tag
 and check them against the published files. The publish job builds both on
 `ubuntu-latest` with Python 3.12 and `SOURCE_DATE_EPOCH` set to the commit time
 of the tag, then passes the sdist through `scripts/normalize_sdist.py`. That
-script sets every tar entry newer than `SOURCE_DATE_EPOCH` back to it, sets
-modes to 0755 for directories and executables and 0644 for everything else,
+script sets every tar entry to `SOURCE_DATE_EPOCH`, sets
+modes to 0755 for directories and 0644 for regular files,
 resets owners, and writes the gzip header with the epoch and no file name. The
 wheel is not repacked: setuptools already stamps its entries with
 `SOURCE_DATE_EPOCH`.
 
-This describes a run started by pushing the tag, which is how release-please
-publishes. A run started by hand with `workflow_dispatch` saves the `tag`
-input but checks out the ref the run was started from, and takes
-`SOURCE_DATE_EPOCH` from that commit. If it was started from `main` with an
-older tag as input, its assets come from the `main` commit, and a rebuild from
-the tag will not match them. Check the run's trigger and commit before reading
-a mismatch as tampering.
+Since 4.0.0 the workflow requires a manual run's selected ref to equal its
+requested tag. It rejects a run from main with an unrelated tag input.
+Every checkout is pinned to the triggering commit, and SOURCE_DATE_EPOCH
+comes from that commit. Historical workflows had different behavior;
+inspect the workflow at the release tag when rebuilding older versions.
 
 The job builds everything twice from the same checkout and compares the
-hashes. A wheel mismatch fails the release; an sdist mismatch is only a warning
-until a real release has confirmed the normalisation.
+hashes. A missing distribution or a wheel mismatch fails publication. An sdist
+mismatch between the two builds is reported as a `::warning::` and does not
+block publication, because the job runs after the tag exists and a failure
+would burn the version, as it did for 3.0.0. `scripts/normalize_sdist.py` was
+rewritten for 4.0.0 and has not yet run in a real release. Once a release log
+shows `Reproducible distribution` for the sdist, the sdist mismatch becomes
+fatal like the wheel's.
 
 To match the published files, your rebuild has to repeat the job's conditions:
 
@@ -99,12 +102,8 @@ To match the published files, your rebuild has to repeat the job's conditions:
   machine is fine.
 - **Build from a fresh clone made inside Linux, with umask 022.** The wheel
   keeps each file's mode from the checkout, so files at 0664 instead of 0644
-  give a different wheel even on Linux. The sdist keeps the executable bit, so
-  a Windows checkout seen through a bind mount, WSL's `/mnt/c` or a network
-  share, where every file looks executable, gives a different sdist. The sdist
-  also keeps mtimes older than `SOURCE_DATE_EPOCH`, so a working tree whose
-  files predate the tag commit does not match either; a fresh clone gives every
-  file a newer mtime.
+  give a different wheel even on Linux. Current sdist normalization removes
+  these mode and mtime differences; historical normalization retained them.
 - **Set `SOURCE_DATE_EPOCH` to the tag's commit time**, as the job does with
   `git log -1 --pretty=%ct`.
 - **Use the same setuptools.** The workflow does not pin it, and the wheel
@@ -138,9 +137,9 @@ wheel.
 
 ## What is not covered
 
-- **A confirmed sdist rebuild.** The sdist normalisation has not yet been
-  checked against a published release, and the job's own sdist check still
-  only warns on a mismatch. If your hashes differ, compare the archives member
+- **A rebuild against a published release.** Matching local repeat builds
+  do not establish that a historical release can be reproduced. If hashes
+  differ, compare the archives member
   by member (line endings and file modes are the usual cause) before treating
   the difference as tampering.
 - **A rehearsal.** This procedure has not been executed against a real release.

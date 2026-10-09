@@ -10,14 +10,15 @@ import typer
 
 from evidence_collector.application.orchestrator import BundleBuildResult, build_bundle
 from evidence_collector.cli._builders import build_application, build_release
+from evidence_collector.cli._errors import report_error
 from evidence_collector.cli._exit_codes import (
     EXIT_INPUT_ERROR,
     UNREADABLE_INPUT,
     fail_on_exit_code,
     validate_fail_on,
 )
-from evidence_collector.cli._render import render_summary
-from evidence_collector.cli._state import EVIDENCE_ADAPTER, console
+from evidence_collector.cli._render import render_collection_errors, render_summary
+from evidence_collector.cli._state import EVIDENCE_ADAPTER
 from evidence_collector.domain.models import CollectionError
 from evidence_collector.exporters import export_report_set
 
@@ -47,7 +48,7 @@ def evaluate(
     """
     fail_on = validate_fail_on(fail_on)
     try:
-        data = json.loads(evidence_path.read_text(encoding="utf-8"))
+        data = json.loads(evidence_path.read_text(encoding="utf-8-sig"))
         # `collect` writes an envelope carrying the evidence and the inputs it
         # could not read. A bare list is what earlier versions wrote and is
         # still accepted — but it can say nothing about failed inputs, so a
@@ -68,13 +69,8 @@ def evaluate(
         evidence = EVIDENCE_ADAPTER.validate_python(raw_evidence)
         collection_errors = [CollectionError.model_validate(entry) for entry in raw_errors]
     except UNREADABLE_INPUT as exc:
-        console.print(f"[red]Invalid evidence file {evidence_path}:[/red] {exc}")
+        report_error(f"Invalid evidence file {evidence_path}", exc, event="evaluate_failed")
         raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
-
-    if collection_errors:
-        console.print("[yellow]Collection warnings carried from the evidence file:[/yellow]")
-        for error in collection_errors:
-            console.print(f"  - {error.path}: {error.reason}")
 
     app_ = build_application(application, repository, environment, owner_team)
     release = build_release(release_id, commit_sha, branch)
@@ -92,10 +88,6 @@ def evaluate(
         ).collect()
         exceptions = waiver_report.exceptions
         for waiver_error in waiver_report.errors:
-            console.print(
-                f"[yellow]Exception input skipped:[/yellow] "
-                f"{waiver_error.path}: {waiver_error.reason}"
-            )
             collection_errors.append(
                 CollectionError.clipped(str(waiver_error.path), waiver_error.reason)
             )
@@ -119,6 +111,7 @@ def evaluate(
         html_path=reports.html_path,
     )
     render_summary(result)
+    render_collection_errors(result)
     raise typer.Exit(code=fail_on_exit_code(bundle.summary.release_status, fail_on))
 
 

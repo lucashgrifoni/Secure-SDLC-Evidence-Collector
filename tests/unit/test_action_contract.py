@@ -41,6 +41,8 @@ _REQUIRED_INPUTS = {
     "epss-percentile-threshold",
     "fail-on",
     "output-dir",
+    "cra-context",
+    "fedramp-class",
 }
 
 # Renaming any of these is a breaking change for consumers.
@@ -78,6 +80,8 @@ def test_published_outputs_keep_their_names(action: dict[str, Any]) -> None:
         ("risk-mode", "--risk-mode"),
         ("epss-percentile-threshold", "--epss-percentile-threshold"),
         ("catalog", "--catalog"),
+        ("cra-context", "--cra-context"),
+        ("fedramp-class", "--fedramp-class"),
     ],
 )
 def test_input_is_forwarded_to_the_command(
@@ -89,6 +93,25 @@ def test_input_is_forwarded_to_the_command(
     assert env_var in env, f"{input_name} is not wired into the step env"
     assert f"inputs.{input_name}" in env[env_var]
     assert flag in collect_step["run"], f"{flag} is never added to the run command"
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        Path(".github/workflows/reusable-evidence-collection.yml"),
+        Path("examples/gitlab-ci/secure-sdlc-evidence.yml"),
+    ],
+)
+def test_ci_templates_can_pass_cra_context_and_fedramp_class(path: Path) -> None:
+    text = path.read_text(encoding="utf-8")
+    for flag in ("--cra-context", "--fedramp-class", "catalog-fedramp-cr26.yaml"):
+        assert flag in text, f"{path} does not mention {flag}"
+
+
+def test_new_profile_inputs_default_to_unset(action: dict[str, Any]) -> None:
+    for name in ("cra-context", "fedramp-class"):
+        assert action["inputs"][name].get("default", "") == ""
+        assert action["inputs"][name].get("required") is False
 
 
 def test_exceptions_dir_is_not_silently_skipped(collect_step: dict[str, Any]) -> None:
@@ -271,6 +294,8 @@ _STEP_ENV = [
     "EXCEPTIONS_DIR",
     "ARTIFACT_ROOT",
     "PROFILE",
+    "CRA_CONTEXT",
+    "FEDRAMP_CLASS",
     "RISK_MODE",
     "EPSS_PERCENTILE_THRESHOLD",
 ]

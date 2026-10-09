@@ -16,6 +16,7 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
+from evidence_collector.cli._errors import report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
@@ -83,20 +84,17 @@ def register(app: typer.Typer) -> None:
                 f"--policy must be one of first-wins, last-wins, fail; got '{policy}'."
             )
         try:
-            raw = json.loads(bundle_path.read_text(encoding="utf-8"))
+            raw = json.loads(bundle_path.read_text(encoding="utf-8-sig"))
         except UNREADABLE_INPUT as exc:
             if is_json_logs():
                 emit_event("vex_failed", bundle=str(bundle_path), reason=str(exc))
             else:
-                console.print(f"[red]Could not read {bundle_path}:[/red] {exc}")
+                report_error(f"Could not read {bundle_path}", exc)
             raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
         try:
             bundle = EvidenceBundle.model_validate(raw)
         except ValidationError as exc:
-            if is_json_logs():
-                emit_event("vex_failed", bundle=str(bundle_path), reason=str(exc))
-            else:
-                console.print(f"[red]Bundle does not match the current schema:[/red] {exc}")
+            report_error("Bundle does not match the current schema", exc, event="vex_failed")
             raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
         document = build_openvex(bundle)
@@ -115,12 +113,13 @@ def register(app: typer.Typer) -> None:
                     policy=MergeConflictPolicy(policy),
                 )
             except VexMergeConflictError as exc:
-                if is_json_logs():
-                    emit_event(
-                        "vex_failed", bundle=str(bundle_path), reason=str(exc), policy=policy
-                    )
-                else:
-                    console.print(f"[red]VEX merge conflict:[/red] {exc}")
+                report_error(
+                    "VEX merge conflict",
+                    exc,
+                    event="vex_failed",
+                    bundle=str(bundle_path),
+                    policy=policy,
+                )
                 raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
         write_atomic(output, json.dumps(document, indent=2, sort_keys=False))

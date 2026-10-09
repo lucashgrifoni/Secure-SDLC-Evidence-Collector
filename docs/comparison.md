@@ -81,7 +81,7 @@ from one document.
 | Continuous ATO with continuous evidence | Collector + GUAC (via T6.9 adapter) |
 | AI / LLM product with SDLC AI Profile | Collector + garak + lm-eval + Hugging Face model cards |
 | EU CRA disclosure pipeline | Collector with `--profile cra-2026` + ENISA intake |
-| FedRAMP 20x evidence pack | Collector with `--catalog catalog-fedramp-20x-ksi.yaml` + OSCAL export |
+| FedRAMP 20x evidence pack | Collector with `--profile fedramp-20x --catalog catalog-fedramp-cr26.yaml` (partial supporting evidence) + OSCAL export |
 
 ## Asking the inverse question
 

@@ -4,7 +4,7 @@
 - Date: 2026-05-19
 - Deciders: Lucas Henrique Grifoni
 - Supersedes: none
-- Superseded by: none
+- Reference corrections: ADR 0015 (2026-10-07); evidence-type decision retained.
 
 ## Context
 
@@ -23,9 +23,10 @@ shipping AI / LLM / agentic systems:
 
 The market direction in 2026 makes this gap costly:
 
-- NIST published **SP 800-218A "SSDF Community Profile for Generative
-  AI"** in 2024-07. PW.4.AI, PS.AI.1, PS.AI.2 expect evidence the
-  collector did not previously model.
+- NIST published **SP 800-218A "Secure Software Development Practices
+  for Generative AI and Dual-Use Foundation Models: An SSDF Community
+  Profile"** in 2024-07. Its PO.1.2 N1, PW.3.2 and PW.8.2 recommendations
+  support model documentation, data provenance and vulnerability testing.
 - OWASP **Top 10 for LLM Applications** (2025 edition: LLM01 prompt
   injection through LLM10 unbounded consumption) and the OWASP **Top
   10 for Agentic Applications (2026)** describe risks that require
@@ -73,12 +74,12 @@ by theme rather than by ID.
 
 | Control (catalog-ai.yaml) | SSDF AI Profile | OWASP LLM (2025) | OWASP Agentic (2026) |
 |---|---|---|---|
-| `AI-MODEL-CARD` | PS.AI.1 | LLM02 | — |
-| `AI-PROMPT-INJ` | PW.4.AI | LLM01 | — |
-| `AI-SAFETY-EVAL` | PW.4.AI | LLM01 / LLM02 | — |
-| `AI-TRAINING-LINEAGE` | PS.AI.2 | LLM04 | — |
-| `AI-MCP-INVENTORY` | PW.4.AI | LLM06 | tool misuse / excessive tool reach |
-| `AI-THREAT-MODEL` | PW.1.AI | — | agentic blast radius |
+| `AI-MODEL-CARD` | PO.1.2 N1 | LLM02 | — |
+| `AI-PROMPT-INJ` | PW.8.2, partial | LLM01 | — |
+| `AI-SAFETY-EVAL` | PW.8.2, vulnerability testing only; safety/bias are project policy | LLM01 / LLM02 | — |
+| `AI-TRAINING-LINEAGE` | PW.3.2 | LLM04 | — |
+| `AI-MCP-INVENTORY` | org-internal; deployed agents outside 218A scope | LLM06 | tool misuse / excessive tool reach |
+| `AI-THREAT-MODEL` | PW.1.1, partial | — | agentic blast radius |
 | `AI-SBOM` | PS.3 | LLM03 | — |
 | `AI-SCA` | PW.4 | LLM03 | — |
 | `AI-SAST` | PW.7 | LLM05 | tool misuse |
@@ -118,10 +119,10 @@ by theme rather than by ID.
   lm-eval + Hugging Face / Google MCT model cards because they are
   the OSS canonicals; extending to the others is additive and
   follows the parser plugin pattern already used elsewhere.
-- **Compute pass/fail from metric thresholds inside the parser.**
-  Rejected — threshold logic belongs in the catalog, not in the
-  parser. The parser emits raw evidence; the catalog decides
-  whether 0.42 acc on TruthfulQA is acceptable for this release.
+- **Add arbitrary evaluation thresholds to the catalog.** Rejected for
+  this contract. Catalogs select evidence types; they do not decide whether
+  an accuracy metric is acceptable. Use the producing evaluation tool's
+  explicit result and a human review of the metric and threshold.
 
 ## Verification
 

@@ -102,7 +102,7 @@ def load_kev_feed(path: Path) -> KevFeed:
     if not path.is_file():
         return KevFeed(feed_date=None, records={})
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        raw = json.loads(path.read_text(encoding="utf-8-sig"))
     # The guard covered two of the ways a file can be malformed, and the
     # docstring above promises to tolerate all of them. A corrupted download
     # raised `UnicodeDecodeError`, `RecursionError` or a bare `ValueError`

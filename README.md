@@ -225,6 +225,32 @@ Usage errors exit `3` as well: an unknown flag, a missing required option, or a
 rejected value such as `--fail-on banana`. The CLI replaces Click's default of
 `2` for them, because `2` is the `not_ready` verdict.
 
+### JSON logs (`--json-logs`)
+
+`--json-logs`, or `SDLC_JSON_LOGS=1` in the environment, turns stdout into
+NDJSON: one JSON object per line, each with an `event` field, failures and
+usage errors included. `--version` prints a `version` event; `--help` stays
+plain text. Without JSON logs, human-readable errors go to stderr.
+
+Commands whose output is a document wrap it in an event under JSON logs:
+`schema` prints `schema_emitted` with the schema under `.schema`, and `oscal`
+prints `oscal_emitted` with the document under `.document`. Use `--output` to
+write the bare document to a file, or leave JSON logs off for that step.
+`compare --format json` and `doctor --json` print the raw document only when
+JSON logs are off. The full list of events and payload keys is in
+[the evidence profile migration notes](docs/evidence-profile-migration.md#bundle-pins-and-cli).
+
+### Migrating to 4.0.0
+
+The bundle schema stays at 2.1.0 and bundles generated before 4.0.0 keep
+verifying against their own pins. New SBOM metadata and catalog descriptions
+change newly generated structural digests (the sample moves to
+`e859f47511065d3119c73b47b7290aef552fdbfdf9d7b4fc3711cfff8e5fb729`), so review
+and pin a new digest when you regenerate evidence. `run` gains
+`--cra-context` for `--profile cra-2026` and `--fedramp-class` for
+`--profile fedramp-20x`. Details and limits are in
+[evidence profile migration](./docs/evidence-profile-migration.md).
+
 ### Migrating to 3.0.0
 
 These changes are observable to existing callers. The first two change exit
@@ -624,4 +650,9 @@ load-bearing for their use case.
 
 ## License
 
-[Apache-2.0](./LICENSE) © Lucas Henrique Grifoni.
+[Apache-2.0](./LICENSE) © Lucas Henrique Grifoni. Since 4.0.0 the package also
+includes a BSD-2-Clause FIRST CVSS reference port; see
+[third-party notices](./THIRD_PARTY_LICENSES.md).
+
+The 4.0.0 changes and digest migration are documented in
+[evidence profile migration](./docs/evidence-profile-migration.md).

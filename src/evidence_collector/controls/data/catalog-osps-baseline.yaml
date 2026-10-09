@@ -31,6 +31,7 @@ controls:
       OSPS Baseline QA-02.02 — compiled released software assets must be
       delivered with a software bill of materials. Satisfied by an ingested
       SBOM (CycloneDX or SPDX). Maps onward to NIST SSDF PS.3.
+      NIST CSF 2.0 informative references for SSDF 1.1 PS.3: PR.DS-01, PR.DS-11. Snapshot 2026-09-24, SHA-256 7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0. See ADR-0014; references support traceability, not compliance.
     criticality: "critical"
     required_evidence_types: ["sbom"]
     recommended_evidence_types: ["artifact_attestation"]
@@ -43,6 +44,7 @@ controls:
       in a signed manifest that includes each asset's cryptographic hashes.
       Satisfied by a recorded artifact signature (a build attestation is
       recommended). Maps onward to NIST SSDF PS.2.
+      NIST CSF 2.0 informative references for SSDF 1.1 PS.2: PR.DS-01. Snapshot 2026-09-24, SHA-256 7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0. See ADR-0014; references support traceability, not compliance.
     criticality: "critical"
     required_evidence_types: ["artifact_signature"]
     recommended_evidence_types: ["artifact_attestation"]
@@ -55,6 +57,7 @@ controls:
       automatically evaluated against a documented policy for malicious
       dependencies and known vulnerabilities. Satisfied by an SCA scan.
       Maps onward to NIST SSDF PW.4.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.4: GV.SC-03, GV.SC-07, ID.AM-08. Snapshot 2026-09-24, SHA-256 7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["sca_scan"]
     recommended_evidence_types: ["sbom"]
@@ -67,6 +70,7 @@ controls:
       automatically evaluated against a documented policy for security
       weaknesses (static analysis). Satisfied by a SAST scan. Maps onward
       to NIST SSDF PW.7/PW.8.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.7: none listed. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["sast_scan"]
     recommended_evidence_types: []
@@ -78,6 +82,7 @@ controls:
       OSPS Baseline QA-06.01 — CI/CD pipelines must run at least one
       automated test suite to ensure changes meet expectations. Satisfied by
       recorded test results. Maps onward to NIST SSDF PW.8.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.8: none listed. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["test_result"]
     recommended_evidence_types: ["workflow_run"]
@@ -89,6 +94,7 @@ controls:
       OSPS Baseline QA-07.01 — the version control system must require at
       least one non-author approval of changes before merging. Satisfied by
       code-review / PR-approval evidence. Maps onward to NIST SSDF PW.7.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.7: none listed. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["code_review"]
     recommended_evidence_types: ["pr_metadata"]
@@ -100,6 +106,7 @@ controls:
       OSPS Baseline QA-03.01 — automated status checks for commits must pass
       (or be manually bypassed). Satisfied by a successful CI workflow run.
       Maps onward to NIST SSDF PW.8/RV.1.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.8: none listed. See ADR-0014; references support traceability, not compliance.
     criticality: "medium"
     required_evidence_types: ["workflow_run"]
     recommended_evidence_types: []

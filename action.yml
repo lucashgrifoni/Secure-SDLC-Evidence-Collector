@@ -51,7 +51,8 @@ inputs:
     description: >-
       Control catalog: a path to your own YAML, or the bare name of a bundled
       catalog (catalog.yaml, catalog-ssdf-1.2.yaml, catalog-ai.yaml,
-      catalog-fedramp-20x-ksi.yaml, catalog-osps-baseline.yaml)
+      catalog-fedramp-cr26.yaml, catalog-osps-baseline.yaml, or the deprecated
+      catalog-fedramp-20x-ksi.yaml)
     required: false
     default: ""
   exceptions-dir:
@@ -69,6 +70,14 @@ inputs:
     description: "Regulatory profile: none | cra-2026 | fedramp-20x"
     required: false
     default: "none"
+  cra-context:
+    description: "Release-bound CRA operator context JSON; requires profile cra-2026"
+    required: false
+    default: ""
+  fedramp-class:
+    description: "CR26 class A, B, C or D, recorded as metadata only; requires profile fedramp-20x"
+    required: false
+    default: ""
   risk-mode:
     description: >-
       Verdict mode: off (presence-based, preserves byte-stability) or
@@ -172,6 +181,8 @@ runs:
         EXCEPTIONS_DIR: ${{ inputs.exceptions-dir }}
         ARTIFACT_ROOT: ${{ inputs.artifact-root }}
         PROFILE: ${{ inputs.profile }}
+        CRA_CONTEXT: ${{ inputs.cra-context }}
+        FEDRAMP_CLASS: ${{ inputs.fedramp-class }}
         RISK_MODE: ${{ inputs.risk-mode }}
         EPSS_PERCENTILE_THRESHOLD: ${{ inputs.epss-percentile-threshold }}
       run: |
@@ -204,6 +215,12 @@ runs:
         fi
         if [ -n "$PROFILE" ] && [ "$PROFILE" != "none" ]; then
           extra_args+=(--profile "$PROFILE")
+        fi
+        if [ -n "$CRA_CONTEXT" ]; then
+          extra_args+=(--cra-context "$CRA_CONTEXT")
+        fi
+        if [ -n "$FEDRAMP_CLASS" ]; then
+          extra_args+=(--fedramp-class "$FEDRAMP_CLASS")
         fi
         if [ -n "$RISK_MODE" ] && [ "$RISK_MODE" != "off" ]; then
           extra_args+=(--risk-mode "$RISK_MODE")

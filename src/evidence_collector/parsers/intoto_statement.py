@@ -247,7 +247,7 @@ def parse_intoto_statements(path: str | Path) -> list[ParsedIntotoStatement]:
     """
     resolved = ensure_file(path)
     try:
-        text = resolved.read_text(encoding="utf-8")
+        text = resolved.read_text(encoding="utf-8-sig")
     except UnicodeDecodeError as exc:
         raise ParseError(f"Invalid text encoding in {resolved}: {exc}") from exc
 

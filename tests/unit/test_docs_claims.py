@@ -141,3 +141,29 @@ def test_rollback_note_says_a_matching_rebuild_needs_linux() -> None:
     assert "SOURCE_DATE_EPOCH" in doc
     assert "Linux" in doc
     assert "Windows" in doc
+
+
+@pytest.mark.parametrize("path", [_README, Path("docs/evidence-profile-migration.md")])
+def test_shipped_pages_do_not_describe_an_unreleased_branch(path: Path) -> None:
+    """README.md is the PyPI description and both pages ship with the release.
+
+    Text written while the change sat on a branch ("the development branch",
+    "Published 3.2.0 predates that port") would tell 4.0.0 readers that what
+    they installed is unreleased.
+    """
+    doc = _prose(path)
+    assert "development branch" not in doc
+    assert "Published 3.2.0" not in doc
+    assert "PyPI 3.2.0 remains" not in doc
+
+
+def test_action_docs_list_every_bundled_catalog() -> None:
+    from evidence_collector.controls.catalog import bundled_catalog_names
+
+    docs = Path("docs/github_action.md").read_text(encoding="utf-8")
+    action = Path("action.yml").read_text(encoding="utf-8")
+    for name in bundled_catalog_names():
+        assert name in docs, f"docs/github_action.md does not list {name}"
+        assert name in action, f"action.yml does not list {name}"
+    for flag in ("cra-context", "fedramp-class"):
+        assert f"`{flag}`" in docs

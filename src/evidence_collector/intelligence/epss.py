@@ -60,9 +60,9 @@ def _open_csv(path: Path) -> io.TextIOWrapper | io.StringIO:
     """Open ``path`` for text reading, transparently gunzipping ``.gz``."""
     if path.suffix == ".gz":
         # gzip.open returns binary by default; wrap in TextIOWrapper.
-        return io.TextIOWrapper(gzip.open(path, "rb"), encoding="utf-8", newline="")
+        return io.TextIOWrapper(gzip.open(path, "rb"), encoding="utf-8-sig", newline="")
     raw_bytes = path.read_bytes()
-    return io.StringIO(raw_bytes.decode("utf-8", errors="replace"))
+    return io.StringIO(raw_bytes.decode("utf-8-sig", errors="replace"))
 
 
 def _parse_float(value: str) -> float | None:

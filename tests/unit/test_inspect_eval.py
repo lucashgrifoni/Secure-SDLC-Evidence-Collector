@@ -260,3 +260,13 @@ def test_the_headline_inspect_resolved_keeps_the_plain_key(tmp_path: Path) -> No
         "first_epoch_only/accuracy": 1.0,
         "first_epoch_only/mean/accuracy": 0.5,
     }
+
+
+def test_the_declared_headline_identity_survives_normalization(tmp_path: Path) -> None:
+    log = _log()
+    log["results"]["headline"] = {"scorer": "refusal_rate", "reducer": "mean", "metric": "accuracy"}
+    log["results"]["scores"][0]["reducer"] = "mean"
+    parsed = parse_inspect_eval(_write(tmp_path / "headline.json", log))
+    evidence = normalize_inspect_eval(parsed, _release())
+    assert evidence.metadata["inspect_headline"] == log["results"]["headline"]
+    assert evidence.metadata["metrics"]["refusal_rate/accuracy"] == 0.93

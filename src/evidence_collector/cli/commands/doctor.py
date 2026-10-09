@@ -13,7 +13,8 @@ from typing import Annotated
 import typer
 from rich.table import Table
 
-from evidence_collector.cli._state import console
+from evidence_collector.cli._logging import emit_event
+from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
 
 
@@ -100,7 +101,15 @@ def register(app: typer.Typer) -> None:
         results = doctor_checks()
         failed = [(label, detail) for label, ok, detail in results if not ok]
 
-        if json_output:
+        if is_json_logs():
+            emit_event(
+                "doctor_checked",
+                checks=[
+                    {"check": label, "ok": ok, "detail": detail} for label, ok, detail in results
+                ],
+                failed=len(failed),
+            )
+        elif json_output:
             payload = [
                 {"check": label, "ok": ok, "detail": detail} for label, ok, detail in results
             ]

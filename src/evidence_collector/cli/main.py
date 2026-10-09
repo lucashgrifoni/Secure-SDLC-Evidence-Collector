@@ -20,9 +20,9 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 import typer
-from pydantic import ValidationError
 
 from evidence_collector import __version__
+from evidence_collector.cli._errors import error_console, report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
 from evidence_collector.cli._logging import configure_logging, emit_event
 from evidence_collector.cli._state import console, is_json_logs, set_json_logs
@@ -62,7 +62,10 @@ def main_callback(
     """Secure SDLC Evidence Collector CLI."""
     set_json_logs(json_logs)
     if version:
-        typer.echo(__version__)
+        if is_json_logs():
+            emit_event("version", version=__version__)
+        else:
+            typer.echo(__version__)
         raise typer.Exit(code=0)
     configure_logging(verbose)
     if ctx.invoked_subcommand is None:
@@ -122,31 +125,19 @@ def _report_command_failure(exc: BaseException) -> None:
     the developer's absolute paths, and under ``--json-logs`` stdout stayed
     completely empty, breaking the NDJSON contract on the error path.
     """
-    detail = str(exc).strip() or exc.__class__.__name__
-    if isinstance(exc, ValidationError):
-        # A value the models reject, such as a 3-character `--commit-sha`. The
-        # default text spans several lines and ends in a pydantic docs URL;
-        # one `Model.field: reason` per error says the same in a single line.
-        detail = "; ".join(
-            f"{exc.title}.{'.'.join(str(part) for part in error['loc'])}: {error['msg']}"
-            for error in exc.errors(include_url=False)
-        )
-    if is_json_logs():
-        emit_event("command_failed", error_type=exc.__class__.__name__, reason=detail)
-    else:
-        # soft_wrap: the terminal may fold it, but no newline lands inside the
-        # message, so it can still be copied or grepped as one line.
-        console.print(f"[red]{exc.__class__.__name__}:[/red] {detail}", soft_wrap=True)
-        console.print("[dim]Re-run with --verbose for the full traceback.[/dim]")
+    report_error(exc.__class__.__name__, exc, error_type=exc.__class__.__name__)
+    if not is_json_logs():
+        error_console.print("Re-run with --verbose for the full traceback.", soft_wrap=True)
     if any(flag in sys.argv for flag in ("-v", "--verbose")):
-        console.print_exception()
+        error_console.print_exception()
 
 
 def main() -> None:
     """Console-script entrypoint."""
     _force_utf8_std_streams()
+    set_json_logs("--json-logs" in sys.argv)
     # Print banner only when stdout is a TTY, to avoid polluting pipelines.
-    if sys.stdout.isatty():
+    if sys.stdout.isatty() and not is_json_logs():
         console.print(
             f"[bold]Secure SDLC Evidence Collector[/bold] v{__version__} · "
             f"started at {datetime.now(tz=UTC).isoformat()}"
@@ -160,7 +151,7 @@ def main() -> None:
         outcome = app(standalone_mode=False)
     except Exception as exc:
         show = getattr(exc, "show", None)
-        if callable(show) and hasattr(exc, "exit_code"):
+        if callable(show) and hasattr(exc, "exit_code") and not is_json_logs():
             show()
         else:
             _report_command_failure(exc)

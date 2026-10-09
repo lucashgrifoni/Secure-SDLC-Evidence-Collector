@@ -34,12 +34,81 @@ from __future__ import annotations
 import errno
 import logging
 import os
+import socket
+import time
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 __all__ = ["write_all_or_nothing", "write_atomic"]
+
+
+# Windows reports an exclusive create of a name whose previous owner is still
+# being unlinked (delete-pending) as ERROR_ACCESS_DENIED, i.e. PermissionError,
+# not EEXIST. A test patches this flag; `os.name` itself is not safe to patch.
+_WINDOWS = os.name == "nt"
+_LOCK_RETRIES = 5
+_LOCK_RETRY_SECONDS = 0.05
+
+
+def _busy(lock: Path) -> OSError:
+    return OSError(
+        errno.EBUSY,
+        f"Another writer owns {lock}. If no sdlc-evidence process is still "
+        "running, delete only that lock file and retry; never delete the output "
+        "files or their .<name>~o backups",
+    )
+
+
+def _acquire(lock: Path) -> int:
+    for attempt in range(_LOCK_RETRIES):
+        try:
+            return os.open(lock, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError as exc:
+            raise _busy(lock) from exc
+        except PermissionError as exc:
+            if not _WINDOWS:
+                raise
+            if attempt == _LOCK_RETRIES - 1:
+                raise _busy(lock) from exc
+            time.sleep(_LOCK_RETRY_SECONDS)
+    raise AssertionError("unreachable")  # pragma: no cover
+
+
+@contextmanager
+def _output_locks(targets: list[Path]) -> Iterator[None]:
+    """Reject overlapping writers of the same file before anything is staged.
+
+    One advisory exclusive-create lock per target, `.{name}.lock` beside it, so
+    writers of *different* files in one directory (`run`, `sarif` and `vex`
+    sharing an --output-dir) never block each other, while two writers of the
+    same file, or of overlapping report sets, still do. Locks are taken in
+    sorted order and none is waited on, so overlapping sets cannot deadlock.
+    A killed process may leave a lock behind: confirm no writer is running,
+    then delete only the lock file.
+    """
+    acquired: list[Path] = []
+    try:
+        locks = sorted({target.parent.resolve() / f".{target.name}.lock" for target in targets})
+        for lock in locks:
+            lock.parent.mkdir(parents=True, exist_ok=True)
+            descriptor = _acquire(lock)
+            acquired.append(lock)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+                handle.write(
+                    f"pid={os.getpid()}\nhost={socket.gethostname()}\n"
+                    f"started={datetime.now(tz=UTC).isoformat()}\n"
+                )
+                handle.flush()
+                os.fsync(handle.fileno())
+        yield
+    finally:
+        for lock in reversed(acquired):
+            _unlink_quietly(lock)
 
 
 def _scratch(target: Path, kind: str) -> Path:
@@ -121,6 +190,11 @@ def _stage(target: Path, content: str) -> Path:
 
 def write_atomic(target: Path, content: str) -> Path:
     """Replace `target` with `content`, or leave it entirely untouched."""
+    with _output_locks([target]):
+        return _write_atomic_unlocked(target, content)
+
+
+def _write_atomic_unlocked(target: Path, content: str) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     temp = _stage(target, content)
     try:
@@ -163,6 +237,11 @@ def write_all_or_nothing(payloads: dict[Path, str]) -> list[Path]:
     three files disagree about which release they describe, with nothing in
     them saying so.
     """
+    with _output_locks(list(payloads)):
+        return _write_set_unlocked(payloads)
+
+
+def _write_set_unlocked(payloads: dict[Path, str]) -> list[Path]:
     if not payloads:
         return []
 
