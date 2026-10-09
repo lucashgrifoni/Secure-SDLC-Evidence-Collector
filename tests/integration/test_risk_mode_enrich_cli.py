@@ -571,3 +571,48 @@ def test_enrich_same_directory_warning_in_plain_output(
     assert result.exit_code == 0, result.output
     assert "left alone" in result.output
     assert "**Release status:** `ready`" in (out / "report.md").read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# A report target that resolves to the output bundle itself must be skipped,
+# or the rendered report overwrites the JSON (Codex P2 on #147).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_enrich_in_place_on_a_bundle_named_report_md_keeps_it_json(
+    runner: CliRunner, sample_release_root: Path, tmp_path: Path
+) -> None:
+    out = tmp_path / "out"
+    _run(runner, sample_release_root, out, "--risk-mode", "epss-weighted")
+    # The bundle itself is called report.md and sits next to summary.html.
+    (out / "report.md").write_bytes((out / "bundle.json").read_bytes())
+    (out / "bundle.json").unlink()
+    result = runner.invoke(
+        app,
+        ["enrich", str(out / "report.md"), "--kev-feed", str(_kev_feed(tmp_path, ransomware=True))],
+    )
+    assert result.exit_code == 0, result.output
+    bundle = EvidenceBundle.model_validate_json((out / "report.md").read_text(encoding="utf-8"))
+    assert bundle.summary.release_status is ReleaseStatus.NOT_READY
+    assert "status-not_ready" in (out / "summary.html").read_text(encoding="utf-8")
+
+
+@pytest.mark.integration
+def test_enrich_output_named_like_a_report_in_another_directory_keeps_it_json(
+    runner: CliRunner, sample_release_root: Path, tmp_path: Path
+) -> None:
+    out = tmp_path / "out"
+    _run(runner, sample_release_root, out, "--risk-mode", "epss-weighted")
+    dest = tmp_path / "dest"
+    dest.mkdir()
+    _enrich(
+        runner,
+        out / "bundle.json",
+        dest / "summary.html",
+        "--kev-feed",
+        str(_kev_feed(tmp_path, ransomware=True)),
+    )
+    bundle = EvidenceBundle.model_validate_json((dest / "summary.html").read_text(encoding="utf-8"))
+    assert bundle.summary.release_status is ReleaseStatus.NOT_READY
+    assert "**Release status:** `not_ready`" in (dest / "report.md").read_text(encoding="utf-8")

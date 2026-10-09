@@ -252,10 +252,15 @@ def _sibling_reports(bundle: EvidenceBundle, source: Path, destination: Path) ->
     of thin air. The caller skips them when the output is a different file in
     the input's directory (see ``_shares_reports_with_input``).
     """
+    target_bundle = destination.resolve()
     return {
         destination.parent / name: render(bundle)
         for name, render in _REPORT_RENDERERS.items()
+        # A bundle that is itself named report.md / summary.html must never be
+        # overwritten by the rendered report.
         if (source.parent / name).is_file()
+        and (destination.parent / name).resolve() != target_bundle
+        and (source.parent / name).resolve() != source.resolve()
     }
 
 

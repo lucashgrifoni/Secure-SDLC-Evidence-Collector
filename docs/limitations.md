@@ -386,7 +386,9 @@ These are explicitly out of scope for security reports (see
   input's own directory, the reports there still describe the input
   bundle (which keeps its old verdict), so they are left alone and a
   warning says so (`reports_left_alone` under `--json-logs`). When the
-  verdict does not change, the reports are left alone.
+  verdict does not change, the reports are left alone. A bundle that is
+  itself named `report.md` or `summary.html`, on either side, is never
+  treated as a report or overwritten by one.
 - `enrich` with neither `--epss-feed` nor `--kev-feed` consults no
   source, so it leaves the bundle unchanged (copying it to `--output`
   when given), prints a warning, and keeps the prior intelligence and
