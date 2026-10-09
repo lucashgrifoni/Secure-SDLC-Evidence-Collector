@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from rich.markup import escape
 
 from evidence_collector.cli._builders import build_release
 from evidence_collector.cli._logging import emit_event
@@ -102,5 +103,7 @@ def register(app: typer.Typer) -> None:
             if report.errors:
                 console.print("[yellow]Collection warnings:[/yellow]")
                 for error in report.errors:
-                    console.print(f"  - {error.path}: {error.reason}", soft_wrap=True)
+                    console.print(
+                        f"  - {escape(str(error.path))}: {escape(error.reason)}", soft_wrap=True
+                    )
         render_ignored_artifacts(report.ignored)
