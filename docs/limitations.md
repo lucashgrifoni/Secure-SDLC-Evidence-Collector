@@ -108,9 +108,35 @@ context, CR26 source versions, catalog changes and output-lock recovery.
 
 - Only GitHub and GitLab are first-class. Azure DevOps and Bitbucket
   are on the roadmap but not implemented.
-- "Last approval after last commit" for GitHub looks at REST
-  `/pulls/:n/reviews`. Dismissed reviews and draft reviews are ignored.
-  Required-reviewer policies on protected branches are not checked.
+- GitHub code review reads every page of REST `/pulls/:n/reviews` and
+  keeps each reviewer's latest decisive review (`APPROVED`,
+  `CHANGES_REQUESTED` or `DISMISSED`; `COMMENTED` and pending reviews do
+  not change a decision). An approval counts only when that latest review
+  is `APPROVED` and its `commit_id` equals the PR head SHA. Commit dates
+  are never consulted, because the author sets them. The evidence passes
+  when the counted approvals reach the required number and no reviewer's
+  current decision is a change request. Approvals on an older commit
+  appear as `stale_approvals` in the evidence metadata, alongside
+  `head_sha` and `changes_requested`. The metadata key
+  `last_approval_after_last_commit` keeps its name and now means "at
+  least one counted approval is on the head commit".
+- Required-reviewer policies on protected branches, CODEOWNERS and
+  reviewer eligibility (write access) are not checked. The required count
+  is the number of still-requested reviewers, with a floor of one.
+- GitLab does not bind an approval to a commit in its REST API, so a
+  commit-bound rule like GitHub's is not possible there. The collector
+  compares the latest approval timestamp in `/merge_requests/:iid/approvals`
+  with the time GitLab recorded the MR head (`sha`) as a diff version
+  (every page of `/merge_requests/:iid/versions`), never with commit
+  dates. If the approvals response carries no timestamp, or no version
+  matches the head, the review does not pass. The approval count is
+  GitLab's own `approvals_required - approvals_left`. Turning on the
+  project setting that removes approvals when commits are added gives the
+  strongest guarantee; the collector does not read that setting.
+- Paged lists are read through their `Link: rel="next"` headers up to 50
+  pages of 100 items. Past that cap, or when a next link points to a
+  different host than the configured API, collection stops with an error
+  instead of deciding on a partial list.
 - Code-review evidence from providers without reviewer metadata (e.g.
   signed-off-by on plain git) is not parsed; supply a
   `code_review.yaml` attestation instead.
