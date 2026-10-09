@@ -197,32 +197,42 @@ jobs:
           python -m build --wheel --sdist --outdir dist-recheck
           python scripts/normalize_sdist.py dist-recheck
 
-      # Both distributions must match before hashing, signing or publication.
+      # Gate behaviour: the wheel must be bit-for-bit identical (hard fail).
+      # The normalised sdist is expected to match too, but a mismatch stays a
+      # warning until a real release has confirmed the rewritten
+      # scripts/normalize_sdist.py: this job runs after the tag exists, so a
+      # hard failure here would leave a tag with nothing published, which is
+      # how 3.0.0 was lost. A first build with no sdist at all still fails.
       - name: Compare SHA-256 between back-to-back builds
         run: |
           set -euo pipefail
           shopt -s nullglob
           artifact_fail=0
           for suffix in whl tar.gz; do
+            if [ "$suffix" = whl ]; then level=error; else level=warning; fi
+            report() {
+              echo "::$level::$1"
+              if [ "$level" = error ]; then artifact_fail=1; fi
+            }
             originals=(dist/*."$suffix")
             rebuilt=(dist-recheck/*."$suffix")
-            if [ "${#originals[@]}" -eq 0 ] || [ "${#originals[@]}" -ne "${#rebuilt[@]}" ]; then
-              echo "::error::Missing or extra $suffix distribution in reproducibility check."
+            if [ "${#originals[@]}" -eq 0 ]; then
+              echo "::error::No $suffix distribution in the first build."
               artifact_fail=1
+            elif [ "${#originals[@]}" -ne "${#rebuilt[@]}" ]; then
+              report "Missing or extra $suffix distribution in reproducibility check."
             fi
             for artifact in "${originals[@]}"; do
               base="$(basename "$artifact")"
               other="dist-recheck/$base"
               if [ ! -f "$other" ]; then
-                echo "::error::Missing $other in second build."
-                artifact_fail=1
+                report "Missing $other in second build."
                 continue
               fi
               a="$(sha256sum "$artifact" | cut -d' ' -f1)"
               b="$(sha256sum "$other" | cut -d' ' -f1)"
               if [ "$a" != "$b" ]; then
-                echo "::error::Non-reproducible distribution: $base — $a vs $b"
-                artifact_fail=1
+                report "Non-reproducible distribution: $base — $a vs $b"
               else
                 echo "Reproducible distribution: $base ($a)"
               fi

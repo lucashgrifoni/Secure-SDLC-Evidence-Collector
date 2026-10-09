@@ -1,12 +1,11 @@
 # Evidence profile migration and limits
 
-These changes are in the development branch. PyPI 3.2.0 remains the published
-collector until a separate release completes. The GitLab component has its own
+These changes ship in collector 4.0.0. The GitLab component has its own
 version and installs the published collector.
 
 ## Bundle pins and CLI
 
-The planned collector release is a major version because existing profile
+4.0.0 is a major version because existing profile
 semantics and newly generated digest pins change. The bundle schema stays at
 2.1.0. New SBOM metadata and catalog descriptions
 intentionally change newly generated structural digests. The sample moves from
@@ -71,7 +70,7 @@ No G7 gate, evidence type or framework enum is added.
 
 ## CRA operator context
 
-After installing a release containing this change, use
+With 4.0.0 or later, use
 `run --profile cra-2026 --cra-context cra-context.json`. Example:
 
 ```json
@@ -176,9 +175,11 @@ THIRD_PARTY_LICENSES.md. Mandatory metrics, duplicates and invalid values are
 checked; CVSS 3.x behavior stays unchanged.
 
 Source archives normalize timestamps, modes, owners, order and gzip metadata
-while preserving payload bytes. Missing or differing wheel/sdist artifacts
-block publication. Manual publication requires the requested tag to be the
-workflow's selected tag ref; every checkout uses the triggering commit.
+while preserving payload bytes. A missing or differing wheel blocks
+publication; a differing sdist rebuild only warns until a release confirms the
+new normaliser (see [rollback](rollback.md)). Manual publication requires the
+requested tag to be the workflow's selected tag ref; every checkout uses the
+triggering commit.
 
 ## Primary sources
 

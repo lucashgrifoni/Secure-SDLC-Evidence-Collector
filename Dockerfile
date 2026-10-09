@@ -14,7 +14,7 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
 
 WORKDIR /build
 
-COPY pyproject.toml README.md LICENSE ./
+COPY pyproject.toml README.md LICENSE THIRD_PARTY_LICENSES.md ./
 COPY src/ ./src/
 
 RUN python -m pip install --upgrade pip && \
@@ -52,5 +52,5 @@ CMD ["--help"]
 LABEL org.opencontainers.image.title="secure-sdlc-evidence-collector" \
       org.opencontainers.image.description="Collect, normalize, evaluate and bundle Secure SDLC evidence per release." \
       org.opencontainers.image.authors="Lucas Henrique Grifoni <lucas.henriquegrifoni@gmail.com>" \
-      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.licenses="Apache-2.0 AND BSD-2-Clause" \
       org.opencontainers.image.source="https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector"

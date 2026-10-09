@@ -78,16 +78,20 @@ resets owners, and writes the gzip header with the epoch and no file name. The
 wheel is not repacked: setuptools already stamps its entries with
 `SOURCE_DATE_EPOCH`.
 
-The development workflow requires a manual run's selected ref to equal its
+Since 4.0.0 the workflow requires a manual run's selected ref to equal its
 requested tag. It rejects a run from main with an unrelated tag input.
 Every checkout is pinned to the triggering commit, and SOURCE_DATE_EPOCH
 comes from that commit. Historical workflows had different behavior;
 inspect the workflow at the release tag when rebuilding older versions.
 
 The job builds everything twice from the same checkout and compares the
-hashes. A missing distribution or a wheel or sdist mismatch fails publication.
-This stricter gate is a development change; previous releases only warned on
-an sdist mismatch.
+hashes. A missing distribution or a wheel mismatch fails publication. An sdist
+mismatch between the two builds is reported as a `::warning::` and does not
+block publication, because the job runs after the tag exists and a failure
+would burn the version, as it did for 3.0.0. `scripts/normalize_sdist.py` was
+rewritten for 4.0.0 and has not yet run in a real release. Once a release log
+shows `Reproducible distribution` for the sdist, the sdist mismatch becomes
+fatal like the wheel's.
 
 To match the published files, your rebuild has to repeat the job's conditions:
 

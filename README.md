@@ -240,6 +240,17 @@ write the bare document to a file, or leave JSON logs off for that step.
 JSON logs are off. The full list of events and payload keys is in
 [the evidence profile migration notes](docs/evidence-profile-migration.md#bundle-pins-and-cli).
 
+### Migrating to 4.0.0
+
+The bundle schema stays at 2.1.0 and bundles generated before 4.0.0 keep
+verifying against their own pins. New SBOM metadata and catalog descriptions
+change newly generated structural digests (the sample moves to
+`6c9664455ca5bd2c0536d62417175e4305d105f808daffc33b55fc130873620e`), so review
+and pin a new digest when you regenerate evidence. `run` gains
+`--cra-context` for `--profile cra-2026` and `--fedramp-class` for
+`--profile fedramp-20x`. Details and limits are in
+[evidence profile migration](./docs/evidence-profile-migration.md).
+
 ### Migrating to 3.0.0
 
 These changes are observable to existing callers. The first two change exit
@@ -639,9 +650,9 @@ load-bearing for their use case.
 
 ## License
 
-[Apache-2.0](./LICENSE) © Lucas Henrique Grifoni. The development branch also
+[Apache-2.0](./LICENSE) © Lucas Henrique Grifoni. Since 4.0.0 the package also
 includes a BSD-2-Clause FIRST CVSS reference port; see
-[third-party notices](./THIRD_PARTY_LICENSES.md). Published 3.2.0 predates that port.
+[third-party notices](./THIRD_PARTY_LICENSES.md).
 
-Development changes and digest migration are documented in
+The 4.0.0 changes and digest migration are documented in
 [evidence profile migration](./docs/evidence-profile-migration.md).

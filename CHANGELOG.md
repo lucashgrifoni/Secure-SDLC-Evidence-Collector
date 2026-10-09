@@ -4,35 +4,6 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
-
-### Added
-
-- CISA 2026 SBOM presence states for 17 elements and G7 AI SBOM presence states
-  for 50 elements, with source paths and explicit manual-review limits.
-- Release-bound CRA operator context, ENISA SRP 1.4 completeness and calendar
-  deadlines; a CR26 source-pinned profile and six supporting KSI controls.
-- A separately versioned GitLab CI component using the published collector.
-- FIRST reference CVSS 4.0 scoring for OSV vectors, with BSD-2-Clause notices.
-
-### Fixed
-
-- Schema and digest-pin validation, compact errors, JSON log stream contracts,
-  UTF-8 BOM inputs, declared Inspect headlines and untrusted Markdown syntax.
-- Foreign release warnings and exclusive locks for concurrent report writers.
-- Source archive metadata normalization, exact wheel/sdist reproducibility
-  checks and tag-bound publication checkouts.
-- AI framework identifiers and unsupported regulatory claims in catalogs.
-
-### Migration
-
-- New SBOM metadata and CSF 2.0 catalog descriptions intentionally change the
-  sample structural digest to 6c9664455ca5bd2c0536d62417175e4305d105f808daffc33b55fc130873620e.
-  Existing bundle pins remain valid. See
-  [migration and limits](docs/evidence-profile-migration.md) before regenerating.
-- BOD/SSVC automation and a GPAI compliance verdict are outside this release;
-  they are not inferred from evidence presence.
-
 ## [3.2.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v3.1.0...v3.2.0) (2026-10-04)
 
 

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
+import tomllib
 from pathlib import Path
 from typing import Any, cast
 
@@ -80,32 +82,101 @@ def test_requested_tag_and_provenance_ref_must_agree(
     assert (result.returncode == 0) is allowed, result.stdout + result.stderr
 
 
-@pytest.mark.parametrize("condition", ["missing", "changed", "extra", "empty"])
-def test_distribution_gate_blocks_an_incomplete_or_different_rebuild(
-    condition: str, tmp_path: Path
+@pytest.mark.parametrize(
+    ("suffix", "condition"),
+    [
+        ("whl", "missing"),
+        ("whl", "changed"),
+        ("whl", "extra"),
+        ("tar.gz", "absent"),
+        ("both", "empty"),
+    ],
+)
+def test_distribution_gate_blocks_an_incomplete_or_different_wheel(
+    suffix: str, condition: str, tmp_path: Path
 ) -> None:
-    first, second = tmp_path / "dist", tmp_path / "dist-recheck"
-    first.mkdir()
-    second.mkdir()
-    if condition != "empty":
-        for directory in (first, second):
-            (directory / "pkg.whl").write_bytes(b"wheel")
-            (directory / "pkg.tar.gz").write_bytes(b"sdist")
-        if condition == "missing":
-            (second / "pkg.tar.gz").unlink()
-        elif condition == "changed":
-            (second / "pkg.tar.gz").write_bytes(b"different")
-        elif condition == "extra":
-            (second / "unexpected.tar.gz").write_bytes(b"sdist")
+    first, second = _identical_builds(tmp_path)
+    _break(first, second, suffix, condition)
     result = _shell(_step("Compare SHA-256 between back-to-back builds")["run"], tmp_path)
     assert result.returncode != 0, result.stdout
 
 
+@pytest.mark.parametrize("condition", ["missing", "changed", "extra"])
+def test_distribution_gate_only_warns_on_an_sdist_rebuild_mismatch(
+    condition: str, tmp_path: Path
+) -> None:
+    """The rewritten sdist normaliser has not yet run in a real release.
+
+    The job runs after the tag exists, so failing here burns the version, as
+    happened to 3.0.0. A back-to-back sdist mismatch stays a warning until a
+    release log confirms the new normaliser; the wheel stays fatal.
+    """
+    first, second = _identical_builds(tmp_path)
+    _break(first, second, "tar.gz", condition)
+    result = _shell(_step("Compare SHA-256 between back-to-back builds")["run"], tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "::warning::" in result.stdout
+    assert "::error::" not in result.stdout
+
+
 def test_distribution_gate_accepts_identical_wheel_and_sdist(tmp_path: Path) -> None:
-    for name in ("dist", "dist-recheck"):
-        directory = tmp_path / name
+    _identical_builds(tmp_path)
+    result = _shell(_step("Compare SHA-256 between back-to-back builds")["run"], tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "::warning::" not in result.stdout
+
+
+def _identical_builds(tmp_path: Path) -> tuple[Path, Path]:
+    first, second = tmp_path / "dist", tmp_path / "dist-recheck"
+    for directory in (first, second):
         directory.mkdir()
         (directory / "pkg.whl").write_bytes(b"wheel")
         (directory / "pkg.tar.gz").write_bytes(b"sdist")
-    result = _shell(_step("Compare SHA-256 between back-to-back builds")["run"], tmp_path)
-    assert result.returncode == 0, result.stdout + result.stderr
+    return first, second
+
+
+def _break(first: Path, second: Path, suffix: str, condition: str) -> None:
+    if condition == "empty":
+        for directory in (first, second):
+            for artifact in directory.iterdir():
+                artifact.unlink()
+    elif condition == "absent":
+        (first / f"pkg.{suffix}").unlink()
+        (second / f"pkg.{suffix}").unlink()
+    elif condition == "missing":
+        (second / f"pkg.{suffix}").unlink()
+    elif condition == "changed":
+        (second / f"pkg.{suffix}").write_bytes(b"different")
+    elif condition == "extra":
+        (second / f"unexpected.{suffix}").write_bytes(b"extra")
+
+
+def test_container_build_copies_every_declared_license_file() -> None:
+    """The image builds its wheel from a narrow COPY of the tree.
+
+    pyproject declares THIRD_PARTY_LICENSES.md as a license file for the
+    BSD-2-Clause CVSS port. Left out of the Docker build context, setuptools
+    only warns and the image's wheel ships without it.
+    """
+    declared = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"][
+        "license-files"
+    ]
+    copied = {
+        token
+        for line in Path("Dockerfile").read_text(encoding="utf-8").splitlines()
+        if line.startswith("COPY ") and "--from=" not in line
+        for token in line.split()[1:-1]
+    }
+    assert set(declared) <= copied, f"Dockerfile does not copy {set(declared) - copied}"
+
+
+def test_changelog_has_no_section_above_the_release_please_insertion_point() -> None:
+    """release-please owns CHANGELOG.md and inserts each release before the
+    first heading matching its version pattern. A hand-written section such
+    as `## Unreleased` would stay above every generated entry."""
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+    insertion = re.search(r"\n###? v?[0-9[]", text)
+    assert insertion is not None
+    assert not re.search(r"^#{2,3} ", text[: insertion.start()], re.MULTILINE), (
+        "CHANGELOG.md has a heading above the release-please insertion point"
+    )
