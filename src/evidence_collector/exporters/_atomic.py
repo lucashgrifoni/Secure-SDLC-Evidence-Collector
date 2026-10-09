@@ -27,6 +27,9 @@ window where the set can be observed half-updated shrinks from "three renders
 and three writes" to "three `os.replace` calls", and no individual file is
 ever observed torn. A failure in the staging phase leaves every previous
 output exactly as it was.
+
+`statement --dsse-envelope` writes its Statement and DSSE envelope through the
+same writer, for the same reason: the two must describe one bundle.
 """
 
 from __future__ import annotations
