@@ -241,8 +241,8 @@ checked; CVSS 3.x behavior stays unchanged.
 
 Source archives normalize timestamps, modes, owners, order and gzip metadata
 while preserving payload bytes. A missing or differing wheel blocks
-publication; a differing sdist rebuild only warns until a release confirms the
-new normaliser (see [rollback](rollback.md)). Manual publication requires the
+publication. A differing sdist rebuild only warned in 4.0.0; from the next
+release it blocks publication too (see [rollback](rollback.md)). Manual publication requires the
 requested tag to be the workflow's selected tag ref; every checkout uses the
 triggering commit.
 

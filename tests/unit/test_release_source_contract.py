@@ -102,21 +102,17 @@ def test_distribution_gate_blocks_an_incomplete_or_different_wheel(
 
 
 @pytest.mark.parametrize("condition", ["missing", "changed", "extra"])
-def test_distribution_gate_only_warns_on_an_sdist_rebuild_mismatch(
-    condition: str, tmp_path: Path
-) -> None:
-    """The rewritten sdist normaliser has not yet run in a real release.
+def test_distribution_gate_blocks_an_sdist_rebuild_mismatch(condition: str, tmp_path: Path) -> None:
+    """4.0.0 published a reproducible sdist with the rewritten normaliser.
 
-    The job runs after the tag exists, so failing here burns the version, as
-    happened to 3.0.0. A back-to-back sdist mismatch stays a warning until a
-    release log confirms the new normaliser; the wheel stays fatal.
+    Its release log shows "Reproducible distribution" for the sdist, so a
+    back-to-back sdist mismatch now fails the job like a wheel mismatch.
     """
     first, second = _identical_builds(tmp_path)
     _break(first, second, "tar.gz", condition)
     result = _shell(_step("Compare SHA-256 between back-to-back builds")["run"], tmp_path)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "::warning::" in result.stdout
-    assert "::error::" not in result.stdout
+    assert result.returncode != 0, result.stdout
+    assert "::error::" in result.stdout
 
 
 def test_distribution_gate_accepts_identical_wheel_and_sdist(tmp_path: Path) -> None:
