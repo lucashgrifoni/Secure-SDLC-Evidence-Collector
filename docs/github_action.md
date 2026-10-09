@@ -26,14 +26,18 @@ jobs:
 
       # Step 1 — produce raw artifacts with your own scanners.
       # Install your project and its test dependencies here as well.
-      - run: |
+      - id: scan
+        run: |
           mkdir -p artifacts
           pip install "bandit[sarif]" cyclonedx-bom pytest
           # --exit-zero: findings must not abort the step before the
           # collector runs; their severities still reach the bundle.
           python -m bandit -r src -f sarif -o artifacts/bandit.sarif --exit-zero
           python -m cyclonedx_py environment --of JSON -o artifacts/sbom.cdx.json
-          python -m pytest --junitxml=artifacts/junit.xml || true
+          # Record the test result instead of stopping here, so the
+          # collector still runs; the last step re-raises it.
+          python -m pytest --junitxml=artifacts/junit.xml && status=0 || status=$?
+          echo "pytest-status=$status" >> "$GITHUB_OUTPUT"
 
       # SCA: the collector reads SARIF, not pip-audit's native JSON, so
       # use a scanner that writes SARIF (Trivy here).
@@ -64,10 +68,22 @@ jobs:
         with:
           name: sdlc-evidence
           path: output/sdlc-evidence
+
+      # Step 3 — fail the job if the tests failed.
+      - name: Re-raise the test result
+        if: steps.scan.outputs.pytest-status != '0'
+        run: |
+          echo "pytest exited ${{ steps.scan.outputs.pytest-status }}"
+          exit 1
 ```
 
-`python -m pytest ... || true` keeps a failing test run from skipping the
-collector: the JUnit file records the failures and the bundle reflects them.
+The scan step records pytest's exit status instead of stopping, so a failing
+test run does not skip the collector: the JUnit file records the failures and
+the bundle reflects them. Failing tests only make the release `conditional`
+(the test-result control is not met), and with `fail-on: not_ready` a
+`conditional` release exits `0`, so without the last step the job would end
+green with failing tests. Re-raising the recorded status keeps the test
+failure visible; `fail-on: conditional` is the stricter alternative.
 
 ### Collecting PR evidence
 
