@@ -74,9 +74,10 @@ itself.
 |-----------------------------------|---------------------------------------------------------------------------------------------------------------------------|
 | **DoS via huge file** (zip-bomb-style SARIF/SBOM/JUnit) | 25 MB cap per artifact (`MAX_INPUT_BYTES` in `_common.py`); enforced before parsing.                                      |
 | **XML external entity / billion laughs** | All XML parsing goes through `defusedxml.ElementTree`. The stdlib `ElementTree` is imported only for typing.              |
-| **Malicious YAML deserialization** | `yaml.safe_load` exclusively; never `yaml.load` or `yaml.full_load`.                                                      |
+| **Malicious YAML deserialization** | `SafeLoader` exclusively (via `safe_load_yaml` in `_common.py`); never the full or unsafe loaders.                                                      |
+| **YAML alias expansion / billion laughs** | Every YAML read (attestations, waivers, `--catalog`) goes through `safe_load_yaml`, which refuses a document whose aliases would grow it by more than `MAX_YAML_ALIAS_EXPANSION` (1,000,000 nodes plus scalar characters) and any recursive alias, as a parse error. The on-disk cap alone cannot see this: a 421-byte file expanded to a 34.6 MB bundle. |
 | **Path traversal via `../` in attestation paths** | Paths in attestations are stored verbatim in metadata but never resolved or read by the collector.                        |
-| **Symbolic link target outside artifacts dir** | `ensure_file()` resolves to absolute and rejects unreadable files; we do not follow links into a different filesystem.    |
+| **Symbolic link target outside artifacts dir** | Directory links (symlinks and Windows junctions) below a walked directory are never followed; each is recorded as a collection error instead of being skipped silently. A directory passed on the command line may itself be a link. |
 | **Pydantic validation bypass via `extra` fields** | Every domain model sets `extra="forbid"`; unknown keys are a hard error.                                                  |
 
 Residual risk: a malformed file that satisfies the formal schema but

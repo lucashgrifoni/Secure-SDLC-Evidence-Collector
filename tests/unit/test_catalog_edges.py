@@ -348,3 +348,15 @@ def test_a_real_local_file_still_wins_over_the_bundled_name(tmp_path: Path) -> N
     )
     controls = load_catalog(local)
     assert [c.control_id for c in controls] == ["ORG-ONLY"]
+
+
+def test_a_catalog_alias_bomb_is_rejected(tmp_path: Path) -> None:
+    """`--catalog` takes an operator-supplied YAML file through its own loader."""
+    lines = ['l0: &l0 ["lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol"]']
+    for level in range(1, 7):
+        refs = ", ".join([f"*l{level - 1}"] * 10)
+        lines.append(f"l{level}: &l{level} [{refs}]")
+    local = tmp_path / "bomb.yaml"
+    local.write_text("\n".join(lines) + "\n" + _VALID_CONTROL, encoding="utf-8")
+    with pytest.raises(ValueError, match="alias"):
+        load_catalog(local)

@@ -204,3 +204,78 @@ def test_detection_reparses_when_the_file_changes(tmp_path: Path) -> None:
     path.write_text('{"runs": [1, 2]}', encoding="utf-8")
     _os.utime(path, (0, 0))  # force a different mtime even on coarse clocks
     assert _peek_json(path) == {"runs": [1, 2]}
+
+
+def _billion_laughs(levels: int) -> str:
+    """The classic alias bomb: each level references the previous one ten times.
+
+    The file is a few hundred bytes; the expanded tree has 10**levels leaves.
+    `yaml.safe_load` shares the references, so loading is cheap — the cost
+    lands later, when the attestation metadata is serialized into the bundle
+    and every alias is written out in full (6 levels made a 34.6 MB bundle
+    from a 421-byte file; 9 levels would be about 35 GB).
+    """
+    lines = ['l0: &l0 ["lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol"]']
+    for level in range(1, levels + 1):
+        refs = ", ".join([f"*l{level - 1}"] * 10)
+        lines.append(f"l{level}: &l{level} [{refs}]")
+    return "\n".join(lines) + "\n"
+
+
+def test_load_yaml_rejects_an_alias_expansion_bomb(tmp_path: Path) -> None:
+    path = tmp_path / "bomb.yaml"
+    path.write_text(_billion_laughs(6), encoding="utf-8")
+    assert path.stat().st_size < 1024  # the on-disk cap cannot see this
+    with pytest.raises(ParseError, match="alias"):
+        load_yaml_or_json(path)
+
+
+def test_load_yaml_rejects_a_recursive_alias(tmp_path: Path) -> None:
+    """A self-referencing anchor expands without end when serialized."""
+    path = tmp_path / "loop.yaml"
+    path.write_text("kind: release_approval\nloop: &a [1, *a]\n", encoding="utf-8")
+    with pytest.raises(ParseError, match="alias"):
+        load_yaml_or_json(path)
+
+
+def test_load_yaml_keeps_ordinary_anchors_working(tmp_path: Path) -> None:
+    """Anchors and merge keys in a real config must still load unchanged."""
+    path = tmp_path / "anchored.yaml"
+    path.write_text(
+        "defaults: &defaults\n"
+        "  approver: appsec-lead@example.com\n"
+        "  scope: [api, worker, web]\n"
+        "staging:\n"
+        "  <<: *defaults\n"
+        "  environment: staging\n"
+        "production:\n"
+        "  <<: *defaults\n"
+        "  environment: production\n"
+        "reviewers: &reviewers [alice, bob]\n"
+        "also: *reviewers\n",
+        encoding="utf-8",
+    )
+    data = load_yaml_or_json(path)
+    assert data["production"] == {
+        "approver": "appsec-lead@example.com",
+        "scope": ["api", "worker", "web"],
+        "environment": "production",
+    }
+    assert data["staging"]["environment"] == "staging"
+    assert data["also"] == ["alice", "bob"]
+
+
+def test_an_attestation_alias_bomb_is_a_parse_error_not_a_huge_bundle(tmp_path: Path) -> None:
+    from evidence_collector.parsers.attestation import parse_attestation
+
+    path = tmp_path / "attestation.yaml"
+    path.write_text(
+        "evidence_type: release_approval\n"
+        "status: passed\n"
+        "source_tool: manual\n"
+        "collected_at: '2026-01-01T00:00:00Z'\n"
+        "metadata:\n" + "".join(f"  {line}\n" for line in _billion_laughs(6).splitlines()),
+        encoding="utf-8",
+    )
+    with pytest.raises(ParseError, match="alias"):
+        parse_attestation(path)
