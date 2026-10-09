@@ -2,7 +2,7 @@
 
 ## FIRST CVSS 4.0 reference calculator
 
-Files: src/evidence_collector/parsers/_cvss4.py and _cvss4_data.py; derived score fixtures in tests/fixtures/cvss4_reference.json.
+Files: src/evidence_collector/parsers/_cvss4.py and _cvss4_data.py; derived score fixtures in tests/fixtures/cvss4_reference.json, regenerated from the pinned upstream files by scripts/gen_cvss4_reference.js.
 
 Source: https://github.com/FIRSTdotorg/cvss-v4-calculator/tree/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a
 

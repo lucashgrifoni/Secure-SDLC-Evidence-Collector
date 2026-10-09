@@ -3,6 +3,7 @@
   "commit": "c5b0d409ae9f57c44264c6ce5f27d89298e1d32a",
   "license": "BSD-2-Clause",
   "rounding": "JavaScript Math.round; no epsilon",
+  "generator": "node scripts/gen_cvss4_reference.js <dir holding cvss_lookup.js, max_composed.js, max_severity.js and cvss_score.js at commit> tests/fixtures/cvss4_reference.json [extra-vectors.txt]",
   "base_count": 104976,
   "base_sha256": "8f9718fd3fa0c65bcf9d9f860e795a6fc1a9bcd9df603b6b0222bb4672a463be",
   "cases": [
@@ -3213,6 +3214,30 @@
     {
       "vector": "CVSS:4.0/AV:N/AC:H/AT:N/PR:L/UI:A/VC:L/VI:L/VA:H/SC:N/SI:H/SA:H/E:A/CR:X/IR:L/AR:M/MAV:A/MAC:L/MAT:X/MPR:L/MUI:N/MVC:X/MVI:N/MVA:L/MSC:H/MSI:L/MSA:X",
       "score": 6.3
+    },
+    {
+      "vector": "CVSS:4.0/AV:L/AC:L/AT:P/PR:H/UI:P/VC:H/VI:N/VA:H/SC:L/SI:N/SA:H/E:U/CR:X/IR:L/AR:M/MAV:P/MAC:H/MAT:N/MPR:X/MUI:N/MVC:X/MVI:N/MVA:N/MSC:N/MSI:N/MSA:N",
+      "score": 0.4
+    },
+    {
+      "vector": "CVSS:4.0/AV:N/AC:H/AT:P/PR:N/UI:P/VC:L/VI:H/VA:L/SC:N/SI:L/SA:N/E:P/CR:L/IR:L/AR:L/MAV:A/MAC:H/MAT:P/MPR:L/MUI:A/MVC:H/MVI:L/MVA:N/MSC:L/MSI:X/MSA:N",
+      "score": 0.6
+    },
+    {
+      "vector": "CVSS:4.0/AV:A/AC:H/AT:P/PR:L/UI:P/VC:L/VI:N/VA:H/SC:H/SI:N/SA:L/E:P/CR:L/IR:L/AR:L/MAV:A/MAC:H/MAT:X/MPR:X/MUI:X/MVC:N/MVI:L/MVA:H/MSC:L/MSI:L/MSA:L",
+      "score": 0.6
+    },
+    {
+      "vector": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:A/VC:H/VI:N/VA:H/SC:L/SI:H/SA:N/E:P/CR:L/IR:L/AR:M/MAV:L/MAC:H/MAT:N/MPR:L/MUI:P/MVC:N/MVI:X/MVA:X/MSC:N/MSI:N/MSA:N",
+      "score": 0.6
+    },
+    {
+      "vector": "CVSS:4.0/AV:P/AC:H/AT:P/PR:N/UI:A/VC:H/VI:N/VA:H/SC:N/SI:N/SA:N/E:U/CR:X/IR:L/AR:M/MAV:A/MAC:X/MAT:N/MPR:H/MUI:X/MVC:H/MVI:N/MVA:N/MSC:L/MSI:L/MSA:N",
+      "score": 0.4
+    },
+    {
+      "vector": "CVSS:4.0/AV:L/AC:H/AT:P/PR:N/UI:N/VC:H/VI:H/VA:N/SC:N/SI:N/SA:N/E:P/CR:L/IR:L/AR:L/MAV:L/MAC:X/MAT:X/MPR:H/MUI:A/MVC:N/MVI:L/MVA:H/MSC:N/MSI:N/MSA:L",
+      "score": 0.6
     }
   ]
 }

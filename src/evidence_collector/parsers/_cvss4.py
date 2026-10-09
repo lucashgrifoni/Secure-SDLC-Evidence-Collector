@@ -51,7 +51,7 @@ _BASE = {
     "SI": "HLN",
     "SA": "HLN",
 }
-_ALLOWED = {
+_VALUES = {
     **_BASE,
     "E": "XAPU",
     "CR": "XHML",
@@ -67,6 +67,8 @@ _ALLOWED = {
     "RE": "XLMH",
     "U": ("X", "Clear", "Green", "Amber", "Red"),
 }
+# Exact membership: "NA" in "NALP" would pass as a substring.
+_ALLOWED = {name: frozenset(values) for name, values in _VALUES.items()}
 _ORDER = {name: index for index, name in enumerate(_ALLOWED)}
 _LEVELS = {
     "AV": {"N": 0.0, "A": 0.1, "L": 0.2, "P": 0.3},
@@ -155,6 +157,14 @@ def _max_vectors(macro: tuple[int, int, int, int, int, int]) -> tuple[dict[str, 
 
 def score_cvss4(vector: str) -> float | None:
     """Score a validated CVSS-B, BT, BE or BTE vector; invalid input returns None."""
+    try:
+        return _score(vector)
+    except (KeyError, ValueError):
+        # Third-party advisory data must fall back, never abort a collect run.
+        return None
+
+
+def _score(vector: str) -> float | None:
     metrics = _parse(vector)
     if metrics is None:
         return None
@@ -189,15 +199,22 @@ def score_cvss4(vector: str) -> float | None:
             break
     else:
         return None
+    # Left-to-right additions as in cvss_score.js: builtin sum() compensates
+    # float rounding since Python 3.12 and can move a score by 0.1.
     groups = [
-        (lower1, sum(distances[name] for name in ("AV", "PR", "UI")), DEPTHS[f"eq1:{eq1}"]),
+        (lower1, distances["AV"] + distances["PR"] + distances["UI"], DEPTHS[f"eq1:{eq1}"]),
         (lower2, distances["AC"] + distances["AT"], DEPTHS[f"eq2:{eq2}"]),
         (
             lower36,
-            sum(distances[name] for name in ("VC", "VI", "VA", "CR", "IR", "AR")),
+            distances["VC"]
+            + distances["VI"]
+            + distances["VA"]
+            + distances["CR"]
+            + distances["IR"]
+            + distances["AR"],
             DEPTHS[f"eq3eq6:{eq3}:{eq6}"],
         ),
-        (lower4, sum(distances[name] for name in ("SC", "SI", "SA")), DEPTHS[f"eq4:{eq4}"]),
+        (lower4, distances["SC"] + distances["SI"] + distances["SA"], DEPTHS[f"eq4:{eq4}"]),
         (lower5, 0.0, 1),
     ]
     proportional = [
@@ -205,6 +222,9 @@ def score_cvss4(vector: str) -> float | None:
         for lower, distance, depth in groups
         if not math.isnan(lower)
     ]
-    mean = sum(proportional) / len(proportional) if proportional else 0.0
+    total = 0.0
+    for item in proportional:
+        total += item
+    mean = total / len(proportional) if proportional else 0.0
     value = max(0.0, min(10.0, value - mean))
     return math.floor(value * 10 + 0.5) / 10.0

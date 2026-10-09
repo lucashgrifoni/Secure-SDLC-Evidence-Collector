@@ -9,9 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from evidence_collector.parsers.osv import _extract_cvss_score
+from evidence_collector.parsers import _cvss4
+from evidence_collector.parsers.osv import _bucket_for_vulnerability, _extract_cvss_score
 
-REFERENCE = json.loads(Path("tests/fixtures/cvss4_reference.json").read_text(encoding="utf-8"))
+FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "cvss4_reference.json"
+REFERENCE = json.loads(FIXTURE.read_text(encoding="utf-8"))
+VALID = "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N"
 BASE = {
     "AV": "NALP",
     "AC": "LH",
@@ -58,5 +61,39 @@ def test_nonfinite_or_out_of_range_numeric_scores_are_not_evidence(score: str) -
     ["/AV:N", "/UNKNOWN:H", "/E:Y", "/SI:S", "/", "/IR:H/CR:H"],
 )
 def test_invalid_metric_values_duplicates_and_order_are_rejected(suffix: str) -> None:
-    vector = "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N"
-    assert _extract_cvss_score({"type": "CVSS_V4", "score": vector + suffix}) is None
+    assert _extract_cvss_score({"type": "CVSS_V4", "score": VALID + suffix}) is None
+
+
+# Each value is a substring of the metric's allowed letters, so a substring
+# test would accept it and the later table lookup would raise KeyError.
+MULTI_LETTER = [
+    VALID.replace("AV:N", "AV:NA"),
+    VALID.replace("AV:N", "AV:NALP"),
+    VALID.replace("AC:L", "AC:LH"),
+    VALID + "/E:AP",
+    VALID + "/CR:XH",
+    VALID + "/MSI:SH",
+    VALID + "/S:NP",
+    VALID + "/RE:LM",
+    # All six impacts are N, so the 0.0 shortcut runs before any lookup.
+    "CVSS:4.0/AV:NA/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:N/SI:N/SA:N",
+]
+
+
+@pytest.mark.parametrize("vector", MULTI_LETTER)
+def test_multi_letter_metric_values_are_rejected(vector: str) -> None:
+    assert _extract_cvss_score({"type": "CVSS_V4", "score": vector}) is None
+
+
+@pytest.mark.parametrize("vector", MULTI_LETTER)
+def test_malformed_vector_falls_back_to_the_advisory_severity(vector: str) -> None:
+    vuln = {
+        "severity": [{"type": "CVSS_V4", "score": vector}],
+        "database_specific": {"severity": "HIGH"},
+    }
+    assert _bucket_for_vulnerability(vuln) == "high"
+
+
+def test_unexpected_lookup_failure_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(_cvss4, "LOOKUP", {})
+    assert _cvss4.score_cvss4(VALID) is None
