@@ -99,14 +99,32 @@ def _require_json_value(value: Any, key: str, source: Path) -> None:
     only failed when the bundle was serialized, as a
     PydanticSerializationError that took the whole run down. YAML dates and
     timestamps are kept: they are native scalars the bundle already writes.
+    YAML anchors can also build a container that contains itself, which JSON
+    cannot represent, so a cycle is rejected instead of recursing forever.
     """
-    if isinstance(value, dict):
-        for inner_key, inner in value.items():
-            _require_json_value(inner_key, key, source)
-            _require_json_value(inner, f"{key}.{inner_key}", source)
-    elif isinstance(value, list):
-        for inner in value:
-            _require_json_value(inner, key, source)
+    try:
+        _check_json_value(value, key, source, frozenset())
+    except RecursionError as exc:
+        raise ParseError(
+            f"Value under '{key}' in attestation {source} is nested too deeply"
+        ) from exc
+
+
+def _check_json_value(value: Any, key: str, source: Path, ancestors: frozenset[int]) -> None:
+    if isinstance(value, dict | list):
+        if id(value) in ancestors:
+            raise ParseError(
+                f"Recursive YAML alias (a cycle) under '{key}' in attestation {source}; "
+                "expected a JSON-compatible value"
+            )
+        inside = ancestors | {id(value)}
+        if isinstance(value, dict):
+            for inner_key, inner in value.items():
+                _check_json_value(inner_key, key, source, inside)
+                _check_json_value(inner, f"{key}.{inner_key}", source, inside)
+        else:
+            for inner in value:
+                _check_json_value(inner, key, source, inside)
     elif not isinstance(value, _JSON_SCALARS):
         raise ParseError(
             f"Unsupported {type(value).__name__} value under '{key}' in attestation {source}; "

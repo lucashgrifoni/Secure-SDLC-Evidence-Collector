@@ -131,7 +131,10 @@ def _count(value: Any) -> int | None:
     """
     if isinstance(value, bool) or not isinstance(value, int | float):
         return None
-    if not math.isfinite(value) or value < 0:
+    # An int may be too large for a float, so math.isfinite is for floats only.
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if value < 0:
         return None
     return int(value)
 

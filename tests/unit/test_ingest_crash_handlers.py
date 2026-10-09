@@ -227,6 +227,14 @@ def test_garak_non_finite_hits_counts_as_a_failing_probe(tmp_path: Path) -> None
     assert parsed.findings_count["info"] == 0
 
 
+@pytest.mark.parametrize("field", ["hits", "attempts"])
+def test_garak_integer_too_large_for_a_float_is_not_fatal(tmp_path: Path, field: str) -> None:
+    huge = "9" * 400  # json.loads accepts it; float(huge) raises OverflowError
+    attempts, hits = (huge, "1") if field == "attempts" else ("5", huge)
+    parsed = parse_garak(_garak_digest(tmp_path, attempts, hits))
+    assert sorted(p.probe for p in parsed.probes) == ["p.a", "p.b"]
+
+
 @pytest.mark.parametrize(
     "garbled",
     ["[" * 60_000 + "]" * 60_000, '{"n": ' + "9" * 5000 + "}"],
@@ -295,6 +303,23 @@ def test_attestation_value_that_is_not_json_is_a_parse_error_naming_the_key(
         encoding="utf-8",
     )
     with pytest.raises(ParseError, match=key):
+        parse_attestation(path)
+
+
+@pytest.mark.parametrize(
+    "extra",
+    ["metadata: &m\n  self: *m\n", "metadata:\n  items: &l\n    - *l\n"],
+    ids=["mapping-cycle", "list-cycle"],
+)
+def test_attestation_metadata_with_a_yaml_cycle_is_a_parse_error(
+    tmp_path: Path, extra: str
+) -> None:
+    path = tmp_path / "approval.yaml"
+    path.write_text(
+        "evidence_type: release_approval\nproducer: p\nsubject_ref: r\n" + extra,
+        encoding="utf-8",
+    )
+    with pytest.raises(ParseError, match="cycle"):
         parse_attestation(path)
 
 
