@@ -5,7 +5,7 @@
 # `$ARTIFACTS_DIR`:
 #
 #   include:
-#     - remote: 'https://raw.githubusercontent.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/v2/examples/gitlab-ci/secure-sdlc-evidence.yml'
+#     - remote: 'https://raw.githubusercontent.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/v4.0.0/examples/gitlab-ci/secure-sdlc-evidence.yml' # x-release-please-version
 #
 #   evidence:
 #     stage: release
