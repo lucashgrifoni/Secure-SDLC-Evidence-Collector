@@ -6,6 +6,8 @@ so the two adapters share the same evidence shape contract.
 
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 import pytest
 
@@ -15,6 +17,7 @@ from evidence_collector.collectors.gitlab import (
     _max_datetime,
 )
 from evidence_collector.domain.enums import EvidenceStatus, EvidenceType
+from evidence_collector.domain.models import NormalizedEvidence
 
 
 def _client(handler) -> httpx.Client:
@@ -90,6 +93,7 @@ def test_collect_merge_request_marks_approval_after_last_commit(
                     "state": "merged",
                     "target_branch": "main",
                     "source_branch": "feature/billing",
+                    "sha": "c" * 40,
                 },
             )
         if path.endswith("/merge_requests/12/approvals"):
@@ -109,6 +113,11 @@ def test_collect_merge_request_marks_approval_after_last_commit(
                         },
                     ],
                 },
+            )
+        if path.endswith("/merge_requests/12/versions"):
+            return httpx.Response(
+                200,
+                json=[{"head_commit_sha": "c" * 40, "created_at": "2026-04-10T12:05:00Z"}],
             )
         if path.endswith("/merge_requests/12/commits"):
             return httpx.Response(
@@ -161,6 +170,7 @@ def test_collect_merge_request_flags_unapproved_after_last_commit(
                     "state": "opened",
                     "target_branch": "main",
                     "source_branch": "x",
+                    "sha": "d" * 40,
                 },
             )
         if path.endswith("/merge_requests/9/approvals"):
@@ -176,6 +186,11 @@ def test_collect_merge_request_flags_unapproved_after_last_commit(
                         },
                     ],
                 },
+            )
+        if path.endswith("/merge_requests/9/versions"):
+            return httpx.Response(
+                200,
+                json=[{"head_commit_sha": "d" * 40, "created_at": "2026-04-10T15:00:00Z"}],
             )
         if path.endswith("/merge_requests/9/commits"):
             return httpx.Response(
@@ -198,6 +213,135 @@ def test_collect_merge_request_flags_unapproved_after_last_commit(
     assert evidence.metadata["last_approval_after_last_commit"] is False
     # Approval count still reports correctly.
     assert evidence.metadata["reviewers_approved"] == 1
+    # A stale approval must not let the code review pass.
+    assert evidence.status is EvidenceStatus.FAILED
+
+
+# ---------------------------------------------------------------------------
+# Head-version binding: GitLab does not tie an approval to a commit, so the
+# collector compares the approval time with the time GitLab itself recorded
+# the head commit (MR diff versions), never with author-controlled commit
+# dates, and reads every page of versions.
+# ---------------------------------------------------------------------------
+
+_GL_API = "https://gitlab.com/api/v4"
+_GL_HEAD = "e" * 40
+
+
+def _gl_paged(pages: list[list[Any]], path: str, request: httpx.Request) -> httpx.Response:
+    page = int(request.url.params.get("page", "1"))
+    headers = {}
+    if page < len(pages):
+        headers["Link"] = f'<{_GL_API}{path}?per_page=100&page={page + 1}>; rel="next"'
+    return httpx.Response(200, json=pages[page - 1], headers=headers)
+
+
+def _collect_mr(
+    sample_release: Any,
+    approved_by: list[dict[str, Any]],
+    versions_pages: list[list[Any]],
+    commits_pages: list[list[Any]],
+) -> NormalizedEvidence:
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path.endswith("/merge_requests/30"):
+            return httpx.Response(
+                200,
+                json={
+                    "iid": 30,
+                    "title": "Raise limits",
+                    "author": {"username": "alice"},
+                    "web_url": "https://gitlab.com/o/p/-/merge_requests/30",
+                    "state": "opened",
+                    "target_branch": "main",
+                    "source_branch": "limits",
+                    "sha": _GL_HEAD,
+                },
+            )
+        if path.endswith("/merge_requests/30/approvals"):
+            return httpx.Response(
+                200,
+                json={"approvals_required": 1, "approvals_left": 0, "approved_by": approved_by},
+            )
+        if path.endswith("/merge_requests/30/versions"):
+            return _gl_paged(versions_pages, path, request)
+        if path.endswith("/merge_requests/30/commits"):
+            return _gl_paged(commits_pages, path, request)
+        return httpx.Response(404)
+
+    client = _client(handler)
+    try:
+        collector = GitLabCollector(
+            GitLabCollectorConfig(project="o/p"), sample_release, client=client
+        )
+        return collector.collect_merge_request(30)
+    finally:
+        client.close()
+
+
+def test_backdated_head_commit_does_not_refresh_an_old_approval(sample_release) -> None:
+    # The head commit claims a date before the approval, but GitLab recorded
+    # the push of that head after the approval was given.
+    evidence = _collect_mr(
+        sample_release,
+        [{"user": {"username": "bob"}, "updated_at": "2026-04-10T12:00:00Z"}],
+        [[{"head_commit_sha": _GL_HEAD, "created_at": "2026-04-10T15:00:00Z"}]],
+        [[{"committed_date": "2026-04-09T08:00:00Z"}]],
+    )
+    assert evidence.status is EvidenceStatus.FAILED
+    assert evidence.metadata["last_approval_after_last_commit"] is False
+    assert evidence.metadata["head_sha"] == _GL_HEAD
+
+
+def test_head_version_on_a_later_page_is_found(sample_release) -> None:
+    older = [
+        {"head_commit_sha": f"{i:040x}", "created_at": "2026-04-10T10:00:00Z"} for i in range(100)
+    ]
+    newest = [{"head_commit_sha": _GL_HEAD, "created_at": "2026-04-10T15:00:00Z"}]
+    evidence = _collect_mr(
+        sample_release,
+        [{"user": {"username": "bob"}, "updated_at": "2026-04-10T12:00:00Z"}],
+        [older, newest],
+        [
+            [{"committed_date": "2026-04-10T10:00:00Z"} for _ in range(100)],
+            [{"committed_date": "2026-04-10T15:00:00Z"}],
+        ],
+    )
+    assert evidence.status is EvidenceStatus.FAILED
+    assert evidence.metadata["last_approval_after_last_commit"] is False
+
+
+def test_approval_after_head_version_passes(sample_release) -> None:
+    evidence = _collect_mr(
+        sample_release,
+        [{"user": {"username": "bob"}, "updated_at": "2026-04-10T16:00:00Z"}],
+        [[{"head_commit_sha": _GL_HEAD, "created_at": "2026-04-10T15:00:00Z"}]],
+        [[{"committed_date": "2026-04-10T15:00:00Z"}]],
+    )
+    assert evidence.status is EvidenceStatus.PASSED
+    assert evidence.metadata["last_approval_after_last_commit"] is True
+
+
+def test_approval_without_timestamp_fails_closed(sample_release) -> None:
+    evidence = _collect_mr(
+        sample_release,
+        [{"user": {"username": "bob"}}],
+        [[{"head_commit_sha": _GL_HEAD, "created_at": "2026-04-10T15:00:00Z"}]],
+        [[{"committed_date": "2026-04-10T15:00:00Z"}]],
+    )
+    assert evidence.status is EvidenceStatus.FAILED
+    assert evidence.metadata["last_approval_after_last_commit"] is False
+
+
+def test_missing_head_version_fails_closed(sample_release) -> None:
+    evidence = _collect_mr(
+        sample_release,
+        [{"user": {"username": "bob"}, "updated_at": "2026-04-10T16:00:00Z"}],
+        [[{"head_commit_sha": "0" * 40, "created_at": "2026-04-10T15:00:00Z"}]],
+        [[{"committed_date": "2026-04-10T15:00:00Z"}]],
+    )
+    assert evidence.status is EvidenceStatus.FAILED
+    assert evidence.metadata["last_approval_after_last_commit"] is False
 
 
 # ---------------------------------------------------------------------------

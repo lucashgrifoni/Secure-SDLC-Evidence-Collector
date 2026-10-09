@@ -7,7 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from evidence_collector.domain.enums import EvidenceStatus, EvidenceType
+from evidence_collector.controls import default_catalog
+from evidence_collector.controls.engine import evaluate_control
+from evidence_collector.domain.enums import ControlEvaluationStatus, EvidenceStatus, EvidenceType
 from evidence_collector.domain.models import ReleaseContext
 from evidence_collector.normalizers import (
     normalize_attestation,
@@ -162,6 +164,33 @@ def test_normalize_pr_metadata_not_enough_reviews(sample_release) -> None:
         "reviewers_required": 2,
         "reviewers_approved": 1,
         "last_approval_after_last_commit": False,
+    }
+    evidence = normalize_pr_metadata(payload, sample_release)
+    assert evidence.status == EvidenceStatus.FAILED
+
+
+def test_normalize_pr_metadata_stale_approvals_fail(sample_release) -> None:
+    """Enough approvals that predate the last commit must not pass the review."""
+    payload = {
+        "number": 186,
+        "reviewers_required": 2,
+        "reviewers_approved": 2,
+        "last_approval_after_last_commit": False,
+    }
+    evidence = normalize_pr_metadata(payload, sample_release)
+    assert evidence.status == EvidenceStatus.FAILED
+    control = next(c for c in default_catalog() if c.control_id == "ORG-CODE-REVIEW")
+    evaluation, _gaps = evaluate_control(control, [evidence])
+    assert evaluation.evaluation_status != ControlEvaluationStatus.MET
+
+
+def test_normalize_pr_metadata_outstanding_change_request_fails(sample_release) -> None:
+    payload = {
+        "number": 187,
+        "reviewers_required": 1,
+        "reviewers_approved": 1,
+        "last_approval_after_last_commit": True,
+        "changes_requested": 1,
     }
     evidence = normalize_pr_metadata(payload, sample_release)
     assert evidence.status == EvidenceStatus.FAILED

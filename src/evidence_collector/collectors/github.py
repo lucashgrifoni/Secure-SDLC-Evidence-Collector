@@ -16,13 +16,13 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
 import httpx
 
+from evidence_collector.collectors._pagination import get_all_pages
 from evidence_collector.domain.models import NormalizedEvidence, ReleaseContext
 from evidence_collector.normalizers import (
     normalize_pr_metadata,
@@ -107,27 +107,22 @@ class GitHubCollector:
     def collect_pull_request(self, pull_number: int) -> NormalizedEvidence:
         owner_repo = self._config.repository
         pr_payload: dict[str, Any] = self._get(f"/repos/{owner_repo}/pulls/{pull_number}")
-        reviews_payload: list[dict[str, Any]] = self._get(
-            f"/repos/{owner_repo}/pulls/{pull_number}/reviews"
-        )
         requested_reviewers = pr_payload.get("requested_reviewers") or []
         reviewers_required = max(
             len(requested_reviewers),
             1,
         )
 
-        approvals = [r for r in reviews_payload if r.get("state") == "APPROVED"]
-        reviewers_approved = len({r.get("user", {}).get("login") for r in approvals})
-
-        last_commit_at = self._resolve_last_commit_date(owner_repo, pull_number)
-        last_approval_at = _max_datetime(
-            [r.get("submitted_at") for r in approvals if r.get("submitted_at")]
+        head_sha = (pr_payload.get("head") or {}).get("sha")
+        reviews_payload = get_all_pages(
+            self._client, f"/repos/{owner_repo}/pulls/{pull_number}/reviews"
         )
-        last_approval_after_last_commit = (
-            last_commit_at is not None
-            and last_approval_at is not None
-            and last_approval_at >= last_commit_at
-        )
+        approvers, stale_approvals, changes_requested = _review_decisions(reviews_payload, head_sha)
+        reviewers_approved = len(approvers)
+        # The field name predates commit binding. It now means "at least one
+        # counted approval was given on the PR head commit"; commit dates are
+        # author-controlled and are no longer consulted.
+        last_approval_after_last_commit = reviewers_approved > 0
 
         payload = {
             "number": pull_number,
@@ -140,6 +135,9 @@ class GitHubCollector:
             "reviewers_required": reviewers_required,
             "reviewers_approved": reviewers_approved,
             "last_approval_after_last_commit": last_approval_after_last_commit,
+            "head_sha": head_sha,
+            "stale_approvals": stale_approvals,
+            "changes_requested": changes_requested,
             "collected_at": datetime.now(tz=UTC).isoformat(),
         }
         return normalize_pr_metadata(payload, self._release)
@@ -160,30 +158,36 @@ class GitHubCollector:
         }
         return normalize_workflow_run(payload, self._release)
 
-    def _resolve_last_commit_date(self, owner_repo: str, pull_number: int) -> datetime | None:
-        commits_payload: list[dict[str, Any]] = self._get(
-            f"/repos/{owner_repo}/pulls/{pull_number}/commits",
-            params={"per_page": 100},
-        )
-        commit_dates: list[str] = []
-        for commit in commits_payload:
-            committer = (commit.get("commit") or {}).get("committer") or {}
-            author = (commit.get("commit") or {}).get("author") or {}
-            date = committer.get("date") or author.get("date")
-            if isinstance(date, str):
-                commit_dates.append(date)
-        return _max_datetime(commit_dates)
+
+# Review states that set a reviewer's decision. COMMENTED and PENDING do not
+# change it, which is how GitHub computes the review decision too.
+_DECISIVE_STATES = frozenset({"APPROVED", "CHANGES_REQUESTED", "DISMISSED"})
 
 
-def _max_datetime(values: Sequence[str | None]) -> datetime | None:
-    parsed: list[datetime] = []
-    for value in values:
-        if not isinstance(value, str):
+def _review_decisions(reviews: list[Any], head_sha: str | None) -> tuple[set[str], int, int]:
+    """Return (approvers on head, stale approvals, outstanding change requests).
+
+    GitHub lists reviews in chronological order, so the last decisive review
+    of each reviewer is their current decision. An approval counts only when
+    it was submitted on the PR head commit (`commit_id == head.sha`).
+    """
+    latest: dict[str, dict[str, Any]] = {}
+    for review in reviews:
+        if not isinstance(review, dict) or review.get("state") not in _DECISIVE_STATES:
             continue
-        try:
-            parsed.append(datetime.fromisoformat(value.replace("Z", "+00:00")))
-        except ValueError:
-            continue
-    if not parsed:
-        return None
-    return max(parsed)
+        login = (review.get("user") or {}).get("login")
+        if isinstance(login, str) and login:
+            latest[login] = review
+    approvers: set[str] = set()
+    stale = 0
+    changes_requested = 0
+    for login, review in latest.items():
+        state = review.get("state")
+        if state == "CHANGES_REQUESTED":
+            changes_requested += 1
+        elif state == "APPROVED":
+            if head_sha and review.get("commit_id") == head_sha:
+                approvers.add(login)
+            else:
+                stale += 1
+    return approvers, stale, changes_requested
