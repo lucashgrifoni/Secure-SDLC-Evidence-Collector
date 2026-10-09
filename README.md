@@ -501,7 +501,7 @@ examples/
 .github/
   workflows/
     github-ci-cd.yml        # lint + types + tests + build + sample bundle
-    security-ci-cd.yml      # semgrep + pip-audit + trivy + actionlint
+    security-ci-cd.yml      # semgrep + snyk + trivy + gitleaks + dependency review + actionlint
     publish-pypi.yml             # quality gates, build, cosign keyless, GitHub Release
     deploy-github-pages.yml # regenerate the dogfood summary site
 ```
@@ -545,7 +545,10 @@ The collector is dogfooded on every push and on every release:
   boundaries are documented in [`docs/limitations.md`](./docs/limitations.md).
 
 Bundle comparison across runs is available via `sdlc-evidence compare
-before.json after.json` and is used in CI to catch regressions.
+before.json after.json`. It reports what changed but never fails a build, and
+no workflow in this repository runs it. What CI does enforce is the
+structural-determinism gate: it rebuilds the sample bundle and compares the
+normalized SHA-256 across runs and operating systems.
 
 ---
 

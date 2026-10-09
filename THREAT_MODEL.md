@@ -136,9 +136,9 @@ Residual risk: an operator who runs the FastAPI surface bound to `0.0.0.0` on a 
 | Threat                                | Mitigation                                                                                                                  |
 |---------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | **Compromised third-party action**    | Third-party actions in workflows are pinned by full SHA with the semantic tag in a trailing comment, with two documented structural exceptions: `slsa-framework/slsa-github-generator/.../v2.0.0` (the SLSA generator's reusable-workflow contract requires tag-pin) and `pypa/gh-action-pypi-publish@release/v1` (the PyPA Trusted Publisher pattern). The full inventory and rationale are in `docs/program/actions-pinning-inventory.md`. Dependabot opens PRs to refresh SHAs (Actions ecosystem; major bumps land only after human review and a local validation note in `docs/program/dependabot-triage.md`). |
-| **Compromised Python dependency**     | `Dependabot` covers `pip`, `github-actions` and `docker` ecosystems weekly. `pip-audit` runs in security-ci-cd.yml.         |
+| **Compromised Python dependency**     | `Dependabot` covers `pip`, `github-actions` and `docker` ecosystems weekly. `security-ci-cd.yml` runs a Trivy dependency scan and Snyk Open Source (needs `SNYK_TOKEN`; skipped on Dependabot PRs) on pushes to the main branches and on pull requests, plus GitHub Dependency Review on pull requests. |
 | **PyPI package squatting / build hijack** | PyPI publish uses OIDC Trusted Publisher (no long-lived `PYPI_API_TOKEN`); only the `publish-pypi.yml` workflow can publish.    |
-| **Container base image vulnerabilities** | Base image is `python:3.12-slim-bookworm`; Trivy filesystem + image scan in security-ci-cd.yml; SBOM attestation lets consumers re-scan.  |
+| **Container base image vulnerabilities** | Base image is `python:3.12-slim-bookworm`; `security-ci-cd.yml` runs Trivy filesystem scans (dependencies, misconfiguration including the `Dockerfile`, secrets) but no CI job scans the built image; the image SBOM attestation lets consumers scan it. |
 
 ---
 

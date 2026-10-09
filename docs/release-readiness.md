@@ -8,19 +8,20 @@ Public repository readiness is handled through the maintainer issue queue
 and release approvals, not through committed private runbooks.
 
 **Validation is re-run on every release; the checklist below is the
-authoritative gate.** Current published line: `2.x` (the live version is
+authoritative gate.** Current published line: `4.x` (the live version is
 shown by the PyPI badge in the README). Latest verified pass: the full
-test suite is green (**349 tests**) with coverage above the
-`pyproject.toml` gate; the sample release returns `ready` (coverage 100,
-13/13 controls met), and the sample release without `--attestations-dir`
-returns `not_ready` with the four expected missing critical controls
+test suite is green with coverage above the `pyproject.toml` gate; the
+sample release returns `ready` (coverage 100, 13/13 controls met), and
+the sample release without `--attestations-dir` returns `not_ready` with the four expected missing critical controls
 (`ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`,
 `SSDF-PS.2`) and exit code 2; back-to-back runs produce an identical
-structural SHA. Lint, type, secret, SAST, and SCA gates (`ruff`,
-`mypy --strict`, `gitleaks`, `bandit`, `semgrep`, `pip-audit`,
-`actionlint`) run in `security-ci-cd.yml` and the local pre-publication
-gate. Per-release evidence packs and session handoffs are generated
-locally and are not committed to the public repository.
+structural SHA. Lint and type gates (`ruff`, `mypy --strict`) run in
+`github-ci-cd.yml` and `publish-pypi.yml`; secret, SAST, SCA, IaC and
+workflow gates (Semgrep, Snyk Code, Snyk Open Source, Trivy dependency /
+misconfiguration / secret scans, Gitleaks, Dependency Review, `actionlint`)
+run in `security-ci-cd.yml`, with native CodeQL in `codeql.yml`.
+Per-release evidence packs and session handoffs are generated locally
+and are not committed to the public repository.
 
 ---
 
@@ -63,15 +64,17 @@ locally and are not committed to the public repository.
       workflow filenames, correct control count, correct example commands).
 - [ ] `CHANGELOG.md` up to date with the tag being released.
 - [ ] `docs/bundle_schema.md` matches the current Pydantic schema
-      (validated by `sdlc-evidence schema` diff against the committed
-      copy).
+      (checked by hand against `sdlc-evidence schema`; the automated
+      diff in `tests/unit/test_schema_contract.py` covers only the
+      committed `docs/evidence-bundle.schema.json`).
 - [ ] `docs/traceability.md` reflects the current scenarios and verdicts.
 - [ ] `docs/limitations.md` lists every known FP/FN and scope exclusion.
 
 ## Security gates
 
-- [ ] `security-ci-cd.yml` (Semgrep + pip-audit + Trivy + actionlint)
-      passes on the release commit.
+- [ ] `security-ci-cd.yml` (Semgrep, Snyk Code, Snyk Open Source, Trivy,
+      Gitleaks, Dependency Review, actionlint) passes on the release
+      commit.
 - [ ] No hardcoded secrets (`gitleaks` clean, `trivy secret` clean).
 - [ ] No local home-directory paths in any tracked file outside fixtures
       explicitly marked as scrubbed.
