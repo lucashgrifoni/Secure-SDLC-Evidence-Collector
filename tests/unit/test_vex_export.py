@@ -7,12 +7,17 @@ status-decision branches (under_investigation → affected → not_affected).
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 
 from evidence_collector.domain.enums import (
     ConfidenceLevel,
+    ControlCriticality,
+    ControlEvaluationStatus,
+    ControlFramework,
     EvidenceStatus,
     EvidenceType,
     ReleaseStatus,
@@ -20,9 +25,11 @@ from evidence_collector.domain.enums import (
 )
 from evidence_collector.domain.models import (
     Application,
+    ControlEvaluation,
     EvidenceBundle,
     EvidenceException,
     EvidenceSource,
+    ExceptionScope,
     NormalizedEvidence,
     ReleaseContext,
     Summary,
@@ -34,7 +41,9 @@ from evidence_collector.exporters.vex import (
     STATUS_NOT_AFFECTED,
     STATUS_UNDER_INVESTIGATION,
     build_openvex,
+    merge_consumed_vex,
 )
+from evidence_collector.parsers.vex import VexStatement
 
 
 def _evidence(
@@ -42,6 +51,8 @@ def _evidence(
     *,
     evidence_id: str = "sca-1",
     top_risk: list[TopRiskCve] | None = None,
+    status: EvidenceStatus = EvidenceStatus.GENERATED,
+    evidence_type: EvidenceType = EvidenceType.SCA_SCAN,
 ) -> NormalizedEvidence:
     intel = None
     if top_risk is not None:
@@ -53,12 +64,12 @@ def _evidence(
         )
     return NormalizedEvidence(
         evidence_id=evidence_id,
-        evidence_type=EvidenceType.SCA_SCAN,
+        evidence_type=evidence_type,
         source=EvidenceSource(name="trivy", kind="sarif"),
         producer="trivy",
         subject_type=SubjectType.COMMIT,
         subject_ref="abcdef1234567890",
-        status=EvidenceStatus.GENERATED,
+        status=status,
         confidence=ConfidenceLevel.HIGH,
         release_id="2026.05.18",
         commit_sha="abcdef1234567890",
@@ -94,16 +105,81 @@ def _sbom_evidence_with_inline_analyses(
     )
 
 
+def _evaluation(
+    control_id: str,
+    status: ControlEvaluationStatus,
+    *,
+    exception_refs: list[str] | None = None,
+    missing_required: list[EvidenceType] | None = None,
+    evidence_refs: list[str] | None = None,
+) -> ControlEvaluation:
+    """A control evaluation as the engine records it in the bundle."""
+    return ControlEvaluation(
+        control_id=control_id,
+        framework=ControlFramework.NIST_SSDF,
+        control_name=f"Control {control_id}",
+        evaluation_status=status,
+        criticality=ControlCriticality.HIGH,
+        evidence_refs=evidence_refs or [],
+        missing_required_evidence_types=missing_required or [],
+        rationale=f"Control {control_id} evaluated.",
+        exception_refs=exception_refs or [],
+    )
+
+
+def _sca_waived(exception_id: str) -> ControlEvaluation:
+    """SSDF-PW.4 waived because its required SCA evidence did not satisfy it."""
+    return _evaluation(
+        "SSDF-PW.4",
+        ControlEvaluationStatus.WAIVED,
+        exception_refs=[exception_id],
+        missing_required=[EvidenceType.SCA_SCAN],
+    )
+
+
+def _rollback_waived(exception_id: str) -> ControlEvaluation:
+    return _evaluation(
+        "ORG-REL-ROLLBACK",
+        ControlEvaluationStatus.WAIVED,
+        exception_refs=[exception_id],
+        missing_required=[EvidenceType.ROLLBACK_PLAN],
+    )
+
+
+def _waiver(
+    now: datetime,
+    *,
+    exception_id: str = "EX-001",
+    control_id: str = "SSDF-PW.4",
+    approved_at: datetime | None = None,
+    expires_at: datetime | None = None,
+    release_id: str | None = None,
+) -> EvidenceException:
+    return EvidenceException(
+        exception_id=exception_id,
+        control_id=control_id,
+        approver="security-team",
+        approved_at=approved_at or now - timedelta(days=1),
+        expires_at=expires_at or now + timedelta(days=30),
+        justification="Library is loaded but the affected function is never called.",
+        reference="JIRA-1234",
+        scope=ExceptionScope(release_id=release_id),
+    )
+
+
 def _bundle(
     evidence: list[NormalizedEvidence],
     exceptions: list[EvidenceException] | None = None,
+    evaluations: list[ControlEvaluation] | None = None,
+    generated_at: datetime | None = None,
 ) -> EvidenceBundle:
     return EvidenceBundle(
         bundle_id="bundle-vex-test",
+        generated_at=generated_at or datetime(2026, 5, 18, tzinfo=UTC),
         application=Application(name="acme-api", repository="acme/api"),
         release=ReleaseContext(release_id="2026.05.18", commit_sha="abcdef1234567890"),
         evidence=evidence,
-        control_evaluations=[],
+        control_evaluations=evaluations or [],
         gaps=[],
         exceptions=exceptions or [],
         summary=Summary(
@@ -164,7 +240,13 @@ def test_build_openvex_marks_waived_cves_as_not_affected() -> None:
         justification="Library is loaded but the affected function is never called.",
         reference="JIRA-1234",
     )
-    bundle = _bundle([_evidence(["CVE-2024-3333"])], exceptions=[waiver])
+    # The SCA scan failed on the CVE, so SSDF-PW.4 lacked satisfying SCA
+    # evidence and the engine recorded it as waived by EX-001.
+    bundle = _bundle(
+        [_evidence(["CVE-2024-3333"], status=EvidenceStatus.FAILED)],
+        exceptions=[waiver],
+        evaluations=[_sca_waived("EX-001")],
+    )
 
     doc = build_openvex(bundle, now=now)
     statement = doc["statements"][0]
@@ -299,7 +381,9 @@ def test_build_openvex_waiver_still_wins_over_inline_analysis() -> None:
         justification="Risk accepted for the next 30 days while we patch.",
         reference="JIRA-9999",
     )
-    bundle = _bundle([sbom], exceptions=[waiver])
+    # A failed SCA scan reports the same CVE, and SSDF-PW.4 is waived for it.
+    sca = _evidence(["CVE-2024-8002"], status=EvidenceStatus.FAILED)
+    bundle = _bundle([sbom, sca], exceptions=[waiver], evaluations=[_sca_waived("EX-INLINE")])
     doc = build_openvex(bundle, now=now)
     statement = doc["statements"][0]
     assert statement["status"] == STATUS_NOT_AFFECTED
@@ -317,3 +401,209 @@ def test_build_openvex_inline_unknown_state_falls_back_to_default() -> None:
     statement = doc["statements"][0]
     # Fall back to under_investigation, exactly as if the analysis were absent.
     assert statement["status"] == STATUS_UNDER_INVESTIGATION
+
+
+# --- Waiver scope -----------------------------------------------------------
+
+_NOW = datetime(2026, 5, 18, tzinfo=UTC)
+
+_KEV_TOP = [
+    TopRiskCve(
+        cve_id="CVE-2024-2222",
+        epss_score=0.95,
+        epss_percentile=0.99,
+        in_kev=True,
+        known_ransomware=True,
+    )
+]
+
+
+def _status_of(doc: dict[str, Any], cve_id: str) -> str:
+    return str(next(s for s in doc["statements"] if s["vulnerability"]["name"] == cve_id)["status"])
+
+
+def test_unrelated_waiver_does_not_mark_cves_not_affected() -> None:
+    """A rollback waiver says nothing about a dependency CVE."""
+    bundle = _bundle(
+        [_evidence(["CVE-2024-12345"], status=EvidenceStatus.FAILED)],
+        exceptions=[_waiver(_NOW, exception_id="EX-RB", control_id="ORG-REL-ROLLBACK")],
+        evaluations=[_rollback_waived("EX-RB")],
+    )
+    doc = build_openvex(bundle, now=_NOW)
+    assert _status_of(doc, "CVE-2024-12345") == STATUS_UNDER_INVESTIGATION
+
+
+def test_waiver_the_engine_never_applied_does_not_apply() -> None:
+    """A valid exception that waived no control waives no CVE."""
+    bundle = _bundle([_evidence(["CVE-2024-3333"])], exceptions=[_waiver(_NOW)])
+    doc = build_openvex(bundle, now=_NOW)
+    assert _status_of(doc, "CVE-2024-3333") == STATUS_UNDER_INVESTIGATION
+
+
+def test_unused_waiver_on_met_sca_control_does_not_apply() -> None:
+    """The engine lists in-force waivers even on a met control; nothing was waived."""
+    bundle = _bundle(
+        [_evidence(["CVE-2024-3333"], status=EvidenceStatus.PASSED)],
+        exceptions=[_waiver(_NOW)],
+        evaluations=[
+            _evaluation(
+                "SSDF-PW.4",
+                ControlEvaluationStatus.MET,
+                exception_refs=["EX-001"],
+                evidence_refs=["sca-1"],
+            )
+        ],
+    )
+    doc = build_openvex(bundle, now=_NOW)
+    assert _status_of(doc, "CVE-2024-3333") == STATUS_UNDER_INVESTIGATION
+
+
+def test_waiver_only_covers_the_evidence_type_it_compensates_for() -> None:
+    """A control waived for a missing SBOM does not waive CVEs from a passing SCA scan."""
+    bundle = _bundle(
+        [_evidence(["CVE-2024-3333"], status=EvidenceStatus.PASSED)],
+        exceptions=[_waiver(_NOW)],
+        evaluations=[
+            _evaluation(
+                "SSDF-PW.4",
+                ControlEvaluationStatus.WAIVED,
+                exception_refs=["EX-001"],
+                missing_required=[EvidenceType.SBOM],
+                evidence_refs=["sca-1"],
+            )
+        ],
+    )
+    doc = build_openvex(bundle, now=_NOW)
+    assert _status_of(doc, "CVE-2024-3333") == STATUS_UNDER_INVESTIGATION
+
+
+def test_waiver_recorded_for_another_control_does_not_apply() -> None:
+    """An exception id listed on a control it does not name is not a waiver of that control."""
+    bundle = _bundle(
+        [_evidence(["CVE-2024-3333"], status=EvidenceStatus.FAILED)],
+        exceptions=[_waiver(_NOW, exception_id="EX-RB", control_id="ORG-REL-ROLLBACK")],
+        evaluations=[_sca_waived("EX-RB")],
+    )
+    doc = build_openvex(bundle, now=_NOW)
+    assert _status_of(doc, "CVE-2024-3333") == STATUS_UNDER_INVESTIGATION
+
+
+@pytest.mark.parametrize(
+    "waiver",
+    [
+        pytest.param(
+            _waiver(
+                _NOW, approved_at=_NOW - timedelta(days=9), expires_at=_NOW - timedelta(days=1)
+            ),
+            id="expired",
+        ),
+        pytest.param(
+            _waiver(
+                _NOW, approved_at=_NOW + timedelta(days=1), expires_at=_NOW + timedelta(days=9)
+            ),
+            id="not-yet-approved",
+        ),
+        pytest.param(_waiver(_NOW, release_id="some-other-release"), id="out-of-scope"),
+    ],
+)
+def test_waiver_not_in_force_does_not_apply_even_if_recorded(waiver: EvidenceException) -> None:
+    """The recorded evaluation alone is not enough: the waiver must be in force."""
+    bundle = _bundle(
+        [_evidence(["CVE-2024-3333"], status=EvidenceStatus.FAILED)],
+        exceptions=[waiver],
+        evaluations=[_sca_waived("EX-001")],
+    )
+    doc = build_openvex(bundle, now=_NOW)
+    assert _status_of(doc, "CVE-2024-3333") == STATUS_UNDER_INVESTIGATION
+
+
+def test_applied_sca_waiver_marks_only_the_cves_its_evidence_reports() -> None:
+    bundle = _bundle(
+        [
+            _evidence(["CVE-2024-3333"], evidence_id="sca-1", status=EvidenceStatus.FAILED),
+            _evidence(
+                ["CVE-2024-4444"],
+                evidence_id="sast-1",
+                status=EvidenceStatus.FAILED,
+                evidence_type=EvidenceType.SAST_SCAN,
+            ),
+        ],
+        exceptions=[_waiver(_NOW)],
+        evaluations=[_sca_waived("EX-001")],
+    )
+    doc = build_openvex(bundle, now=_NOW)
+    assert _status_of(doc, "CVE-2024-3333") == STATUS_NOT_AFFECTED
+    assert _status_of(doc, "CVE-2024-4444") == STATUS_UNDER_INVESTIGATION
+
+
+def test_kev_cve_with_unrelated_waiver_stays_affected() -> None:
+    bundle = _bundle(
+        [_evidence(["CVE-2024-2222"], top_risk=_KEV_TOP, status=EvidenceStatus.FAILED)],
+        exceptions=[_waiver(_NOW, exception_id="EX-RB", control_id="ORG-REL-ROLLBACK")],
+        evaluations=[_rollback_waived("EX-RB")],
+    )
+    doc = build_openvex(bundle, now=_NOW)
+    assert _status_of(doc, "CVE-2024-2222") == STATUS_AFFECTED
+
+
+def test_kev_cve_with_applied_sca_waiver_is_not_affected() -> None:
+    """An applied waiver keeps its existing precedence over the KEV default."""
+    bundle = _bundle(
+        [_evidence(["CVE-2024-2222"], top_risk=_KEV_TOP, status=EvidenceStatus.FAILED)],
+        exceptions=[_waiver(_NOW)],
+        evaluations=[_sca_waived("EX-001")],
+    )
+    doc = build_openvex(bundle, now=_NOW)
+    assert _status_of(doc, "CVE-2024-2222") == STATUS_NOT_AFFECTED
+
+
+# --- Determinism ------------------------------------------------------------
+
+
+def test_two_runs_on_the_same_bundle_are_byte_identical() -> None:
+    generated = datetime(2026, 5, 18, 9, 30, tzinfo=UTC)
+    bundle = _bundle([_evidence(["CVE-2024-4444"])], generated_at=generated)
+    first = json.dumps(build_openvex(bundle), sort_keys=True)
+    second = json.dumps(build_openvex(bundle), sort_keys=True)
+    assert first == second
+    assert json.loads(first)["timestamp"] == generated.isoformat()
+
+
+def test_default_clock_drives_waiver_validity() -> None:
+    """Validity is judged at bundle generation time, not at export time."""
+    generated = datetime(2020, 1, 10, tzinfo=UTC)
+    waiver = _waiver(
+        generated,
+        approved_at=datetime(2020, 1, 1, tzinfo=UTC),
+        expires_at=datetime(2020, 2, 1, tzinfo=UTC),
+    )
+    bundle = _bundle(
+        [_evidence(["CVE-2024-3333"], status=EvidenceStatus.FAILED)],
+        exceptions=[waiver],
+        evaluations=[_sca_waived("EX-001")],
+        generated_at=generated,
+    )
+    assert _status_of(build_openvex(bundle), "CVE-2024-3333") == STATUS_NOT_AFFECTED
+
+
+def test_different_statements_produce_different_ids() -> None:
+    base = _bundle([_evidence(["CVE-2024-4444"])])
+    other = _bundle([_evidence(["CVE-2024-5555"])])
+    assert build_openvex(base, now=_NOW)["@id"] != build_openvex(other, now=_NOW)["@id"]
+
+
+def test_different_timestamps_produce_different_ids() -> None:
+    bundle = _bundle([_evidence(["CVE-2024-4444"])])
+    first = build_openvex(bundle, now=_NOW)
+    later = build_openvex(bundle, now=_NOW + timedelta(hours=1))
+    assert first["statements"] == later["statements"]
+    assert first["@id"] != later["@id"]
+
+
+def test_merge_recomputes_the_document_id() -> None:
+    bundle = _bundle([_evidence(["CVE-2024-4444"])])
+    doc = build_openvex(bundle, now=_NOW)
+    original_id = doc["@id"]
+    consumed = [VexStatement(cve_id="CVE-2024-4444", status="not_affected")]
+    merged = merge_consumed_vex(doc, bundle, consumed)
+    assert merged["@id"] != original_id

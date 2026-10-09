@@ -9,10 +9,20 @@ implied by an :class:`EvidenceBundle`:
 * any CVE listed in CISA KEV (via the enrichment step) is upgraded to
   ``affected`` with an ``action_statement`` that points at the EPSS /
   KEV evidence in the bundle;
-* any CVE that the bundle's :class:`EvidenceException` machinery has
-  waived for the active application + release is emitted as
-  ``not_affected`` with the waiver justification and reference as
-  ``justification`` and ``status_notes``.
+* a CVE is emitted as ``not_affected`` only when a waiver actually
+  applies to it: the exception is in force for the bundle's application,
+  release and clock, the engine recorded it on a control it names as
+  ``waived`` (``exception_refs``), and the CVE is reported by evidence of a
+  type that control was missing (``missing_required_evidence_types``), i.e.
+  the evidence the waiver compensates for. Any other exception, including
+  an in-force one on an unrelated or met control, leaves the CVE exactly
+  as it would be without waivers.
+
+The document is reproducible: the clock defaults to the bundle's
+``generated_at`` (for both ``timestamp`` and waiver validity), and ``@id``
+is derived from the bundle identity plus a digest of the statements, so
+two runs on one bundle are byte-identical and different content never
+shares an id.
 
 The OpenVEX spec uses ``purl``-shaped product identifiers. The bundle
 does not always have a purl, so we synthesize a stable
@@ -28,11 +38,14 @@ writing the OpenVEX JSON to disk.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
+from evidence_collector.domain.enums import ControlEvaluationStatus
 from evidence_collector.domain.models import (
     EvidenceBundle,
     EvidenceException,
@@ -101,19 +114,27 @@ _CYCLONEDX_JUSTIFICATION_TO_OPENVEX: dict[str, str] = {
 }
 
 
-def _vex_id(bundle: EvidenceBundle) -> str:
-    """Deterministic OpenVEX document id derived from bundle inputs.
+def _vex_id(bundle: EvidenceBundle, statements: list[dict[str, Any]], timestamp: str) -> str:
+    """Deterministic OpenVEX document id derived from bundle inputs and content.
 
     Using ``uuid5`` over a stable concatenation of bundle fields keeps
     the id reproducible across runs on identical inputs, which matters
-    for downstream verifiers that hash the VEX document.
+    for downstream verifiers that hash the VEX document. The statements'
+    digest and the document ``timestamp`` are part of the payload so two
+    documents with different content for the same release never share an
+    id (the ``version`` stays 1).
     """
+    statements_digest = hashlib.sha256(
+        json.dumps(statements, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
     payload = "||".join(
         [
             bundle.application.name,
             bundle.application.repository,
             bundle.release.release_id,
             bundle.release.commit_sha,
+            statements_digest,
+            timestamp,
         ]
     )
     return f"https://openvex.dev/docs/{uuid5(NAMESPACE_URL, payload)}"
@@ -142,27 +163,47 @@ def _collect_cve_to_evidence(
     return index
 
 
-def _waiver_for_cve(
-    _cve_id: str,
-    exceptions: list[EvidenceException],
-    application: str,
-    release_id: str,
-    now: datetime,
-) -> EvidenceException | None:
-    """Return the first valid exception that covers ``cve_id``.
+def _waivers_by_cve(bundle: EvidenceBundle, now: datetime) -> dict[str, EvidenceException]:
+    """Map each CVE to the exception that actually waives it, if any.
 
-    The current schema waives whole controls, not individual CVEs, so
-    here we apply a coarse but useful rule: if any exception is valid
-    for the current application+release window, every CVE collected
-    during that window is considered intentionally accepted. Consumers
-    that want CVE-level waivers can introduce a more granular schema
-    later; for v1 this matches how the rest of the codebase reads
-    exceptions.
+    Exceptions waive controls, not CVEs, so a CVE is waived only through a
+    control the waiver was applied to. An exception counts for a CVE when
+    all of these hold:
+
+    * it is in force for the bundle's application and release at ``now``;
+    * a control evaluation it names (``control_id``) is ``waived`` and lists
+      it in ``exception_refs`` (the engine also lists in-force waivers on
+      met controls, and those waived nothing);
+    * the CVE is reported by evidence whose type is among that control's
+      ``missing_required_evidence_types``, the evidence the waiver stands in
+      for. A control waived for a missing SBOM says nothing about CVEs from
+      a passing SCA scan, and a rollback waiver says nothing about any CVE.
+
+    The first match in bundle order (evaluations, then ``exception_refs``,
+    then evidence) wins, which keeps the result deterministic.
     """
-    for exc in exceptions:
-        if exc.is_valid_for(application, release_id, now):
-            return exc
-    return None
+    application = bundle.application.name
+    release_id = bundle.release.release_id
+    in_force = {
+        exc.exception_id: exc
+        for exc in bundle.exceptions
+        if exc.is_valid_for(application, release_id, now)
+    }
+    out: dict[str, EvidenceException] = {}
+    for evaluation in bundle.control_evaluations:
+        if evaluation.evaluation_status != ControlEvaluationStatus.WAIVED:
+            continue
+        waived_types = set(evaluation.missing_required_evidence_types)
+        for ref in evaluation.exception_refs:
+            exc = in_force.get(ref)
+            if exc is None or exc.control_id != evaluation.control_id:
+                continue
+            for evidence in bundle.evidence:
+                if evidence.evidence_type not in waived_types:
+                    continue
+                for cve_id in evidence.cve_ids:
+                    out.setdefault(cve_id.upper(), exc)
+    return out
 
 
 def _kev_ransomware_cves(evidence_list: list[NormalizedEvidence]) -> set[str]:
@@ -261,25 +302,27 @@ def build_openvex(bundle: EvidenceBundle, *, now: datetime | None = None) -> dic
     The document is a plain ``dict`` so the CLI layer can serialise
     it with ``json.dumps`` and the unit tests can validate structure
     without round-tripping through Pydantic.
+
+    ``now`` defaults to ``bundle.generated_at`` and drives both the
+    document ``timestamp`` and waiver validity, so the output depends on
+    the bundle alone.
     """
-    fixed_now = now or datetime.now(tz=UTC)
+    fixed_now = now or bundle.generated_at
+    if fixed_now.tzinfo is None:
+        # Waiver windows are timezone-aware; a naive bundle clock means UTC.
+        fixed_now = fixed_now.replace(tzinfo=UTC)
     evidence_list = list(bundle.evidence)
     cve_index = _collect_cve_to_evidence(evidence_list)
     in_kev = _kev_ransomware_cves(evidence_list)
     inline_analyses = _collect_sbom_inline_analyses(evidence_list)
     product_id = _product_id(bundle)
+    waivers = _waivers_by_cve(bundle, fixed_now)
 
     statements: list[dict[str, Any]] = []
     for cve_id in sorted(cve_index.keys()):
-        waiver = _waiver_for_cve(
-            cve_id,
-            list(bundle.exceptions),
-            bundle.application.name,
-            bundle.release.release_id,
-            fixed_now,
-        )
+        waiver = waivers.get(cve_id)
         if waiver is not None:
-            # Explicit waiver wins over every other signal — the operator
+            # An applied waiver wins over every other signal, KEV included — the operator
             # accepted the risk in writing.
             statements.append(
                 {
@@ -330,7 +373,7 @@ def build_openvex(bundle: EvidenceBundle, *, now: datetime | None = None) -> dic
 
     return {
         "@context": OPENVEX_CONTEXT,
-        "@id": _vex_id(bundle),
+        "@id": _vex_id(bundle, statements, fixed_now.isoformat()),
         "author": OPENVEX_AUTHOR,
         "timestamp": fixed_now.isoformat(),
         "version": 1,
@@ -411,4 +454,8 @@ def merge_consumed_vex(
         # FIRST_WINS: keep ``existing`` untouched.
 
     bundle_document["statements"] = [by_cve[k] for k in sorted(by_cve.keys())]
+    # The content changed, so the content-derived id must follow it.
+    bundle_document["@id"] = _vex_id(
+        bundle, bundle_document["statements"], bundle_document["timestamp"]
+    )
     return bundle_document
