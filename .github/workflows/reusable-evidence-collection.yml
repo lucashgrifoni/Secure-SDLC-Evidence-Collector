@@ -4,7 +4,7 @@
 #
 # jobs:
 #   evidence:
-#     uses: lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/reusable-evidence-collection.yml@v2.0.5
+#     uses: lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/reusable-evidence-collection.yml@v4.0.0 # x-release-please-version
 #     with:
 #       application: my-app
 #       repository: my-org/my-app
@@ -98,10 +98,7 @@ on:
         type: string
         required: false
         default: ""
-        description: >-
-          Pin the collector version (e.g. '2.0.0'). Leave empty to use
-          the most recent release on PyPI. Pinning is strongly
-          recommended for reproducible pipelines.
+        description: "Pin the collector version (e.g. '4.0.0'). Leave empty to use the most recent release on PyPI. Pinning is strongly recommended for reproducible pipelines." # x-release-please-version
       python-version:
         type: string
         required: false
