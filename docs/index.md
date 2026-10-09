@@ -13,9 +13,12 @@ operate it in a real pipeline**.
 - **[GitHub Action documentation](./github_action.md)** — inputs,
   outputs, examples, and recipes for using the action in your release
   workflows.
-- **[Release readiness model](./release-readiness.md)** — how
-  `ready` / `conditional` / `not_ready` is decided, and how to wire
-  the verdict into pipeline gates.
+- **[Release readiness checklist](./release-readiness.md)** — the
+  go/no-go criteria this project checks before tagging one of its own
+  releases. How `ready` / `conditional` / `not_ready` is decided, and
+  the exit codes to gate a pipeline on, are in the README's
+  [Exit codes](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector#exit-codes)
+  section and [Limitations](./limitations.md).
 - **[Limitations](./limitations.md)** — what the collector explicitly
   does not do, so adopters do not assume coverage that is not there.
 - **[Traceability matrix](./traceability.md)** — control-to-evidence

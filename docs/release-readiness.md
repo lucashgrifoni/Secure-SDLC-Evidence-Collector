@@ -90,7 +90,8 @@ and are not committed to the public repository.
 - [ ] `sigstore` transparency-log entries are reachable for the latest
       release (verified with `cosign verify-blob --certificate-identity
       ... --certificate-oidc-issuer https://token.actions.githubusercontent.com`).
-- [ ] `SHA256SUMS` published alongside release assets.
+- [ ] `checksums.txt` (SHA-256 of wheel, sdist, `bundle.json` and SBOMs)
+      published alongside release assets.
 
 ## Governance gates
 

@@ -644,11 +644,10 @@ Tier 6 — standards-alignment cut, and the first public release line.
 - Reproducible wheel gate, reusable GitHub Actions workflow, GitLab CI
   template, devcontainer + Codespaces, comparison page, ADRs 0007–0012.
 
-### Deferred to `2.1`
+### Deferred (originally planned for `2.1`, not yet scheduled)
 
 - `sdlc-evidence watch` daemon (see `docs/limitations.md`).
 - SPDX VEX consumer (low industry adoption today).
-- IaC scan as its own `evidence_type`.
 - `compare --policy` (Rego for acceptable regression).
 - Sigstore policy-controller recipe.
 - OpenTelemetry tracing via the `[otel]` extra.

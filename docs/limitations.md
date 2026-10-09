@@ -44,16 +44,15 @@ and emits **one evidence record per run**.
   logged as a warning. Before this, a Scorecard upload with no high or
   critical result satisfied SSDF-PW.7, and so did a gap log from an
   earlier ready release left in the artifacts directory.
-- Mitigation: the classification heuristic and the fallback label are
-  both documented in the bundle's `evidence[*].rationale` field, so
-  reviewers can see why the collector chose a label.
-- Since `v1.1.1` the bundle also surfaces a first-class
-  `evidence[*].classification` field with `confidence` (`high` / `medium`
-  / `low`), `reason` (`driver_match` / `manual_override` /
-  `fallback_sast`) and the original `driver_name`. Downstream consumers
-  can filter or weight evidence by classification confidence without
-  parsing the `rationale` prose, and a `fallback_sast` reason is a
-  reliable signal that the underlying tool was unknown to the heuristic.
+- Mitigation: since `v1.1.1` every SARIF-derived record carries a
+  first-class `evidence[*].classification` field with `confidence`
+  (`high` / `medium` / `low`), `reason` (`driver_match` /
+  `manual_override` / `fallback_sast`) and the original `driver_name`,
+  so reviewers can see why the collector chose a label. Evidence
+  records have no `rationale` field (only control evaluations do).
+  Downstream consumers can filter or weight evidence by classification
+  confidence, and a `fallback_sast` reason is a reliable signal that
+  the underlying tool was unknown to the heuristic.
 
 ## 3 · Evidence quality is shallow
 
