@@ -21,7 +21,12 @@ from __future__ import annotations
 from typing import Any
 
 from evidence_collector import __version__
-from evidence_collector.domain.enums import ControlCriticality, ControlEvaluationStatus
+from evidence_collector.controls.engine import _is_satisfying
+from evidence_collector.domain.enums import (
+    ControlCriticality,
+    ControlEvaluationStatus,
+    EvidenceType,
+)
 from evidence_collector.domain.models import ControlEvaluation, EvidenceBundle
 
 SARIF_VERSION = "2.1.0"
@@ -55,6 +60,9 @@ def build_gap_sarif(bundle: EvidenceBundle, *, artifact_uri: str = "bundle.json"
         key=lambda e: e.control_id,
     )
     remediation = _remediation_by_control(bundle)
+    # Types with a record that is present but did not satisfy, as the engine
+    # decides it, so a failed scan is not reported as an absent one.
+    failed_types = frozenset(e.evidence_type for e in bundle.evidence if not _is_satisfying(e))
     return {
         "$schema": SARIF_SCHEMA,
         "version": SARIF_VERSION,
@@ -68,7 +76,7 @@ def build_gap_sarif(bundle: EvidenceBundle, *, artifact_uri: str = "bundle.json"
                         "rules": [_rule(e, remediation.get(e.control_id)) for e in unmet],
                     }
                 },
-                "results": [_result(e, artifact_uri) for e in unmet],
+                "results": [_result(e, artifact_uri, failed_types) for e in unmet],
             }
         ],
     }
@@ -100,19 +108,29 @@ def _rule(evaluation: ControlEvaluation, remediation: str | None) -> dict[str, A
     return rule
 
 
-def _result(evaluation: ControlEvaluation, artifact_uri: str) -> dict[str, Any]:
+def _result(
+    evaluation: ControlEvaluation, artifact_uri: str, failed_types: frozenset[EvidenceType]
+) -> dict[str, Any]:
     text = (
         f"{evaluation.control_id} ({evaluation.control_name}) is "
         f"{evaluation.evaluation_status.value}."
     )
     # A partial control has all its required types; what it lacks is listed
-    # as recommended, so both lists go into the message.
+    # as recommended, so both lists go into the message. A type whose records
+    # are present but did not satisfy (a scan that ran and failed) is named
+    # apart from an absent one, which would send the reader to re-attach it.
     for label, types in (
         ("required", evaluation.missing_required_evidence_types),
         ("recommended", evaluation.missing_recommended_evidence_types),
     ):
-        if types:
-            text += f" Missing {label} evidence: {', '.join(sorted(t.value for t in types))}."
+        absent = sorted(t.value for t in types if t not in failed_types)
+        present = sorted(t.value for t in types if t in failed_types)
+        if absent:
+            text += f" Missing {label} evidence: {', '.join(absent)}."
+        if present:
+            text += (
+                f" {label.capitalize()} evidence present but not satisfying: {', '.join(present)}."
+            )
     return {
         "ruleId": evaluation.control_id,
         "level": _LEVEL[evaluation.criticality],

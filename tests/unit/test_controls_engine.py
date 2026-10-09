@@ -353,14 +353,15 @@ def test_a_partial_rationale_names_failed_and_invalid_records_of_both_kinds() ->
     assert evaluation.missing_recommended_evidence_types == [EvidenceType.MODEL_CARD]
     assert evaluation.rationale == (
         "Control T-SAFETY is partially satisfied: required evidence is present, "
-        "but recommended evidence model_card is missing. "
-        "Evidence promptfoo-fail (failed) of type ai_safety_eval, "
-        "card-1 (invalid) of type model_card did not count."
+        "but recommended evidence card-1 (invalid) of type model_card is present "
+        "but did not satisfy it. "
+        "Evidence promptfoo-fail (failed) of type ai_safety_eval did not count."
     )
     assert [g.description for g in gaps] == [
-        "Recommended evidence `model_card` for control T-SAFETY is missing. "
-        "Control is still considered partial."
+        "Recommended evidence `model_card` for control T-SAFETY is present but did "
+        "not satisfy it: card-1 (invalid). Control is still considered partial."
     ]
+    assert "Produce and attach" not in (gaps[0].remediation or "")
 
 
 def test_a_missing_rationale_says_a_failed_record_is_present_but_did_not_satisfy() -> None:
@@ -378,7 +379,35 @@ def test_a_missing_rationale_says_a_failed_record_is_present_but_did_not_satisfy
     )
     assert [g.description for g in gaps] == [
         "Required evidence `ai_safety_eval` for control T-SAFETY (Safety evaluation) "
-        "is missing or failed validation."
+        "is present but did not satisfy it: promptfoo-fail (failed)."
+    ]
+    # Attaching the same result again cannot help; the remediation says what can.
+    assert [g.remediation for g in gaps] == [
+        "`ai_safety_eval` evidence promptfoo-fail (failed) is present but did not "
+        "satisfy control T-SAFETY. Resolve the cause (for a scan, remediate or waive "
+        "its blocking findings) and collect it again."
+    ]
+
+
+def test_gaps_for_absent_evidence_keep_their_wording() -> None:
+    """Only present-but-failed records get the new text; absent types do not move."""
+    control = _safety_control(recommended=(EvidenceType.MODEL_CARD,))
+
+    _evaluation, gaps = evaluate_control(control, [])
+
+    assert [(g.description, g.remediation) for g in gaps] == [
+        (
+            "Required evidence `ai_safety_eval` for control T-SAFETY (Safety evaluation) "
+            "is missing or failed validation.",
+            "Produce and attach a `ai_safety_eval` evidence for this release to satisfy "
+            "control T-SAFETY.",
+        ),
+        (
+            "Recommended evidence `model_card` for control T-SAFETY is missing. "
+            "Control is still considered partial.",
+            "Produce and attach a `model_card` evidence for this release to satisfy "
+            "control T-SAFETY.",
+        ),
     ]
 
 

@@ -109,13 +109,30 @@ def _downgrade_if_manual(
     return ConfidenceLevel.LOW
 
 
-def _remediation_hint(control: ControlDefinition, evidence_type: EvidenceType | None) -> str:
+def _remediation_hint(
+    control: ControlDefinition,
+    evidence_type: EvidenceType | None,
+    present: Sequence[NormalizedEvidence] = (),
+) -> str:
     if evidence_type is None:
         return f"Provide evidence satisfying control {control.control_id}."
+    if present:
+        # The record exists and did not satisfy: producing and attaching
+        # another one of the same result changes nothing.
+        return _fit(
+            f"`{evidence_type.value}` evidence {_records(present)} is present but did "
+            f"not satisfy control {control.control_id}. Resolve the cause (for a scan, "
+            f"remediate or waive its blocking findings) and collect it again.",
+            _GAP_DESCRIPTION_LIMIT,
+        )
     return (
         f"Produce and attach a `{evidence_type.value}` evidence for this "
         f"release to satisfy control {control.control_id}."
     )
+
+
+def _records(records: Sequence[NormalizedEvidence]) -> str:
+    return _summarize([f"{e.evidence_id} ({e.status.value})" for e in records])
 
 
 def _valid_exceptions_for(
@@ -198,6 +215,13 @@ def evaluate_control(
         _note_unsatisfying(candidates, unsatisfying)
         if not satisfying:
             missing_required.append(evidence_type)
+            # Records of the type exist but none satisfied: say so and name
+            # them, rather than describing a scan that ran as an absent one.
+            state = (
+                f"is present but did not satisfy it: {_records(candidates)}."
+                if candidates
+                else "is missing or failed validation."
+            )
             gaps.append(
                 Gap(
                     control_id=control.control_id,
@@ -205,11 +229,10 @@ def evaluate_control(
                     criticality=control.criticality,
                     description=_fit(
                         f"Required evidence `{evidence_type.value}` for control "
-                        f"{control.control_id} ({control.name}) is missing or "
-                        f"failed validation.",
+                        f"{control.control_id} ({control.name}) {state}",
                         _GAP_DESCRIPTION_LIMIT,
                     ),
-                    remediation=_remediation_hint(control, evidence_type),
+                    remediation=_remediation_hint(control, evidence_type, candidates),
                 )
             )
             continue
@@ -223,6 +246,11 @@ def evaluate_control(
         _note_unsatisfying(candidates, unsatisfying)
         if not satisfying:
             missing_recommended.append(evidence_type)
+            state = (
+                f"is present but did not satisfy it: {_records(candidates)}."
+                if candidates
+                else "is missing."
+            )
             gaps.append(
                 Gap(
                     control_id=control.control_id,
@@ -230,11 +258,11 @@ def evaluate_control(
                     criticality=ControlCriticality.LOW,
                     description=_fit(
                         f"Recommended evidence `{evidence_type.value}` for control "
-                        f"{control.control_id} is missing. Control is still "
+                        f"{control.control_id} {state} Control is still "
                         f"considered partial.",
                         _GAP_DESCRIPTION_LIMIT,
                     ),
-                    remediation=_remediation_hint(control, evidence_type),
+                    remediation=_remediation_hint(control, evidence_type, candidates),
                 )
             )
             continue
@@ -302,10 +330,23 @@ def evaluate_control(
         status = ControlEvaluationStatus.PARTIAL
         base_confidence = _lowest_confidence(supporting_evidence)
         confidence = _downgrade_if_manual(base_confidence, supporting_evidence)
+        absent_rec = [t for t in missing_recommended if not _select_by_type(evidence, t)]
+        present_rec = [e for e in unsatisfying if e.evidence_type in missing_recommended]
+        lacking: list[str] = []
+        if absent_rec:
+            lacking.append(
+                f"recommended evidence {_summarize([t.value for t in absent_rec])} is missing"
+            )
+        if present_rec:
+            lacking.append(
+                f"recommended evidence {_describe_unsatisfying(present_rec)} is present "
+                f"but did not satisfy it"
+            )
+            # Named once: the closing sentence lists only the other records.
+            unsatisfying = [e for e in unsatisfying if e not in present_rec]
         rationale = (
             f"Control {control.control_id} is partially satisfied: required "
-            f"evidence is present, but recommended evidence "
-            f"{_summarize([t.value for t in missing_recommended])} is missing."
+            f"evidence is present, but {'; '.join(lacking)}."
         )
     else:
         status = ControlEvaluationStatus.MET
