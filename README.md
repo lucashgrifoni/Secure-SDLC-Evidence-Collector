@@ -245,7 +245,7 @@ JSON logs are off. The full list of events and payload keys is in
 The bundle schema stays at 2.1.0 and bundles generated before 4.0.0 keep
 verifying against their own pins. New SBOM metadata and catalog descriptions
 change newly generated structural digests (the sample moves to
-`6c9664455ca5bd2c0536d62417175e4305d105f808daffc33b55fc130873620e`), so review
+`e859f47511065d3119c73b47b7290aef552fdbfdf9d7b4fc3711cfff8e5fb729`), so review
 and pin a new digest when you regenerate evidence. `run` gains
 `--cra-context` for `--profile cra-2026` and `--fedramp-class` for
 `--profile fedramp-20x`. Details and limits are in
