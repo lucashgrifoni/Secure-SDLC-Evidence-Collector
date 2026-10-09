@@ -36,6 +36,7 @@ def evaluate(
     catalog_path: Path | None,
     fail_on: str,
     exceptions_dir: list[Path] | None = None,
+    artifact_root: Path | None = None,
 ) -> None:
     """Reusable core for ``evaluate`` and the legacy ``bundle`` alias.
 
@@ -45,6 +46,10 @@ def evaluate(
     `run` reports as WAIVED came out MISSING through the two-step flow, so the
     same evidence and the same approved, in-force exception produced two
     different release verdicts depending on which documented path was used.
+
+    `--artifact-root` came with it: the waiver files are read here, so an
+    unreadable one is recorded here, and without a root its absolute local
+    path went into `collection_errors` of the published bundle.
     """
     fail_on = validate_fail_on(fail_on)
     try:
@@ -84,7 +89,7 @@ def evaluate(
         from evidence_collector.collectors.local import LocalArtifactCollector
 
         waiver_report = LocalArtifactCollector(
-            release=release, exceptions_dirs=list(exceptions_dir)
+            release=release, exceptions_dirs=list(exceptions_dir), artifact_root=artifact_root
         ).collect()
         exceptions = waiver_report.exceptions
         for waiver_error in waiver_report.errors:
@@ -159,6 +164,17 @@ def register(app: typer.Typer) -> None:
                 ),
             ),
         ] = None,
+        artifact_root: Annotated[
+            Path | None,
+            typer.Option(
+                "--artifact-root",
+                help=(
+                    "Base directory that absolute exception-file paths are rewritten "
+                    "against, so collection errors record repo-relative paths instead "
+                    "of local filesystem locations."
+                ),
+            ),
+        ] = None,
     ) -> None:
         """Evaluate an existing evidence list and produce the full bundle outputs."""
         evaluate(
@@ -174,4 +190,5 @@ def register(app: typer.Typer) -> None:
             catalog_path=catalog_path,
             fail_on=fail_on,
             exceptions_dir=exceptions_dir,
+            artifact_root=artifact_root,
         )
