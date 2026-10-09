@@ -5,6 +5,8 @@ from __future__ import annotations
 from evidence_collector.controls import default_catalog, evaluate_controls
 from evidence_collector.domain.enums import (
     ConfidenceLevel,
+    ControlCriticality,
+    ControlEvaluationStatus,
     EvidenceStatus,
     EvidenceType,
     ReleaseStatus,
@@ -96,3 +98,40 @@ def test_release_conditional_when_only_medium_gap() -> None:
 
 def test_compute_release_status_with_no_gaps() -> None:
     assert compute_release_status([], []) == ReleaseStatus.READY
+
+
+def test_release_conditional_when_only_a_high_control_is_missing() -> None:
+    """Every critical control met, one HIGH control missing: conditional, and named.
+
+    Mutation testing on 4.0.0 showed both halves unguarded: returning READY for
+    a blocking HIGH gap survived, and so did dropping HIGH controls from
+    `missing_critical_evidence`. SSDF-PW.8 is the only control requiring
+    `test_result`, and it is HIGH, so leaving that one record out isolates it.
+    """
+    catalog = default_catalog()
+    evidence = [
+        _ev(EvidenceType.SAST_SCAN),
+        _ev(EvidenceType.SCA_SCAN),
+        _ev(EvidenceType.SECRETS_SCAN),
+        _ev(EvidenceType.DAST_SCAN),
+        _ev(EvidenceType.SBOM, status=EvidenceStatus.GENERATED),
+        _ev(EvidenceType.CODE_REVIEW),
+        _ev(EvidenceType.PR_METADATA),
+        _ev(EvidenceType.THREAT_MODEL),
+        _ev(EvidenceType.RELEASE_APPROVAL),
+        _ev(EvidenceType.ROLLBACK_PLAN),
+        _ev(EvidenceType.ARTIFACT_SIGNATURE),
+        _ev(EvidenceType.ARTIFACT_ATTESTATION),
+    ]  # note: missing test_result (SSDF-PW.8, high)
+    evaluations, gaps = evaluate_controls(catalog, evidence)
+
+    by_id = {e.control_id: e for e in evaluations}
+    critical_ids = {c.control_id for c in catalog if c.criticality == ControlCriticality.CRITICAL}
+    assert critical_ids
+    assert all(by_id[cid].evaluation_status == ControlEvaluationStatus.MET for cid in critical_ids)
+    assert by_id["SSDF-PW.8"].evaluation_status == ControlEvaluationStatus.MISSING
+    assert compute_release_status(evaluations, gaps) == ReleaseStatus.CONDITIONAL
+
+    summary = build_summary(catalog, evaluations, gaps)
+    assert summary.release_status == ReleaseStatus.CONDITIONAL
+    assert summary.missing_critical_evidence == ["SSDF-PW.8:test_result"]
