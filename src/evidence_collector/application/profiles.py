@@ -125,9 +125,14 @@ def _global_exploitation_signal(evidence: NormalizedEvidence) -> str:
     intel = evidence.vulnerability_intelligence
     if intel is None:
         return "unavailable"
-    if any(top.in_kev for top in intel.top_risk_cves):
+    # top_risk_cves only lists CVEs that have an EPSS record, capped at
+    # --top-risk-limit; the counts and the maximum cover every CVE on the evidence.
+    if intel.cves_in_kev_count > 0 or any(top.in_kev for top in intel.top_risk_cves):
         return "kev_listed"
-    if any(top.epss_percentile >= 0.9 for top in intel.top_risk_cves):
+    max_percentile = intel.max_epss_percentile
+    if (max_percentile is not None and max_percentile >= 0.9) or any(
+        top.epss_percentile >= 0.9 for top in intel.top_risk_cves
+    ):
         return "high_epss_percentile"
     return "no_kev_or_high_epss_in_top_risk_cves"
 
@@ -234,6 +239,31 @@ def _cra_metadata(context: CraReportingContext | None) -> dict[str, Any]:
         metadata["srp_conditional_manual_fields"] = ["v27"] if kind == "vulnerability" else []
         metadata["srp_declared_field_ids"] = sorted(provided)
     return metadata
+
+
+def refresh_cra_exploitation_signals(bundle: EvidenceBundle) -> EvidenceBundle:
+    """Recompute ``metadata.cra.global_exploitation_signal`` from current intelligence.
+
+    ``run --profile cra-2026`` computes the signal before any EPSS / KEV data
+    exists, so every record says ``unavailable``. ``enrich`` attaches the
+    intelligence later and calls this to bring the CRA projection in line.
+    Only that one key changes; a bundle with no CRA-annotated record is
+    returned as-is, and the input is never mutated.
+    """
+    if not any(isinstance(e.metadata.get("cra"), dict) for e in bundle.evidence):
+        return bundle
+    new_evidence = []
+    for evidence in bundle.evidence:
+        cra = evidence.metadata.get("cra")
+        if isinstance(cra, dict):
+            metadata = dict(evidence.metadata)
+            metadata["cra"] = {
+                **cra,
+                "global_exploitation_signal": _global_exploitation_signal(evidence),
+            }
+            evidence = evidence.model_copy(update={"metadata": metadata})
+        new_evidence.append(evidence)
+    return bundle.model_copy(update={"evidence": new_evidence})
 
 
 def apply_profile(

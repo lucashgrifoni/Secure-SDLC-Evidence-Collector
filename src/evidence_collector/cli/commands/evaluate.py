@@ -21,6 +21,11 @@ from evidence_collector.cli._render import render_collection_errors, render_summ
 from evidence_collector.cli._state import EVIDENCE_ADAPTER
 from evidence_collector.domain.models import CollectionError
 from evidence_collector.exporters import export_report_set
+from evidence_collector.scoring import (
+    DEFAULT_EPSS_PERCENTILE_THRESHOLD,
+    RiskMode,
+    RiskThresholds,
+)
 
 
 def evaluate(
@@ -37,6 +42,8 @@ def evaluate(
     fail_on: str,
     exceptions_dir: list[Path] | None = None,
     artifact_root: Path | None = None,
+    risk_mode: str = "off",
+    epss_percentile_threshold: float = DEFAULT_EPSS_PERCENTILE_THRESHOLD,
 ) -> None:
     """Reusable core for ``evaluate`` and the legacy ``bundle`` alias.
 
@@ -50,8 +57,16 @@ def evaluate(
     `--artifact-root` came with it: the waiver files are read here, so an
     unreadable one is recorded here, and without a root its absolute local
     path went into `collection_errors` of the published bundle.
+
+    `--risk-mode` exists here for the same reason: `run` had it and the
+    two-step flow did not, so evidence already carrying EPSS / KEV
+    intelligence could not be weighed through `collect` and `evaluate`.
     """
     fail_on = validate_fail_on(fail_on)
+    if risk_mode not in {mode.value for mode in RiskMode}:
+        raise typer.BadParameter(
+            f"--risk-mode must be 'off' or 'epss-weighted'; got '{risk_mode}'."
+        )
     try:
         data = json.loads(evidence_path.read_text(encoding="utf-8-sig"))
         # `collect` writes an envelope carrying the evidence and the inputs it
@@ -103,6 +118,8 @@ def evaluate(
         list(evidence),
         catalog_path=catalog_path,
         exceptions=exceptions,
+        risk_mode=RiskMode(risk_mode),
+        risk_thresholds=RiskThresholds(epss_percentile_threshold=epss_percentile_threshold),
         collection_errors=collection_errors,
     )
 
@@ -175,6 +192,29 @@ def register(app: typer.Typer) -> None:
                 ),
             ),
         ] = None,
+        risk_mode: Annotated[
+            str,
+            typer.Option(
+                "--risk-mode",
+                help=(
+                    "Verdict mode: 'off' (default; presence-based) or "
+                    "'epss-weighted' (re-derive release_status from EPSS + KEV "
+                    "data already on the evidence). Off preserves byte-stability."
+                ),
+            ),
+        ] = "off",
+        epss_percentile_threshold: Annotated[
+            float,
+            typer.Option(
+                "--epss-percentile-threshold",
+                help=(
+                    "Under --risk-mode epss-weighted, a CVE with EPSS percentile "
+                    ">= this value is treated as exploitable. Default 0.70."
+                ),
+                min=0.0,
+                max=1.0,
+            ),
+        ] = DEFAULT_EPSS_PERCENTILE_THRESHOLD,
     ) -> None:
         """Evaluate an existing evidence list and produce the full bundle outputs."""
         evaluate(
@@ -191,4 +231,6 @@ def register(app: typer.Typer) -> None:
             fail_on=fail_on,
             exceptions_dir=exceptions_dir,
             artifact_root=artifact_root,
+            risk_mode=risk_mode,
+            epss_percentile_threshold=epss_percentile_threshold,
         )

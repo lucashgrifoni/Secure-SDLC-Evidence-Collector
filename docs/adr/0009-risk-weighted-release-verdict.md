@@ -82,6 +82,25 @@ Two consequences for anyone operating this mode:
   under a single model before drawing a conclusion; `compare` now warns
   when you have not.
 
+### Where the verdict is actually re-derived (amended 2026-10-09)
+
+As first shipped, `apply_risk_mode` ran only inside `build_bundle`, on
+freshly collected evidence, which never carries EPSS / KEV data: only
+`enrich` attaches it, to an existing bundle. `run --risk-mode
+epss-weighted` followed by `enrich` therefore never changed the
+verdict. `enrich` now re-derives `release_status` and `risk_assessment`
+under the mode and threshold recorded in the bundle, starting from
+`base_release_status`, and re-applies the release-anchor drift rule the
+way `build_bundle` does. A bundle built with `--risk-mode off` has no
+`risk_assessment` and `enrich` leaves its verdict alone. `evaluate` also
+accepts `--risk-mode` and `--epss-percentile-threshold`, for evidence
+that already carries intelligence.
+
+The KEV rows of the table hold for every KEV-listed CVE on the
+evidence. `top_risk_cves` lists only CVEs with an EPSS record, capped at
+`--top-risk-limit`, so the per-evidence `cves_in_kev_count` and
+`cves_known_ransomware_count` are used as a floor under it.
+
 ## Alternatives considered
 
 - **Always-on risk weighting.** Rejected — breaks backward

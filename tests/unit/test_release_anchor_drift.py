@@ -194,3 +194,68 @@ def test_drift_never_promotes_a_verdict(
 def test_an_empty_evidence_set_reports_no_drift() -> None:
     bundle, _ = build_bundle(_app(), _release(), [])
     assert bundle.collection_errors == []
+
+
+def test_rederived_risk_verdict_keeps_the_drift_degradation() -> None:
+    """``enrich`` rebuilds the verdict from the base; the drift rule must survive it."""
+    from evidence_collector.application.orchestrator import rederive_risk_verdict
+    from evidence_collector.domain.models import RiskAssessment
+
+    bundle, _ = build_bundle(_app(), _release("2.0.0", "b" * 16), [_evidence("1.0.0", "a" * 16)])
+    assessment = RiskAssessment(
+        mode="epss-weighted",
+        epss_percentile_threshold=0.7,
+        exploitable_cve_count=0,
+        kev_cve_count=0,
+        kev_ransomware_cve_count=0,
+        high_epss_cve_count=0,
+        base_release_status=ReleaseStatus.READY,
+    )
+    forged = bundle.model_copy(
+        update={
+            "summary": bundle.summary.model_copy(
+                update={"release_status": ReleaseStatus.READY, "risk_assessment": assessment}
+            )
+        }
+    )
+    rederived = rederive_risk_verdict(forged)
+    assert rederived.summary.release_status is ReleaseStatus.CONDITIONAL
+    assert rederived.summary.risk_assessment is not None
+    assert rederived.summary.risk_assessment.base_release_status is ReleaseStatus.READY
+    # Nothing outside the summary moves.
+    assert rederived.collection_errors == forged.collection_errors
+    assert rederived.evidence == forged.evidence
+
+
+def test_rederive_leaves_a_default_mode_bundle_untouched() -> None:
+    from evidence_collector.application.orchestrator import rederive_risk_verdict
+
+    bundle, _ = build_bundle(_app(), _release(), [_evidence("1.0.0", "a" * 16)])
+    assert bundle.summary.risk_assessment is None
+    assert rederive_risk_verdict(bundle) is bundle
+
+
+def test_rederive_rejects_an_unknown_recorded_mode() -> None:
+    from evidence_collector.application.orchestrator import rederive_risk_verdict
+    from evidence_collector.domain.models import RiskAssessment
+
+    bundle, _ = build_bundle(_app(), _release(), [_evidence("1.0.0", "a" * 16)])
+    forged = bundle.model_copy(
+        update={
+            "summary": bundle.summary.model_copy(
+                update={
+                    "risk_assessment": RiskAssessment(
+                        mode="cvss-weighted",
+                        epss_percentile_threshold=0.7,
+                        exploitable_cve_count=0,
+                        kev_cve_count=0,
+                        kev_ransomware_cve_count=0,
+                        high_epss_cve_count=0,
+                        base_release_status=bundle.summary.release_status,
+                    )
+                }
+            )
+        }
+    )
+    with pytest.raises(ValueError, match="cvss-weighted"):
+        rederive_risk_verdict(forged)

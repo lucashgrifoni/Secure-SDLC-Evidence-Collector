@@ -126,8 +126,9 @@ def register(app: typer.Typer) -> None:
                 "--risk-mode",
                 help=(
                     "Verdict mode: 'off' (default; presence-based) or "
-                    "'epss-weighted' (re-derive release_status from EPSS + KEV "
-                    "data already in the bundle). Off preserves byte-stability."
+                    "'epss-weighted' (weigh EPSS + KEV data on the evidence; "
+                    "collection attaches none, so the mode is recorded here and "
+                    "applied by a later 'enrich'). Off preserves byte-stability."
                 ),
             ),
         ] = "off",

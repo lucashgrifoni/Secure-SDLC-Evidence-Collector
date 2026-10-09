@@ -38,6 +38,7 @@ from evidence_collector.domain.models import (
     EvidenceException,
     NormalizedEvidence,
     ReleaseContext,
+    Summary,
 )
 from evidence_collector.exporters import export_report_set
 from evidence_collector.scoring import (
@@ -121,6 +122,55 @@ def _release_anchor_drift(
     ]
 
 
+def _degrade_for_anchor_drift(summary: Summary) -> Summary:
+    """Degrade a ``ready`` verdict when evidence is anchored to another release.
+
+    A `ready` verdict backed by another commit's evidence is the actual harm,
+    so the verdict is degraded as well as recorded. One-way only, mirroring
+    apply_risk_mode: never a promotion.
+    """
+    if summary.release_status is ReleaseStatus.READY:
+        return summary.model_copy(update={"release_status": ReleaseStatus.CONDITIONAL})
+    return summary
+
+
+def rederive_risk_verdict(bundle: EvidenceBundle) -> EvidenceBundle:
+    """Re-apply the risk mode recorded in ``bundle`` to its current evidence.
+
+    ``build_bundle`` applies ``--risk-mode`` to freshly collected evidence,
+    which never carries EPSS / KEV intelligence: only ``enrich`` attaches it,
+    to an existing bundle. Without this step the documented flow
+    (``run --risk-mode epss-weighted``, then ``enrich``) could never change
+    the verdict.
+
+    The verdict is rebuilt from ``risk_assessment.base_release_status`` (the
+    presence-based verdict) with the recorded mode and thresholds, then the
+    release-anchor drift degradation is applied exactly as ``build_bundle``
+    does. Re-enriching with a newer feed therefore reflects that feed instead
+    of compounding the previous verdict. A bundle built in the default mode
+    carries no ``risk_assessment`` and is returned unchanged.
+
+    Raises ``ValueError`` when the recorded mode is not a known ``RiskMode``.
+    """
+    assessment = bundle.summary.risk_assessment
+    if assessment is None:
+        return bundle
+    mode = RiskMode(assessment.mode)
+    if mode is RiskMode.OFF:
+        return bundle
+    thresholds = RiskThresholds(
+        epss_percentile_threshold=assessment.epss_percentile_threshold,
+        kev_blocks=assessment.kev_blocks,
+    )
+    base = bundle.summary.model_copy(
+        update={"release_status": assessment.base_release_status, "risk_assessment": None}
+    )
+    summary = apply_risk_mode(base, bundle.evidence, mode=mode, thresholds=thresholds)
+    if _release_anchor_drift(bundle.release, bundle.evidence):
+        summary = _degrade_for_anchor_drift(summary)
+    return bundle.model_copy(update={"summary": summary})
+
+
 def build_bundle(
     application: Application,
     release: ReleaseContext,
@@ -149,11 +199,7 @@ def build_bundle(
     drift = _release_anchor_drift(release, evidence)
     if drift:
         errors.extend(drift)
-        # A `ready` verdict backed by another commit's evidence is the actual
-        # harm, so the verdict is degraded as well as recorded. One-way only,
-        # mirroring apply_risk_mode: never a promotion.
-        if summary.release_status is ReleaseStatus.READY:
-            summary = summary.model_copy(update={"release_status": ReleaseStatus.CONDITIONAL})
+        summary = _degrade_for_anchor_drift(summary)
 
     bundle = EvidenceBundle(
         bundle_id=_default_bundle_id(application, release),

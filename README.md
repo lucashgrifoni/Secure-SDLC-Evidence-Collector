@@ -164,7 +164,7 @@ sdlc-evidence plugins                # list parser and collector entry-point plu
 sdlc-evidence schema [--output PATH] # emit JSON Schema for EvidenceBundle
 sdlc-evidence doctor [--json]        # run local environment health checks
 sdlc-evidence verify BUNDLE          # recompute (and optionally verify) a bundle's structural SHA-256
-sdlc-evidence enrich BUNDLE          # attach EPSS + CISA KEV intelligence to a bundle
+sdlc-evidence enrich BUNDLE          # attach EPSS + CISA KEV intelligence; re-applies a recorded --risk-mode
 sdlc-evidence vex BUNDLE             # emit an OpenVEX document from a bundle
 sdlc-evidence statement BUNDLE       # wrap a bundle as an in-toto Statement v1
 sdlc-evidence guac BUNDLE [-o PATH]  # emit a GUAC-collector container from a bundle
@@ -173,6 +173,16 @@ sdlc-evidence exceptions validate F… # validate one or more waiver files
 sdlc-evidence exceptions list DIR    # list every valid waiver in a directory
 sdlc-evidence --version
 ```
+
+`--risk-mode epss-weighted` (on `run` and `evaluate`) only weighs EPSS / CISA
+KEV data that is already on the evidence, and collection never attaches any.
+The working flow is `run --risk-mode epss-weighted`, then
+`enrich bundle.json --epss-feed ... --kev-feed ...`: `enrich` re-derives
+`release_status` under the mode recorded in the bundle (a bundle built with the
+default `off` keeps its verdict). `enrich` exits `0` either way, so gate on the
+enriched bundle's `summary.release_status`, or pass its evidence to
+`evaluate --risk-mode epss-weighted`. Details in
+[docs/limitations.md §14](docs/limitations.md).
 
 ### Exit codes
 

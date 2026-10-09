@@ -71,7 +71,7 @@ jobs:
 | `profile` | no | `none` | `none` / `cra-2026` / `fedramp-20x` |
 | `cra-context` | no | — | CRA operator context JSON, forwarded as `--cra-context`; requires `profile: cra-2026` |
 | `fedramp-class` | no | — | CR26 class `A`–`D`, forwarded as `--fedramp-class`; requires `profile: fedramp-20x`. Metadata only: it does not change which controls are evaluated |
-| `risk-mode` | no | `off` | `off` / `epss-weighted` |
+| `risk-mode` | no | `off` | `off` / `epss-weighted`. The Action does not run `enrich`, so on its own this only records the mode; the verdict and exit code stay presence-based. Run `sdlc-evidence enrich` on the bundle in a later step to apply it (see [limitations §14](limitations.md)) |
 | `epss-percentile-threshold` | no | — | Only meaningful with `risk-mode: epss-weighted` |
 | `output-dir` | no | `output/sdlc-evidence` | |
 | `fail-on` | no | `not_ready` | `ready` / `conditional` / `not_ready`. With the default, a `conditional` release exits **0** |

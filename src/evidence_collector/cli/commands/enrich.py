@@ -7,11 +7,32 @@ default: the user supplies feed paths via ``--epss-feed`` and
 ``--kev-feed``. Network refresh stays out of this CLI surface so the
 collector remains side-effect-free and air-gap-friendly.
 
+When the bundle was built with ``--risk-mode epss-weighted`` (it carries a
+``summary.risk_assessment``), the verdict is re-derived under that recorded
+mode and threshold once the intelligence is attached. A bundle built in the
+default mode keeps its verdict and summary unchanged. For a bundle built with
+``--profile cra-2026``, each record's ``metadata.cra.global_exploitation_signal``
+is recomputed from the new intelligence.
+
+When the verdict or risk assessment changes, ``report.md`` and ``summary.html``
+are re-rendered and written with the bundle as one set: next to the bundle when
+writing in place, or next to ``--output`` in another directory for each report
+the input directory had. When ``--output`` is a different file in the input's
+directory, the reports there belong to the input bundle, so they are left alone
+and a warning says so. Otherwise the reports are not touched.
+
+With neither ``--epss-feed`` nor ``--kev-feed`` there is no source to consult:
+the bundle is left unchanged (copied to ``--output`` when given), a warning is
+printed, and the prior intelligence and verdict are kept.
+
 Exit codes:
 
-* 0 — enrichment ran (with or without matches); bundle written to ``--output``.
-* 3 — bundle path missing or malformed, or a feed path was supplied but the
-  file is unreadable / malformed. See ``cli/_exit_codes.EXIT_INPUT_ERROR``.
+* 0 — enrichment ran (with or without matches), or was skipped because no
+  feed was supplied; bundle written to ``--output``.
+  The exit code does not reflect ``release_status``; gate on the bundle.
+* 3 — bundle path missing or malformed (including an unknown recorded risk
+  mode), or a feed path was supplied but the file is unreadable / malformed.
+  See ``cli/_exit_codes.EXIT_INPUT_ERROR``.
 """
 
 from __future__ import annotations
@@ -24,12 +45,16 @@ import typer
 from pydantic import ValidationError
 from rich.markup import escape
 
+from evidence_collector.application.orchestrator import rederive_risk_verdict
+from evidence_collector.application.profiles import refresh_cra_exploitation_signals
 from evidence_collector.cli._errors import report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
-from evidence_collector.exporters._atomic import write_atomic
+from evidence_collector.exporters._atomic import write_all_or_nothing, write_atomic
+from evidence_collector.exporters.html import bundle_to_html
+from evidence_collector.exporters.markdown import bundle_to_markdown
 from evidence_collector.intelligence import (
     EpssFeed,
     KevFeed,
@@ -74,7 +99,8 @@ def register(app: typer.Typer) -> None:
                 "--epss-feed",
                 help=(
                     "Local EPSS feed file (CSV or .csv.gz). Without this flag "
-                    "the enrichment runs with an empty EPSS feed (KEV-only). "
+                    "the enrichment runs with an empty EPSS feed (KEV-only); with "
+                    "neither feed the bundle is left unchanged. "
                     "Download from https://epss.cyentia.com/."
                 ),
             ),
@@ -85,7 +111,8 @@ def register(app: typer.Typer) -> None:
                 "--kev-feed",
                 help=(
                     "Local CISA KEV catalog JSON. Without this flag the "
-                    "enrichment runs with an empty KEV catalog (EPSS-only). "
+                    "enrichment runs with an empty KEV catalog (EPSS-only); with "
+                    "neither feed the bundle is left unchanged. "
                     "Download from https://www.cisa.gov/sites/default/files/"
                     "feeds/known_exploited_vulnerabilities.json."
                 ),
@@ -103,6 +130,21 @@ def register(app: typer.Typer) -> None:
     ) -> None:
         """Attach EPSS + CISA KEV intelligence to a bundle.json."""
         bundle = _load_bundle(bundle_path)
+        destination = output or bundle_path
+        if epss_feed is None and kev_feed is None:
+            # No source to consult. Enriching with two empty feeds would replace
+            # every CVE's intelligence with nothing and re-derive the verdict as
+            # if a clean assessment had been made: a not_ready KEV-ransomware
+            # bundle came back at its presence-based status. Keep it as it is.
+            report_error(
+                f"enrich: no feed supplied (--epss-feed / --kev-feed); {bundle_path} "
+                "left unchanged, prior intelligence and verdict kept",
+                event="enrich_skipped",
+                bundle=str(destination),
+            )
+            if destination != bundle_path:
+                write_atomic(destination, bundle_path.read_text(encoding="utf-8-sig"))
+            return
         # A feed that was asked for but could not be used must fail loudly.
         # The loaders degrade an unreadable feed into an empty one so the
         # library never raises; at the CLI boundary that would be
@@ -120,8 +162,34 @@ def register(app: typer.Typer) -> None:
         )
 
         enriched, report = enrich_bundle(bundle, epss, kev, top_risk_limit=top_risk_limit)
-        destination = output or bundle_path
-        write_atomic(destination, enriched.model_dump_json(indent=2, exclude_none=False))
+        try:
+            enriched = rederive_risk_verdict(enriched)
+        except ValueError as exc:
+            report_error(
+                "Bundle records an unknown risk mode",
+                exc,
+                event="enrich_failed",
+                bundle=str(bundle_path),
+            )
+            raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
+        enriched = refresh_cra_exploitation_signals(enriched)
+        assessment = enriched.summary.risk_assessment
+        payloads = {destination: enriched.model_dump_json(indent=2, exclude_none=False)}
+        left_alone: list[str] = []
+        if (
+            enriched.summary.release_status != bundle.summary.release_status
+            or assessment != bundle.summary.risk_assessment
+        ):
+            reports = _sibling_reports(enriched, bundle_path, destination)
+            if _shares_reports_with_input(bundle_path, destination):
+                # A different file in the input's directory: the reports there
+                # belong to the input bundle, which keeps its old verdict.
+                left_alone = sorted(path.name for path in reports)
+            else:
+                payloads.update(reports)
+        # One set: the bundle and its reports reach disk together or not at all.
+        write_all_or_nothing(payloads)
+        regenerated = sorted(path.name for path in payloads if path != destination)
 
         if is_json_logs():
             emit_event(
@@ -133,6 +201,10 @@ def register(app: typer.Typer) -> None:
                 cves_in_kev=report.cves_in_kev,
                 epss_feed_date=report.epss_feed_date,
                 kev_feed_date=report.kev_feed_date,
+                risk_mode=assessment.mode if assessment else "off",
+                release_status=enriched.summary.release_status.value,
+                reports_regenerated=regenerated,
+                reports_left_alone=left_alone,
             )
         else:
             console.print(
@@ -143,7 +215,53 @@ def register(app: typer.Typer) -> None:
                 f"feeds: epss={escape(report.epss_feed_date or 'absent')} "
                 f"kev={escape(report.kev_feed_date or 'absent')}"
             )
+            if assessment is not None:
+                console.print(
+                    f"risk mode {assessment.mode}: "
+                    f"release_status={enriched.summary.release_status.value}"
+                )
+            for name in regenerated:
+                console.print(f"{name} regenerated → {destination.parent / name}")
+            if left_alone:
+                report_error(
+                    f"enrich: {', '.join(left_alone)} in {destination.parent} left alone: "
+                    f"they belong to the input bundle {bundle_path.name}, which keeps its "
+                    "old verdict. Write --output to another directory to get reports for "
+                    "the enriched bundle.",
+                    event="enrich_reports_left_alone",
+                )
             console.print(f"bundle.json → {destination}")
+
+
+_REPORT_RENDERERS = {"report.md": bundle_to_markdown, "summary.html": bundle_to_html}
+
+
+def _shares_reports_with_input(source: Path, destination: Path) -> bool:
+    """True when ``destination`` is a different file in the input's directory."""
+    if destination.resolve() == source.resolve():
+        return False
+    return destination.parent.resolve() == source.parent.resolve()
+
+
+def _sibling_reports(bundle: EvidenceBundle, source: Path, destination: Path) -> dict[Path, str]:
+    """Re-render the reports ``run`` wrote next to ``source``, placed next to ``destination``.
+
+    Only reports that exist next to the input bundle are rendered: in place
+    that overwrites the stale siblings, and with ``--output`` in another
+    directory it writes the same set next to the output. Nothing is created out
+    of thin air. The caller skips them when the output is a different file in
+    the input's directory (see ``_shares_reports_with_input``).
+    """
+    target_bundle = destination.resolve()
+    return {
+        destination.parent / name: render(bundle)
+        for name, render in _REPORT_RENDERERS.items()
+        # A bundle that is itself named report.md / summary.html must never be
+        # overwritten by the rendered report.
+        if (source.parent / name).is_file()
+        and (destination.parent / name).resolve() != target_bundle
+        and (source.parent / name).resolve() != source.resolve()
+    }
 
 
 def _require_usable[FeedT: (EpssFeed, KevFeed)](feed: FeedT, path: Path, label: str) -> FeedT:
