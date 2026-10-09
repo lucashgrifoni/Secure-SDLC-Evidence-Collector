@@ -96,3 +96,12 @@ test_warns_on_low_confidence if {
     }
     contains(msg, "confidence_score")
 }
+
+# Overrides come from a conftest `--data` file, so the defaults must not live
+# at data.release_ready.thresholds: a rule there shadows the file (OPA rejects
+# the pair as conflicting; conftest silently keeps the rule). A partial
+# override keeps the default for the floor it does not set.
+test_partial_threshold_override_keeps_other_default if {
+    coverage_floor == 90 with data.release_ready.thresholds as {"coverage": 90}
+    confidence_floor == 50 with data.release_ready.thresholds as {"coverage": 90}
+}

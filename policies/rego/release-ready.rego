@@ -2,8 +2,14 @@
 #
 # This policy decides whether a `bundle.json` produced by
 # `sdlc-evidence run` is acceptable for release. It runs against the
-# bundle JSON directly, with no transformation: pipe the bundle straight
-# to `conftest test --policy policies/rego/release-ready.rego bundle.json`.
+# bundle JSON directly, with no transformation:
+#
+#   conftest test --policy policies/rego/release-ready.rego \
+#     --namespace release_ready bundle.json
+#
+# The package is `release_ready`, and conftest evaluates only `main` unless
+# told otherwise: without `--namespace release_ready` it runs 0 tests and
+# exits 0 even on a not_ready bundle.
 #
 # Two evaluation modes, both pure functions over input.summary:
 #
@@ -12,7 +18,8 @@
 #   * `warn[msg]` raises a warning that does not block by itself.
 #
 # Tune the floors via `data.release_ready.thresholds` if you want stricter
-# gates: pass `--data` to conftest or wire it through `--update`.
+# gates: put them in a JSON or YAML file and pass its path to conftest with
+# `--data` (see policies/README.md). `--data` takes a file, not inline JSON.
 
 package release_ready
 
@@ -21,18 +28,18 @@ import rego.v1
 # ---------------------------------------------------------------------------
 # Defaults — override via data.release_ready.thresholds.{coverage,confidence}
 # ---------------------------------------------------------------------------
-default thresholds := {
+default_thresholds := {
     "coverage": 100,
     "confidence": 50,
 }
 
 coverage_floor := value if {
     value := data.release_ready.thresholds.coverage
-} else := thresholds.coverage
+} else := default_thresholds.coverage
 
 confidence_floor := value if {
     value := data.release_ready.thresholds.confidence
-} else := thresholds.confidence
+} else := default_thresholds.confidence
 
 # ---------------------------------------------------------------------------
 # Hard denies — block the release.
