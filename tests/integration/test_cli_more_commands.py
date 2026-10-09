@@ -328,3 +328,34 @@ def test_version_flag_prints_version_and_exits(runner: CliRunner) -> None:
     parts = output.split(".")
     assert len(parts) == 3, f"expected semver-like x.y.z, got {output!r}"
     assert all(part.isdigit() for part in parts), f"non-numeric version: {output!r}"
+
+
+@pytest.mark.integration
+def test_exceptions_validate_reports_a_bad_scope_and_goes_on_to_the_next_file(
+    runner: CliRunner, tmp_path: Path
+) -> None:
+    # An unquoted `release_id: 2026.04` loads as a float. Its ValidationError
+    # was raised outside the parser's guard, so the command crashed on the
+    # first file and never validated the second.
+    body = (
+        "control_id: SSDF-PW.1\n"
+        "approver: a@example.com\n"
+        "approved_at: '2026-04-10T10:00:00Z'\n"
+        "expires_at: '2099-04-10T10:00:00Z'\n"
+        "justification: A justification long enough to pass.\n"
+    )
+    bad = tmp_path / "a.yaml"
+    bad.write_text("exception_id: EXC-A\n" + body + "scope:\n  release_id: 2026.04\n", "utf-8")
+    good = tmp_path / "b.yaml"
+    good.write_text("exception_id: EXC-B\n" + body, encoding="utf-8")
+
+    result = runner.invoke(app, ["exceptions", "validate", str(bad), str(good)])
+    assert isinstance(result.exception, SystemExit), result.exception
+    assert result.exit_code == EXIT_INPUT_ERROR, result.output
+    assert "a.yaml" in result.output
+    assert "EXC-B" in result.output
+
+    listed = runner.invoke(app, ["exceptions", "list", str(tmp_path)])
+    assert isinstance(listed.exception, SystemExit | type(None)), listed.exception
+    assert "1 unparseable" in listed.output
+    assert "EXC-B" in listed.output

@@ -69,12 +69,15 @@ def parse_exception(path: str | Path) -> EvidenceException:
     raw_scope = data.get("scope") or {}
     if not isinstance(raw_scope, dict):
         raise ParseError(f"Exception scope in {resolved} must be a mapping")
-    scope = ExceptionScope(
-        application=cast("str | None", raw_scope.get("application")),
-        release_id=cast("str | None", raw_scope.get("release_id")),
-    )
 
     try:
+        # Built inside the guard: an unquoted `release_id: 2026.04` loads as a
+        # float, and the ValidationError it raised escaped as a crash, so
+        # `exceptions validate a.yaml b.yaml` never reached b.yaml.
+        scope = ExceptionScope(
+            application=cast("str | None", raw_scope.get("application")),
+            release_id=cast("str | None", raw_scope.get("release_id")),
+        )
         return EvidenceException(
             exception_id=str(data["exception_id"]),
             control_id=str(data["control_id"]),

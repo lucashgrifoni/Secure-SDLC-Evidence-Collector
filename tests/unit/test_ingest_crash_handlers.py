@@ -27,6 +27,7 @@ from evidence_collector.domain.models import ReleaseContext
 from evidence_collector.parsers._common import ParseError, load_yaml_or_json
 from evidence_collector.parsers._intoto import decode_b64_statement
 from evidence_collector.parsers.attestation import parse_attestation
+from evidence_collector.parsers.exception import parse_exception
 from evidence_collector.parsers.garak import parse_garak
 from evidence_collector.parsers.junit import parse_junit
 from evidence_collector.parsers.model_card import parse_model_card
@@ -261,3 +262,24 @@ def test_attestation_yaml_timestamps_in_metadata_are_still_accepted(tmp_path: Pa
     )
     parsed = parse_attestation(path)
     assert set(parsed.metadata) == {"approved_on", "at", "n"}
+
+
+# ---------------------------------------------------------------------------
+# D49 — exception scope built outside the ValueError guard
+# ---------------------------------------------------------------------------
+
+_EXCEPTION_BODY = (
+    "exception_id: EXC-1\n"
+    "control_id: SSDF-PW.1\n"
+    "approver: a@example.com\n"
+    "approved_at: '2026-04-10T10:00:00Z'\n"
+    "expires_at: '2099-04-10T10:00:00Z'\n"
+    "justification: A justification long enough to pass.\n"
+)
+
+
+def test_exception_scope_with_a_non_string_release_id_is_a_parse_error(tmp_path: Path) -> None:
+    path = tmp_path / "waiver.yaml"
+    path.write_text(_EXCEPTION_BODY + "scope:\n  release_id: 2026.04\n", encoding="utf-8")
+    with pytest.raises(ParseError, match=r"waiver\.yaml"):
+        parse_exception(path)
