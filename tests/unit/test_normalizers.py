@@ -10,7 +10,7 @@ import pytest
 from evidence_collector.controls import default_catalog
 from evidence_collector.controls.engine import evaluate_control
 from evidence_collector.domain.enums import ControlEvaluationStatus, EvidenceStatus, EvidenceType
-from evidence_collector.domain.models import ReleaseContext
+from evidence_collector.domain.models import ControlDefinition, ReleaseContext
 from evidence_collector.normalizers import (
     normalize_attestation,
     normalize_junit,
@@ -207,6 +207,75 @@ def test_normalize_workflow_run_success(sample_release) -> None:
         sample_release,
     )
     assert evidence.status == EvidenceStatus.PASSED
+
+
+# ---------------------------------------------------------------------------
+# Workflow runs: only a successful run is satisfying evidence. GitHub reports
+# `conclusion: null` while a run is queued or in progress, and `skipped`,
+# `neutral`, `action_required` and `stale` are not a pass either. All of them
+# used to fall through to COMPLETED, which the control engine counts as
+# satisfying, so OSPS-QA-03.01 ("status checks pass") was met by a run that
+# had not finished, including the job that collects its own run id.
+# ---------------------------------------------------------------------------
+
+_NOT_A_PASS: list[dict[str, object]] = [
+    {"conclusion": None, "status": "queued"},
+    {"conclusion": None, "status": "in_progress"},
+    {"status": "in_progress"},
+    {"conclusion": "", "status": "waiting"},
+    {"conclusion": "skipped", "status": "completed"},
+    {"conclusion": "neutral", "status": "completed"},
+    {"conclusion": "action_required", "status": "completed"},
+    {"conclusion": "stale", "status": "completed"},
+    {"conclusion": "something-new", "status": "completed"},
+]
+
+
+def _osps_qa_03_01() -> ControlDefinition:
+    from evidence_collector.controls.catalog import bundled_catalog_path, load_catalog
+
+    controls = load_catalog(bundled_catalog_path("catalog-osps-baseline.yaml"))
+    return next(c for c in controls if c.control_id == "OSPS-QA-03.01")
+
+
+@pytest.mark.parametrize("fields", _NOT_A_PASS, ids=repr)
+def test_normalize_workflow_run_unfinished_or_inconclusive_is_unknown(
+    sample_release, fields: dict[str, object]
+) -> None:
+    payload = {"run_id": 1001, "workflow_name": "ci.yml", **fields}
+    evidence = normalize_workflow_run(payload, sample_release)
+    assert evidence.status is EvidenceStatus.UNKNOWN
+    assert evidence.summary is not None
+    assert "none" not in evidence.summary.split("(")[0].lower()
+
+
+@pytest.mark.parametrize("fields", _NOT_A_PASS, ids=repr)
+def test_osps_qa_03_01_is_not_met_by_a_run_that_did_not_succeed(
+    sample_release, fields: dict[str, object]
+) -> None:
+    payload = {"run_id": 1001, "workflow_name": "ci.yml", **fields}
+    evidence = normalize_workflow_run(payload, sample_release)
+    evaluation, _gaps = evaluate_control(_osps_qa_03_01(), [evidence])
+    assert evaluation.evaluation_status is not ControlEvaluationStatus.MET
+    assert evaluation.evidence_refs == []
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "timed_out", "cancelled", "startup_failure"])
+def test_normalize_workflow_run_failure_like_conclusions_stay_failed(
+    sample_release, conclusion: str
+) -> None:
+    evidence = normalize_workflow_run(
+        {"run_id": 1001, "workflow_name": "ci.yml", "conclusion": conclusion}, sample_release
+    )
+    assert evidence.status is EvidenceStatus.FAILED
+
+
+def test_osps_qa_03_01_is_met_by_a_successful_run(sample_release) -> None:
+    evidence = normalize_workflow_run(
+        {"run_id": 1001, "workflow_name": "ci.yml", "conclusion": "success"}, sample_release
+    )
+    evaluation, _gaps = evaluate_control(_osps_qa_03_01(), [evidence])
+    assert evaluation.evaluation_status is ControlEvaluationStatus.MET
 
 
 # ---------------------------------------------------------------------------

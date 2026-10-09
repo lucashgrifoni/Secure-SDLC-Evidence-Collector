@@ -26,7 +26,7 @@ from one document.
 | **GUAC** (OpenSSF Incubating, [docs](https://docs.guac.sh)) | Graph of supply-chain metadata | The collector emits a GUAC-ingest container (T6.9) | Graph queries, blast-radius analysis, cross-org search |
 | **Kusari Trustify** ([docs](https://github.com/trustification/trustify)) | Backend search for supply-chain metadata (contributed into GUAC) | None — collector is upstream of Trustify | Hosted backend for SBOM search; collector produces input documents |
 | **Lineaje** ([site](https://lineaje.com/)) | SaaS supply-chain integrity + remediation | SBOM ingest, dependency risk | Vendor-driven remediation, commercial support |
-| **OpenSSF Scorecard** ([docs](https://github.com/ossf/scorecard)) | Health score for OSS repos | Both reference SSDF practices | Heuristic scoring on git history; the collector consumes Scorecard as evidence |
+| **OpenSSF Scorecard** ([docs](https://github.com/ossf/scorecard)) | Health score for OSS repos | Both reference SSDF practices | Heuristic scoring on git history. The collector does not use Scorecard results as evidence: a Scorecard SARIF run is recognised and skipped (a Scorecard-only file is listed as an ignored artifact), so it never counts as SAST |
 | **Snyk / Mend / Sonatype** | Commercial SCA + SBOM platforms | SCA findings via SARIF / OSV | Curated vuln intelligence, fixes, dashboard; collector consumes their SARIF |
 | **CodeQL reachability / Endor Labs / Semgrep Pro** | Reachability-aware vuln triage | Collector records their verdict via `Reachability` field (§3.2) | Re-deriving reachability — collector never does this itself |
 
@@ -64,10 +64,15 @@ from one document.
 
 - Apache-2.0, no telemetry, no signed binary download outside
   GitHub Releases.
-- Every format the collector emits is an open standard: SARIF,
-  CycloneDX (1.5–1.7), SPDX, OpenVEX 0.2.0, OSCAL 1.1.2, in-toto
-  Statement v1 + DSSE, SLSA Provenance v1, OSV Schema, GUAC
-  collector container.
+- Formats the collector's commands write: the evidence bundle JSON
+  (with its JSON Schema), Markdown and HTML reports, SARIF 2.1.0
+  (`sarif`), OpenVEX 0.2.0 (`vex`), OSCAL 1.1.2 Catalog and Assessment
+  Results (`oscal`), and an in-toto Statement v1 with an optional
+  unsigned DSSE envelope (`statement`; the `slsa-provenance` variant
+  only advertises the SLSA Provenance v1 predicate type, its body is the
+  bundle). `guac` writes a project-defined container for GUAC ingestion,
+  not a standard format. CycloneDX, SPDX and OSV are formats the
+  collector reads, not ones it writes.
 - The control catalog is YAML; teams override or extend it without
   forking the project. Five catalogs ship today: NIST SSDF 1.1
   (default), SSDF 1.2 preview, FedRAMP 20x KSI, OSPS Baseline, and

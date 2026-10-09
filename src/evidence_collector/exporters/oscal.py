@@ -35,6 +35,7 @@ from evidence_collector.domain.models import (
     ControlDefinition,
     ControlEvaluation,
     EvidenceBundle,
+    EvidenceException,
 )
 
 # Stable, project-scoped namespace for synthesizing OSCAL UUIDs from
@@ -151,13 +152,30 @@ def export_oscal_catalog(controls: Iterable[ControlDefinition]) -> dict[str, Any
 # OSCAL only defines `satisfied` and `not-satisfied`; everything that is
 # not a clean pass goes to `not-satisfied` with the original status
 # preserved as a property for downstream consumers.
+#
+# WAIVED and NOT_APPLICABLE are not a clean pass: the objective was not
+# shown to be met. Both used to map to `satisfied`, so an OSCAL consumer read
+# a waived control as a demonstrated one, while the SVR exporter deliberately
+# leaves waived and not-applicable controls out of what it asserts. They now
+# go to `not-satisfied`, named by a `not_satisfied_reason` property; a waiver
+# is also recorded as an OSCAL risk with status `deviation-approved` that
+# names the exception, which is how OSCAL expresses an accepted deviation.
 _OSCAL_TARGET_STATE: dict[ControlEvaluationStatus, str] = {
     ControlEvaluationStatus.MET: "satisfied",
     ControlEvaluationStatus.PARTIAL: "not-satisfied",
     ControlEvaluationStatus.MISSING: "not-satisfied",
-    ControlEvaluationStatus.WAIVED: "satisfied",
-    ControlEvaluationStatus.NOT_APPLICABLE: "satisfied",
+    ControlEvaluationStatus.WAIVED: "not-satisfied",
+    ControlEvaluationStatus.NOT_APPLICABLE: "not-satisfied",
 }
+
+# Statuses whose `not-satisfied` state means "not asserted" rather than "the
+# evidence fell short", recorded so a consumer can tell the two apart.
+_NOT_SATISFIED_REASON: dict[ControlEvaluationStatus, str] = {
+    ControlEvaluationStatus.WAIVED: "waived",
+    ControlEvaluationStatus.NOT_APPLICABLE: "not_applicable",
+}
+
+_OSCAL_DATETIME = "%Y-%m-%dT%H:%M:%S.000+00:00"
 
 
 def _evaluation_uuid(release_id: str, control_id: str) -> str:
@@ -168,6 +186,11 @@ def _evaluation_uuid(release_id: str, control_id: str) -> str:
 def _observation_uuid(release_id: str, control_id: str) -> str:
     """Stable UUIDv5 for the observation that backs a finding."""
     return str(uuid.uuid5(_OSCAL_NAMESPACE, f"obs:{release_id}:{control_id}"))
+
+
+def _risk_uuid(release_id: str, control_id: str) -> str:
+    """Stable UUIDv5 for the approved-deviation risk of a waived control."""
+    return str(uuid.uuid5(_OSCAL_NAMESPACE, f"risk:{release_id}:{control_id}"))
 
 
 def _result_uuid(release_id: str) -> str:
@@ -216,7 +239,16 @@ def _evaluation_to_finding(
     release_id: str,
 ) -> dict[str, Any]:
     state = _OSCAL_TARGET_STATE.get(evaluation.evaluation_status, "not-satisfied")
-    return {
+    props = [
+        {"name": "control_id", "value": evaluation.control_id},
+        {"name": "evaluation_status", "value": evaluation.evaluation_status.value},
+        {"name": "criticality", "value": evaluation.criticality.value},
+    ]
+    reason = _NOT_SATISFIED_REASON.get(evaluation.evaluation_status)
+    if reason is not None:
+        props.append({"name": "not_satisfied_reason", "value": reason})
+    props.extend({"name": "exception_id", "value": ref} for ref in evaluation.exception_refs)
+    finding: dict[str, Any] = {
         "uuid": _evaluation_uuid(release_id, evaluation.control_id),
         "title": evaluation.control_name,
         "description": evaluation.rationale,
@@ -228,12 +260,44 @@ def _evaluation_to_finding(
         "related-observations": [
             {"observation-uuid": _observation_uuid(release_id, evaluation.control_id)}
         ],
-        "props": [
-            {"name": "control_id", "value": evaluation.control_id},
-            {"name": "evaluation_status", "value": evaluation.evaluation_status.value},
-            {"name": "criticality", "value": evaluation.criticality.value},
-        ],
+        "props": props,
     }
+    if evaluation.evaluation_status is ControlEvaluationStatus.WAIVED:
+        finding["related-risks"] = [{"risk-uuid": _risk_uuid(release_id, evaluation.control_id)}]
+    return finding
+
+
+def _waiver_to_risk(
+    evaluation: ControlEvaluation,
+    release_id: str,
+    exceptions: dict[str, EvidenceException],
+) -> dict[str, Any]:
+    """Record a waived control as an OSCAL risk with an approved deviation.
+
+    The exception ids come from the evaluation; the justification, approver,
+    reference and expiry are added for each id the bundle also carries.
+    """
+    waivers = [exceptions[ref] for ref in evaluation.exception_refs if ref in exceptions]
+    ids = ", ".join(evaluation.exception_refs) or "an unnamed exception"
+    props: list[dict[str, str]] = [{"name": "control_id", "value": evaluation.control_id}]
+    props.extend({"name": "exception_id", "value": ref} for ref in evaluation.exception_refs)
+    props.extend({"name": "approver", "value": w.approver} for w in waivers)
+    props.extend({"name": "reference", "value": w.reference} for w in waivers if w.reference)
+    risk: dict[str, Any] = {
+        "uuid": _risk_uuid(release_id, evaluation.control_id),
+        "title": f"Approved deviation for {evaluation.control_id}",
+        "description": " ".join(w.justification for w in waivers) or f"Control waived by {ids}.",
+        "statement": (
+            f"Control {evaluation.control_id} was waived by {ids}; its required "
+            "evidence was not demonstrated for this release."
+        ),
+        "status": "deviation-approved",
+        "props": props,
+    }
+    if waivers:
+        earliest = min(w.expires_at for w in waivers).astimezone(UTC)
+        risk["deadline"] = earliest.strftime(_OSCAL_DATETIME)
+    return risk
 
 
 def export_oscal_assessment_results(bundle: EvidenceBundle) -> dict[str, Any]:
@@ -256,8 +320,14 @@ def export_oscal_assessment_results(bundle: EvidenceBundle) -> dict[str, Any]:
         for ev in bundle.control_evaluations
     ]
     findings = [_evaluation_to_finding(ev, release_id) for ev in bundle.control_evaluations]
+    exceptions = {exc.exception_id: exc for exc in bundle.exceptions}
+    risks = [
+        _waiver_to_risk(ev, release_id, exceptions)
+        for ev in bundle.control_evaluations
+        if ev.evaluation_status is ControlEvaluationStatus.WAIVED
+    ]
 
-    return {
+    document: dict[str, Any] = {
         "assessment-results": {
             "uuid": _ar_uuid(release_id, commit_sha),
             "metadata": {
@@ -304,3 +374,6 @@ def export_oscal_assessment_results(bundle: EvidenceBundle) -> dict[str, Any]:
             ],
         }
     }
+    if risks:
+        document["assessment-results"]["results"][0]["risks"] = risks
+    return document

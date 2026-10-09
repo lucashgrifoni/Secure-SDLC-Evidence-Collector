@@ -42,6 +42,7 @@ from evidence_collector.normalizers import (
     normalize_vsa,
     normalize_zap,
 )
+from evidence_collector.normalizers.engine import is_unsupported_sarif_driver
 from evidence_collector.parsers import (
     parse_attestation,
     parse_croissant,
@@ -467,10 +468,30 @@ class LocalArtifactCollector:
                 # produced a single `sast_scan`, and the release reported the
                 # secrets and SCA controls as missing critical evidence while
                 # both scans had in fact been supplied.
-                for parsed in parse_sarifs(file_path):
+                #
+                # Runs from a tool no evidence type models (OpenSSF Scorecard)
+                # are skipped rather than falling back to `sast_scan`. A file
+                # with nothing else is listed as ignored; in a merged file the
+                # other runs are still collected and the skip is logged.
+                runs = parse_sarifs(file_path)
+                skipped = [p.tool_name for p in runs if is_unsupported_sarif_driver(p.tool_name)]
+                for parsed in runs:
+                    if is_unsupported_sarif_driver(parsed.tool_name):
+                        continue
                     report.evidence.append(
                         normalize_sarif(parsed, self._release, artifact_root=self._artifact_root)
                     )
+                if skipped:
+                    shown = relative_to_root(file_path, self._artifact_root)
+                    if len(skipped) == len(runs):
+                        report.ignored.append(shown)
+                    else:
+                        logger.warning(
+                            "Skipped SARIF run(s) from %s in %s: OpenSSF Scorecard posture "
+                            "results are not scan evidence",
+                            ", ".join(skipped),
+                            shown,
+                        )
                 return
             # Native Trivy JSON. Checked early because it is the only
             # artifact that yields SEVERAL evidences from one file: Trivy

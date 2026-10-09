@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
+from typing import Any
 
 from evidence_collector.domain.enums import (
     ConfidenceLevel,
@@ -18,6 +20,7 @@ from evidence_collector.domain.models import (
     Application,
     ControlEvaluation,
     EvidenceBundle,
+    EvidenceException,
     EvidenceSource,
     NormalizedEvidence,
     ReleaseContext,
@@ -45,7 +48,10 @@ def _evaluation(
     )
 
 
-def _bundle(evaluations: list[ControlEvaluation]) -> EvidenceBundle:
+def _bundle(
+    evaluations: list[ControlEvaluation],
+    exceptions: list[EvidenceException] | None = None,
+) -> EvidenceBundle:
     return EvidenceBundle(
         bundle_id="bundle-oscal-ar-test",
         application=Application(name="acme-api", repository="acme/api"),
@@ -66,7 +72,7 @@ def _bundle(evaluations: list[ControlEvaluation]) -> EvidenceBundle:
         ],
         control_evaluations=evaluations,
         gaps=[],
-        exceptions=[],
+        exceptions=exceptions or [],
         summary=Summary(
             total_controls=len(evaluations),
             controls_met=sum(
@@ -78,8 +84,14 @@ def _bundle(evaluations: list[ControlEvaluation]) -> EvidenceBundle:
             controls_missing=sum(
                 1 for e in evaluations if e.evaluation_status is ControlEvaluationStatus.MISSING
             ),
-            controls_waived=0,
-            controls_not_applicable=0,
+            controls_waived=sum(
+                1 for e in evaluations if e.evaluation_status is ControlEvaluationStatus.WAIVED
+            ),
+            controls_not_applicable=sum(
+                1
+                for e in evaluations
+                if e.evaluation_status is ControlEvaluationStatus.NOT_APPLICABLE
+            ),
             release_status=ReleaseStatus.READY,
             evidence_coverage_score=0,
             confidence_score=0,
@@ -147,3 +159,80 @@ def test_assessment_results_emits_one_finding_per_evaluation() -> None:
     assert len(findings) == 2
     target_ids = sorted(f["target"]["target-id"] for f in findings)
     assert target_ids == ["ssdf-ps-2", "ssdf-pw-4"]
+
+
+# ---------------------------------------------------------------------------
+# WAIVED and NOT_APPLICABLE are not a clean pass. OSCAL's objective-status
+# state is only `satisfied` / `not-satisfied`, so both go to `not-satisfied`
+# with the reason preserved; a waiver is additionally recorded as an OSCAL
+# risk with status `deviation-approved` that names the exception, matching
+# the SVR exporter, which never asserts a waived control as verified.
+# ---------------------------------------------------------------------------
+
+
+def _waiver(exception_id: str, control_id: str) -> EvidenceException:
+    return EvidenceException(
+        exception_id=exception_id,
+        control_id=control_id,
+        approver="security-lead@acme.example",
+        approved_at=datetime(2026, 5, 1, tzinfo=UTC),
+        expires_at=datetime(2026, 8, 1, tzinfo=UTC),
+        justification="Threat model refresh scheduled for the next quarter.",
+        reference="SEC-1234",
+    )
+
+
+def _results(doc: dict[str, Any]) -> dict[str, Any]:
+    result: dict[str, Any] = doc["assessment-results"]["results"][0]
+    return result
+
+
+def _finding(doc: dict[str, Any], control_id: str) -> dict[str, Any]:
+    return next(
+        f
+        for f in _results(doc)["findings"]
+        if {"name": "control_id", "value": control_id} in f["props"]
+    )
+
+
+def test_waived_control_is_not_satisfied_and_records_the_waiver() -> None:
+    waived = _evaluation("SSDF-PW.1", ControlEvaluationStatus.WAIVED).model_copy(
+        update={"exception_refs": ["EXC-7"]}
+    )
+    bundle = _bundle([waived], [_waiver("EXC-7", "SSDF-PW.1")])
+    doc = export_oscal_assessment_results(bundle)
+    finding = _finding(doc, "SSDF-PW.1")
+
+    assert finding["target"]["status"]["state"] == "not-satisfied"
+    assert {"name": "exception_id", "value": "EXC-7"} in finding["props"]
+    assert {"name": "not_satisfied_reason", "value": "waived"} in finding["props"]
+
+    risks = {r["uuid"]: r for r in _results(doc)["risks"]}
+    related = [r["risk-uuid"] for r in finding["related-risks"]]
+    assert len(related) == 1
+    risk = risks[related[0]]
+    assert risk["status"] == "deviation-approved"
+    assert {"name": "exception_id", "value": "EXC-7"} in risk["props"]
+    assert risk["deadline"].startswith("2026-08-01T00:00:00")
+    assert "Threat model refresh" in risk["description"]
+
+
+def test_not_applicable_control_is_not_satisfied_without_a_risk() -> None:
+    bundle = _bundle([_evaluation("SSDF-PW.9", ControlEvaluationStatus.NOT_APPLICABLE)])
+    doc = export_oscal_assessment_results(bundle)
+    finding = _finding(doc, "SSDF-PW.9")
+    assert finding["target"]["status"]["state"] == "not-satisfied"
+    assert {"name": "not_satisfied_reason", "value": "not_applicable"} in finding["props"]
+    assert "related-risks" not in finding
+    assert "risks" not in _results(doc)
+
+
+def test_met_control_carries_no_risk_or_reason() -> None:
+    doc = export_oscal_assessment_results(
+        _bundle([_evaluation("SSDF-PW.4", ControlEvaluationStatus.MET)])
+    )
+    finding = _finding(doc, "SSDF-PW.4")
+    assert finding["target"]["status"]["state"] == "satisfied"
+    assert "related-risks" not in finding
+    assert all(p["name"] != "not_satisfied_reason" for p in finding["props"])
+    assert "risks" not in _results(doc)

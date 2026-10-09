@@ -34,6 +34,13 @@ and emits **one evidence record per run**.
 - **False-negative risk**: an unknown driver defaults to `sast_scan`.
   If the driver was actually a DAST tool, the `sast_scan` control is
   credited while `dast_scan` remains missing.
+- OpenSSF Scorecard SARIF (driver `Scorecard`) is the one known
+  exception to that default: its results are repository posture checks
+  that no evidence type models, so the run is skipped instead of being
+  recorded as `sast_scan`. A file holding only Scorecard runs is listed
+  among the ignored artifacts; in a merged file the other runs are
+  collected and the skip is logged as a warning. Before this, a Scorecard
+  upload with no high or critical result satisfied SSDF-PW.7.
 - Mitigation: the classification heuristic and the fallback label are
   both documented in the bundle's `evidence[*].rationale` field, so
   reviewers can see why the collector chose a label.
@@ -140,6 +147,19 @@ context, CR26 source versions, catalog changes and output-lock recovery.
 - Code-review evidence from providers without reviewer metadata (e.g.
   signed-off-by on plain git) is not parsed; supply a
   `code_review.yaml` attestation instead.
+- Workflow-run evidence passes only when the run concluded with
+  `success`. A GitHub run that is queued or in progress (no conclusion
+  yet), or that ended `skipped`, `neutral`, `action_required` or `stale`,
+  is recorded as `unknown`, and so is a GitLab pipeline that is
+  `created`, `pending`, `running`, `manual`, `scheduled` or otherwise
+  unfinished. Failure-like conclusions (`failure`, `timed_out`,
+  `cancelled`, `startup_failure`; GitLab `failed`, `canceled`, `skipped`)
+  are `failed`. Neither satisfies a control such as OSPS-QA-03.01.
+  Consequently, passing the id of the run that is executing the collector
+  (for example `${{ github.run_id }}` from the same job) can never satisfy
+  the control: that run is in progress when it is read. Pass the id of a
+  run that has already finished, such as the CI run of the released
+  commit.
 
 ## 6 · DAST coverage
 
@@ -292,6 +312,15 @@ These are explicitly out of scope for security reports (see
 - `not_ready` does **not** automatically mean "the release is
   broken". A critical control without evidence may also reflect an
   immature evidence pipeline rather than an unsafe release.
+- A `waived` or `not_applicable` control is not a demonstrated one. In
+  `oscal --kind assessment-results` only `met` becomes `satisfied`;
+  waived and not-applicable findings are `not-satisfied` with a
+  `not_satisfied_reason` property (`waived` / `not_applicable`). A waived
+  finding also lists its `exception_id` values and links to an OSCAL risk
+  with status `deviation-approved` that carries the justification,
+  approver, reference and earliest expiry. Before this, both mapped to
+  `satisfied`. The in-toto SVR statement likewise leaves both out of the
+  properties it asserts.
 
 ## 12 · When results need human interpretation
 
