@@ -553,10 +553,22 @@ def _waiver(
     )
 
 
+def _waived_by(bundle: EvidenceBundle, *exception_ids: str) -> EvidenceBundle:
+    """Record SSDF-PS.3 as waived by ``exception_ids``, as the engine would."""
+    evaluation = bundle.control_evaluations[0].model_copy(
+        update={
+            "evaluation_status": ControlEvaluationStatus.WAIVED,
+            "exception_refs": list(exception_ids),
+        }
+    )
+    summary = bundle.summary.model_copy(update={"controls_met": 0, "controls_waived": 1})
+    return bundle.model_copy(update={"control_evaluations": [evaluation], "summary": summary})
+
+
 def _bundle_with_mixed_waivers() -> EvidenceBundle:
-    # One waiver in force for this release, one expired before the bundle was
+    # One waiver the engine applied, one expired before the bundle was
     # generated, one scoped to another application.
-    return _build_bundle().model_copy(
+    return _waived_by(_build_bundle(), "EXC-IN-FORCE").model_copy(
         update={
             "generated_at": datetime(2026, 6, 1, tzinfo=UTC),
             "exceptions": [
@@ -625,12 +637,67 @@ def test_html_lists_only_waivers_in_force_as_approved() -> None:
 
 def test_reports_omit_the_approved_section_when_no_waiver_is_in_force() -> None:
     bundle = _bundle_with_mixed_waivers()
-    bundle = bundle.model_copy(update={"exceptions": bundle.exceptions[1:]})
+    bundle = bundle.model_copy(
+        update={
+            "exceptions": bundle.exceptions[1:],
+            "control_evaluations": _build_bundle().control_evaluations,
+            "summary": _build_bundle().summary,
+        }
+    )
 
     assert "Approved exceptions" not in bundle_to_markdown(bundle)
     assert "Approved exceptions" not in bundle_to_html(bundle)
     assert "Exceptions not in force" in bundle_to_markdown(bundle)
     assert "Exceptions not in force" in bundle_to_html(bundle)
+
+
+def test_a_waiver_applied_at_evaluation_stays_approved_after_it_expires() -> None:
+    # The control was evaluated while the waiver was in force and recorded as
+    # waived by it; the bundle was generated a moment after the expiry. The
+    # report must follow the recorded verdict, not re-judge the waiver.
+    expires = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
+    bundle = _waived_by(_build_bundle(), "EXC-STRADDLE").model_copy(
+        update={
+            "generated_at": datetime(2026, 6, 1, 12, 0, 1, tzinfo=UTC),
+            "exceptions": [
+                _waiver(
+                    "EXC-STRADDLE",
+                    approved_at=datetime(2026, 1, 1, tzinfo=UTC),
+                    expires_at=expires,
+                )
+            ],
+        }
+    )
+
+    for rendered, section in (
+        (bundle_to_markdown(bundle), _markdown_section),
+        (bundle_to_html(bundle), _html_section),
+    ):
+        assert "EXC-STRADDLE" in section(rendered, "Approved exceptions")
+        assert "Exceptions not in force" not in rendered
+
+
+def test_a_valid_waiver_no_control_relied_on_is_not_listed_as_approved() -> None:
+    # In force by its dates and scope, but the control was met on evidence, so
+    # nothing in this release was waived by it.
+    bundle = _build_bundle().model_copy(
+        update={
+            "generated_at": datetime(2026, 6, 1, tzinfo=UTC),
+            "exceptions": [
+                _waiver(
+                    "EXC-UNUSED",
+                    approved_at=datetime(2026, 1, 1, tzinfo=UTC),
+                    expires_at=datetime(2026, 12, 31, tzinfo=UTC),
+                )
+            ],
+        }
+    )
+    markdown = bundle_to_markdown(bundle)
+
+    assert "Approved exceptions" not in markdown
+    assert re.search(
+        r"EXC-UNUSED.*not applied", _markdown_section(markdown, "Exceptions not in force")
+    )
 
 
 def test_html_controls_tile_breakdown_adds_up_to_the_total() -> None:
