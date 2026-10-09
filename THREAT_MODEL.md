@@ -85,6 +85,17 @@ encodes nonsense (e.g. negative test counts) is accepted. We treat
 this as the operator's responsibility — the bundle records the
 artifact's SHA-256 so tampering after-the-fact is detectable.
 
+Residual risk: **file** links are followed by design. A symbolic link
+to a file inside an artifacts directory is ingested like a regular file
+wherever its target lives, including outside the artifacts directory or
+on another filesystem.
+`ensure_file()` only expands `~`, checks that the path is a regular
+file and applies the size cap; it does not resolve the path or check
+containment. Only directory links are treated specially (see the
+symbolic-link row above). Keeping links that point outside the tree out
+of the artifacts directory is the operator's responsibility; the
+recorded SHA-256 identifies what was actually read.
+
 ### 2.2 Collectors (`src/evidence_collector/collectors/`)
 
 | Threat                                | Mitigation                                                                                                                                    |
