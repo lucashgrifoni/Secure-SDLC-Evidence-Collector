@@ -238,7 +238,7 @@ def _osps_qa_03_01() -> ControlDefinition:
     return next(c for c in controls if c.control_id == "OSPS-QA-03.01")
 
 
-@pytest.mark.parametrize("fields", _NOT_A_PASS, ids=lambda f: repr(f))
+@pytest.mark.parametrize("fields", _NOT_A_PASS, ids=repr)
 def test_normalize_workflow_run_unfinished_or_inconclusive_is_unknown(
     sample_release, fields: dict[str, object]
 ) -> None:
@@ -249,7 +249,7 @@ def test_normalize_workflow_run_unfinished_or_inconclusive_is_unknown(
     assert "none" not in evidence.summary.split("(")[0].lower()
 
 
-@pytest.mark.parametrize("fields", _NOT_A_PASS, ids=lambda f: repr(f))
+@pytest.mark.parametrize("fields", _NOT_A_PASS, ids=repr)
 def test_osps_qa_03_01_is_not_met_by_a_run_that_did_not_succeed(
     sample_release, fields: dict[str, object]
 ) -> None:
