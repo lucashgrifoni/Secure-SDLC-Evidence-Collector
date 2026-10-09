@@ -393,3 +393,18 @@ uvicorn evidence_collector.api.app:app --host 127.0.0.1 --port 8000
   is set or the app is built with `expose_docs=True`.
 - The collector does not refuse a public bind. That choice stays with whoever
   runs the server.
+
+## 19 · Output locks are per file and advisory
+
+Every write takes an exclusive `.<name>.lock` beside the file it replaces, and
+fails with exit 3 if that lock already exists. Writers of different files in
+one directory do not block each other. The lock is advisory, local to the
+filesystem and unverified on network shares.
+
+A process killed mid-write (`kill -9`, the OOM killer, a CI timeout) leaves its
+lock behind, and every later write of that file exits 3 until it is removed.
+Confirm that no sdlc-evidence process is still running (the lock records `pid`,
+`host` and `started`), then **delete only the lock file** named in the error.
+Never delete the output files: if one is missing, the `.<name>~o??????` file
+beside it holds the previous output and is restored by renaming it back. See
+[migration and limits](evidence-profile-migration.md#output-locking-and-recovery).

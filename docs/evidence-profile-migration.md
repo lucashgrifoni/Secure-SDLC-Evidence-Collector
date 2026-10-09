@@ -145,15 +145,28 @@ risk mappings require explicit project judgment and are not generated.
 
 ## Output locking and recovery
 
-Writers hold exclusive `.sdlc.lock` files in every output directory before
-staging or replacing reports. A competing writer fails. Normal completion and
-rollback remove owned locks.
+Each writer holds an exclusive `.<name>.lock` beside every file it is about
+to write (`.bundle.json.lock`, `.gaps.sarif.lock`) before staging or replacing
+it. Two writers of the same file, or of overlapping report sets such as two
+`run` commands into one `--output-dir`, conflict: the later one exits 3 with
+`Another writer owns <lock path>`. Writers of different files in one directory,
+for example `run`, `sarif` and `vex` sharing an output directory, do not block
+each other. Normal completion and rollback remove the writer's own locks.
 
-A killed process may leave locks and staging files. Stop writers, inspect the
-PID in the lock and confirm it has exited before removing that stale lock and
-its owned temporary files. Never remove a live writer's lock. Network filesystem
-behavior is unverified. Readers can observe the interval between replacements;
-this guarantees writer consistency, not a transactional reader snapshot.
+A killed process may leave locks and scratch files behind. To recover:
+
+1. Confirm that no sdlc-evidence process is still running. The lock records
+   the writer's `pid`, `host` and `started` time.
+2. If an output file is missing and a `.<name>~o??????` file sits beside it,
+   that file is the previous output and may be the only copy. Rename it back
+   to `<name>`. `.<name>~n??????` files are staged new output and can be
+   deleted.
+3. Delete only the `.<name>.lock` file named in the error, then retry. Never
+   delete the output files to clear a lock.
+
+Never remove a live writer's lock. Network filesystem behavior is unverified.
+Readers can observe the interval between replacements; this guarantees writer
+consistency, not a transactional reader snapshot.
 
 ## CVSS and publication
 
