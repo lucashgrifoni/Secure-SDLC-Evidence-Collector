@@ -12,9 +12,10 @@ breaking even though it is additive: a validator pinned to `1.0.0` rejects a
 bundle that carries anything it does not know.
 
 `2.0.0` adds `collection_errors`. A bundle that hit no collection problem
-omits the field entirely rather than emitting an empty list, so a clean run
-still validates against `1.0.0` and only bundles that genuinely report a
-failed input require the newer contract.
+omits the field entirely rather than emitting an empty list. When `2.0.0`
+shipped, that kept a clean run valid against `1.0.0`; since `2.1.0` every
+bundle carries `catalog`, so no bundle this version writes validates against
+`1.0.0` any more, clean or not.
 
 `2.1.0` adds `catalog`, naming the control catalog the evaluations were
 produced against. Every verdict in a bundle is relative to a catalog and
@@ -93,9 +94,30 @@ configuration, once the contract is registered there.
   "evidence": [ /* NormalizedEvidence[] */ ],
   "control_evaluations": [ /* ControlEvaluation[] */ ],
   "gaps": [ /* Gap[] */ ],
+  "exceptions": [ /* EvidenceException[] */ ],
+  "collection_errors": [ /* CollectionError[]; omitted when empty */ ],
   "summary": { /* Summary */ }
 }
 ```
+
+## Application
+
+| Field | Type | Notes |
+|---|---|---|
+| `name` | string | `--application`. |
+| `repository` | string | `--repository`, e.g. `acme/payments-api`. |
+| `environment` | string | Defaults to `production`. |
+| `owner_team` | string? | `--owner-team`, when given. |
+
+## ReleaseContext
+
+| Field | Type | Notes |
+|---|---|---|
+| `release_id` | string | `--release-id`. |
+| `commit_sha` | string | 7 to 64 hex characters, normalized to lowercase. |
+| `branch` | string | Defaults to `main`. |
+| `pipeline_run_id`, `build_id`, `tag` | string? | Optional CI identifiers. |
+| `artifact_digest` | string? | Digest of the published artifact, e.g. `sha256:...`. |
 
 ## CatalogRef
 
@@ -117,26 +139,61 @@ catalog record has been edited.
 | Field | Type | Notes |
 |-------|------|-------|
 | `evidence_id` | string | Unique within the bundle. |
-| `evidence_type` | enum | See `EvidenceType`. |
+| `evidence_type` | enum | `sast_scan`, `sca_scan`, `secrets_scan`, `dast_scan`, `iac_scan`, `sbom`, `test_result`, `code_review`, `pr_metadata`, `workflow_run`, `threat_model`, `release_approval`, `rollback_plan`, `artifact_signature`, `artifact_attestation`, `generic_attestation`, `model_card`, `prompt_injection_test_result`, `ai_safety_eval`, `mcp_tool_inventory`, `ai_training_data_lineage`. |
 | `source` | `EvidenceSource` | origin system (`name`, `kind`, `version`, `uri`). |
 | `producer` | string | Human-readable tool or actor. |
-| `subject_type` | enum | `repository`, `commit`, `pull_request`, `workflow_run`, `build`, `artifact`, `release`, `application`. |
+| `subject_type` | enum | `repository`, `commit`, `pull_request`, `workflow_run`, `build`, `artifact`, `release`, `application`, `ai_model`, `ai_agent`, `ai_dataset`. |
 | `subject_ref` | string | Stable identifier for the subject. |
 | `status` | enum | `passed`, `failed`, `completed`, `generated`, `missing`, `invalid`, `unknown`. |
 | `confidence` | enum | `high`, `medium`, `low`. Manual evidence is downgraded automatically. |
+| `classification` | `EvidenceClassification?` | How `evidence_type` was decided. The built-in normalizers set it for SARIF, OSV / OSV-Scanner and native Trivy JSON records, and leave it `null` for every other format. Evidence passed in to `evaluate` keeps whatever value it carries. |
 | `release_id`, `commit_sha` | string | Anchors the evidence to the release context. |
-| `generated_at`, `collected_at` | datetime | ISO 8601 UTC. |
-| `raw` | `RawEvidenceRef?` | `artifact_path` + `integrity_hash` for audit. |
+| `generated_at` | datetime? | When the producing tool generated the artifact, when known. ISO 8601 UTC. |
+| `collected_at` | datetime | When the collector read it. ISO 8601 UTC. |
+| `raw` | `RawEvidenceRef?` | `artifact_path` and/or `artifact_uri`, plus `integrity_hash` (`sha256:...`), `content_type` and `size_bytes`. |
 | `findings_count` | `{ string: int }` | Aggregated counters (e.g. severity breakdown). |
-| `summary` | string | One-line description suitable for reports. |
+| `summary` | string? | One-line description suitable for reports. |
 | `metadata` | object | Opaque payload preserved for auditors. |
 | `manual` | bool | `true` for attestations; influences confidence. |
+| `cve_ids` | string[] | Distinct CVE IDs the parser could extract (SARIF tags, CycloneDX vulnerabilities). Empty when none apply. |
+| `vulnerability_intelligence` | `VulnerabilityIntelligence?` | EPSS / CISA KEV summary for `cve_ids`. Only `sdlc-evidence enrich` sets it; `null` otherwise. |
+| `reachability` | `Reachability?` | Upstream reachability verdict, stored as supplied; the collector never computes it. |
+
+### EvidenceClassification
+
+| Field | Type | Notes |
+|---|---|---|
+| `confidence` | enum | `high`, `medium`, `low`. |
+| `reason` | string | `driver_match`, `manual_override` or `fallback_sast`; see [limitations §2](limitations.md). |
+| `driver_name` | string? | The tool name the decision was based on: the SARIF driver name, the OSV tool name, or `trivy`. |
+
+### VulnerabilityIntelligence
+
+| Field | Type | Notes |
+|---|---|---|
+| `cve_count` | int | CVEs considered. |
+| `max_epss_score`, `max_epss_percentile` | number? | Highest EPSS values, 0 to 1. |
+| `cves_in_kev_count`, `cves_known_ransomware_count` | int | CVEs listed in CISA KEV, and those flagged for known ransomware use. |
+| `top_risk_cves` | `TopRiskCve[]` | Highest-EPSS CVEs first: `cve_id`, `epss_score`, `epss_percentile`, `in_kev`, `known_ransomware`. |
+| `epss_feed_date`, `kev_feed_date` | string? | `YYYY-MM-DD` of the feeds used. |
+| `epss_model_version` | string? | EPSS model version from the feed header. |
+| `enriched_at` | datetime? | When `enrich` ran; stripped before the structural hash. |
+
+### Reachability
+
+| Field | Type | Notes |
+|---|---|---|
+| `status` | string | `reachable`, `not_reachable` or `unknown`. |
+| `source` | string | Tool or review that produced the verdict. |
+| `method` | string | `data_flow`, `function_call` or `manual_review` (default). |
+| `evidence_ref` | string? | Pointer to the supporting evidence. |
 
 ## ControlEvaluation
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `control_id`, `control_name`, `framework` | string | Maps to the control catalog. |
+| `control_id`, `control_name` | string | Maps to the control catalog. |
+| `framework` | enum | `NIST_SSDF`, `OWASP_SAMM`, `ORG_INTERNAL`. |
 | `evaluation_status` | enum | `met`, `partial`, `missing`, `waived`, `not_applicable`. |
 | `criticality` | enum | `critical`, `high`, `medium`, `low`. Drives release gate. |
 | `evidence_refs` | string[] | IDs of `NormalizedEvidence` satisfying the control. |
@@ -145,7 +202,7 @@ catalog record has been edited.
 | `confidence` | enum | Lowest supporting confidence, downgraded if any supporting evidence is manual. |
 | `rationale` | string | Human-readable explanation of the verdict. |
 | `evaluated_at` | datetime | When the engine ran. |
-| `exception_refs` | string[] | Reserved for Phase 2 exception workflow. |
+| `exception_refs` | string[] | `exception_id` of every waiver in force for this control (matching scope, inside its approval window). Each entry must match an entry in the top-level `exceptions`. |
 
 Every required evidence type needs at least one record with status
 `passed`, `completed` or `generated`. A record with any other status,
@@ -180,6 +237,45 @@ rationale names the exception, not the records.
 | `release_status` | enum | `ready`, `conditional`, `not_ready`. |
 | `missing_critical_evidence` | string[] | `control_id:evidence_type` pairs for critical/high gaps. |
 | `total_controls` / `controls_met` / `controls_partial` / `controls_missing` / `controls_waived` / `controls_not_applicable` | int | Counters validated against `total_controls`. |
+| `risk_assessment` | `RiskAssessment?` | Present only when the bundle was built with `--risk-mode epss-weighted`; `null` with the default `off`. |
+
+### RiskAssessment
+
+| Field | Type | Notes |
+|---|---|---|
+| `mode` | string | `epss-weighted`. |
+| `epss_percentile_threshold` | number | 0 to 1; EPSS percentile at or above which a CVE counts as exploitable. |
+| `kev_blocks` | bool | Whether a KEV-listed CVE with known ransomware use forces `not_ready`. |
+| `exploitable_cve_count`, `kev_cve_count`, `kev_ransomware_cve_count`, `high_epss_cve_count` | int | Counters the verdict was derived from. |
+| `base_release_status` | enum | The presence-based verdict before the risk mode applied. The mode only ever makes it worse. |
+| `rationale` | string | Short explanation; at most 400 characters. |
+
+## EvidenceException
+
+Top-level `exceptions` lists every waiver loaded from `--exceptions-dir`,
+whether or not it applied to this release. Which ones did apply is recorded
+per control in `exception_refs`.
+
+| Field | Type | Notes |
+|---|---|---|
+| `exception_id` | string | Unique within the bundle. |
+| `control_id` | string | Control the waiver covers. |
+| `approver` | string | Who approved it. |
+| `approved_at`, `expires_at` | datetime | Timezone required; `expires_at` must be after `approved_at`. |
+| `justification` | string | At least 10 characters. |
+| `reference` | string? | Ticket or document where the waiver was recorded. |
+| `scope` | object | Optional `application` and `release_id`; an unset field matches any value. |
+
+## CollectionError
+
+Top-level `collection_errors` lists inputs that were supplied but could not be
+ingested (unreadable, malformed, oversized), and evidence anchored to a
+different commit than the release. The key is omitted when the list is empty.
+
+| Field | Type | Notes |
+|---|---|---|
+| `path` | string | The input concerned, at most 500 characters. |
+| `reason` | string | Why it was not ingested, at most 1000 characters. |
 
 ## Invariants enforced by the schema
 
@@ -187,6 +283,8 @@ rationale names the exception, not the records.
   reference resolves to exactly one record,
 - every `ControlEvaluation.evidence_refs` entry must match an existing
   `NormalizedEvidence.evidence_id` in the bundle,
+- `EvidenceException.exception_id` is unique, and every
+  `ControlEvaluation.exception_refs` entry must match one,
 - `Summary` control counters must sum to `total_controls`,
 - `commit_sha` is normalized to lowercase hex; non-hex input is rejected,
 - manual evidence cannot carry `confidence = high` (downgraded to `medium`),

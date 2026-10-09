@@ -77,13 +77,24 @@ itself.
 | **Malicious YAML deserialization** | `SafeLoader` exclusively (via `safe_load_yaml` in `_common.py`); never the full or unsafe loaders.                                                      |
 | **YAML alias expansion / billion laughs** | Every YAML read (attestations, waivers, `--catalog`) goes through `safe_load_yaml`, which refuses a document whose aliases would grow it by more than `MAX_YAML_ALIAS_EXPANSION` (1,000,000 nodes plus scalar characters) and any recursive alias, as a parse error. The on-disk cap alone cannot see this: a 421-byte file expanded to a 34.6 MB bundle. |
 | **Path traversal via `../` in attestation paths** | Paths in attestations are stored verbatim in metadata but never resolved or read by the collector.                        |
-| **Symbolic link target outside artifacts dir** | Directory links (symlinks and Windows junctions) below a walked directory are never followed; each is recorded as a collection error instead of being skipped silently. A directory passed on the command line may itself be a link. |
+| **Symbolic link target outside artifacts dir** | Directory links (symlinks and Windows junctions) below a walked directory are never followed; each is recorded as a collection error instead of being skipped silently. A directory passed on the command line may itself be a link. File links are followed and ingested: `ensure_file()` neither resolves the path nor checks containment (residual risk below). |
 | **Pydantic validation bypass via `extra` fields** | Every domain model sets `extra="forbid"`; unknown keys are a hard error.                                                  |
 
 Residual risk: a malformed file that satisfies the formal schema but
 encodes nonsense (e.g. negative test counts) is accepted. We treat
 this as the operator's responsibility — the bundle records the
 artifact's SHA-256 so tampering after-the-fact is detectable.
+
+Residual risk: **file** links are followed by design. A symbolic link
+to a file inside an artifacts directory is ingested like a regular file
+wherever its target lives, including outside the artifacts directory or
+on another filesystem. `ensure_file()` only expands `~`, checks that
+the path is a regular file and applies the size cap; it does not
+resolve the path or check containment. Directory links inside the tree
+are the opposite case: they are not followed, and each one is reported
+as a collection error. Keeping file links that point outside the tree
+out of the artifacts directory is the operator's responsibility; the
+recorded SHA-256 identifies what was actually read.
 
 ### 2.2 Collectors (`src/evidence_collector/collectors/`)
 
@@ -136,9 +147,9 @@ Residual risk: an operator who runs the FastAPI surface bound to `0.0.0.0` on a 
 | Threat                                | Mitigation                                                                                                                  |
 |---------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | **Compromised third-party action**    | Third-party actions in workflows are pinned by full SHA with the semantic tag in a trailing comment, with two documented structural exceptions: `slsa-framework/slsa-github-generator/.../v2.0.0` (the SLSA generator's reusable-workflow contract requires tag-pin) and `pypa/gh-action-pypi-publish@release/v1` (the PyPA Trusted Publisher pattern). The full inventory and rationale are in `docs/program/actions-pinning-inventory.md`. Dependabot opens PRs to refresh SHAs (Actions ecosystem; major bumps land only after human review and a local validation note in `docs/program/dependabot-triage.md`). |
-| **Compromised Python dependency**     | `Dependabot` covers `pip`, `github-actions` and `docker` ecosystems weekly. `pip-audit` runs in security-ci-cd.yml.         |
+| **Compromised Python dependency**     | `Dependabot` covers `pip`, `github-actions` and `docker` ecosystems weekly. `security-ci-cd.yml` runs a Trivy dependency scan and Snyk Open Source (needs `SNYK_TOKEN`; skipped on Dependabot PRs) on pushes to the main branches and on pull requests, plus GitHub Dependency Review on pull requests. |
 | **PyPI package squatting / build hijack** | PyPI publish uses OIDC Trusted Publisher (no long-lived `PYPI_API_TOKEN`); only the `publish-pypi.yml` workflow can publish.    |
-| **Container base image vulnerabilities** | Base image is `python:3.12-slim-bookworm`; Trivy filesystem + image scan in security-ci-cd.yml; SBOM attestation lets consumers re-scan.  |
+| **Container base image vulnerabilities** | Base image is `python:3.12-slim-bookworm`; `security-ci-cd.yml` runs Trivy filesystem scans (dependencies, misconfiguration including the `Dockerfile`, secrets) but no CI job scans the built image; the image SBOM attestation lets consumers scan it. |
 
 ---
 

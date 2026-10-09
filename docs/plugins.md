@@ -67,7 +67,8 @@ After `pip install my_pkg` the names show up in
 `sdlc-evidence plugins`. Wiring discovered parsers into the run pipeline
 is currently the caller's responsibility (call `discover_parsers()` and
 dispatch explicitly). Auto-wiring into `LocalArtifactCollector` is
-planned but not in 1.x — track it under T4.1 follow-up in
+planned but not shipped in any release yet, the current 4.x line
+included — track it under T4.1 follow-up in
 [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md).
 
 ## Versioning the contract
@@ -82,4 +83,5 @@ The plugin contract is part of the public surface and follows SemVer:
   happens.
 
 Plugins should pin their dependency on this project to a major-version
-range (e.g. `secure-sdlc-evidence-collector>=1,<2`).
+range, the one you build and test against (for the current line,
+`secure-sdlc-evidence-collector>=4,<5`).

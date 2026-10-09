@@ -44,16 +44,15 @@ and emits **one evidence record per run**.
   logged as a warning. Before this, a Scorecard upload with no high or
   critical result satisfied SSDF-PW.7, and so did a gap log from an
   earlier ready release left in the artifacts directory.
-- Mitigation: the classification heuristic and the fallback label are
-  both documented in the bundle's `evidence[*].rationale` field, so
-  reviewers can see why the collector chose a label.
-- Since `v1.1.1` the bundle also surfaces a first-class
-  `evidence[*].classification` field with `confidence` (`high` / `medium`
-  / `low`), `reason` (`driver_match` / `manual_override` /
-  `fallback_sast`) and the original `driver_name`. Downstream consumers
-  can filter or weight evidence by classification confidence without
-  parsing the `rationale` prose, and a `fallback_sast` reason is a
-  reliable signal that the underlying tool was unknown to the heuristic.
+- Mitigation: since `v1.1.1` every SARIF-derived record carries a
+  first-class `evidence[*].classification` field with `confidence`
+  (`high` / `medium` / `low`), `reason` (`driver_match` /
+  `manual_override` / `fallback_sast`) and the original `driver_name`,
+  so reviewers can see why the collector chose a label. Evidence
+  records have no `rationale` field (only control evaluations do).
+  Downstream consumers can filter or weight evidence by classification
+  confidence, and a `fallback_sast` reason is a reliable signal that
+  the underlying tool was unknown to the heuristic.
 
 ## 3 · Evidence quality is shallow
 
@@ -515,3 +514,23 @@ Markdown renderer displays `model_card`. Scripts that grep or diff the raw
 `report.md` must expect the escaped form; read `bundle.json` for the
 unescaped values. Values inside code spans (control IDs, paths, digests) are
 not backslash-escaped; only backticks and pipes are altered there.
+
+## 21 · lm-eval results satisfy `AI-SAFETY-EVAL` on presence alone
+
+- An lm-evaluation-harness report becomes an `ai_safety_eval` record
+  with status `generated`, and `generated` satisfies a control. The
+  parser keeps the raw per-task metrics in `evidence.metadata.tasks`
+  but never judges them.
+- Control catalogs select evidence types only. `ControlDefinition` has
+  no threshold field (and rejects unknown keys), so no catalog,
+  `catalog-ai.yaml` included, can say "toxigen accuracy must be at
+  least X".
+- Result: any parseable lm-eval output meets `AI-SAFETY-EVAL`, even one
+  whose safety and bias scores are near zero. The control proves an
+  evaluation was run and shipped with the release, not that the model
+  passed it. A reviewer has to read the metrics and decide, or a
+  pipeline step has to enforce its own thresholds on the raw report
+  before the collector runs.
+- Inspect logs differ only in that an errored, cancelled or unfinished
+  run is recorded as `invalid`; a successful run is likewise accepted
+  whatever its scores.

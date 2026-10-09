@@ -46,15 +46,25 @@ def doctor_checks() -> list[tuple[str, bool, str]]:
         except ImportError as exc:  # pragma: no cover - exercised only on broken installs
             results.append((f"Import: {module}", False, str(exc)))
 
-    # Optional credentials. These are not required for local runs, only
-    # when collecting from the corresponding SCM.
-    for token_var, label in (
-        ("GITHUB_TOKEN", "GitHub token (optional)"),
-        ("GITLAB_TOKEN", "GitLab token (optional)"),
+    # Optional credentials. These are not required for local runs. Without
+    # GITHUB_TOKEN, `run --pull-request/--workflow-run` still calls the GitHub
+    # API, just unauthenticated. No CLI command collects from GitLab.
+    for token_var, label, absent_detail in (
+        (
+            "GITHUB_TOKEN",
+            "GitHub token (optional)",
+            "absent (run --pull-request/--workflow-run call the GitHub API "
+            "unauthenticated: rate-limited, and private repositories return 404)",
+        ),
+        (
+            "GITLAB_TOKEN",
+            "GitLab token (optional)",
+            "absent (only read by the GitLabCollector library API; no CLI command uses it)",
+        ),
     ):
         present = bool(os.environ.get(token_var))
         # Optional checks always count as "ok" — we just report status.
-        detail = "present (will be used)" if present else "absent (collectors will skip SCM)"
+        detail = "present (will be used)" if present else absent_detail
         results.append((label, True, detail))
 
     # Schema export sanity. Confirms Pydantic + the bundle model are in

@@ -85,6 +85,20 @@ def test_doctor_optional_token_status_reflects_environment(
     gl = next(r for r in results if r[0] == "GitLab token (optional)")
     assert "present" in gh[2]
     assert "absent" in gl[2]
+    assert "no CLI command" in gl[2]
     # Optional checks must never flip to failed.
     assert gh[1] is True
     assert gl[1] is True
+
+
+def test_doctor_absent_github_token_says_calls_go_out_unauthenticated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # `run --pull-request` still calls the API without a token, so doctor
+    # must not claim the collector is skipped.
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    results = _doctor_checks()
+    gh = next(r for r in results if r[0] == "GitHub token (optional)")
+    assert gh[1] is True
+    assert "unauthenticated" in gh[2]
+    assert "skip" not in gh[2]

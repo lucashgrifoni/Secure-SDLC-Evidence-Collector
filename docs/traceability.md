@@ -109,19 +109,19 @@ expected` correction.
 | Parse JUnit XML | `parsers/junit.py` | `examples/sample_release/artifacts/junit.xml` | `tests/unit/test_parsers.py::test_parse_junit`, `tests/unit/test_parsers.py::test_parse_junit_rejects_malformed_xml` (XXE guard in `tests/unit/test_documented_security_promises.py`) | `evidence_type=test_result`, pass/fail counted | matches |
 | Parse OWASP ZAP JSON (DAST) | `parsers/zap.py` | `examples/sample_release/artifacts/zap-baseline.json` | `tests/unit/test_zap.py::test_parse_zap_rejects_document_without_site`, `tests/unit/test_zap.py::test_parse_zap_counts_severities` | `evidence_type=dast_scan`, alerts bucketed by risk | matches |
 | Parse YAML/JSON attestations | `parsers/attestation.py` | `examples/sample_release/attestations/*.yaml` | attestation with unknown key → `extra='forbid'` raises | `evidence_type` derives from `kind` field | matches |
-| 25 MB safety cap | `parsers/_common.py::read_bounded` | `tests/unit/test_parser_safety.py::test_oversize_file_hits_safety_cap`, `tests/unit/test_local_collector.py::test_oversized_artifact_is_reported_not_dropped` | large SARIF → raises `ArtifactTooLargeError` | reject > 25 MB | matches |
+| 25 MB safety cap | `parsers/_common.py::ensure_file` (`MAX_INPUT_BYTES`) | `tests/unit/test_parser_safety.py::test_oversize_file_hits_safety_cap`, `tests/unit/test_local_collector.py::test_oversized_artifact_is_reported_not_dropped` | large SARIF → raises `ParseError`, reported as a collection error | reject > 25 MB | matches |
 
 ## 2 · Classification promises (SARIF → canonical evidence_type)
 
 | Promise | Rule | Source | Expected | Obtained |
 |---|---|---|---|---|
-| Semgrep → `sast_scan` | driver name contains "semgrep" | `normalizers/engine.py::classify_sarif_driver` | label=`sast_scan` | matches |
-| Trivy → `sca_scan` (dominant runs) | driver name contains "trivy" and bulk rules target packages | same | label=`sca_scan`; secret runs reclassified in post | **edge case documented in `docs/limitations.md` §2** |
+| Semgrep → `sast_scan` | driver name contains "semgrep" | `normalizers/engine.py::_classify_sarif_with_provenance` | label=`sast_scan` | matches |
+| Trivy SARIF → `sca_scan` | driver name contains "trivy" | same | label=`sca_scan` for every Trivy SARIF run, secret and misconfiguration runs included (no post-classification step); native Trivy JSON is split into separate dependency, secret and IaC records by `normalize_trivy_json` | **edge case documented in `docs/limitations.md` §2** |
 | Gitleaks → `secrets_scan` | driver name contains "gitleaks" | same | label=`secrets_scan` | matches |
 | Bandit → `sast_scan` | driver name contains "bandit" | same | label=`sast_scan` | matches |
 | pip-audit → `sca_scan` | driver name contains "pip-audit" | same | label=`sca_scan` | matches |
 | Grype → `sca_scan` | driver name contains "grype" | same | label=`sca_scan` | matches |
-| Unknown driver | default branch | same | label=`sast_scan` with `confidence=low` tag in rationale | matches |
+| Unknown driver | default branch | same | label=`sast_scan` with `classification.confidence=low`, `classification.reason=fallback_sast` | matches |
 
 ## 3 · Control evaluation promises
 
