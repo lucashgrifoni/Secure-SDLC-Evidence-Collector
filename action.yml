@@ -84,8 +84,10 @@ inputs:
   risk-mode:
     description: >-
       Verdict mode: off (presence-based, preserves byte-stability) or
-      epss-weighted (re-derives release_status from EPSS + KEV data already
-      present in the bundle)
+      epss-weighted. This Action does not run enrich, so freshly collected
+      evidence carries no EPSS / KEV data and the verdict and exit code stay
+      presence-based; the mode is recorded in the bundle and applied when
+      sdlc-evidence enrich is run on it in a later step
     required: false
     default: "off"
   epss-percentile-threshold:

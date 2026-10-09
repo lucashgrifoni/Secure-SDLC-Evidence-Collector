@@ -7,11 +7,18 @@ default: the user supplies feed paths via ``--epss-feed`` and
 ``--kev-feed``. Network refresh stays out of this CLI surface so the
 collector remains side-effect-free and air-gap-friendly.
 
+When the bundle was built with ``--risk-mode epss-weighted`` (it carries a
+``summary.risk_assessment``), the verdict is re-derived under that recorded
+mode and threshold once the intelligence is attached. A bundle built in the
+default mode keeps its verdict and summary unchanged.
+
 Exit codes:
 
 * 0 — enrichment ran (with or without matches); bundle written to ``--output``.
-* 3 — bundle path missing or malformed, or a feed path was supplied but the
-  file is unreadable / malformed. See ``cli/_exit_codes.EXIT_INPUT_ERROR``.
+  The exit code does not reflect ``release_status``; gate on the bundle.
+* 3 — bundle path missing or malformed (including an unknown recorded risk
+  mode), or a feed path was supplied but the file is unreadable / malformed.
+  See ``cli/_exit_codes.EXIT_INPUT_ERROR``.
 """
 
 from __future__ import annotations
@@ -24,6 +31,7 @@ import typer
 from pydantic import ValidationError
 from rich.markup import escape
 
+from evidence_collector.application.orchestrator import rederive_risk_verdict
 from evidence_collector.cli._errors import report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
 from evidence_collector.cli._logging import emit_event
@@ -120,6 +128,17 @@ def register(app: typer.Typer) -> None:
         )
 
         enriched, report = enrich_bundle(bundle, epss, kev, top_risk_limit=top_risk_limit)
+        try:
+            enriched = rederive_risk_verdict(enriched)
+        except ValueError as exc:
+            report_error(
+                "Bundle records an unknown risk mode",
+                exc,
+                event="enrich_failed",
+                bundle=str(bundle_path),
+            )
+            raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
+        assessment = enriched.summary.risk_assessment
         destination = output or bundle_path
         write_atomic(destination, enriched.model_dump_json(indent=2, exclude_none=False))
 
@@ -133,6 +152,8 @@ def register(app: typer.Typer) -> None:
                 cves_in_kev=report.cves_in_kev,
                 epss_feed_date=report.epss_feed_date,
                 kev_feed_date=report.kev_feed_date,
+                risk_mode=assessment.mode if assessment else "off",
+                release_status=enriched.summary.release_status.value,
             )
         else:
             console.print(
@@ -143,6 +164,11 @@ def register(app: typer.Typer) -> None:
                 f"feeds: epss={escape(report.epss_feed_date or 'absent')} "
                 f"kev={escape(report.kev_feed_date or 'absent')}"
             )
+            if assessment is not None:
+                console.print(
+                    f"risk mode {assessment.mode}: "
+                    f"release_status={enriched.summary.release_status.value}"
+                )
             console.print(f"bundle.json → {destination}")
 
 

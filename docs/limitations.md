@@ -366,8 +366,27 @@ These are explicitly out of scope for security reports (see
 
 ## 14 · Risk-weighted verdict only downgrades (T6.6)
 
-- `sdlc-evidence run --risk-mode epss-weighted` re-derives
-  `release_status` using EPSS + KEV signal already in the bundle.
+- Freshly collected evidence never carries EPSS / KEV data; only
+  `sdlc-evidence enrich` attaches it, to an existing bundle. So
+  `run --risk-mode epss-weighted` on its own cannot change the verdict:
+  it records the mode and threshold in `summary.risk_assessment`, keeps
+  the presence-based verdict, and says no intelligence was present.
+- `sdlc-evidence enrich` then re-derives `release_status` and
+  `risk_assessment` under the mode and threshold recorded in the bundle,
+  starting from `risk_assessment.base_release_status`. Re-enriching with
+  a newer feed reflects that feed. A bundle built with the default
+  `--risk-mode off` keeps its verdict and summary unchanged by `enrich`.
+- `enrich` exits `0` whatever the verdict. To gate a pipeline on the
+  risk-weighted verdict, read `summary.release_status` from the enriched
+  bundle, or pass its evidence (`{"evidence": [...]}`) to
+  `sdlc-evidence evaluate --risk-mode epss-weighted`, which turns the
+  verdict into an exit code like `run` does.
+- The KEV rules apply to every KEV-listed CVE on the evidence, including
+  one with no EPSS record or one ranked below `--top-risk-limit`: the
+  per-evidence `cves_in_kev_count` / `cves_known_ransomware_count` act as
+  a floor under what `top_risk_cves` shows. High-EPSS CVEs ranked below
+  the limit are not counted one by one, so `high_epss_cve_count` is a
+  lower bound; the verdict is unaffected because one is enough.
 - The mode can only make the verdict **worse** (`ready` →
   `conditional` → `not_ready`). It will **never** promote a
   `not_ready` base verdict to `ready` just because the present CVEs
