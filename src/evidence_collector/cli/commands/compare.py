@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from rich.markup import escape
 from rich.table import Table
 
 from evidence_collector.application.compare import compare_bundles, load_bundle
@@ -79,7 +80,11 @@ def register(app: typer.Typer) -> None:
             console.print_json(data=comparison.to_dict())
             return
 
-        table = Table(title=f"Bundle diff: {baseline.bundle_id} → {candidate.bundle_id}")
+        # Ids and EPSS model versions are read from the bundle files: escaped so
+        # `[/x]` cannot raise MarkupError and `[tag]` is not swallowed.
+        table = Table(
+            title=f"Bundle diff: {escape(baseline.bundle_id)} → {escape(candidate.bundle_id)}"
+        )
         table.add_column("Metric")
         table.add_column("Before")
         table.add_column("After")
@@ -111,7 +116,7 @@ def register(app: typer.Typer) -> None:
         control_table.add_column("Change")
         for delta in comparison.control_deltas:
             control_table.add_row(
-                delta.control_id,
+                escape(delta.control_id),
                 delta.before.value if delta.before else "-",
                 delta.after.value if delta.after else "-",
                 delta.category,
@@ -126,8 +131,8 @@ def register(app: typer.Typer) -> None:
         if comparison.epss_model_drift:
             console.print(
                 "[yellow]EPSS model drift:[/yellow] baseline used "
-                f"{', '.join(comparison.before_epss_model_versions)}; candidate used "
-                f"{', '.join(comparison.after_epss_model_versions)}. "
+                f"{escape(', '.join(comparison.before_epss_model_versions))}; candidate used "
+                f"{escape(', '.join(comparison.after_epss_model_versions))}. "
                 "EPSS scores are not comparable across model versions — treat any "
                 "score or risk movement as unexplained until re-enriched under a "
                 "single model."

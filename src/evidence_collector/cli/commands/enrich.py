@@ -22,6 +22,7 @@ from typing import Annotated
 
 import typer
 from pydantic import ValidationError
+from rich.markup import escape
 
 from evidence_collector.cli._errors import report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
@@ -138,8 +139,9 @@ def register(app: typer.Typer) -> None:
                 "[green]enriched[/green] "
                 f"evidence={report.evidence_enriched}/{report.evidence_with_cves} "
                 f"cves={report.distinct_cves} kev={report.cves_in_kev} "
-                f"feeds: epss={report.epss_feed_date or 'absent'} "
-                f"kev={report.kev_feed_date or 'absent'}"
+                # Feed dates are read from the feed files, so they are escaped.
+                f"feeds: epss={escape(report.epss_feed_date or 'absent')} "
+                f"kev={escape(report.kev_feed_date or 'absent')}"
             )
             console.print(f"bundle.json → {destination}")
 

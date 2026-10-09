@@ -105,6 +105,34 @@ def test_compare_table_format_does_not_emit_json(runner: CliRunner, sample_bundl
     assert not stripped.startswith(("{", "["))
 
 
+@pytest.mark.integration
+def test_compare_table_prints_bundle_and_control_ids_verbatim(
+    runner: CliRunner, sample_bundle: Path, tmp_path: Path
+) -> None:
+    """Ids come from the bundle files, so they are input, not markup.
+
+    `[/x]` in a bundle or control id raised MarkupError (exit 3 from main) and
+    an id like `[ctl]` was swallowed from the table.
+    """
+    payload = json.loads(sample_bundle.read_text(encoding="utf-8"))
+    payload["bundle_id"] = "[/x]candidate"
+    renamed = payload["control_evaluations"][0]["control_id"]
+    for gap in payload.get("gaps", []):
+        if gap.get("control_id") == renamed:
+            gap["control_id"] = "[/x]ctl"
+    payload["control_evaluations"][0]["control_id"] = "[/x]ctl"
+    candidate = tmp_path / "candidate.json"
+    candidate.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = runner.invoke(
+        app, ["compare", str(sample_bundle), str(candidate)], env={"COLUMNS": "200"}
+    )
+    assert isinstance(result.exception, SystemExit | type(None)), repr(result.exception)
+    assert result.exit_code == 0, result.output
+    assert "[/x]candidate" in result.output
+    assert "[/x]ctl" in result.output
+
+
 # ---------------------------------------------------------------------------
 # oscal
 # ---------------------------------------------------------------------------
