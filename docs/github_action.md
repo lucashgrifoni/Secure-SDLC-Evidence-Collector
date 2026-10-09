@@ -34,7 +34,7 @@ jobs:
 
       # Step 2 — assemble the evidence bundle
       - id: collect
-        uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v3.2.0 # x-release-please-version
+        uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.0.0 # x-release-please-version
         with:
           application: "payments-api"
           release-id: ${{ github.ref_name }}
@@ -88,7 +88,7 @@ inputs.
 ### Applying waivers in CI
 
 ```yaml
-- uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v3.2.0 # x-release-please-version
+- uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.0.0 # x-release-please-version
   with:
     application: payments-api
     release-id: ${{ github.ref_name }}
@@ -135,7 +135,7 @@ permissions:
 
 steps:
   - id: evidence
-    uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v3.2.0 # x-release-please-version
+    uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.0.0 # x-release-please-version
     with:
       application: payments-api
       release-id: ${{ github.ref_name }}

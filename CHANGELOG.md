@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.0.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v3.2.0...v4.0.0) (2026-10-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* newly generated bundles have different structural digests because SBOM metadata and catalog bytes changed (the sample moves from 861b285d... to e859f475...); existing bundles keep their own pins. Under --json-logs, schema, oscal, compare --format json, doctor --json and plugins print event objects instead of the raw document. verify --expected rejects a pin that is not a SHA-256 digest with exit 3. CRA and FedRAMP profile metadata keys changed. See docs/evidence-profile-migration.md.
+
+### Added
+
+* complete evidence contracts and source-backed profiles ([#138](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/138)) ([51dd52c](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/51dd52c4c350b8dc10e22a87ffbc7df3368999f5))
+
 ## [3.2.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v3.1.0...v3.2.0) (2026-10-04)
 
 
