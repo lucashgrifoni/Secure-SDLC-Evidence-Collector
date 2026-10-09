@@ -381,6 +381,6 @@ def test_migration_doc_names_the_metadata_keys_the_engine_emits(tmp_path: Path) 
     doc = Path("docs/evidence-profile-migration.md").read_text(encoding="utf-8")
     for key in ("cisa_2026_presence", "g7_ai_presence"):
         assert key in ev.metadata
-        assert f"`metadata.{key}" in doc
+        assert f"`evidence[].metadata.{key}" in doc
     assert "cisa_2026_minimum_elements" not in doc
     assert "g7_2026_ai_minimum_elements" not in doc

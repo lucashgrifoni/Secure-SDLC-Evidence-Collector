@@ -21,8 +21,8 @@ vulnerabilities.
 
 | Version line | Status |
 |--------------|--------|
-| `2.x` | actively supported |
-| `< 2.0` | end of life; please upgrade to `2.x` |
+| `4.x` | actively supported |
+| `< 4.0` | end of life; please upgrade to `4.x` |
 
 ## Disclosure policy
 

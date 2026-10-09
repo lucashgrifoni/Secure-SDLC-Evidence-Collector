@@ -93,10 +93,19 @@ class CraReportingContext(BaseModel):
             and self.notification_72h_submitted_at < self.awareness_at
         ):
             raise ValueError("notification_72h_submitted_at cannot be earlier than awareness_at")
-        if any(
-            key not in _SRP_FIELD_IDS or len(value) > 4000 for key, value in self.srp_fields.items()
-        ):
-            raise ValueError("Unknown SRP field identifier or value longer than 4000 characters")
+        for key, value in self.srp_fields.items():
+            if key == "41":
+                raise ValueError(
+                    "SRP field '41' (CSIRT Note) is written by the designated CSIRT, "
+                    "not the reporter; remove it from srp_fields"
+                )
+            if key not in _SRP_FIELD_IDS:
+                raise ValueError(
+                    f"Unknown SRP field identifier {key!r}; expected one of 1-18, "
+                    "v19-v30, v26a, i31-i39 or 40"
+                )
+            if len(value) > 4000:
+                raise ValueError(f"SRP field {key!r} is {len(value)} characters; the limit is 4000")
         if self.notification_type == "incident" and any(
             key.startswith("v") for key in self.srp_fields
         ):

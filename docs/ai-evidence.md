@@ -123,7 +123,13 @@ JSON log in `--artifacts-dir`. The evidence records `eval.task`,
 `results.scores`, and the sample counts. When a task has several epoch
 reducers, the headline reducer Inspect records in `results.headline` (normally the mean)
 keeps `scorer/metric` and each other reducer is recorded as
-`scorer/reducer/metric`. Only a run with
+`scorer/reducer/metric`. In the evidence's `metadata` these land as
+`inspect_task`, `ai_model_id`, `eval_status`, `metrics`, `total_samples` and
+`completed_samples`. Since 4.0.0, when the log declares `results.headline`,
+its `scorer`, `reducer` and `metric` strings are also copied to
+`evidence[].metadata.inspect_headline`, so a reader can tell which reducer the plain
+`scorer/metric` key holds; without a declared headline the key is absent.
+Only a run with
 `status: success` counts; an errored, cancelled or unfinished run is
 recorded as `invalid`, so it stays visible but does not satisfy the
 control. A log that includes every sample can exceed the collector's

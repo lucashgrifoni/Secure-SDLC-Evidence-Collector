@@ -5,7 +5,7 @@
 # `$ARTIFACTS_DIR`:
 #
 #   include:
-#     - remote: 'https://raw.githubusercontent.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/v2/examples/gitlab-ci/secure-sdlc-evidence.yml'
+#     - remote: 'https://raw.githubusercontent.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/v4.0.0/examples/gitlab-ci/secure-sdlc-evidence.yml' # x-release-please-version
 #
 #   evidence:
 #     stage: release
@@ -32,7 +32,7 @@
     ARTIFACTS_DIR: artifacts
     ATTESTATIONS_DIR: ""
     EXCEPTIONS_DIR: ""
-    CATALOG: ""            # e.g. catalog-ai.yaml | catalog-ssdf-1.2.yaml | catalog-fedramp-cr26.yaml
+    CATALOG: ""            # e.g. catalog-ai.yaml | catalog-ssdf-1.2.yaml | catalog-fedramp-cr26.yaml | catalog-osps-baseline.yaml
     RISK_MODE: "off"       # 'off' | 'epss-weighted'
     PROFILE: "none"        # 'none' | 'cra-2026' | 'fedramp-20x'
     CRA_CONTEXT: ""        # CRA operator context JSON; needs PROFILE cra-2026

@@ -4,9 +4,14 @@ This document is the public threat model for the collector itself —
 the project ships secure-SDLC tooling, so it owes its users a visible
 analysis of how its **own** trust boundaries are protected.
 
-The model targets the v1.x line; major-version changes that alter
-attack surface (REST API, plugin loading, persistent storage) require
-an update before they ship.
+The model was written for the v1.x line, including the REST API, plugin
+and OSCAL surfaces added in v1.1.0 (§2.5). It has had point updates
+since, but it has not been re-reviewed as a whole against the surface
+added in 2.x through 4.x (the current line is 4.x), such as EPSS/KEV
+feed enrichment, multi-VEX ingestion, the CRA operator context file and
+per-file output locks. Major-version changes that alter attack surface
+(REST API, plugin loading, persistent storage) should update it before
+they ship.
 
 ---
 

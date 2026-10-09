@@ -25,7 +25,9 @@
         "src/evidence_collector/__init__.py",
         "src/evidence_collector/collectors/github.py",
         "src/evidence_collector/collectors/gitlab.py",
-        "docs/github_action.md"
+        "docs/github_action.md",
+        { "type": "generic", "path": "examples/gitlab-ci/secure-sdlc-evidence.yml" },
+        { "type": "generic", "path": ".github/workflows/reusable-evidence-collection.yml" }
       ]
     }
   }
