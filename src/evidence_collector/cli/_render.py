@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from rich.markup import escape
 from rich.table import Table
 
 from evidence_collector.application.orchestrator import BundleBuildResult
@@ -83,7 +84,9 @@ def render_collection_errors(result: BundleBuildResult) -> None:
         return
     console.print("[yellow]Collection warnings:[/yellow]")
     for error in errors:
-        console.print(f"  - {error.path}: {error.reason}")
+        # The reason quotes the input file (a scanner name, a parser message);
+        # unescaped, `[/x]` in it raised MarkupError and `[tag]` vanished.
+        console.print(f"  - {escape(str(error.path))}: {escape(error.reason)}")
 
 
 _IGNORED_SHOWN = 10
@@ -109,6 +112,6 @@ def render_ignored_artifacts(paths: list[Path]) -> None:
         soft_wrap=True,
     )
     for path in paths[:_IGNORED_SHOWN]:
-        console.print(f"  - {path}", soft_wrap=True)
+        console.print(f"  - {escape(str(path))}", soft_wrap=True)
     if count > _IGNORED_SHOWN:
         console.print(f"  ... and {count - _IGNORED_SHOWN} more", soft_wrap=True)

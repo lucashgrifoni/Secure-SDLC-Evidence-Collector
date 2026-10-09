@@ -88,6 +88,13 @@ def _parse_tree(path: Path) -> Element:
         raise ParseError(f"Unsafe XML construct rejected in {path}: {exc}") from exc
     except RecursionError as exc:
         raise ParseError(f"XML in {path} is nested too deeply to parse") from exc
+    except (ValueError, LookupError) as exc:
+        # The XML declaration picks the decoder. pyexpat raises a bare
+        # ValueError for a multi-byte encoding it cannot handle (Shift_JIS)
+        # and the codec lookup raises LookupError for a name Python does not
+        # know (windows-31j). Neither is a ParseError, so one such file ended
+        # the whole run instead of being recorded against its path.
+        raise ParseError(f"Unsupported XML encoding in {path}: {exc}") from exc
     root = tree.getroot()
     if not isinstance(root, Element):
         raise ParseError(f"Unexpected XML root object in {path}: {type(root).__name__}")

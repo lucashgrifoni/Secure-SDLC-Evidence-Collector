@@ -141,7 +141,9 @@ def _parse_openvex(data: dict[str, Any]) -> list[VexStatement]:
         if cve_id is None:
             continue
         status = entry.get("status")
-        if status not in OPENVEX_STATUSES:
+        # A list or dict status is unhashable and raised TypeError on the set
+        # lookup; it is an unknown status like any other and is skipped.
+        if not isinstance(status, str) or status not in OPENVEX_STATUSES:
             continue
         justification_raw = entry.get("justification")
         out.append(

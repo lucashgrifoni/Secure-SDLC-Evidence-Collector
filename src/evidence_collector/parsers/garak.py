@@ -28,6 +28,7 @@ Spec references
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -89,7 +90,10 @@ def _load_jsonl(path: Path) -> list[dict[str, Any]]:
                     continue
                 try:
                     entry = json.loads(line)
-                except json.JSONDecodeError:
+                # Deep nesting (RecursionError) and an int literal past the
+                # 4300-digit cap (bare ValueError) are garbled records too; they
+                # escaped as crashes instead of being skipped.
+                except (json.JSONDecodeError, RecursionError, ValueError):
                     continue
                 if isinstance(entry, dict):
                     records.append(entry)
@@ -117,6 +121,41 @@ def _extract_init(records: list[dict[str, Any]]) -> tuple[str | None, str | None
     return (None, None, None)
 
 
+def _count(value: Any) -> int | None:
+    """Return a digest count as an int, or None when it is not usable.
+
+    Usable means a finite, non-negative number. Python's `json` accepts the
+    bare `Infinity` and `NaN` literals, and `int()` raises OverflowError /
+    ValueError on them; a string, a bool, a negative number or a missing key
+    says just as little about the probe.
+    """
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    # An int may be too large for a float, so math.isfinite is for floats only.
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if value < 0:
+        return None
+    return int(value)
+
+
+def _digest_counts(entry: dict[str, Any]) -> tuple[int, int]:
+    """Return ``(attempts, hits)`` for a digest, never failing open.
+
+    An unusable ``hits`` counts as a failing probe (at least one hit): reading
+    it as 0 turned `hits: Infinity` into a clean result. An unusable
+    ``attempts`` is unknown, so it is taken as ``max(hits, 1)``; it never
+    changes whether the probe passed. Attempts are never fewer than hits.
+    """
+    hits = _count(entry.get("hits"))
+    if hits is None:
+        hits = 1
+    attempts = _count(entry.get("attempts"))
+    if attempts is None:
+        attempts = max(hits, 1)
+    return max(attempts, hits), hits
+
+
 def _aggregate_probes(records: list[dict[str, Any]]) -> list[GarakProbeResult]:
     """Aggregate ``digest`` and ``attempt`` records into per-probe results.
 
@@ -132,10 +171,7 @@ def _aggregate_probes(records: list[dict[str, Any]]) -> list[GarakProbeResult]:
         probe = entry.get("probe")
         if not isinstance(probe, str):
             continue
-        attempts_raw = entry.get("attempts", 0)
-        hits_raw = entry.get("hits", 0)
-        attempts = int(attempts_raw) if isinstance(attempts_raw, int | float) else 0
-        hits = int(hits_raw) if isinstance(hits_raw, int | float) else 0
+        attempts, hits = _digest_counts(entry)
         by_probe[probe] = GarakProbeResult(probe=probe, attempts=attempts, hits=hits)
 
     if by_probe:

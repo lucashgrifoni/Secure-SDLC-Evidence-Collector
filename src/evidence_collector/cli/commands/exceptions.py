@@ -8,6 +8,7 @@ from typing import Annotated
 
 import typer
 from pydantic import ValidationError
+from rich.markup import escape
 from rich.table import Table
 
 from evidence_collector.cli._errors import report_error
@@ -124,9 +125,12 @@ def register(app: typer.Typer) -> None:
                 )
                 continue
             expiry_note = _window_note(exception, now)
+            # Waiver fields are free text from the file: escaped, so `[/x]` in
+            # an approver cannot raise MarkupError and `[tag]` is not dropped.
             console.print(
-                f"[green]{exception.exception_id}[/green] valid · "
-                f"control={exception.control_id} · approver={exception.approver} "
+                f"[green]{escape(exception.exception_id)}[/green] valid · "
+                f"control={escape(exception.control_id)} · "
+                f"approver={escape(exception.approver)} "
                 f"· expires_at={exception.expires_at.isoformat()}{expiry_note}"
             )
         if invalid:
@@ -204,11 +208,11 @@ def register(app: typer.Typer) -> None:
                 )
                 continue
             table.add_row(
-                exc.exception_id,
-                exc.control_id,
-                exc.approver,
+                escape(exc.exception_id),
+                escape(exc.control_id),
+                escape(exc.approver),
                 expires_cell,
-                ", ".join(scope_bits) or "global",
+                escape(", ".join(scope_bits)) or "global",
             )
         if is_json_logs():
             emit_event(

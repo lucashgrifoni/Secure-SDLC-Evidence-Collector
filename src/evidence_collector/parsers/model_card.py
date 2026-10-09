@@ -69,6 +69,15 @@ def _coerce_string_list(value: Any) -> list[str]:
     return []
 
 
+def _as_list(value: Any) -> list[Any]:
+    """Return ``value`` if it is a list, else an empty list.
+
+    The previous `x.get(k, []) or []` idiom iterated any truthy value, so a
+    card carrying `metrics: 5` or `use_cases: true` raised TypeError.
+    """
+    return value if isinstance(value, list) else []
+
+
 def _coerce_float(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
@@ -100,7 +109,7 @@ def _parse_huggingface(data: dict[str, Any]) -> ParsedModelCard:
             for result in results:
                 if not isinstance(result, dict):
                     continue
-                for metric in result.get("metrics", []) or []:
+                for metric in _as_list(result.get("metrics")):
                     if not isinstance(metric, dict):
                         continue
                     name = metric.get("name") or metric.get("type")
@@ -138,7 +147,7 @@ def _parse_google_mct(data: dict[str, Any]) -> ParsedModelCard:
     considerations = data.get("considerations")
     if isinstance(considerations, dict):
         # Considerations sometimes carry dataset references in `use_cases`.
-        for entry in considerations.get("use_cases", []) or []:
+        for entry in _as_list(considerations.get("use_cases")):
             if isinstance(entry, dict):
                 desc = entry.get("description")
                 if isinstance(desc, str) and desc:
@@ -147,7 +156,7 @@ def _parse_google_mct(data: dict[str, Any]) -> ParsedModelCard:
     metrics: dict[str, float] = {}
     qa = data.get("quantitative_analysis")
     if isinstance(qa, dict):
-        for entry in qa.get("performance_metrics", []) or []:
+        for entry in _as_list(qa.get("performance_metrics")):
             if not isinstance(entry, dict):
                 continue
             name = entry.get("type")
