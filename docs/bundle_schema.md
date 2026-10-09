@@ -146,7 +146,7 @@ catalog record has been edited.
 | `subject_ref` | string | Stable identifier for the subject. |
 | `status` | enum | `passed`, `failed`, `completed`, `generated`, `missing`, `invalid`, `unknown`. |
 | `confidence` | enum | `high`, `medium`, `low`. Manual evidence is downgraded automatically. |
-| `classification` | `EvidenceClassification?` | How `evidence_type` was decided, for records whose type comes from a heuristic (SARIF, native Trivy JSON). Absent when the format fixes the type. |
+| `classification` | `EvidenceClassification?` | How `evidence_type` was decided. The built-in normalizers set it for SARIF, OSV / OSV-Scanner and native Trivy JSON records, and leave it `null` for every other format. Evidence passed in to `evaluate` keeps whatever value it carries. |
 | `release_id`, `commit_sha` | string | Anchors the evidence to the release context. |
 | `generated_at` | datetime? | When the producing tool generated the artifact, when known. ISO 8601 UTC. |
 | `collected_at` | datetime | When the collector read it. ISO 8601 UTC. |
@@ -165,7 +165,7 @@ catalog record has been edited.
 |---|---|---|
 | `confidence` | enum | `high`, `medium`, `low`. |
 | `reason` | string | `driver_match`, `manual_override` or `fallback_sast`; see [limitations §2](limitations.md). |
-| `driver_name` | string? | The SARIF driver name as written by the tool. |
+| `driver_name` | string? | The tool name the decision was based on: the SARIF driver name, the OSV tool name, or `trivy`. |
 
 ### VulnerabilityIntelligence
 
