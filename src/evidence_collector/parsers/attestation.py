@@ -24,7 +24,7 @@ metadata:                        # optional, opaque payload
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -88,6 +88,32 @@ def _parse_datetime(value: Any, source: Path) -> datetime | None:
     )
 
 
+_JSON_SCALARS = (str, int, float, bool, type(None), date)
+
+
+def _require_json_value(value: Any, key: str, source: Path) -> None:
+    """Reject a value the bundle cannot serialize, naming the key it sits under.
+
+    YAML can produce more than JSON can carry: `!!binary` yields bytes and
+    `!!set` a set. Both were copied into the evidence metadata verbatim and
+    only failed when the bundle was serialized, as a
+    PydanticSerializationError that took the whole run down. YAML dates and
+    timestamps are kept: they are native scalars the bundle already writes.
+    """
+    if isinstance(value, dict):
+        for inner_key, inner in value.items():
+            _require_json_value(inner_key, key, source)
+            _require_json_value(inner, f"{key}.{inner_key}", source)
+    elif isinstance(value, list):
+        for inner in value:
+            _require_json_value(inner, key, source)
+    elif not isinstance(value, _JSON_SCALARS):
+        raise ParseError(
+            f"Unsupported {type(value).__name__} value under '{key}' in attestation {source}; "
+            "expected a JSON-compatible value"
+        )
+
+
 def parse_attestation(path: str | Path) -> ParsedAttestation:
     resolved = ensure_file(path)
     data = load_yaml_or_json(resolved)
@@ -108,9 +134,11 @@ def parse_attestation(path: str | Path) -> ParsedAttestation:
     metadata: dict[str, Any] = {}
     raw_metadata = data.get("metadata")
     if isinstance(raw_metadata, dict):
+        _require_json_value(raw_metadata, "metadata", resolved)
         metadata.update(raw_metadata)
     for optional_key in ("approver", "ticket", "change_ticket", "link"):
         if optional_key in data and optional_key not in metadata:
+            _require_json_value(data[optional_key], optional_key, resolved)
             metadata[optional_key] = data[optional_key]
 
     summary = data.get("summary")

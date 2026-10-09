@@ -26,6 +26,7 @@ from evidence_collector.collectors.local import LocalArtifactCollector, LocalCol
 from evidence_collector.domain.models import ReleaseContext
 from evidence_collector.parsers._common import ParseError, load_yaml_or_json
 from evidence_collector.parsers._intoto import decode_b64_statement
+from evidence_collector.parsers.attestation import parse_attestation
 from evidence_collector.parsers.garak import parse_garak
 from evidence_collector.parsers.junit import parse_junit
 from evidence_collector.parsers.model_card import parse_model_card
@@ -218,3 +219,45 @@ def test_model_card_scalar_in_a_list_field_is_ignored_not_fatal(
     parsed = parse_model_card(path)
     assert parsed.model_id == "m"
     assert parsed.metrics == {}
+
+
+# ---------------------------------------------------------------------------
+# D48 — attestation fields the bundle cannot serialize
+# ---------------------------------------------------------------------------
+
+_BINARY = "!!binary /w=="  # one byte, 0xFF: not valid UTF-8
+
+
+@pytest.mark.parametrize(
+    ("extra", "key"),
+    [
+        (f"metadata:\n  blob: {_BINARY}\n", "blob"),
+        (f"metadata:\n  nested:\n    - {_BINARY}\n", "nested"),
+        (f"approver: {_BINARY}\n", "approver"),
+        (f"link: {_BINARY}\n", "link"),
+        ("metadata:\n  tags: !!set {a: null}\n", "tags"),
+    ],
+    ids=["metadata-bytes", "metadata-nested-bytes", "approver-bytes", "link-bytes", "set"],
+)
+def test_attestation_value_that_is_not_json_is_a_parse_error_naming_the_key(
+    tmp_path: Path, extra: str, key: str
+) -> None:
+    path = tmp_path / "approval.yaml"
+    path.write_text(
+        "evidence_type: release_approval\nproducer: p\nsubject_ref: r\n" + extra,
+        encoding="utf-8",
+    )
+    with pytest.raises(ParseError, match=key):
+        parse_attestation(path)
+
+
+def test_attestation_yaml_timestamps_in_metadata_are_still_accepted(tmp_path: Path) -> None:
+    """YAML dates are native scalars the bundle already serializes; keep them."""
+    path = tmp_path / "approval.yaml"
+    path.write_text(
+        "evidence_type: release_approval\nproducer: p\nsubject_ref: r\n"
+        "metadata:\n  approved_on: 2026-04-09\n  at: 2026-04-09T10:00:00Z\n  n: 3\n",
+        encoding="utf-8",
+    )
+    parsed = parse_attestation(path)
+    assert set(parsed.metadata) == {"approved_on", "at", "n"}
