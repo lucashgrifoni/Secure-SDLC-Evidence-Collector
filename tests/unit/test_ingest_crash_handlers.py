@@ -26,6 +26,7 @@ from evidence_collector.collectors.local import LocalArtifactCollector, LocalCol
 from evidence_collector.domain.models import ReleaseContext
 from evidence_collector.parsers._common import ParseError, load_yaml_or_json
 from evidence_collector.parsers._intoto import decode_b64_statement
+from evidence_collector.parsers.garak import parse_garak
 from evidence_collector.parsers.junit import parse_junit
 from evidence_collector.parsers.sarif import parse_sarifs
 
@@ -155,3 +156,40 @@ def test_sarif_driver_that_is_not_an_object_falls_back_to_unknown_tool(
     )
     parsed = parse_sarifs(path)
     assert [p.tool_name for p in parsed] == ["unknown-sarif-tool"]
+
+
+# ---------------------------------------------------------------------------
+# D17 — garak: non-finite counts and unreadable JSONL records
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("literal", ["Infinity", "-Infinity", "NaN"])
+def test_garak_digest_with_a_non_finite_count_is_not_fatal(tmp_path: Path, literal: str) -> None:
+    path = tmp_path / "garak.report.jsonl"
+    path.write_text(
+        '{"entry_type": "init", "garak_version": "0.9"}\n'
+        f'{{"entry_type": "digest", "probe": "p.a", "attempts": {literal}, "hits": {literal}}}\n'
+        '{"entry_type": "digest", "probe": "p.b", "attempts": 4, "hits": 1}\n',
+        encoding="utf-8",
+    )
+    parsed = parse_garak(path)
+    by_probe = {p.probe: p for p in parsed.probes}
+    assert (by_probe["p.b"].attempts, by_probe["p.b"].hits) == (4, 1)
+    assert (by_probe["p.a"].attempts, by_probe["p.a"].hits) == (0, 0)
+
+
+@pytest.mark.parametrize(
+    "garbled",
+    ["[" * 60_000 + "]" * 60_000, '{"n": ' + "9" * 5000 + "}"],
+    ids=["deeply-nested", "overlong-int"],
+)
+def test_garak_skips_a_garbled_record_as_its_docstring_promises(
+    tmp_path: Path, garbled: str
+) -> None:
+    path = tmp_path / "garak.report.jsonl"
+    path.write_text(
+        garbled + "\n" + '{"entry_type": "digest", "probe": "p.b", "attempts": 4, "hits": 1}\n',
+        encoding="utf-8",
+    )
+    parsed = parse_garak(path)
+    assert [p.probe for p in parsed.probes] == ["p.b"]

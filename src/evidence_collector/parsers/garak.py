@@ -28,6 +28,7 @@ Spec references
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -89,7 +90,10 @@ def _load_jsonl(path: Path) -> list[dict[str, Any]]:
                     continue
                 try:
                     entry = json.loads(line)
-                except json.JSONDecodeError:
+                # Deep nesting (RecursionError) and an int literal past the
+                # 4300-digit cap (bare ValueError) are garbled records too; they
+                # escaped as crashes instead of being skipped.
+                except (json.JSONDecodeError, RecursionError, ValueError):
                     continue
                 if isinstance(entry, dict):
                     records.append(entry)
@@ -117,6 +121,18 @@ def _extract_init(records: list[dict[str, Any]]) -> tuple[str | None, str | None
     return (None, None, None)
 
 
+def _count(value: Any) -> int:
+    """Return a digest count as an int, or 0 when it is not a finite number.
+
+    Python's `json` accepts the bare `Infinity` and `NaN` literals, and
+    `int()` raises OverflowError / ValueError on them. A non-finite count says
+    nothing about the probe, so it is treated like any other non-number.
+    """
+    if isinstance(value, int | float) and math.isfinite(value):
+        return int(value)
+    return 0
+
+
 def _aggregate_probes(records: list[dict[str, Any]]) -> list[GarakProbeResult]:
     """Aggregate ``digest`` and ``attempt`` records into per-probe results.
 
@@ -132,10 +148,8 @@ def _aggregate_probes(records: list[dict[str, Any]]) -> list[GarakProbeResult]:
         probe = entry.get("probe")
         if not isinstance(probe, str):
             continue
-        attempts_raw = entry.get("attempts", 0)
-        hits_raw = entry.get("hits", 0)
-        attempts = int(attempts_raw) if isinstance(attempts_raw, int | float) else 0
-        hits = int(hits_raw) if isinstance(hits_raw, int | float) else 0
+        attempts = _count(entry.get("attempts", 0))
+        hits = _count(entry.get("hits", 0))
         by_probe[probe] = GarakProbeResult(probe=probe, attempts=attempts, hits=hits)
 
     if by_probe:
