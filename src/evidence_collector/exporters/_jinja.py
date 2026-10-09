@@ -9,6 +9,7 @@ from importlib.resources import files
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 
 from evidence_collector.controls.engine import exception_not_in_force_reason
+from evidence_collector.domain.enums import ControlEvaluationStatus
 from evidence_collector.domain.models import EvidenceBundle, EvidenceException
 
 # `select_autoescape` matches on the *suffix* of the template name, and every
@@ -57,25 +58,40 @@ def get_environment() -> Environment:
 def split_exceptions(
     bundle: EvidenceBundle,
 ) -> tuple[list[EvidenceException], list[tuple[EvidenceException, str]]]:
-    """Separate the waivers in force for this bundle from the ones that are not.
+    """Separate the waivers this release relied on from the ones it did not.
 
     `bundle.exceptions` keeps every waiver the collector was given, including
     expired ones and ones scoped to another application or release. The
     reports listed all of them under "Approved exceptions", so a waiver the
     engine had refused (and said so in the control rationale) still read as
-    approved for this release. The engine's own rule decides here, evaluated
-    at the moment the bundle was generated.
+    approved for this release.
+
+    "Applied" is read from the verdict itself: the `exception_refs` of each
+    WAIVED evaluation. Re-judging validity here, at `generated_at`, could
+    contradict the bundle when evaluation and generation straddle an expiry:
+    the control is waived, yet the report would call its waiver expired.
+    Every other waiver is listed as not in force, with the engine's reason.
     """
+    applied = {
+        ref
+        for evaluation in bundle.control_evaluations
+        if evaluation.evaluation_status is ControlEvaluationStatus.WAIVED
+        for ref in evaluation.exception_refs
+    }
     application = bundle.application.name
     release_id = bundle.release.release_id
     in_force: list[EvidenceException] = []
     not_in_force: list[tuple[EvidenceException, str]] = []
     for exc in bundle.exceptions:
-        reason = exception_not_in_force_reason(exc, application, release_id, bundle.generated_at)
-        if reason is None:
+        if exc.exception_id in applied:
             in_force.append(exc)
-        else:
-            not_in_force.append((exc, reason))
+            continue
+        reason = exception_not_in_force_reason(exc, application, release_id, bundle.generated_at)
+        # Valid by its dates and scope, yet no control was waived by it: the
+        # control it names was met, partial or missing on its own terms.
+        not_in_force.append(
+            (exc, reason or "not applied: no control in this release was waived by it")
+        )
     return in_force, not_in_force
 
 
