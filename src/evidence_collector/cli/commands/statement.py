@@ -23,7 +23,7 @@ from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPU
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
 from evidence_collector.domain.models import EvidenceBundle
-from evidence_collector.exporters._atomic import write_atomic
+from evidence_collector.exporters._atomic import write_all_or_nothing
 from evidence_collector.exporters.intoto import (
     PREDICATE_TYPE_NAMES,
     PredicateType,
@@ -110,13 +110,18 @@ def register(app: typer.Typer) -> None:
         # set above; mypy needs the explicit narrowing.
         predicate_type_literal = cast(PredicateType, predicate_type)
         statement = build_statement(bundle, predicate_type=predicate_type_literal)
-        write_atomic(output, json.dumps(statement, indent=2, sort_keys=False))
+        payloads = {output: json.dumps(statement, indent=2, sort_keys=False)}
 
         envelope_path: Path | None = None
         if dsse_envelope:
             envelope = build_dsse_envelope(statement)
             envelope_path = output.with_suffix(".dsse.json")
-            write_atomic(envelope_path, json.dumps(envelope, indent=2, sort_keys=False))
+            payloads[envelope_path] = json.dumps(envelope, indent=2, sort_keys=False)
+        # One all-or-nothing write: the statement and its envelope describe the
+        # same bundle, or neither file changes. Two independent writes left a
+        # new statement beside the previous bundle's envelope when the second
+        # one failed (on Windows, another process holding the envelope open).
+        write_all_or_nothing(payloads)
 
         emitted_predicate_url = predicate_type_url(predicate_type_literal)
         if is_json_logs():
