@@ -98,6 +98,41 @@ _SECRETS_TOOLS: frozenset[str] = frozenset(
         "noseyparker",
     }
 )
+# SARIF producers whose results are not scan evidence of any modelled type.
+# OpenSSF Scorecard reports repository posture checks (branch protection,
+# pinned dependencies, ...); with no token matching it fell back to
+# `sast_scan` and, lacking high/critical results, satisfied SSDF-PW.7.
+_UNSUPPORTED_SARIF_TOOLS: frozenset[str] = frozenset({"scorecard"})
+
+
+def _driver_matches(tool_name: str, tokens: frozenset[str]) -> bool:
+    """Whether a SARIF driver name contains one of ``tokens``.
+
+    Punctuation and whitespace are normalized so "Snyk Code", "snyk-code",
+    "snykcode", and "snyk_code" all match the same token. Without this, a
+    SAST driver whose name happens to use a different separator falls
+    through to the SCA bucket (false-positive risk tracked in
+    docs/limitations.md §2).
+    """
+    lowered = tool_name.lower()
+    normalized = lowered.replace("-", " ").replace("_", " ").replace("/", " ")
+    compact = normalized.replace(" ", "")
+    for token in tokens:
+        token_norm = token.replace("-", " ").replace("_", " ")
+        token_compact = token_norm.replace(" ", "")
+        if token_norm in normalized or token_compact in compact or token in lowered:
+            return True
+    return False
+
+
+def is_unsupported_sarif_driver(tool_name: str) -> bool:
+    """Whether a SARIF run comes from a tool no evidence type models.
+
+    Such a run must not be classified at all: the fallback would record it
+    as `sast_scan`. The local collector skips these runs; see
+    docs/limitations.md §2.
+    """
+    return _driver_matches(tool_name, _UNSUPPORTED_SARIF_TOOLS)
 
 
 def _new_evidence_id(prefix: str, *parts: str) -> str:
@@ -240,22 +275,9 @@ def _classify_sarif_with_provenance(
             reason="manual_override",
             driver_name=tool_name,
         )
-    # Normalize punctuation / whitespace so "Snyk Code", "snyk-code",
-    # "snykcode", and "snyk_code" all match the same token. Without
-    # this, a SAST driver whose name happens to use a different
-    # separator falls through to the SCA bucket (false-positive risk
-    # tracked in docs/limitations.md §2).
-    lowered = tool_name.lower()
-    normalized = lowered.replace("-", " ").replace("_", " ").replace("/", " ")
-    compact = normalized.replace(" ", "")
 
     def _matches(tokens: frozenset[str]) -> bool:
-        for token in tokens:
-            token_norm = token.replace("-", " ").replace("_", " ")
-            token_compact = token_norm.replace(" ", "")
-            if token_norm in normalized or token_compact in compact or token in lowered:
-                return True
-        return False
+        return _driver_matches(tool_name, tokens)
 
     # Order matters: check SAST first so composite tools (e.g., "Snyk Code"
     # where both "snyk" and "snyk-code" can match) are labelled as SAST,
@@ -299,6 +321,11 @@ def normalize_sarif(
     evidence_type_override: EvidenceType | None = None,
     artifact_root: str | None = None,
 ) -> NormalizedEvidence:
+    if evidence_type_override is None and is_unsupported_sarif_driver(parsed.tool_name):
+        raise ValueError(
+            f"SARIF from {parsed.tool_name!r} (OpenSSF Scorecard) reports repository "
+            "posture checks, which no evidence type models; it is not classified as a scan"
+        )
     evidence_type, classification = _classify_sarif_with_provenance(
         parsed.tool_name, evidence_type_override
     )
