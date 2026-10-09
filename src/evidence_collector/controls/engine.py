@@ -153,16 +153,27 @@ def _rejected_exceptions_for(
     for exc in exceptions:
         if exc.control_id != control_id:
             continue
-        if exc.is_valid_for(application=application, release_id=release_id, now=now):
-            continue
-        if now >= exc.expires_at:
-            why = f"expired {exc.expires_at.isoformat()}"
-        elif now < exc.approved_at:
-            why = f"not yet in effect, approved_at {exc.approved_at.isoformat()}"
-        else:
-            why = "out of scope for this application/release"
-        reasons.append(f"{exc.exception_id} ({why})")
+        why = exception_not_in_force_reason(exc, application, release_id, now)
+        if why is not None:
+            reasons.append(f"{exc.exception_id} ({why})")
     return reasons
+
+
+def exception_not_in_force_reason(
+    exc: EvidenceException, application: str, release_id: str, now: datetime
+) -> str | None:
+    """Why ``exc`` does not apply to this release at ``now``, or None if it does.
+
+    The single wording for a refused waiver, shared by the control rationale
+    and the reports so the two never disagree about the same exception.
+    """
+    if exc.is_valid_for(application=application, release_id=release_id, now=now):
+        return None
+    if now >= exc.expires_at:
+        return f"expired {exc.expires_at.isoformat()}"
+    if now < exc.approved_at:
+        return f"not yet in effect, approved_at {exc.approved_at.isoformat()}"
+    return "out of scope for this application/release"
 
 
 def evaluate_control(
