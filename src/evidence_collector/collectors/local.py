@@ -42,7 +42,10 @@ from evidence_collector.normalizers import (
     normalize_vsa,
     normalize_zap,
 )
-from evidence_collector.normalizers.engine import is_unsupported_sarif_driver
+from evidence_collector.normalizers.engine import (
+    is_unsupported_sarif_driver,
+    unsupported_sarif_reason,
+)
 from evidence_collector.parsers import (
     parse_attestation,
     parse_croissant,
@@ -491,10 +494,11 @@ class LocalArtifactCollector:
                 # secrets and SCA controls as missing critical evidence while
                 # both scans had in fact been supplied.
                 #
-                # Runs from a tool no evidence type models (OpenSSF Scorecard)
-                # are skipped rather than falling back to `sast_scan`. A file
-                # with nothing else is listed as ignored; in a merged file the
-                # other runs are still collected and the skip is logged.
+                # Runs that are not scan evidence (OpenSSF Scorecard, or this
+                # collector's own gap report) are skipped rather than falling
+                # back to `sast_scan`. A file with nothing else is listed as
+                # ignored; in a merged file the other runs are still collected
+                # and the skip is logged.
                 runs = parse_sarifs(file_path)
                 skipped = [p.tool_name for p in runs if is_unsupported_sarif_driver(p.tool_name)]
                 for parsed in runs:
@@ -509,10 +513,12 @@ class LocalArtifactCollector:
                         report.ignored.append(shown)
                     else:
                         logger.warning(
-                            "Skipped SARIF run(s) from %s in %s: OpenSSF Scorecard posture "
-                            "results are not scan evidence",
+                            "Skipped SARIF run(s) from %s in %s: %s",
                             ", ".join(skipped),
                             shown,
+                            "; ".join(
+                                sorted({unsupported_sarif_reason(name) or "" for name in skipped})
+                            ),
                         )
                 return
             # Native Trivy JSON. Checked early because it is the only

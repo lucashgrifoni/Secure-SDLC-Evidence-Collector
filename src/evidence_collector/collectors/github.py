@@ -136,6 +136,7 @@ class GitHubCollector:
             "reviewers_approved": reviewers_approved,
             "last_approval_after_last_commit": last_approval_after_last_commit,
             "head_sha": head_sha,
+            "merge_commit_sha": pr_payload.get("merge_commit_sha"),
             "stale_approvals": stale_approvals,
             "changes_requested": changes_requested,
             "collected_at": datetime.now(tz=UTC).isoformat(),

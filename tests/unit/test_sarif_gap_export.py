@@ -137,6 +137,36 @@ def test_a_partial_control_names_the_recommended_evidence_it_lacks(gappy: Path) 
     assert "Missing recommended evidence: sbom." in result["message"]["text"]
 
 
+def test_a_failed_record_is_not_reported_as_missing_evidence(gappy: Path) -> None:
+    """A scan that ran and failed is present; the message must not call it absent."""
+    from evidence_collector.domain.enums import EvidenceStatus
+
+    bundle = _load(gappy)
+    sca = [e for e in bundle.evidence if e.evidence_type is EvidenceType.SCA_SCAN]
+    assert sca, "the fixture should carry SCA evidence"
+    failed = [e.model_copy(update={"status": EvidenceStatus.FAILED}) for e in sca]
+    others = [e for e in bundle.evidence if e.evidence_type is not EvidenceType.SCA_SCAN]
+    target = next(e for e in bundle.control_evaluations if e.control_id == "SSDF-PW.4")
+    missing = target.model_copy(
+        update={
+            "evaluation_status": ControlEvaluationStatus.MISSING,
+            "missing_required_evidence_types": [EvidenceType.SCA_SCAN, EvidenceType.SBOM],
+            "missing_recommended_evidence_types": [],
+        }
+    )
+    bundle = bundle.model_copy(
+        update={
+            "control_evaluations": [missing],
+            "evidence": [*failed, *[e for e in others if e.evidence_type is not EvidenceType.SBOM]],
+        }
+    )
+    [result] = build_gap_sarif(bundle)["runs"][0]["results"]
+    text = result["message"]["text"]
+    assert "Missing required evidence: sbom." in text
+    assert "Required evidence present but not satisfying: sca_scan." in text
+    assert "Missing required evidence: sbom, sca_scan." not in text
+
+
 def test_every_remediation_hint_for_a_control_reaches_the_rule(gappy: Path) -> None:
     bundle = _load(gappy)
     target = next(e for e in bundle.control_evaluations if e.evaluation_status.value == "missing")

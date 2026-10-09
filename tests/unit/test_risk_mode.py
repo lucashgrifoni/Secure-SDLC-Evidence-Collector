@@ -92,15 +92,49 @@ def test_no_intelligence_preserves_base_verdict_and_says_so() -> None:
     never-supplied feed all landed here and produced a bundle asserting the
     release had no exploitable CVEs. The verdict behaviour (base preserved) is
     unchanged — only the claim is now honest.
+
+    The records are real SCA evidence that was never enriched: with an empty
+    list the ``vulnerability_intelligence is None`` branch is never reached, and
+    counting such a record as enriched brought the false claim back unnoticed.
     """
     summary = _summary(ReleaseStatus.READY)
-    out = apply_risk_mode(summary, [], mode=RiskMode.EPSS_WEIGHTED)
+    unenriched = [
+        _evidence([]).model_copy(
+            update={
+                "evidence_id": f"sca-{i}",
+                "cve_ids": [f"CVE-2024-000{i}"],
+                "vulnerability_intelligence": None,
+            }
+        )
+        for i in range(1, 4)
+    ]
+    out = apply_risk_mode(summary, unenriched, mode=RiskMode.EPSS_WEIGHTED)
     assert out.release_status == ReleaseStatus.READY
     assert out.risk_assessment is not None
     assert out.risk_assessment.exploitable_cve_count == 0
     assert "no vulnerability intelligence" in out.risk_assessment.rationale
-    # The claim that no exploitable CVE exists must NOT be made here.
+    # The claim that no exploitable CVE exists must NOT be made here, and no
+    # record may be described as assessed.
     assert "No exploitable CVEs detected" not in out.risk_assessment.rationale
+    assert "enriched evidence record(s) assessed" not in out.risk_assessment.rationale
+
+
+def test_epss_percentile_equal_to_the_threshold_counts_as_high_epss() -> None:
+    """The module promises ``percentile >= threshold``; the boundary is inclusive."""
+    at_threshold = TopRiskCve(
+        cve_id="CVE-2024-0700",
+        epss_score=0.2,
+        epss_percentile=DEFAULT_EPSS_PERCENTILE_THRESHOLD,
+        in_kev=False,
+        known_ransomware=False,
+    )
+    out = apply_risk_mode(
+        _summary(ReleaseStatus.READY), [_evidence([at_threshold])], mode=RiskMode.EPSS_WEIGHTED
+    )
+    assert out.release_status == ReleaseStatus.CONDITIONAL
+    assert out.risk_assessment is not None
+    assert out.risk_assessment.high_epss_cve_count == 1
+    assert out.risk_assessment.exploitable_cve_count == 1
 
 
 def test_enriched_evidence_without_exploitable_cves_reports_a_clean_assessment() -> None:

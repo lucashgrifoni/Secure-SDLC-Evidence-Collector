@@ -384,7 +384,7 @@ def test_collect_pipeline_maps_gitlab_status_to_evidence_status(
                     "id": 4242,
                     "status": gitlab_status,
                     "source": "push",
-                    "sha": "abcdef1234567890",
+                    "sha": f"{sample_release.commit_sha}{'0' * 24}",
                     "web_url": "https://gitlab.com/o/p/-/pipelines/4242",
                     "name": "deploy",
                     "created_at": "2026-04-10T12:00:00Z",
@@ -409,6 +409,27 @@ def test_collect_pipeline_maps_gitlab_status_to_evidence_status(
     assert evidence.metadata["workflow_name"] == "deploy"
     assert evidence.source.name == "gitlab-ci"
     assert evidence.producer == "gitlab-ci"
+
+
+def test_pipeline_of_another_commit_is_not_evidence_for_the_release(sample_release) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/pipelines/4242"):
+            return httpx.Response(
+                200,
+                json={"id": 4242, "status": "success", "sha": "9" * 40, "name": "deploy"},
+            )
+        return httpx.Response(404)
+
+    client = _client(handler)
+    try:
+        evidence = GitLabCollector(
+            GitLabCollectorConfig(project="o/p"), sample_release, client=client
+        ).collect_pipeline(4242)
+    finally:
+        client.close()
+
+    assert evidence.status is EvidenceStatus.UNKNOWN
+    assert evidence.metadata["release_commit_match"] is False
 
 
 # ---------------------------------------------------------------------------

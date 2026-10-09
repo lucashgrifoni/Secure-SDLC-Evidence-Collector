@@ -179,8 +179,11 @@ def test_vulns_numeric_score_is_not_guessed_into_a_bucket(tmp_path: Path) -> Non
     assert parsed.findings_count == {"medium": 1, "unknown": 1}
 
 
-def test_vulns_high_severity_fails_the_evidence(tmp_path: Path) -> None:
-    parsed = parse_intoto_statement(_write(tmp_path, _vulns_payload("critical")))
+@pytest.mark.parametrize("severity", ["critical", "high"])
+def test_vulns_high_severity_fails_the_evidence(tmp_path: Path, severity: str) -> None:
+    """High blocks on its own, as it does for SARIF, OSV, Trivy and ZAP."""
+    parsed = parse_intoto_statement(_write(tmp_path, _vulns_payload(severity)))
+    assert parsed.findings_count.get("high", 0) == (1 if severity == "high" else 0)
     ev = normalize_intoto_statement(parsed, _release())
     assert ev.status == EvidenceStatus.FAILED
 

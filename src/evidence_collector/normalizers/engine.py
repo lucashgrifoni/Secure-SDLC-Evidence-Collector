@@ -103,6 +103,12 @@ _SECRETS_TOOLS: frozenset[str] = frozenset(
 # pinned dependencies, ...); with no token matching it fell back to
 # `sast_scan` and, lacking high/critical results, satisfied SSDF-PW.7.
 _UNSUPPORTED_SARIF_TOOLS: frozenset[str] = frozenset({"scorecard"})
+# The driver name of the gap log `sdlc-evidence sarif` writes (TOOL_NAME in
+# exporters/sarif_gaps.py). That log reports unmet controls; it is not a scan.
+# Left in a later --artifacts-dir it fell back to `sast_scan`, and a log from
+# a ready release, having no results, met SSDF-PW.7 as a passing SAST scan.
+# Matched exactly: it is a name this tool writes, not a family of producers.
+_SELF_SARIF_DRIVER = "secure-sdlc-evidence-collector"
 
 
 def _driver_matches(tool_name: str, tokens: frozenset[str]) -> bool:
@@ -125,14 +131,23 @@ def _driver_matches(tool_name: str, tokens: frozenset[str]) -> bool:
     return False
 
 
-def is_unsupported_sarif_driver(tool_name: str) -> bool:
-    """Whether a SARIF run comes from a tool no evidence type models.
+def unsupported_sarif_reason(tool_name: str) -> str | None:
+    """Why a SARIF run is not scan evidence of any modelled type, or ``None``.
 
     Such a run must not be classified at all: the fallback would record it
     as `sast_scan`. The local collector skips these runs; see
     docs/limitations.md §2.
     """
-    return _driver_matches(tool_name, _UNSUPPORTED_SARIF_TOOLS)
+    if tool_name.strip().lower() == _SELF_SARIF_DRIVER:
+        return "this collector's own gap report lists unmet controls, not scan results"
+    if _driver_matches(tool_name, _UNSUPPORTED_SARIF_TOOLS):
+        return "OpenSSF Scorecard reports repository posture checks, which no evidence type models"
+    return None
+
+
+def is_unsupported_sarif_driver(tool_name: str) -> bool:
+    """Whether a SARIF run comes from a tool no evidence type models."""
+    return unsupported_sarif_reason(tool_name) is not None
 
 
 def _new_evidence_id(prefix: str, *parts: str) -> str:
@@ -321,10 +336,10 @@ def normalize_sarif(
     evidence_type_override: EvidenceType | None = None,
     artifact_root: str | None = None,
 ) -> NormalizedEvidence:
-    if evidence_type_override is None and is_unsupported_sarif_driver(parsed.tool_name):
+    unsupported = unsupported_sarif_reason(parsed.tool_name)
+    if evidence_type_override is None and unsupported is not None:
         raise ValueError(
-            f"SARIF from {parsed.tool_name!r} (OpenSSF Scorecard) reports repository "
-            "posture checks, which no evidence type models; it is not classified as a scan"
+            f"SARIF from {parsed.tool_name!r} is not classified as a scan: {unsupported}"
         )
     evidence_type, classification = _classify_sarif_with_provenance(
         parsed.tool_name, evidence_type_override
@@ -1410,6 +1425,24 @@ def normalize_attestation(
     )
 
 
+def _release_commit_match(release: ReleaseContext, *shas: object) -> bool | None:
+    """Whether any of ``shas`` names the release commit; ``None`` if none is given.
+
+    The release context may name the commit by an abbreviated SHA while the
+    platform reports the full one, so one being a prefix of the other (seven
+    characters at least, as git abbreviates) counts as the same commit.
+    """
+    given = [s.strip().lower() for s in shas if isinstance(s, str) and s.strip()]
+    if not given:
+        return None
+    wanted = release.commit_sha.lower()
+    for sha in given:
+        shorter, longer = sorted((sha, wanted), key=len)
+        if len(shorter) >= 7 and longer.startswith(shorter):
+            return True
+    return False
+
+
 def normalize_pr_metadata(
     payload: dict[str, Any],
     release: ReleaseContext,
@@ -1419,7 +1452,14 @@ def normalize_pr_metadata(
     Expected keys (see `collectors.github`): `number`, `reviewers_required`,
     `reviewers_approved`, `last_approval_after_last_commit`, `html_url`,
     `merged`, `base`, `head`, `title`, `author`. Optional: `head_sha`,
-    `stale_approvals`, `changes_requested`.
+    `merge_commit_sha`, `squash_commit_sha`, `stale_approvals`,
+    `changes_requested`.
+
+    ``metadata.release_commit_match`` records whether the PR head or its
+    merge commit is the release commit (``None`` when no SHA was reported).
+    It does not change the verdict: a release is usually a later commit that
+    contains the merge, which equality cannot tell apart from an unrelated
+    PR, so a mismatch is stated in the summary rather than failed.
     """
     approved = int(payload.get("reviewers_approved", 0))
     required = int(payload.get("reviewers_required", 1))
@@ -1435,6 +1475,17 @@ def normalize_pr_metadata(
         status = EvidenceStatus.FAILED
     else:
         status = EvidenceStatus.MISSING
+    match = _release_commit_match(
+        release,
+        payload.get("head_sha"),
+        payload.get("merge_commit_sha"),
+        payload.get("squash_commit_sha"),
+    )
+    binding = (
+        f"; head/merge commit is not the release commit {release.commit_sha}"
+        if match is False
+        else ""
+    )
     subject_ref = f"PR-{payload.get('number', '?')}"
     pr_digest_key = f"{payload.get('number', '?')}|{payload.get('html_url', '')}"
     collected_at = payload.get("collected_at")
@@ -1462,9 +1513,9 @@ def normalize_pr_metadata(
         collected_at=collected_at_dt,
         summary=(
             f"PR {subject_ref}: {approved}/{required} approvals, "
-            f"last_approval_after_last_commit={after_last_commit}"
+            f"last_approval_after_last_commit={after_last_commit}{binding}"
         ),
-        metadata=payload,
+        metadata={**payload, "release_commit_match": match},
     )
 
 
@@ -1480,6 +1531,12 @@ def normalize_workflow_run(
     this code does not know, become UNKNOWN, which no control counts as
     satisfying. They used to become COMPLETED, which does count, so a run that
     had not finished met "status checks pass".
+
+    A run is evidence for the commit it ran on. When its ``head_sha`` is not
+    the release commit the run says nothing about this release, whatever its
+    conclusion, so it is UNKNOWN and the summary names both commits; it used
+    to be PASSED and stamped with the release commit. The comparison is kept
+    in ``metadata.release_commit_match`` (``None`` when no SHA was reported).
     """
     # `or ""` because the key is present with a null value while the run is
     # unfinished; `str(None)` would read as the conclusion "none".
@@ -1490,7 +1547,15 @@ def normalize_workflow_run(
         status = EvidenceStatus.FAILED
     else:
         status = EvidenceStatus.UNKNOWN
-    if status is EvidenceStatus.UNKNOWN:
+    match = _release_commit_match(release, payload.get("head_sha"))
+    if match is False:
+        status = EvidenceStatus.UNKNOWN
+        outcome = (
+            f"ran on commit {payload.get('head_sha')}, not the release commit "
+            f"{release.commit_sha} (conclusion {conclusion or 'none'}); "
+            "it is not evidence for this release"
+        )
+    elif status is EvidenceStatus.UNKNOWN:
         run_state = str(payload.get("status") or "").lower()
         detail = conclusion or (
             f"no conclusion, status {run_state}" if run_state else "no conclusion"
@@ -1521,5 +1586,5 @@ def normalize_workflow_run(
         commit_sha=release.commit_sha,
         generated_at=None,
         summary=f"workflow {payload.get('workflow_name')} run {payload.get('run_id')} {outcome}",
-        metadata=payload,
+        metadata={**payload, "release_commit_match": match},
     )
