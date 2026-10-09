@@ -167,19 +167,64 @@ def test_sarif_driver_that_is_not_an_object_falls_back_to_unknown_tool(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("literal", ["Infinity", "-Infinity", "NaN"])
-def test_garak_digest_with_a_non_finite_count_is_not_fatal(tmp_path: Path, literal: str) -> None:
+def _garak_digest(tmp_path: Path, attempts: str | None, hits: str | None) -> Path:
+    fields = ['"entry_type": "digest"', '"probe": "p.a"']
+    if attempts is not None:
+        fields.append(f'"attempts": {attempts}')
+    if hits is not None:
+        fields.append(f'"hits": {hits}')
     path = tmp_path / "garak.report.jsonl"
     path.write_text(
         '{"entry_type": "init", "garak_version": "0.9"}\n'
-        f'{{"entry_type": "digest", "probe": "p.a", "attempts": {literal}, "hits": {literal}}}\n'
+        "{" + ", ".join(fields) + "}\n"
         '{"entry_type": "digest", "probe": "p.b", "attempts": 4, "hits": 1}\n',
         encoding="utf-8",
     )
-    parsed = parse_garak(path)
+    return path
+
+
+# A count that is not a usable number must never make a probe look clean:
+# Python's `json` accepts `Infinity` and `NaN`, and reading them as 0 (the
+# first fix) turned `hits: Infinity` into a passing probe. Like the ZAP
+# `count`, an unusable value is counted conservatively.
+@pytest.mark.parametrize(
+    ("attempts", "hits", "expected"),
+    [
+        ("5", "Infinity", (5, 1)),
+        ("5", "NaN", (5, 1)),
+        ("5", '"3"', (5, 1)),
+        ("5", "-2", (5, 1)),
+        ("5", None, (5, 1)),
+        ("0", "Infinity", (1, 1)),
+        ("Infinity", "2", (2, 2)),
+        ("NaN", "0", (1, 0)),
+        ("-Infinity", "Infinity", (1, 1)),
+    ],
+    ids=[
+        "hits-inf",
+        "hits-nan",
+        "hits-string",
+        "hits-negative",
+        "hits-missing",
+        "hits-inf-attempts-zero",
+        "attempts-inf",
+        "attempts-nan-hits-zero",
+        "both-non-finite",
+    ],
+)
+def test_garak_unusable_digest_count_never_turns_a_probe_into_a_pass(
+    tmp_path: Path, attempts: str, hits: str | None, expected: tuple[int, int]
+) -> None:
+    parsed = parse_garak(_garak_digest(tmp_path, attempts, hits))
     by_probe = {p.probe: p for p in parsed.probes}
     assert (by_probe["p.b"].attempts, by_probe["p.b"].hits) == (4, 1)
-    assert (by_probe["p.a"].attempts, by_probe["p.a"].hits) == (0, 0)
+    assert (by_probe["p.a"].attempts, by_probe["p.a"].hits) == expected
+
+
+def test_garak_non_finite_hits_counts_as_a_failing_probe(tmp_path: Path) -> None:
+    parsed = parse_garak(_garak_digest(tmp_path, "5", "Infinity"))
+    assert parsed.findings_count["high"] == 2
+    assert parsed.findings_count["info"] == 0
 
 
 @pytest.mark.parametrize(
