@@ -85,11 +85,14 @@ the kind of evidence it supports:
 - `sbom` — a CycloneDX or SPDX document.
 - `sarif` — a SARIF log.
 - `attestation` — an in-toto Statement, bare or inside a DSSE envelope
-  or Sigstore bundle (SLSA provenance, VSA, release and registry
-  attestations, other in-toto predicates).
+  or Sigstore bundle (SLSA provenance, VSA, release attestations, other
+  in-toto predicates).
 - `evidence` — anything else: tool-native JSON such as ZAP, Trivy or
-  OSV-Scanner reports, the collector's own YAML/JSON attestations,
-  JUnit XML, AI evaluation results.
+  OSV-Scanner reports, package-registry attestation responses (a PyPI
+  Integrity API provenance object, an npm or GitHub `attestations[]`
+  list), the collector's own YAML/JSON attestations, JUnit XML, AI
+  evaluation results. Registry responses wrap their statements in a
+  shape GUAC does not read, so they are not `attestation`.
 
 The collector does not ingest VEX documents, so the container never
 lists one.

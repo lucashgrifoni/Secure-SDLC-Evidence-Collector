@@ -52,9 +52,11 @@ GUAC_DOCUMENT_TYPES: tuple[str, ...] = ("sbom", "sarif", "attestation", "evidenc
 # The source kinds whose file is an in-toto Statement, bare or wrapped in a
 # DSSE envelope or a Sigstore bundle. `attestation` (no prefix) is the
 # collector's own YAML/JSON attestation format, which is not in-toto.
-_INTOTO_SOURCE_KINDS = frozenset(
-    {"slsa-provenance", "slsa-vsa", "release-attestation", "registry-attestation"}
-)
+# `registry-attestation` is left out on purpose: those files are registry API
+# wrappers (a PyPI Integrity API provenance object, an npm or GitHub
+# `attestations[]` response) around the statements, a shape GUAC's file
+# collector does not read, so they are `evidence`.
+_INTOTO_SOURCE_KINDS = frozenset({"slsa-provenance", "slsa-vsa", "release-attestation"})
 
 
 def _document_type_for(evidence: NormalizedEvidence) -> str:
