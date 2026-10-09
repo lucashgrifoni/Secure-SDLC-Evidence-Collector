@@ -410,3 +410,17 @@ Confirm that no sdlc-evidence process is still running (the lock records `pid`,
 Never delete the output files: if one is missing, the `.<name>~o??????` file
 beside it holds the previous output and is restored by renaming it back. See
 [migration and limits](evidence-profile-migration.md#output-locking-and-recovery).
+
+## 20 · `report.md` escapes text the tool wrote as well
+
+`report.md` passes free-text values through the same Markdown escaping
+whether they came from an input file or from the collector itself. Control
+names, rationales, gap descriptions, evidence references and the missing
+critical evidence list are escaped like package names and waiver
+justifications, so the raw file shows backslashes before `*`, `_`, `` ` ``,
+`~`, `[`, `]`, `|` and `\`, and `&lt;`/`&gt;` for angle brackets. A rationale
+reads `missing required evidence types model\_card` in the file, and a
+Markdown renderer displays `model_card`. Scripts that grep or diff the raw
+`report.md` must expect the escaped form; read `bundle.json` for the
+unescaped values. Values inside code spans (control IDs, paths, digests) are
+not backslash-escaped; only backticks and pipes are altered there.
