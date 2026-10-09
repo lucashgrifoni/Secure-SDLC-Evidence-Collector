@@ -631,3 +631,27 @@ def test_reports_omit_the_approved_section_when_no_waiver_is_in_force() -> None:
     assert "Approved exceptions" not in bundle_to_html(bundle)
     assert "Exceptions not in force" in bundle_to_markdown(bundle)
     assert "Exceptions not in force" in bundle_to_html(bundle)
+
+
+def test_html_controls_tile_breakdown_adds_up_to_the_total() -> None:
+    # The tile showed met, partial and missing only, so a waived or n/a control
+    # left its breakdown one short of the total printed above it.
+    bundle = _build_bundle()
+    summary = bundle.summary.model_copy(
+        update={
+            "total_controls": 5,
+            "controls_met": 1,
+            "controls_partial": 1,
+            "controls_missing": 1,
+            "controls_waived": 1,
+            "controls_not_applicable": 1,
+        }
+    )
+    html = bundle_to_html(bundle.model_copy(update={"summary": summary}))
+
+    breakdown = re.search(
+        r'<div class="label">Controls</div>.*?<div class="meta">(.*?)</div>', html, flags=re.DOTALL
+    )
+    assert breakdown is not None
+    text = " ".join(breakdown.group(1).split())
+    assert text == "1 met · 1 partial · 1 missing · 1 waived · 1 n/a"
