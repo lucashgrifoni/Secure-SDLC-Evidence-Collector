@@ -8,12 +8,25 @@ from pathlib import Path
 import pytest
 
 from evidence_collector.controls import default_catalog, evaluate_controls
-from evidence_collector.domain.enums import ControlEvaluationStatus, ReleaseStatus
+from evidence_collector.domain.enums import (
+    ConfidenceLevel,
+    ControlCriticality,
+    ControlEvaluationStatus,
+    EvidenceStatus,
+    EvidenceType,
+    ReleaseStatus,
+    SubjectType,
+)
 from evidence_collector.domain.models import (
     Application,
+    ControlEvaluation,
     EvidenceException,
+    EvidenceSource,
     ExceptionScope,
+    Gap,
+    NormalizedEvidence,
     ReleaseContext,
+    Summary,
 )
 from evidence_collector.parsers import parse_exception
 from evidence_collector.parsers._common import ParseError
@@ -383,10 +396,191 @@ def test_cli_helpers_agree_with_the_engine_about_which_waivers_are_live() -> Non
     assert _in_force(waiver, before) is False
     assert _in_force(waiver, after) is False
 
+    # The upper bound is exclusive: at the expiry instant the waiver is over.
+    at_expiry = waiver.expires_at
+    assert _in_force(waiver, at_expiry) is False
+
     # Whatever the engine decides, the note explains it.
-    for now in (inside, before, after):
+    for now in (inside, before, after, at_expiry):
         assert bool(_window_note(waiver, now)) is not _in_force(waiver, now)
         assert waiver.is_valid_for(application="", release_id="", now=now) == _in_force(waiver, now)
 
     assert "NOT YET IN EFFECT" in _window_note(waiver, before)
     assert "EXPIRED" in _window_note(waiver, after)
+    assert "EXPIRED" in _window_note(waiver, at_expiry)
+
+
+# ---------------------------------------------------------------------------
+# A waiver is what turns a single gap into a release (D41)
+#
+# Mutation testing on 4.0.0 found every waiver test ran against an evidence set
+# with many other critical gaps, so the verdict was NOT_READY either way. These
+# mutants survived: waived gaps keeping their criticality (the waiver no longer
+# unblocks anything), a waiver flipping an already-MET control to WAIVED,
+# waived controls earning zero coverage, and waived controls dropped from the
+# confidence average. Here the waived control is the only gap.
+# ---------------------------------------------------------------------------
+
+_FULL_EVIDENCE_TYPES = (
+    EvidenceType.SAST_SCAN,
+    EvidenceType.SCA_SCAN,
+    EvidenceType.SECRETS_SCAN,
+    EvidenceType.DAST_SCAN,
+    EvidenceType.SBOM,
+    EvidenceType.TEST_RESULT,
+    EvidenceType.CODE_REVIEW,
+    EvidenceType.PR_METADATA,
+    EvidenceType.THREAT_MODEL,
+    EvidenceType.RELEASE_APPROVAL,
+    EvidenceType.ROLLBACK_PLAN,
+    EvidenceType.ARTIFACT_SIGNATURE,
+    EvidenceType.ARTIFACT_ATTESTATION,
+)
+_WAIVER_NOW = datetime(2026, 4, 15, tzinfo=UTC)
+
+
+def _evidence_without(*left_out: EvidenceType) -> list[NormalizedEvidence]:
+    return [
+        NormalizedEvidence(
+            evidence_id=f"ev-{evidence_type.value}",
+            evidence_type=evidence_type,
+            source=EvidenceSource(name="t", kind="t"),
+            producer="t",
+            subject_type=SubjectType.COMMIT,
+            subject_ref="abcdef1234567",
+            status=(
+                EvidenceStatus.GENERATED
+                if evidence_type == EvidenceType.SBOM
+                else EvidenceStatus.PASSED
+            ),
+            confidence=ConfidenceLevel.HIGH,
+            release_id="2026.04.10",
+            commit_sha="abcdef1234567",
+        )
+        for evidence_type in _FULL_EVIDENCE_TYPES
+        if evidence_type not in left_out
+    ]
+
+
+def _run_with(
+    exceptions: list[EvidenceException], *left_out: EvidenceType
+) -> tuple[list[ControlEvaluation], list[Gap], Summary]:
+    catalog = default_catalog()
+    evaluations, gaps = evaluate_controls(
+        catalog,
+        _evidence_without(*left_out),
+        exceptions=exceptions,
+        application="payments-api",
+        release="2026.04.10",
+        now=_WAIVER_NOW,
+    )
+    return evaluations, gaps, build_summary(catalog, evaluations, gaps)
+
+
+def test_the_only_gap_blocks_the_release_without_its_waiver() -> None:
+    evaluations, _, summary = _run_with([], EvidenceType.ROLLBACK_PLAN)
+    rollback = next(e for e in evaluations if e.control_id == "ORG-REL-ROLLBACK")
+    assert rollback.evaluation_status == ControlEvaluationStatus.MISSING
+    assert summary.release_status == ReleaseStatus.NOT_READY
+    # 17 weight units in the default catalog (13 required x 1.0, 8 recommended
+    # x 0.5); the missing rollback plan costs 1.0 of them: 16/17 -> 94.
+    assert summary.evidence_coverage_score == 94
+    # The MISSING control is outside the average; the other twelve are HIGH.
+    assert summary.confidence_score == 100
+    assert summary.missing_critical_evidence == ["ORG-REL-ROLLBACK:rollback_plan"]
+
+
+def test_a_valid_waiver_for_the_only_gap_makes_the_release_ready() -> None:
+    waiver = _exception(
+        control_id="ORG-REL-ROLLBACK", application="payments-api", release_id="2026.04.10"
+    )
+    evaluations, gaps, summary = _run_with([waiver], EvidenceType.ROLLBACK_PLAN)
+
+    rollback = next(e for e in evaluations if e.control_id == "ORG-REL-ROLLBACK")
+    assert rollback.evaluation_status == ControlEvaluationStatus.WAIVED
+    assert rollback.confidence == ConfidenceLevel.LOW
+    assert rollback.exception_refs == [waiver.exception_id]
+    assert rollback.missing_required_evidence_types == [EvidenceType.ROLLBACK_PLAN]
+
+    # The gap stays visible to the auditor, but downgraded so it cannot block.
+    rollback_gaps = [g for g in gaps if g.control_id == "ORG-REL-ROLLBACK"]
+    assert [g.criticality for g in rollback_gaps] == [ControlCriticality.LOW]
+    assert waiver.exception_id in rollback_gaps[0].description
+
+    assert summary.release_status == ReleaseStatus.READY
+    assert summary.controls_waived == 1
+    assert summary.controls_missing == 0
+    # A waived control earns its full weight.
+    assert summary.evidence_coverage_score == 100
+    # And it counts in the confidence average at LOW: (12 x 100 + 33) / 13 -> 95.
+    assert summary.confidence_score == 95
+    assert summary.missing_critical_evidence == []
+
+
+def test_a_waiver_never_downgrades_a_control_that_is_already_met() -> None:
+    waiver = _exception(control_id="SSDF-PW.7", application="payments-api", release_id="2026.04.10")
+    evaluations, gaps, summary = _run_with([waiver])
+
+    sast = next(e for e in evaluations if e.control_id == "SSDF-PW.7")
+    assert sast.evaluation_status == ControlEvaluationStatus.MET
+    assert sast.confidence == ConfidenceLevel.HIGH
+    assert "waived" not in sast.rationale
+    assert not gaps
+    assert summary.controls_waived == 0
+    assert summary.controls_met == len(evaluations)
+    assert summary.confidence_score == 100
+
+
+def test_a_waiver_for_another_control_does_not_waive_this_one() -> None:
+    waiver = _exception(control_id="SSDF-PW.7", application="payments-api", release_id="2026.04.10")
+    evaluations, _, summary = _run_with([waiver], EvidenceType.ROLLBACK_PLAN)
+    rollback = next(e for e in evaluations if e.control_id == "ORG-REL-ROLLBACK")
+    assert rollback.evaluation_status == ControlEvaluationStatus.MISSING
+    assert rollback.exception_refs == []
+    assert summary.release_status == ReleaseStatus.NOT_READY
+
+
+# ---------------------------------------------------------------------------
+# Waiver window boundaries (D70)
+#
+# The window is half-open, [approved_at, expires_at). Every comparison on it
+# could be flipped between strict and non-strict without a test failing on
+# 4.0.0, because no test sat exactly on a boundary.
+# ---------------------------------------------------------------------------
+
+
+def test_waiver_is_not_valid_at_its_expiry_instant() -> None:
+    waiver = _exception()
+    assert waiver.is_valid_for(application="", release_id="", now=waiver.expires_at) is False
+    just_before = waiver.expires_at - timedelta(microseconds=1)
+    assert waiver.is_valid_for(application="", release_id="", now=just_before) is True
+
+
+def test_a_zero_length_waiver_window_is_rejected() -> None:
+    approved = datetime(2026, 4, 10, tzinfo=UTC)
+    with pytest.raises(ValueError, match="expires_at must be strictly after approved_at"):
+        EvidenceException(
+            exception_id="EXC-ZERO",
+            control_id="SSDF-PW.1",
+            approver="appsec-lead@example.com",
+            approved_at=approved,
+            expires_at=approved,
+            justification="No new trust boundary; follow-up scheduled for next quarter.",
+        )
+
+
+def test_engine_calls_a_waiver_expired_at_its_expiry_instant() -> None:
+    waiver = _exception(application="app", release_id="1.0.0")
+    evaluations, _ = evaluate_controls(
+        default_catalog(),
+        [],
+        exceptions=[waiver],
+        application="app",
+        release="1.0.0",
+        now=waiver.expires_at,
+    )
+    target = next(e for e in evaluations if e.control_id == waiver.control_id)
+    assert target.evaluation_status == ControlEvaluationStatus.MISSING
+    assert target.exception_refs == []
+    assert f"{waiver.exception_id} (expired {waiver.expires_at.isoformat()})" in target.rationale
+    assert "out of scope" not in target.rationale
