@@ -51,6 +51,8 @@ verify-bundle:
       bundle = json.loads(Path("release-evidence/bundle.json").read_text())
       assert bundle["application"]["name"] == "Demo release with spaces"
       assert bundle["release"]["commit_sha"] == os.environ["CI_COMMIT_SHA"]
+      assert bundle["release"]["tag"] == (os.environ.get("CI_COMMIT_TAG") or None)
+      assert bundle["release"]["pipeline_run_id"] == os.environ["CI_PIPELINE_ID"]
       assert bundle["summary"]["release_status"] == "ready"
       assert Path(bundle["evidence"][0]["raw"]["artifact_path"]).as_posix() == "scanner output/sbom.json"
       assert Path("release-evidence/report.md").is_file()

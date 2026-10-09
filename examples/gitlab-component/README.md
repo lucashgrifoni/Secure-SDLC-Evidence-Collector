@@ -37,7 +37,11 @@ Use an exact component version or reviewed commit SHA in production.
 | collector-version | 3.2.0 | Exact package version |
 | fail-on | conditional | Failure threshold |
 
-The job records the pipeline commit SHA and ref, and writes `release-evidence/`
+The job records the pipeline commit SHA, the pipeline ID as the pipeline run
+and the job ID as the build. On a tag pipeline the tag is recorded as the
+release tag. GitLab gives tag pipelines no branch, so the branch field takes
+`CI_DEFAULT_BRANCH`; branch and merge request pipelines record their own
+branch. The job writes `release-evidence/`
 with a 30-day GitLab artifact expiry. Set artifact access restrictions in your
 project according to the sensitivity of the supplied evidence. Input values
 are passed as quoted arguments, including paths and names with spaces.
@@ -51,8 +55,8 @@ evidence rules. A presence check alone cannot establish that a security control
 is effective.
 
 The component pipeline tests an SBOM, a custom catalog, names and paths with
-spaces, the release commit identity, bundle verification and all three outputs.
-Tag pipelines run those checks before the Catalog release job.
+spaces, the release commit, tag and pipeline identity, bundle verification and
+all three outputs. Tag pipelines run those checks before the Catalog release job.
 
 Collector documentation and license:
 [Secure SDLC Evidence Collector](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector).
