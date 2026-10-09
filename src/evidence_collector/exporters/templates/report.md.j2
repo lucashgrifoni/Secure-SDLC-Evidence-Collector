@@ -78,19 +78,32 @@ in `bundle.json`.
   {{ evaluation.rationale | md }}
 {% endfor %}
 
-{% if bundle.exceptions %}
+{% set exceptions_in_force, exceptions_not_in_force = split_exceptions(bundle) %}
+{% if exceptions_in_force %}
 ## Approved exceptions
 
 | Exception ID | Control | Approver | Approved at | Expires at | Reference |
 |--------------|---------|----------|-------------|------------|-----------|
-{% for exception in bundle.exceptions %}
+{% for exception in exceptions_in_force %}
 | `{{ exception.exception_id | md_code }}` | `{{ exception.control_id | md_code }}` | {{ exception.approver | md }} | {{ exception.approved_at.isoformat() }} | {{ exception.expires_at.isoformat() }} | {{ exception.reference | md or "-" }} |
 {% endfor %}
 
 ### Justifications
 
-{% for exception in bundle.exceptions %}
+{% for exception in exceptions_in_force %}
 - **`{{ exception.exception_id | md_code }}`** ({{ exception.control_id | md }}): {{ exception.justification | md }}
+{% endfor %}
+{% endif %}
+
+{% if exceptions_not_in_force %}
+## Exceptions not in force
+
+Supplied with the evidence but not applied to this release.
+
+| Exception ID | Control | Approver | Expires at | Why it does not apply |
+|--------------|---------|----------|------------|-----------------------|
+{% for exception, reason in exceptions_not_in_force %}
+| `{{ exception.exception_id | md_code }}` | `{{ exception.control_id | md_code }}` | {{ exception.approver | md }} | {{ exception.expires_at.isoformat() }} | {{ reason | md }} |
 {% endfor %}
 {% endif %}
 
