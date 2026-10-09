@@ -187,3 +187,109 @@ def test_scoring_coverage_never_decreases_with_more_evidence(
         full.bundle.summary.evidence_coverage_score
         >= only_attestations.bundle.summary.evidence_coverage_score
     ), "adding evidence must never lower coverage"
+
+
+# ---------- Risk-weighted verdict (D13) ---------- #
+
+
+_STATUS_ORDER = ["ready", "conditional", "not_ready"]
+
+_top_risk_cve = st.builds(
+    lambda idx, pct, kev, ransom: (idx, pct, kev, kev and ransom),
+    st.integers(min_value=1000, max_value=9999),
+    st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
+    st.booleans(),
+    st.booleans(),
+)
+
+
+@given(
+    base=st.sampled_from(_STATUS_ORDER),
+    tops=st.lists(_top_risk_cve, max_size=6),
+    extra_kev=st.integers(min_value=0, max_value=3),
+    extra_ransomware=st.integers(min_value=0, max_value=3),
+    threshold=st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
+)
+@settings(max_examples=200, deadline=None)
+def test_risk_mode_never_lowers_the_base_status(
+    base: str,
+    tops: list[tuple[int, float, bool, bool]],
+    extra_kev: int,
+    extra_ransomware: int,
+    threshold: float,
+) -> None:
+    """Whatever the EPSS / KEV signal, epss-weighted mode never promotes a verdict."""
+    from datetime import UTC, datetime
+
+    from evidence_collector.domain.enums import (
+        ConfidenceLevel,
+        EvidenceStatus,
+        EvidenceType,
+        ReleaseStatus,
+        SubjectType,
+    )
+    from evidence_collector.domain.models import (
+        EvidenceSource,
+        NormalizedEvidence,
+        Summary,
+        TopRiskCve,
+        VulnerabilityIntelligence,
+    )
+    from evidence_collector.scoring import RiskMode, RiskThresholds, apply_risk_mode
+
+    top_risk = [
+        TopRiskCve(
+            cve_id=f"CVE-2024-{idx}",
+            epss_score=pct,
+            epss_percentile=pct,
+            in_kev=kev,
+            known_ransomware=ransom,
+        )
+        for idx, pct, kev, ransom in tops
+    ]
+    in_kev = sum(1 for t in top_risk if t.in_kev) + extra_kev
+    ransomware = sum(1 for t in top_risk if t.known_ransomware) + min(extra_ransomware, extra_kev)
+    evidence = NormalizedEvidence(
+        evidence_id="sca-prop",
+        evidence_type=EvidenceType.SCA_SCAN,
+        source=EvidenceSource(name="trivy", kind="sca"),
+        producer="trivy",
+        subject_type=SubjectType.ARTIFACT,
+        subject_ref="acme/api@1.0",
+        status=EvidenceStatus.GENERATED,
+        confidence=ConfidenceLevel.HIGH,
+        release_id="2026.05.19",
+        commit_sha="abcdef1234567890",
+        cve_ids=["CVE-2024-0001"],
+        vulnerability_intelligence=VulnerabilityIntelligence(
+            cve_count=len(top_risk) + extra_kev,
+            cves_in_kev_count=in_kev,
+            cves_known_ransomware_count=ransomware,
+            top_risk_cves=top_risk,
+            enriched_at=datetime(2026, 5, 19, tzinfo=UTC),
+        ),
+    )
+    summary = Summary(
+        evidence_coverage_score=80,
+        confidence_score=80,
+        release_status=ReleaseStatus(base),
+        total_controls=1,
+        controls_met=1,
+        controls_partial=0,
+        controls_missing=0,
+        controls_waived=0,
+        controls_not_applicable=0,
+    )
+    out = apply_risk_mode(
+        summary,
+        [evidence],
+        mode=RiskMode.EPSS_WEIGHTED,
+        thresholds=RiskThresholds(epss_percentile_threshold=threshold),
+    )
+    assert _STATUS_ORDER.index(out.release_status.value) >= _STATUS_ORDER.index(base)
+    assert out.risk_assessment is not None
+    assert out.risk_assessment.base_release_status.value == base
+    if ransomware:
+        assert out.release_status is ReleaseStatus.NOT_READY
+    elif in_kev:
+        assert out.release_status is not ReleaseStatus.READY

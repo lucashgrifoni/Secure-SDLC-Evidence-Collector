@@ -6,8 +6,11 @@ blind to whether the actually-present vulnerabilities are exploitable.
 
 When the run is invoked with ``--risk-mode epss-weighted`` the
 ``apply_risk_mode`` function in this module re-derives the verdict
-using the EPSS / KEV signal already embedded in evidence via
-``--enrich``:
+using the EPSS / KEV signal that ``sdlc-evidence enrich`` attaches to
+the evidence. ``run`` records the mode and threshold in
+``summary.risk_assessment``; ``enrich`` re-derives the verdict under that
+recorded mode once the intelligence is present (see
+``application.orchestrator.rederive_risk_verdict``):
 
 * a CVE in CISA KEV with ``known_ransomware`` ⇒ release is forced to
   ``not_ready`` regardless of the base verdict
@@ -93,6 +96,16 @@ def _count_exploitable(
     bundle's enrichment data, not deduplicated globally — the goal is
     "how many independent signals say something is exploitable?" not
     "how many distinct CVEs are exploitable?".
+
+    ``top_risk_cves`` holds only CVEs that have an EPSS record, capped at
+    ``--top-risk-limit``. A KEV-listed CVE with no EPSS score, or one ranked
+    below the cap, is absent from it but still counted in
+    ``cves_in_kev_count`` / ``cves_known_ransomware_count``, which the
+    enricher computes over every CVE on the evidence. Those counts are
+    therefore used as a floor: the KEV rules hold for every KEV CVE, not
+    only the ones that made the top list. Likewise ``max_epss_percentile``
+    floors the high-EPSS count at one. High-EPSS CVEs ranked below the cap
+    are not counted individually, so ``high_epss`` is a lower bound.
     """
     counters = {
         "exploitable": 0,
@@ -111,18 +124,27 @@ def _count_exploitable(
         if intel is None:
             continue
         counters["enriched_evidence"] += 1
+        top_exploitable = top_kev = top_kev_ransomware = top_high_epss = 0
         for top in intel.top_risk_cves:
             is_kev = top.in_kev
-            is_kev_ransomware = is_kev and top.known_ransomware
             is_high_epss = top.epss_percentile >= thresholds.epss_percentile_threshold
-            if is_kev or is_high_epss:
-                counters["exploitable"] += 1
-            if is_kev:
-                counters["kev"] += 1
-            if is_kev_ransomware:
-                counters["kev_ransomware"] += 1
-            if is_high_epss:
-                counters["high_epss"] += 1
+            top_exploitable += is_kev or is_high_epss
+            top_kev += is_kev
+            top_kev_ransomware += is_kev and top.known_ransomware
+            top_high_epss += is_high_epss
+        kev = max(top_kev, intel.cves_in_kev_count)
+        kev_ransomware = max(top_kev_ransomware, intel.cves_known_ransomware_count)
+        max_percentile = intel.max_epss_percentile
+        above_threshold = (
+            max_percentile is not None and max_percentile >= thresholds.epss_percentile_threshold
+        )
+        high_epss = max(top_high_epss, int(above_threshold))
+        # KEV CVEs missing from the top list are distinct from every CVE in it,
+        # so they add to the exploitable count rather than overlap with it.
+        counters["exploitable"] += max(top_exploitable + (kev - top_kev), high_epss)
+        counters["kev"] += kev
+        counters["kev_ransomware"] += kev_ransomware
+        counters["high_epss"] += high_epss
     return counters
 
 

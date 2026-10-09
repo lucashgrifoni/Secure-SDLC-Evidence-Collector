@@ -248,3 +248,158 @@ def test_threshold_override_changes_classification() -> None:
     )
     assert relaxed.release_status == ReleaseStatus.READY
     assert strict.release_status == ReleaseStatus.CONDITIONAL
+
+
+# ---------------------------------------------------------------------------
+# KEV counts are a floor, not only what made it into top_risk_cves (D07)
+#
+# The enricher builds ``top_risk_cves`` only from CVEs that have an EPSS record,
+# capped at ``--top-risk-limit``. A KEV-listed CVE without an EPSS record, or one
+# ranked below the cap, is still counted in ``cves_in_kev_count`` /
+# ``cves_known_ransomware_count``. The verdict used to read only the top list, so
+# a ransomware KEV CVE with no EPSS score left the release ``ready``.
+# ---------------------------------------------------------------------------
+
+
+def _counts_only_evidence(*, in_kev: int, ransomware: int) -> NormalizedEvidence:
+    """Evidence whose KEV CVEs are absent from ``top_risk_cves`` (no EPSS record)."""
+    return NormalizedEvidence(
+        evidence_id="sca-kev-only",
+        evidence_type=EvidenceType.SCA_SCAN,
+        source=EvidenceSource(name="trivy", kind="sca"),
+        producer="trivy",
+        subject_type=SubjectType.ARTIFACT,
+        subject_ref="acme/api@1.0",
+        status=EvidenceStatus.GENERATED,
+        confidence=ConfidenceLevel.HIGH,
+        release_id="2026.05.19",
+        commit_sha="abcdef1234567890",
+        cve_ids=["CVE-2024-7777"],
+        vulnerability_intelligence=VulnerabilityIntelligence(
+            cve_count=1,
+            cves_in_kev_count=in_kev,
+            cves_known_ransomware_count=ransomware,
+            top_risk_cves=[],
+            enriched_at=datetime(2026, 5, 19, tzinfo=UTC),
+        ),
+    )
+
+
+def test_kev_ransomware_cve_without_epss_record_forces_not_ready() -> None:
+    out = apply_risk_mode(
+        _summary(ReleaseStatus.READY),
+        [_counts_only_evidence(in_kev=1, ransomware=1)],
+        mode=RiskMode.EPSS_WEIGHTED,
+    )
+    assert out.release_status == ReleaseStatus.NOT_READY
+    assert out.risk_assessment is not None
+    assert out.risk_assessment.kev_ransomware_cve_count == 1
+    assert out.risk_assessment.kev_cve_count == 1
+    assert out.risk_assessment.exploitable_cve_count == 1
+    assert "No exploitable CVEs detected" not in out.risk_assessment.rationale
+
+
+def test_kev_cve_without_epss_record_is_at_least_conditional() -> None:
+    out = apply_risk_mode(
+        _summary(ReleaseStatus.READY),
+        [_counts_only_evidence(in_kev=1, ransomware=0)],
+        mode=RiskMode.EPSS_WEIGHTED,
+    )
+    assert out.release_status == ReleaseStatus.CONDITIONAL
+    assert out.risk_assessment is not None
+    assert out.risk_assessment.kev_cve_count == 1
+    assert out.risk_assessment.exploitable_cve_count == 1
+
+
+def test_kev_cve_ranked_below_the_top_risk_limit_still_counts() -> None:
+    """Real enricher output: the KEV CVE has a low EPSS and falls off a limit of 1."""
+    from evidence_collector.intelligence.enricher import enrich_evidence
+    from evidence_collector.intelligence.epss import EpssFeed, EpssRecord
+    from evidence_collector.intelligence.kev import KevFeed, KevRecord
+
+    epss = EpssFeed(
+        feed_date="2026-05-19",
+        records={
+            "CVE-2024-0001": EpssRecord(
+                cve_id="CVE-2024-0001", epss_score=0.5, epss_percentile=0.5
+            ),
+            "CVE-2024-0002": EpssRecord(
+                cve_id="CVE-2024-0002", epss_score=0.01, epss_percentile=0.05
+            ),
+        },
+    )
+    kev = KevFeed(
+        feed_date="2026-05-19",
+        records={
+            "CVE-2024-0002": KevRecord(
+                cve_id="CVE-2024-0002",
+                vendor_project="Acme",
+                product="Server",
+                vulnerability_name="RCE",
+                date_added="2024-01-01",
+                known_ransomware_use=True,
+            )
+        },
+    )
+    base = _counts_only_evidence(in_kev=0, ransomware=0).model_copy(
+        update={
+            "cve_ids": ["CVE-2024-0001", "CVE-2024-0002"],
+            "vulnerability_intelligence": None,
+        }
+    )
+    enriched = enrich_evidence(base, epss, kev, top_risk_limit=1)
+    assert enriched.vulnerability_intelligence is not None
+    assert [t.cve_id for t in enriched.vulnerability_intelligence.top_risk_cves] == [
+        "CVE-2024-0001"
+    ]
+    out = apply_risk_mode(_summary(ReleaseStatus.READY), [enriched], mode=RiskMode.EPSS_WEIGHTED)
+    assert out.release_status == ReleaseStatus.NOT_READY
+    assert out.risk_assessment is not None
+    assert out.risk_assessment.kev_ransomware_cve_count == 1
+
+
+def test_kev_floor_is_still_suppressed_by_not_reachable() -> None:
+    evidence = _counts_only_evidence(in_kev=1, ransomware=1).model_copy(
+        update={"reachability": Reachability(status="not_reachable", source="codeql")}
+    )
+    out = apply_risk_mode(_summary(ReleaseStatus.READY), [evidence], mode=RiskMode.EPSS_WEIGHTED)
+    assert out.release_status == ReleaseStatus.READY
+
+
+# ---------------------------------------------------------------------------
+# Risk mode never lowers the base verdict (D13)
+#
+# ``_worse`` could be mutated to ``return b`` with the suite still green: no
+# test fed a NOT_READY base together with a non-ransomware exploitable CVE.
+# ---------------------------------------------------------------------------
+
+
+def test_base_not_ready_with_high_epss_non_kev_cve_stays_not_ready() -> None:
+    hot = TopRiskCve(
+        cve_id="CVE-2024-4242",
+        epss_score=0.9,
+        epss_percentile=0.99,
+        in_kev=False,
+        known_ransomware=False,
+    )
+    out = apply_risk_mode(
+        _summary(ReleaseStatus.NOT_READY), [_evidence([hot])], mode=RiskMode.EPSS_WEIGHTED
+    )
+    assert out.release_status == ReleaseStatus.NOT_READY
+    assert out.risk_assessment is not None
+    assert out.risk_assessment.base_release_status == ReleaseStatus.NOT_READY
+    assert out.risk_assessment.exploitable_cve_count == 1
+
+
+def test_base_conditional_with_kev_non_ransomware_stays_conditional() -> None:
+    kev = TopRiskCve(
+        cve_id="CVE-2024-4343",
+        epss_score=0.1,
+        epss_percentile=0.1,
+        in_kev=True,
+        known_ransomware=False,
+    )
+    out = apply_risk_mode(
+        _summary(ReleaseStatus.CONDITIONAL), [_evidence([kev])], mode=RiskMode.EPSS_WEIGHTED
+    )
+    assert out.release_status == ReleaseStatus.CONDITIONAL

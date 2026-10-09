@@ -207,3 +207,15 @@ def test_guac_adapter_falls_back_to_evidence_for_unknown_type() -> None:
     bundle = _bundle([_evidence(evidence_type=EvidenceType.RELEASE_APPROVAL)])
     doc = build_guac_collection(bundle)
     assert doc["documents"][0]["type"] == "evidence"
+
+
+def test_cra_profile_reports_kev_cve_that_has_no_epss_record() -> None:
+    """A KEV CVE without an EPSS score never reaches top_risk_cves (D07)."""
+    evidence = _evidence()
+    assert evidence.vulnerability_intelligence is not None
+    intel = evidence.vulnerability_intelligence.model_copy(
+        update={"cves_in_kev_count": 1, "cves_known_ransomware_count": 1, "top_risk_cves": []}
+    )
+    bundle = _bundle([evidence.model_copy(update={"vulnerability_intelligence": intel})])
+    annotated = apply_profile(bundle, ReleaseProfile.CRA_2026)
+    assert annotated.evidence[0].metadata["cra"]["global_exploitation_signal"] == "kev_listed"
