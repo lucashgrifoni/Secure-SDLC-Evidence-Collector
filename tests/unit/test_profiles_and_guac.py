@@ -249,6 +249,9 @@ def _sourced(
             "attestation",
         ),
         (EvidenceType.SCA_SCAN, "in-toto-vulns", "application/json", "attestation"),
+        # PyPI Integrity API objects and npm/GitHub attestations[] responses
+        # wrap the statements in a registry shape GUAC does not read.
+        (EvidenceType.ARTIFACT_ATTESTATION, "registry-attestation", "application/json", "evidence"),
         # The collector's own attestation file (YAML or JSON) is not in-toto.
         (EvidenceType.GENERIC_ATTESTATION, "attestation", "application/yaml", "evidence"),
         (EvidenceType.ARTIFACT_SIGNATURE, "attestation", "application/json", "evidence"),
