@@ -28,14 +28,16 @@ container is a single JSON document with:
 
 * a stable release envelope (`application`, `repository`,
   `release_id`, `commit_sha`),
-* one ``documents[]`` entry per evidence with the GUAC document
-  ``type`` (sbom / sarif / attestation / vex / evidence), the
-  source artifact path, the integrity hash, and the CVE list when
-  populated.
+* one ``documents[]`` entry per evidence with the document
+  ``type`` (sbom / sarif / attestation / evidence, named for the
+  file's format; see the amendment below), the source artifact path,
+  the integrity hash, and the CVE list when populated.
 
 GUAC's own ingest format is **the document itself**; the container
-here is a routing layer that lets ``guacone collect files`` walk
-the release in one shot instead of N hand-coordinated invocations.
+here is a routing layer that says which file is which format, so the
+documents GUAC ingests can be selected and passed to
+``guacone collect files`` one by one. GUAC does not read the
+container itself.
 
 ## Consequences
 
@@ -51,6 +53,21 @@ the release in one shot instead of N hand-coordinated invocations.
 - **Bundle is the source of truth, not the container.** The GUAC
   container is a projection; consumers that need the full evidence
   graph keep reading the bundle directly.
+
+## Amendment (2026-10): format-based types, no ``vex``, no one-shot ingestion
+
+The first version derived ``type`` from the evidence type, so every
+scan was ``sarif`` (including ZAP, Trivy and OSV-Scanner JSON) and
+every attestation ``attestation`` (including the collector's own YAML
+format). ``type`` now names the file's format: ``sbom`` for
+CycloneDX/SPDX, ``sarif`` for SARIF logs, ``attestation`` for in-toto
+Statements (bare, DSSE or Sigstore bundle), ``evidence`` for anything
+else. ``vex`` was listed but never produced, because the collector does
+not ingest VEX documents; it was removed. ``artifact_path`` is written
+with forward slashes. The original text also said
+``guacone collect files`` could ingest the container in one shot; GUAC's
+file collector does not read it, and docs/guac.md now shows how to feed
+it the ``sbom`` and ``attestation`` files instead.
 
 ## On the ``watch`` daemon
 

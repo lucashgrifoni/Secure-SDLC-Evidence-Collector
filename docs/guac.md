@@ -1,24 +1,26 @@
 # Loading bundles into GUAC
 
 The Secure SDLC Evidence Collector ships a thin adapter that turns a
-bundle into a `guac-collect` container — a single JSON file that
-[GUAC](https://docs.guac.sh) can ingest in one shot, without the
-consumer having to disassemble the bundle and feed each SBOM, SARIF
-run, or attestation to `guacone collect files` by hand.
+bundle into a `guac-collect` container — a single JSON index of the
+documents behind a release, each labelled with its file format, so
+the ones [GUAC](https://docs.guac.sh) can ingest (SBOMs and in-toto
+attestations) can be picked out and fed to `guacone collect files`
+without disassembling the bundle by hand. GUAC does not read the
+container itself.
 
 ## Why
 
 GUAC (Graph for Understanding Artifact Composition) is the OpenSSF
 Incubating canonical graph backend for supply-chain metadata. It
-ingests upstream documents — SBOMs, SARIF, in-toto attestations, VEX
-— and stitches them into a graph that answers cross-repository
+ingests upstream documents — SBOMs, in-toto attestations, VEX — and
+stitches them into a graph that answers cross-repository
 questions: what depends on what, who built what, which CVEs affect
 which artifacts.
 
 A bundle already knows what each artifact is (its evidence type,
 subject, integrity hash, CVE list). The GUAC adapter is a routing
-layer: instead of N hand-coordinated `guacone` invocations, it emits
-one container that walks the whole release. The decision and its
+layer: it emits one index of the whole release that says which file
+is which format, so a script can select the ingestible ones. The decision and its
 trade-offs are recorded in
 [ADR-0012 — GUAC graph integration](./adr/0012-guac-graph-integration.md).
 
@@ -74,37 +76,56 @@ The container shape:
 }
 ```
 
-Each `documents[]` entry carries the GUAC document `type`
-(`sbom` / `sarif` / `attestation` / `vex` / `evidence`), the source
-artifact path, the integrity hash, and the CVE list when populated.
-Evidence types that GUAC does not have a native collector for fall
-back to `type: "evidence"`.
+Each `documents[]` entry carries the document `type`
+(`sbom` / `sarif` / `attestation` / `evidence`), the source
+artifact path (always with forward slashes), the integrity hash, and
+the CVE list when populated. `type` names the format of the file, not
+the kind of evidence it supports:
+
+- `sbom` — a CycloneDX or SPDX document.
+- `sarif` — a SARIF log.
+- `attestation` — an in-toto Statement, bare or inside a DSSE envelope
+  or Sigstore bundle (SLSA provenance, VSA, release and registry
+  attestations, other in-toto predicates).
+- `evidence` — anything else: tool-native JSON such as ZAP, Trivy or
+  OSV-Scanner reports, the collector's own YAML/JSON attestations,
+  JUnit XML, AI evaluation results.
+
+The collector does not ingest VEX documents, so the container never
+lists one.
 
 ## Loading into a local GUAC instance
 
-GUAC runs as a small stack of services. Bring one up with the
-project's compose file, then point the file collector at the
-container:
+GUAC runs as a small stack of services. GUAC's file collector reads
+SBOMs, in-toto attestations, DSSE envelopes, OpenVEX, CSAF and
+Scorecard documents; it does not read the `guac-collect` container
+and has no SARIF processor. Use the container to select the
+`sbom` and `attestation` documents and hand each file to
+`guacone collect files`:
 
 ```bash
 # 1. Start a local GUAC stack (see https://docs.guac.sh for the
-#    current quickstart — GUAC is pre-1.0, commands may evolve)
+#    current quickstart; commands may evolve between GUAC releases)
 git clone https://github.com/guacsec/guac.git
 cd guac
 make container
 make start-service
 
-# 2. Ingest the collection produced above
-guacone collect files /path/to/output/sample_release/guac-collection.json
+# 2. Ingest the documents GUAC understands. artifact_path is the path the
+#    collector read, made relative to --artifact-root when one was passed,
+#    so run this from that root (or from where `sdlc-evidence run` ran).
+jq -r '.documents[] | select(.type == "sbom" or .type == "attestation") | .artifact_path' \
+  output/sample_release/guac-collection.json \
+  | sort -u \
+  | while read -r path; do guacone collect files "$path"; done
 
 # 3. Confirm the documents were stitched into the graph
 guacone query known package "pkg:pypi/secure-sdlc-evidence-collector"
 ```
 
-`guacone collect files` walks the container, reads each referenced
-upstream document, and ingests it. The release envelope
-(`application`, `repository`, `release_id`, `commit_sha`) keeps the
-documents grouped so a graph query can scope to a single release.
+The release envelope (`application`, `repository`, `release_id`,
+`commit_sha`) records which release the documents belong to; GUAC
+itself does not see it, because it ingests the files one by one.
 
 ## Querying
 
@@ -122,10 +143,15 @@ helpers: <https://docs.guac.sh>.
 
 ## Limitations
 
-- **GUAC is pre-1.0.** The `guac-collect` container is intentionally
-  minimal so it survives the next GUAC schema bump without a major
-  rewrite. If GUAC's collector family changes how it reads upstream
-  documents, a future ADR will bump the container `version`.
+- **GUAC does not read the container.** It is an index for your own
+  ingestion script; only the `sbom` and `attestation` documents it
+  lists are formats GUAC ingests. SARIF and tool-native JSON reports
+  stay out of the graph.
+- **No end-to-end GUAC test.** Ingestion against a running GUAC stack
+  is not exercised in CI.
+- **The container format may evolve.** It is intentionally minimal so
+  it survives a GUAC schema change without a major rewrite. If the
+  shape changes, a future ADR will bump the container `version`.
 - **Adapter is one-way.** The collector emits a container *for*
   GUAC; it does not read a graph *back* from GUAC.
 - **Continuous ingestion is deferred.** The `sdlc-evidence watch`

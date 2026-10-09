@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
+
+import pytest
 
 from evidence_collector.application.profiles import (
     CRA_DISCLOSURE_WINDOW,
@@ -26,12 +29,13 @@ from evidence_collector.domain.models import (
     EvidenceBundle,
     EvidenceSource,
     NormalizedEvidence,
+    RawEvidenceRef,
     ReleaseContext,
     Summary,
     TopRiskCve,
     VulnerabilityIntelligence,
 )
-from evidence_collector.exporters.guac import build_guac_collection
+from evidence_collector.exporters.guac import GUAC_DOCUMENT_TYPES, build_guac_collection
 
 
 def _bundle(evidence: list[NormalizedEvidence]) -> EvidenceBundle:
@@ -191,19 +195,92 @@ def test_fedramp_ksi_catalog_loads_and_includes_critical_baseline() -> None:
 
 
 def test_guac_adapter_emits_one_document_per_evidence() -> None:
-    bundle = _bundle(
-        [_evidence(evidence_type=EvidenceType.SBOM, evidence_id="sbom-1"), _evidence()]
-    )
+    sbom = _sourced(
+        EvidenceType.SBOM, "sbom", content_type="application/vnd.cyclonedx+json"
+    ).model_copy(update={"evidence_id": "sbom-1"})
+    bundle = _bundle([sbom, _evidence()])
     doc = build_guac_collection(bundle)
     assert doc["format"] == "guac-collect"
     assert doc["release"]["release_id"] == "2026.05.19"
     assert len(doc["documents"]) == 2
-    types = {d["type"] for d in doc["documents"]}
-    assert "sbom" in types
-    assert "sarif" in types
+    # The second record is a Trivy JSON SCA scan: JSON, not SARIF.
+    assert [d["type"] for d in doc["documents"]] == ["sbom", "evidence"]
 
 
 def test_guac_adapter_falls_back_to_evidence_for_unknown_type() -> None:
     bundle = _bundle([_evidence(evidence_type=EvidenceType.RELEASE_APPROVAL)])
     doc = build_guac_collection(bundle)
     assert doc["documents"][0]["type"] == "evidence"
+
+
+def _sourced(
+    evidence_type: EvidenceType,
+    kind: str,
+    *,
+    content_type: str | None = None,
+    artifact_path: str = "artifacts/input.json",
+) -> NormalizedEvidence:
+    return _evidence(evidence_type=evidence_type).model_copy(
+        update={
+            "source": EvidenceSource(name="tool", kind=kind),
+            "raw": RawEvidenceRef(content_type=content_type, artifact_path=artifact_path),
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    ("evidence_type", "kind", "content_type", "expected"),
+    [
+        (EvidenceType.SBOM, "sbom", "application/vnd.cyclonedx+json", "sbom"),
+        (EvidenceType.SBOM, "sbom", "application/spdx+json", "sbom"),
+        (EvidenceType.SAST_SCAN, "sarif", "application/sarif+json", "sarif"),
+        (EvidenceType.SCA_SCAN, "sarif", "application/sarif+json", "sarif"),
+        # ZAP, Trivy and OSV-Scanner write their own JSON, not SARIF.
+        (EvidenceType.DAST_SCAN, "dast", "application/json", "evidence"),
+        (EvidenceType.SCA_SCAN, "sca", "application/json", "evidence"),
+        (EvidenceType.SECRETS_SCAN, "secrets", "application/json", "evidence"),
+        # in-toto Statements, bare or wrapped in DSSE / a Sigstore bundle.
+        (EvidenceType.ARTIFACT_ATTESTATION, "slsa-provenance", "application/json", "attestation"),
+        (EvidenceType.ARTIFACT_ATTESTATION, "slsa-vsa", "application/json", "attestation"),
+        (
+            EvidenceType.ARTIFACT_ATTESTATION,
+            "release-attestation",
+            "application/json",
+            "attestation",
+        ),
+        (EvidenceType.SCA_SCAN, "in-toto-vulns", "application/json", "attestation"),
+        # The collector's own attestation file (YAML or JSON) is not in-toto.
+        (EvidenceType.GENERIC_ATTESTATION, "attestation", "application/yaml", "evidence"),
+        (EvidenceType.ARTIFACT_SIGNATURE, "attestation", "application/json", "evidence"),
+    ],
+)
+def test_guac_document_type_follows_the_file_format(
+    evidence_type: EvidenceType, kind: str, content_type: str, expected: str
+) -> None:
+    evidence = _sourced(evidence_type, kind, content_type=content_type)
+    doc = build_guac_collection(_bundle([evidence]))
+    assert doc["documents"][0]["type"] == expected
+
+
+def test_guac_artifact_path_uses_posix_separators() -> None:
+    evidence = _sourced(
+        EvidenceType.DAST_SCAN,
+        "dast",
+        content_type="application/json",
+        artifact_path="examples\\sample_release\\artifacts\\zap-baseline.json",
+    )
+    doc = build_guac_collection(_bundle([evidence]))
+    assert (
+        doc["documents"][0]["artifact_path"]
+        == "examples/sample_release/artifacts/zap-baseline.json"
+    )
+
+
+def test_guac_docs_list_exactly_the_document_types_the_exporter_emits() -> None:
+    docs = (Path(__file__).resolve().parents[2] / "docs" / "guac.md").read_text(encoding="utf-8")
+    listed = " / ".join(f"`{t}`" for t in GUAC_DOCUMENT_TYPES)
+    assert f"({listed})" in docs
+    assert "`vex`" not in docs
+    # GUAC's file collector does not read this container; the docs must not
+    # tell users to feed it to `guacone collect files` directly.
+    assert "guacone collect files /path/to/output/sample_release/guac-collection.json" not in docs
