@@ -18,12 +18,28 @@ strategy.
 
 ```bash
 # CI gate before tagging
-conftest test --policy policies/rego/release-ready.rego output/bundle.json
+conftest test --policy policies/rego/release-ready.rego \
+  --namespace release_ready output/bundle.json
+```
 
-# With stricter floors
+The package is `release_ready`. Conftest evaluates only the `main`
+namespace by default, so without `--namespace release_ready` it reports
+0 tests and exits 0 even on a `not_ready` bundle.
+
+To raise the floors (defaults: coverage 100, confidence 50), write them to a
+data file. `--data` takes a file or directory path, not inline JSON, and the
+file's top-level keys land under `data.`, where the policy reads
+`data.release_ready.thresholds`. Either floor can be set on its own.
+
+```bash
+cat > release-thresholds.json <<'JSON'
+{"release_ready": {"thresholds": {"coverage": 100, "confidence": 70}}}
+JSON
+
 conftest test \
   --policy policies/rego/release-ready.rego \
-  --data '{"release_ready":{"thresholds":{"coverage":100,"confidence":70}}}' \
+  --namespace release_ready \
+  --data release-thresholds.json \
   output/bundle.json
 ```
 
