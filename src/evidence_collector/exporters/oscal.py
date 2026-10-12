@@ -22,12 +22,13 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
-from pathlib import PureWindowsPath
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import urlsplit
 
 from evidence_collector import __version__
 from evidence_collector.domain.enums import (
@@ -41,12 +42,18 @@ from evidence_collector.domain.models import (
     EvidenceBundle,
     EvidenceException,
     NormalizedEvidence,
+    RawEvidenceRef,
 )
 
 # Stable, project-scoped namespace for synthesizing OSCAL UUIDs from
 # control IDs. Generated once and frozen so the same control_id always
 # maps to the same OSCAL uuid across runs (required for stable diffs).
 _OSCAL_NAMESPACE = uuid.UUID("c5f8d34a-2c4b-4f8c-9e07-21f1f9e2a4c1")
+
+# `ns` for props this project defines that OSCAL does not.
+EVIDENCE_COLLECTOR_OSCAL_NS = (
+    "https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/ns/oscal"
+)
 
 
 def _control_uuid(control_id: str) -> str:
@@ -539,31 +546,45 @@ def _base64_payload(filename: str, media_type: str, text: str) -> dict[str, str]
     }
 
 
-def _artifact_href(path: str) -> str:
-    """A URI reference for a recorded artifact path.
+def _absolute_artifact_href(raw: RawEvidenceRef) -> str | None:
+    r"""A link to where the artifact is, when that location is absolute.
 
-    A drive-letter or UNC path becomes a ``file:`` URI. Anything else is a
-    relative or absolute path reference, percent-encoded as recorded, so a
-    space or a backslash in a POSIX filename survives as ``%20`` / ``%5C``.
+    A relative ``artifact_path`` is relative to the collection root, but OSCAL
+    resolves a relative rlink against the AR document itself, so linking it
+    would point somewhere else. Only an absolute URI, or an absolute Windows
+    or POSIX path (as a ``file:`` URI), is linked. A drive-relative Windows
+    path such as ``C:reports\\scan.json`` has a drive but no root: it is not
+    absolute, and ``as_uri()`` raises on it.
     """
+    if raw.artifact_uri and urlsplit(raw.artifact_uri).scheme:
+        return raw.artifact_uri
+    path = raw.artifact_path
+    if not path:
+        return None
     windows = PureWindowsPath(path)
-    if windows.drive:
+    if windows.drive and windows.is_absolute():
         return windows.as_uri()
-    return quote(path, safe="/")
+    if path.startswith("/"):
+        return PurePosixPath(path).as_uri()
+    return None
+
+
+def _ncname_filename(evidence_id: str) -> str:
+    """A base64 ``filename`` that is a valid NCName whatever the evidence id."""
+    return "evidence-" + re.sub(r"[^A-Za-z0-9._-]", "_", evidence_id) + ".json"
 
 
 def _evidence_content(item: NormalizedEvidence | None, evidence_id: str) -> dict[str, Any]:
     """The rlink or base64 an OSCAL 1.1.2 back-matter resource must carry.
 
-    The artifact the evidence was read from when its location is recorded;
-    otherwise the normalized evidence record itself, so the resource still
-    holds what the finding relied on.
+    A link to the artifact when its location is absolute; otherwise the
+    normalized evidence record itself, so the resource still holds what the
+    finding relied on, with a relative path recorded as a prop.
     """
     raw = item.raw if item is not None else None
-    if raw is not None and (raw.artifact_uri or raw.artifact_path):
-        rlink: dict[str, Any] = {
-            "href": raw.artifact_uri or _artifact_href(raw.artifact_path or ""),
-        }
+    href = _absolute_artifact_href(raw) if raw is not None else None
+    if raw is not None and href is not None:
+        rlink: dict[str, Any] = {"href": href}
         if raw.content_type:
             rlink["media-type"] = raw.content_type
         if raw.integrity_hash and raw.integrity_hash.startswith("sha256:"):
@@ -576,7 +597,15 @@ def _evidence_content(item: NormalizedEvidence | None, evidence_id: str) -> dict
         if item is not None
         else json.dumps({"evidence_id": evidence_id, "present_in_bundle": False})
     )
-    return {"base64": _base64_payload(f"{evidence_id}.json", "application/json", record)}
+    content: dict[str, Any] = {
+        "base64": _base64_payload(_ncname_filename(evidence_id), "application/json", record)
+    }
+    location = (raw.artifact_path or raw.artifact_uri) if raw is not None else None
+    if location:
+        content["props"] = [
+            {"name": "artifact-path", "ns": EVIDENCE_COLLECTOR_OSCAL_NS, "value": location}
+        ]
+    return content
 
 
 def _evidence_resources(bundle: EvidenceBundle, scope: str) -> list[dict[str, Any]]:
@@ -595,13 +624,14 @@ def _evidence_resources(bundle: EvidenceBundle, scope: str) -> list[dict[str, An
             props.append({"name": "evidence_status", "value": item.status.value})
             if item.raw is not None and item.raw.integrity_hash:
                 props.append({"name": "integrity_hash", "value": item.raw.integrity_hash})
+        content = _evidence_content(item, evidence_id)
         resources.append(
             {
                 "uuid": _evidence_resource_uuid(scope, evidence_id),
                 "title": evidence_id,
                 "description": description,
-                "props": props,
-                **_evidence_content(item, evidence_id),
+                "props": props + content.pop("props", []),
+                **content,
             }
         )
     return resources

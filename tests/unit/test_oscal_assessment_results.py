@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import uuid
 from datetime import UTC, datetime
 from typing import Any
+
+import pytest
 
 from evidence_collector.domain.enums import (
     ConfidenceLevel,
@@ -29,7 +32,10 @@ from evidence_collector.domain.models import (
     ReleaseContext,
     Summary,
 )
-from evidence_collector.exporters.oscal import export_oscal_assessment_results
+from evidence_collector.exporters.oscal import (
+    EVIDENCE_COLLECTOR_OSCAL_NS,
+    export_oscal_assessment_results,
+)
 
 
 def _evaluation(
@@ -378,11 +384,16 @@ def test_every_back_matter_resource_carries_an_rlink_or_base64() -> None:
     assert _resources_without_content(plan["assessment-plan"]["back-matter"]["resources"]) == []
 
 
-def _with_recorded_artifact(bundle: EvidenceBundle) -> EvidenceBundle:
+def _with_recorded_artifact(
+    bundle: EvidenceBundle,
+    artifact_path: str | None = "artifacts/trivy report.sarif",
+    artifact_uri: str | None = None,
+) -> EvidenceBundle:
     item = bundle.evidence[0].model_copy(
         update={
             "raw": RawEvidenceRef(
-                artifact_path="artifacts/trivy report.sarif",
+                artifact_path=artifact_path,
+                artifact_uri=artifact_uri,
                 integrity_hash="sha256:" + "ab" * 32,
                 content_type="application/sarif+json",
             )
@@ -399,13 +410,64 @@ def _evidence_resource(doc: dict[str, Any], evidence_id: str) -> dict[str, Any]:
     )
 
 
-def test_evidence_resource_links_to_the_recorded_artifact() -> None:
-    doc = export_oscal_assessment_results(_with_recorded_artifact(_waived_bundle("a", "o/a")))
-    rlink = _evidence_resource(doc, "sca-1")["rlinks"][0]
+@pytest.mark.parametrize(
+    ("artifact_path", "artifact_uri", "href"),
+    [
+        ("/srv/ci/trivy report.sarif", None, "file:///srv/ci/trivy%20report.sarif"),
+        ("C:\\ci\\trivy.sarif", None, "file:///C:/ci/trivy.sarif"),
+        ("\\\\server\\share\\trivy.sarif", None, "file://server/share/trivy.sarif"),
+        (None, "https://ci.example/run/7/trivy.sarif", "https://ci.example/run/7/trivy.sarif"),
+    ],
+)
+def test_evidence_resource_links_only_to_an_absolute_location(
+    artifact_path: str | None, artifact_uri: str | None, href: str
+) -> None:
+    bundle = _with_recorded_artifact(_waived_bundle("a", "o/a"), artifact_path, artifact_uri)
+    resource = _evidence_resource(export_oscal_assessment_results(bundle), "sca-1")
+    rlink = resource["rlinks"][0]
 
-    assert rlink["href"] == "artifacts/trivy%20report.sarif"
+    assert "base64" not in resource
+    assert rlink["href"] == href
     assert rlink["media-type"] == "application/sarif+json"
     assert rlink["hashes"] == [{"algorithm": "SHA-256", "value": "ab" * 32}]
+
+
+@pytest.mark.parametrize(
+    "artifact_path",
+    [
+        "artifacts/trivy report.sarif",
+        "reports\\scan.json",
+        # Drive-relative: has a drive but no root, and as_uri() rejects it.
+        "C:reports\\scan.json",
+    ],
+)
+def test_a_relative_artifact_path_is_recorded_as_a_prop_not_a_link(artifact_path: str) -> None:
+    # A relative path is relative to the collection root, but OSCAL resolves a
+    # relative rlink against the AR document, so a link would point elsewhere.
+    bundle = _with_recorded_artifact(_waived_bundle("a", "o/a"), artifact_path)
+    resource = _evidence_resource(export_oscal_assessment_results(bundle), "sca-1")
+
+    assert "rlinks" not in resource
+    record = json.loads(base64.b64decode(resource["base64"]["value"]).decode("utf-8"))
+    assert record["evidence_id"] == "sca-1"
+    assert {
+        "name": "artifact-path",
+        "ns": EVIDENCE_COLLECTOR_OSCAL_NS,
+        "value": artifact_path,
+    } in resource["props"]
+
+
+@pytest.mark.parametrize("evidence_id", ["scan:1", "scan/1", "1", "ok-id"])
+def test_base64_filename_is_a_valid_ncname(evidence_id: str) -> None:
+    bundle = _waived_bundle("a", "o/a")
+    item = bundle.evidence[0].model_copy(update={"evidence_id": evidence_id})
+    evaluations = [
+        ev.model_copy(update={"evidence_refs": [evidence_id]}) for ev in bundle.control_evaluations
+    ]
+    bundle = bundle.model_copy(update={"evidence": [item], "control_evaluations": evaluations})
+    resource = _evidence_resource(export_oscal_assessment_results(bundle), evidence_id)
+
+    assert re.fullmatch(r"[A-Za-z_][A-Za-z0-9._-]*", resource["base64"]["filename"])
 
 
 def test_evidence_resource_without_a_path_embeds_the_normalized_record() -> None:
