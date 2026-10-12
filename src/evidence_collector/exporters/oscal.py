@@ -194,9 +194,10 @@ _NOT_SATISFIED_REASON: dict[ControlEvaluationStatus, str] = {
 _OSCAL_DATETIME = "%Y-%m-%dT%H:%M:%S.000+00:00"
 # A complete SHA-256 hex digest; anything else is left out of rlink hashes.
 _SHA256 = re.compile(r"[0-9A-Fa-f]{64}")
-# Characters RFC 3986 allows in a URI; an artifact_uri with anything else
-# (a space, a raw newline) is not linked.
-_URI_CHARS = re.compile(r"[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+")
+# Characters RFC 3986 allows in a URI, with every "%" starting a two-digit hex
+# escape (RFC 3986 section 2.1); an artifact_uri with anything else (a space,
+# a raw newline, "%zz") is not linked.
+_URI_CHARS = re.compile(r"(?:[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=]|%[0-9A-Fa-f]{2})+")
 
 
 def _oscal_datetime(value: datetime) -> str:

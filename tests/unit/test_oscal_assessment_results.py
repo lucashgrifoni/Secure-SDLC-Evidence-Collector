@@ -527,3 +527,26 @@ def test_ssp_placeholder_carries_its_statement_as_base64() -> None:
     text = base64.b64decode(placeholder["base64"]["value"]).decode("utf-8")
     assert "No OSCAL system security plan is published" in text
     assert "acme-api" in text
+
+
+@pytest.mark.parametrize(
+    "artifact_uri",
+    ["https://example.test/%zz", "https://example.test/50%", "https://example.test/%4"],
+    ids=["non-hex-escape", "bare-percent", "short-escape"],
+)
+def test_evidence_resource_does_not_link_a_uri_with_a_malformed_percent_escape(
+    artifact_uri: str,
+) -> None:
+    bundle = _with_recorded_artifact(_waived_bundle("a", "o/a"), None, artifact_uri)
+    resource = _evidence_resource(export_oscal_assessment_results(bundle), "sca-1")
+
+    assert "rlinks" not in resource
+    assert "base64" in resource
+
+
+def test_evidence_resource_links_a_uri_with_valid_percent_escapes() -> None:
+    uri = "https://example.test/trivy%20report.sarif"
+    bundle = _with_recorded_artifact(_waived_bundle("a", "o/a"), None, uri)
+    resource = _evidence_resource(export_oscal_assessment_results(bundle), "sca-1")
+
+    assert resource["rlinks"][0]["href"] == uri
