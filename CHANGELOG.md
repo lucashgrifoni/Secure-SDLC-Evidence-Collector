@@ -4,6 +4,37 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.1.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.0.0...v4.1.0) (2026-10-12)
+
+
+### Added
+
+* **cli:** apply the recorded risk mode on enrich and count every KEV CVE ([#147](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/147)) ([79174f1](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/79174f1592a5f3a672ac2e0b1d47e7bb33c1d105))
+
+
+### Fixed
+
+* **collectors:** bind CI runs to the release commit and ignore the collector's own gap SARIF ([#151](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/151)) ([65d7ab8](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/65d7ab8a68796ef670218fdaf424f312329e13d7))
+* **collectors:** count only head-bound latest approvals and read every page ([#143](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/143)) ([1b9d370](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/1b9d370a9a7df02839b5309a9fd1595b227ce37e))
+* **exporters:** correct OSCAL ids, waiver listing, compare drift and GUAC labels ([#152](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/152)) ([1452da4](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/1452da49329da2ec5516d018d5b98042fa749675))
+* make the conftest threshold override work and correct post-4.0.0 docs ([#144](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/144)) ([066c2f0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/066c2f0d1a9e22e4e1d54b66d840e330b1f059d7))
+* **normalizers:** stop unfinished runs, waivers and Scorecard from reading as passing ([#148](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/148)) ([6bb0015](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/6bb00151569ee7702a67e98c50abf0df44dbdad0))
+* **parsers:** bound YAML alias expansion and report directory links ([#149](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/149)) ([f083fff](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/f083fffb0ed1342f5655fa8871d7e2ed610ed0df))
+* **parsers:** record hostile input files as collection errors instead of aborting the run ([#145](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/145)) ([efd3fde](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/efd3fde86191248af5c4e8e531ab33fd8a5cb1f0))
+* **vex:** scope waivers to the CVEs they cover and make output reproducible ([#142](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/142)) ([f5f5997](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/f5f59979c99574bd816fe16f19da0a6cb6f5bf16))
+
+
+### Documentation
+
+* correct documentation that the code and workflows contradict ([#150](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/150)) ([4d1a5df](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/4d1a5dfda9e7f0589e4c1f11d753158736b6fdbc))
+
+
+### CI
+
+* **release:** fail publication on an sdist rebuild mismatch ([#140](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/140)) ([5c2096b](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/5c2096b5e93b3db4393d7809d44fb872fd12c0c7))
+* **release:** stop release-please from rewriting the reusable workflow file ([#154](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/154)) ([995ffe5](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/995ffe58827368e1c6093301dc5617ff20f198ff))
+* **release:** title GitHub Releases with the project name and tag ([#153](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/153)) ([c48ff39](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/c48ff39fbb9f8c95c070ff84e1fa0531acfdcd40))
+
 ## [4.0.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v3.2.0...v4.0.0) (2026-10-09)
 
 
