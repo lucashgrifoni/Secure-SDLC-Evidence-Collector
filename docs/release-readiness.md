@@ -63,6 +63,11 @@ and are not committed to the public repository.
 - [ ] `README.md` claims match implementation (no dead badges, correct
       workflow filenames, correct control count, correct example commands).
 - [ ] `CHANGELOG.md` up to date with the tag being released.
+- [ ] The `uses:` and `collector-version` examples in
+      `.github/workflows/reusable-evidence-collection.yml` name the version
+      being released. release-please cannot update them: its App token has
+      no `workflows` permission, so bump that file by hand in a small PR
+      merged just before the release PR.
 - [ ] `docs/bundle_schema.md` matches the current Pydantic schema
       (checked by hand against `sdlc-evidence schema`; the automated
       diff in `tests/unit/test_schema_contract.py` covers only the
