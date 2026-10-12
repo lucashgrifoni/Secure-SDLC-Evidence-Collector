@@ -274,7 +274,7 @@ def _evaluation_to_observation(
     # Each evidence ref links to a back-matter resource in this document. The
     # refs used to be hashed into `subjects[].subject-uuid` values that matched
     # nothing, so the evidence behind a finding could not be recovered.
-    return {
+    observation: dict[str, Any] = {
         "uuid": _observation_uuid(scope, evaluation.control_id),
         "title": f"Evidence for {evaluation.control_id}",
         "description": evaluation.rationale,
@@ -288,14 +288,18 @@ def _evaluation_to_observation(
             {"name": "evaluation_status", "value": evaluation.evaluation_status.value},
             {"name": "confidence", "value": evaluation.confidence.value},
         ],
-        "relevant-evidence": [
+    }
+    # OSCAL requires relevant-evidence to be non-empty when present, and a
+    # control with no evidence at all (the usual not_ready case) has none.
+    if evaluation.evidence_refs:
+        observation["relevant-evidence"] = [
             {
                 "href": f"#{_evidence_resource_uuid(scope, ref)}",
                 "description": f"Evidence item {ref}",
             }
             for ref in evaluation.evidence_refs
-        ],
-    }
+        ]
+    return observation
 
 
 def _evaluation_to_finding(

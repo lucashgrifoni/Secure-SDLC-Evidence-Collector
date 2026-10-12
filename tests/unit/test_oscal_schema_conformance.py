@@ -156,3 +156,30 @@ def test_awkward_ids_and_paths_validate_against_the_oscal_schema(
     assert _errors(_validator("oscal_assessment-results_schema.json"), awkward_results) == []
     plan = _embedded_plan(awkward_results)
     assert _errors(_validator("oscal_assessment-plan_schema.json"), plan) == []
+
+
+@pytest.mark.parametrize("with_artifacts", [True, False], ids=["artifacts-only", "no-evidence"])
+def test_not_ready_assessment_results_validate_against_the_oscal_schema(
+    tmp_path: Path, with_artifacts: bool
+) -> None:
+    # Controls with no evidence at all are the normal not_ready case; their
+    # observations must not carry an empty relevant-evidence array.
+    root = Path(__file__).resolve().parents[2]
+    artifacts = root / "examples" / "sample_release" / "artifacts"
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    run_pipeline(
+        application=Application(name="payments-api", repository="acme/payments-api"),
+        release=ReleaseContext(release_id="2026.04.10", commit_sha="abcdef1234567890"),
+        artifacts_dirs=[artifacts if with_artifacts else empty],
+        attestations_dirs=[],
+        output_dir=tmp_path / "out",
+        artifact_root=root,
+    )
+    bundle = EvidenceBundle.model_validate_json(
+        (tmp_path / "out" / "bundle.json").read_text(encoding="utf-8")
+    )
+    assert bundle.summary.release_status.value == "not_ready"
+    results = export_oscal_assessment_results(bundle)
+    assert _errors(_validator("oscal_assessment-results_schema.json"), results) == []
+    assert _errors(_validator("oscal_assessment-plan_schema.json"), _embedded_plan(results)) == []
