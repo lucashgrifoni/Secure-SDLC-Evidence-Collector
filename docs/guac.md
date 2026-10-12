@@ -78,7 +78,8 @@ The container shape:
 
 Each `documents[]` entry carries the document `type`
 (`sbom` / `sarif` / `attestation` / `evidence`), the source
-artifact path (always with forward slashes), the integrity hash, and
+artifact path (a path recorded on Windows is rewritten with forward
+slashes; a POSIX path is kept verbatim), the integrity hash, and
 the CVE list when populated. `type` names the format of the file, not
 the kind of evidence it supports:
 

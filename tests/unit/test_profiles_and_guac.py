@@ -358,3 +358,23 @@ def test_guac_docs_list_exactly_the_document_types_the_exporter_emits() -> None:
     # GUAC's file collector does not read this container; the docs must not
     # tell users to feed it to `guacone collect files` directly.
     assert "guacone collect files /path/to/output/sample_release/guac-collection.json" not in docs
+
+
+@pytest.mark.parametrize(
+    ("recorded", "expected"),
+    [
+        # Recorded on Windows: str(Path) there never contains a forward slash.
+        ("C:\\ci\\artifacts\\zap.json", "C:/ci/artifacts/zap.json"),
+        ("\\\\server\\share\\sbom.cdx.json", "//server/share/sbom.cdx.json"),
+        # Recorded on POSIX: a backslash is a legal filename character there.
+        ("artifacts/we\\ird.json", "artifacts/we\\ird.json"),
+        ("/srv/ci/artifacts/a\\b.sarif", "/srv/ci/artifacts/a\\b.sarif"),
+        ("artifacts/plain.json", "artifacts/plain.json"),
+    ],
+)
+def test_guac_converts_separators_only_for_windows_paths(recorded: str, expected: str) -> None:
+    evidence = _sourced(
+        EvidenceType.DAST_SCAN, "dast", content_type="application/json", artifact_path=recorded
+    )
+    doc = build_guac_collection(_bundle([evidence]))
+    assert doc["documents"][0]["artifact_path"] == expected

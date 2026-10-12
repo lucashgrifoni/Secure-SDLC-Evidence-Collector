@@ -63,8 +63,8 @@ format). ``type`` now names the file's format: ``sbom`` for
 CycloneDX/SPDX, ``sarif`` for SARIF logs, ``attestation`` for in-toto
 Statements (bare, DSSE or Sigstore bundle), ``evidence`` for anything
 else. ``vex`` was listed but never produced, because the collector does
-not ingest VEX documents; it was removed. ``artifact_path`` is written
-with forward slashes. The original text also said
+not ingest VEX documents; it was removed. A Windows ``artifact_path``
+is written with forward slashes; a POSIX path is kept verbatim. The original text also said
 ``guacone collect files`` could ingest the container in one shot; GUAC's
 file collector does not read it, and docs/guac.md now shows how to feed
 it the ``sbom`` and ``attestation`` files instead.

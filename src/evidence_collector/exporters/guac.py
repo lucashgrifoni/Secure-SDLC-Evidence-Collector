@@ -42,6 +42,8 @@ a rewrite on our side.
 
 from __future__ import annotations
 
+import re
+from pathlib import PureWindowsPath
 from typing import Any
 
 from evidence_collector.domain.models import EvidenceBundle, NormalizedEvidence
@@ -83,6 +85,23 @@ def _document_type_for(evidence: NormalizedEvidence) -> str:
     return "evidence"
 
 
+_WINDOWS_DRIVE = re.compile(r"^[A-Za-z]:[\\/]")
+
+
+def _posix_artifact_path(path: str) -> str:
+    """Write a path recorded on Windows with forward slashes; keep others verbatim.
+
+    The container is read by POSIX tooling, so a Windows run's backslashes are
+    converted. They are converted only when the path has Windows semantics: a
+    drive letter, or backslashes and no forward slash (``str()`` of a Windows
+    path never contains one). On POSIX a backslash is an ordinary filename
+    character, and replacing it unconditionally renamed ``a\\b.json``.
+    """
+    if _WINDOWS_DRIVE.match(path) or ("\\" in path and "/" not in path):
+        return PureWindowsPath(path).as_posix()
+    return path
+
+
 def _document_entry(evidence: NormalizedEvidence) -> dict[str, Any]:
     entry: dict[str, Any] = {
         "type": _document_type_for(evidence),
@@ -97,9 +116,7 @@ def _document_entry(evidence: NormalizedEvidence) -> dict[str, Any]:
     }
     if evidence.raw is not None:
         if evidence.raw.artifact_path:
-            # A Windows run records backslashes; the container is consumed
-            # by POSIX tooling, so it carries forward slashes everywhere.
-            entry["artifact_path"] = evidence.raw.artifact_path.replace("\\", "/")
+            entry["artifact_path"] = _posix_artifact_path(evidence.raw.artifact_path)
         if evidence.raw.integrity_hash:
             entry["integrity_hash"] = evidence.raw.integrity_hash
     if evidence.cve_ids:
