@@ -291,6 +291,27 @@ def test_uuids_differ_for_the_same_application_name_in_another_repository() -> N
     assert _all_uuids(first).isdisjoint(_all_uuids(second))
 
 
+def test_uuids_differ_per_environment_and_metadata_names_it() -> None:
+    # The same release assessed in staging and in production is two subjects.
+    staging_bundle = _waived_bundle("api", "acme/api")
+    staging_bundle = staging_bundle.model_copy(
+        update={
+            "application": staging_bundle.application.model_copy(
+                update={"environment": "staging"}
+            )
+        }
+    )
+    staging = export_oscal_assessment_results(staging_bundle)
+    production = export_oscal_assessment_results(_waived_bundle("api", "acme/api"))
+
+    assert _all_uuids(staging).isdisjoint(_all_uuids(production))
+    props = {p["name"]: p["value"] for p in staging["assessment-results"]["metadata"]["props"]}
+    assert props["environment"] == "staging"
+    _, plan = _embedded_assessment_plan(staging)
+    plan_props = {p["name"]: p["value"] for p in plan["assessment-plan"]["metadata"]["props"]}
+    assert plan_props["environment"] == "staging"
+
+
 def test_every_internal_reference_resolves_inside_the_document() -> None:
     doc = export_oscal_assessment_results(_waived_bundle("acme-api", "acme/api"))
     ar = doc["assessment-results"]

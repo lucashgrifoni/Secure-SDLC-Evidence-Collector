@@ -197,10 +197,17 @@ def _assessment_scope(bundle: EvidenceBundle) -> str:
     assigned per subject. Two applications cut on the same release id (a
     calendar tag such as ``2026.04.10`` is common across an org) are two
     subjects, so the application name, its repository and the release id all
-    seed the uuid. JSON keeps the parts unambiguous whatever they contain.
+    seed the uuid, and so does the environment: the same release assessed in
+    staging and in production is two subjects. JSON keeps the parts
+    unambiguous whatever they contain.
     """
     return json.dumps(
-        [bundle.application.name, bundle.application.repository, bundle.release.release_id],
+        [
+            bundle.application.name,
+            bundle.application.repository,
+            bundle.application.environment,
+            bundle.release.release_id,
+        ],
         ensure_ascii=False,
     )
 
@@ -396,6 +403,7 @@ def export_oscal_assessment_results(bundle: EvidenceBundle) -> dict[str, Any]:
                     {"name": "source", "value": "secure-sdlc-evidence-collector"},
                     {"name": "release_id", "value": release_id},
                     {"name": "commit_sha", "value": commit_sha},
+                    {"name": "environment", "value": bundle.application.environment},
                     {
                         "name": "release_status",
                         "value": bundle.summary.release_status.value,
@@ -475,9 +483,10 @@ def _assessment_plan(bundle: EvidenceBundle, scope: str, last_modified: str) -> 
         "version": __version__,
         "oscal-version": "1.1.2",
     }
-    props = _catalog_props(bundle)
-    if props:
-        metadata["props"] = props
+    metadata["props"] = [
+        {"name": "environment", "value": bundle.application.environment},
+        *_catalog_props(bundle),
+    ]
     no_ssp = (
         "No OSCAL system security plan is published. The system assessed is "
         f"{bundle.application.name} ({bundle.application.repository})."

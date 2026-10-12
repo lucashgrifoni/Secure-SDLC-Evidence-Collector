@@ -126,10 +126,12 @@ git clone https://github.com/guacsec/guac.git
 #    collector read, made relative to --artifact-root when one was passed,
 #    so run this from that root (or from where `sdlc-evidence run` ran),
 #    not from inside the guac checkout.
-jq -r '.documents[] | select(.type == "sbom" or .type == "attestation") | .artifact_path | strings' \
+#    The paths are NUL-delimited (jq 1.7+ --raw-output0) so names with spaces
+#    or newlines reach guacone unchanged.
+jq --raw-output0 '.documents[] | select(.type == "sbom" or .type == "attestation") | .artifact_path | strings' \
   output/sample_release/guac-collection.json \
-  | sort -u \
-  | while read -r path; do guacone collect files "$path"; done
+  | sort -zu \
+  | while IFS= read -r -d '' path; do guacone collect files "$path"; done
 
 # 3. Confirm the documents were stitched into the graph
 guacone query known package "pkg:pypi/secure-sdlc-evidence-collector"
