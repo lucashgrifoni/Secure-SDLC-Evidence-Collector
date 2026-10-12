@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -176,3 +177,17 @@ def test_changelog_has_no_section_above_the_release_please_insertion_point() -> 
     assert not re.search(r"^#{2,3} ", text[: insertion.start()], re.MULTILINE), (
         "CHANGELOG.md has a heading above the release-please insertion point"
     )
+
+
+def test_release_please_never_rewrites_a_workflow_file() -> None:
+    # The release-please App token has no `workflows` permission, so a
+    # workflow file in extra-files makes every run fail with "Error adding to
+    # tree" and the release PR stops updating.
+    config = json.loads(Path(".github/release-please-config.json").read_text(encoding="utf-8"))
+    paths = [
+        entry if isinstance(entry, str) else entry["path"]
+        for package in config["packages"].values()
+        for entry in package.get("extra-files", [])
+    ]
+    assert paths, "expected the version-bearing extra-files to be configured"
+    assert not [p for p in paths if p.startswith(".github/workflows/")]
