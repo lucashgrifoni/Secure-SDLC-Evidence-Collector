@@ -21,6 +21,7 @@ References
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import re
 import uuid
@@ -77,7 +78,7 @@ def _criticality_to_class(criticality: ControlCriticality) -> str:
     return f"criticality-{criticality.value}"
 
 
-def _control_to_oscal(control: ControlDefinition) -> dict[str, Any]:
+def _control_to_oscal(control: ControlDefinition, token: str) -> dict[str, Any]:
     properties = [
         {"name": "control_id", "value": control.control_id},
         {"name": "framework", "value": control.framework.value},
@@ -104,7 +105,7 @@ def _control_to_oscal(control: ControlDefinition) -> dict[str, Any]:
         parts.append({"name": "guidance", "prose": control.rationale_template})
 
     return {
-        "id": control.control_id.lower().replace(".", "-"),
+        "id": token,
         "uuid": _control_uuid(control.control_id),
         "class": _criticality_to_class(control.criticality),
         "title": control.name,
@@ -116,11 +117,12 @@ def _control_to_oscal(control: ControlDefinition) -> dict[str, Any]:
 def export_oscal_catalog(controls: Iterable[ControlDefinition]) -> dict[str, Any]:
     """Render the catalog as a single OSCAL Catalog JSON document."""
     controls_list = list(controls)
+    tokens = _control_tokens(c.control_id for c in controls_list)
 
     grouped: dict[str, list[dict[str, Any]]] = {}
     for control in controls_list:
         grouped.setdefault(_group_for_framework(control.framework), []).append(
-            _control_to_oscal(control)
+            _control_to_oscal(control, tokens[control.control_id])
         )
 
     groups = [
@@ -133,9 +135,9 @@ def export_oscal_catalog(controls: Iterable[ControlDefinition]) -> dict[str, Any
     ]
 
     catalog_uuid = str(uuid.uuid5(_OSCAL_NAMESPACE, "catalog:secure-sdlc-evidence-collector"))
-    last_modified = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%S.000+00:00")
+    last_modified = _oscal_datetime(datetime.now(tz=UTC))
 
-    return {
+    document: dict[str, Any] = {
         "catalog": {
             "uuid": catalog_uuid,
             "metadata": {
@@ -153,6 +155,8 @@ def export_oscal_catalog(controls: Iterable[ControlDefinition]) -> dict[str, Any
             "groups": groups,
         }
     }
+    finalized: dict[str, Any] = _finalize(document)
+    return finalized
 
 
 # ---------------------------------------------------------------------------
@@ -190,6 +194,101 @@ _NOT_SATISFIED_REASON: dict[ControlEvaluationStatus, str] = {
 _OSCAL_DATETIME = "%Y-%m-%dT%H:%M:%S.000+00:00"
 # A complete SHA-256 hex digest; anything else is left out of rlink hashes.
 _SHA256 = re.compile(r"[0-9A-Fa-f]{64}")
+# Characters RFC 3986 allows in a URI; an artifact_uri with anything else
+# (a space, a raw newline) is not linked.
+_URI_CHARS = re.compile(r"[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+")
+
+
+def _oscal_datetime(value: datetime) -> str:
+    """Format ``value`` in UTC, converting rather than relabelling.
+
+    An aware value used to be formatted with a hard-coded ``+00:00`` whatever
+    its offset, so 18:30 at +05:30 was published as 18:30 UTC. A naive value
+    is read as UTC, the convention the rest of the collector uses.
+    """
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.astimezone(UTC).strftime(_OSCAL_DATETIME)
+
+
+def _is_ncname(value: str) -> bool:
+    return (
+        bool(value)
+        and (value[0].isalpha() or value[0] == "_")
+        and all(ch.isalnum() or ch in ".-_" for ch in value)
+    )
+
+
+def _short_hash(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:8]
+
+
+def _control_tokens(control_ids: Iterable[str]) -> dict[str, str]:
+    """Map each control id to the NCName token OSCAL uses for it.
+
+    The token was the id lower-cased with dots replaced, which is valid for the
+    shipped catalogs (``SSDF-PS.3`` -> ``ssdf-ps-3``) and is kept for them. A
+    custom catalog may use ``1``, ``ORG:BUILD`` or ``custom control``; those
+    are sanitized and given a short hash of the original id, so two ids that
+    sanitize alike stay apart. Ids whose tokens still collide (``ORG.BUILD``
+    and ``ORG-BUILD``) all get the hash suffix.
+    """
+    ids = list(dict.fromkeys(control_ids))
+    base: dict[str, str] = {}
+    for control_id in ids:
+        token = control_id.lower().replace(".", "-")
+        if not _is_ncname(token):
+            cleaned = "".join(ch if ch.isalnum() or ch in ".-_" else "-" for ch in token)
+            if not cleaned or not (cleaned[0].isalpha() or cleaned[0] == "_"):
+                cleaned = f"control-{cleaned}"
+            token = f"{cleaned}-{_short_hash(control_id)}"
+        base[control_id] = token
+    seen: dict[str, int] = {}
+    for token in base.values():
+        seen[token] = seen.get(token, 0) + 1
+    return {
+        control_id: token if seen[token] == 1 else f"{token}-{_short_hash(control_id)}"
+        for control_id, token in base.items()
+    }
+
+
+def _prop_value(value: object) -> str:
+    """A prop value as OSCAL's StringDatatype allows: no edge or inner line breaks."""
+    return " ".join(str(value).split())
+
+
+def _finalize(node: Any) -> Any:
+    """Make a document satisfy OSCAL's array and string rules, whatever the input.
+
+    Every OSCAL JSON array has ``minItems: 1`` and every prop value is a
+    StringDatatype (no leading or trailing whitespace, no line break). Values
+    come from operator-supplied bundles and catalogs, so instead of guarding
+    each call site this pass collapses whitespace in prop values and media
+    types, drops props and media types that end up empty, and removes any key
+    whose list is empty (``observations`` and ``findings`` for a bundle with no
+    evaluations, ``risks``, ``props``, ``include-controls``).
+    """
+    if isinstance(node, list):
+        return [_finalize(item) for item in node]
+    if not isinstance(node, dict):
+        return node
+    out: dict[str, Any] = {}
+    for key, value in node.items():
+        if key == "props" and isinstance(value, list):
+            value = [
+                {**prop, "value": _prop_value(prop.get("value", ""))}
+                for prop in value
+                if isinstance(prop, dict) and _prop_value(prop.get("value", ""))
+            ]
+        elif key == "media-type" and isinstance(value, str):
+            value = _prop_value(value)
+            if not value:
+                continue
+        value = _finalize(value)
+        if isinstance(value, list) and not value:
+            continue
+        out[key] = value
+    return out
 
 
 def _assessment_scope(bundle: EvidenceBundle) -> str:
@@ -263,11 +362,6 @@ def _ar_uuid(scope: str, commit_sha: str) -> str:
     return _scoped_uuid("ar", scope, commit_sha)
 
 
-def _control_target_id(control_id: str) -> str:
-    """OSCAL control id, kebab-case, lower."""
-    return control_id.lower().replace(".", "-")
-
-
 def _evaluation_to_observation(
     evaluation: ControlEvaluation,
     scope: str,
@@ -307,6 +401,7 @@ def _evaluation_to_observation(
 def _evaluation_to_finding(
     evaluation: ControlEvaluation,
     scope: str,
+    tokens: dict[str, str],
 ) -> dict[str, Any]:
     state = _OSCAL_TARGET_STATE.get(evaluation.evaluation_status, "not-satisfied")
     props = [
@@ -324,7 +419,7 @@ def _evaluation_to_finding(
         "description": evaluation.rationale,
         "target": {
             "type": "objective-id",
-            "target-id": _control_target_id(evaluation.control_id),
+            "target-id": tokens[evaluation.control_id],
             "status": {"state": state},
         },
         "related-observations": [
@@ -365,8 +460,11 @@ def _waiver_to_risk(
         "props": props,
     }
     if waivers:
-        earliest = min(w.expires_at for w in waivers).astimezone(UTC)
-        risk["deadline"] = earliest.strftime(_OSCAL_DATETIME)
+        earliest = min(
+            w.expires_at if w.expires_at.tzinfo else w.expires_at.replace(tzinfo=UTC)
+            for w in waivers
+        )
+        risk["deadline"] = _oscal_datetime(earliest)
     return risk
 
 
@@ -382,14 +480,13 @@ def export_oscal_assessment_results(bundle: EvidenceBundle) -> dict[str, Any]:
     release_id = bundle.release.release_id
     commit_sha = bundle.release.commit_sha
     scope = _assessment_scope(bundle)
-    collected_iso = (bundle.generated_at or datetime.now(tz=UTC)).strftime(
-        "%Y-%m-%dT%H:%M:%S.000+00:00"
-    )
+    collected_iso = _oscal_datetime(bundle.generated_at or datetime.now(tz=UTC))
+    tokens = _control_tokens(ev.control_id for ev in bundle.control_evaluations)
 
     observations = [
         _evaluation_to_observation(ev, scope, collected_iso) for ev in bundle.control_evaluations
     ]
-    findings = [_evaluation_to_finding(ev, scope) for ev in bundle.control_evaluations]
+    findings = [_evaluation_to_finding(ev, scope, tokens) for ev in bundle.control_evaluations]
     exceptions = {exc.exception_id: exc for exc in bundle.exceptions}
     risks = [
         _waiver_to_risk(ev, scope, exceptions)
@@ -429,7 +526,7 @@ def export_oscal_assessment_results(bundle: EvidenceBundle) -> dict[str, Any]:
                     "start": collected_iso,
                     "end": collected_iso,
                     "reviewed-controls": _reviewed_controls(
-                        bundle, "Controls evaluated by this assessment"
+                        bundle, "Controls evaluated by this assessment", tokens
                     ),
                     "observations": observations,
                     "findings": findings,
@@ -445,17 +542,19 @@ def export_oscal_assessment_results(bundle: EvidenceBundle) -> dict[str, Any]:
             *_evidence_resources(bundle, scope),
         ]
     }
-    return document
+    finalized: dict[str, Any] = _finalize(document)
+    return finalized
 
 
-def _reviewed_controls(bundle: EvidenceBundle, description: str) -> dict[str, Any]:
+def _reviewed_controls(
+    bundle: EvidenceBundle, description: str, tokens: dict[str, str]
+) -> dict[str, Any]:
     return {
         "control-selections": [
             {
                 "description": description,
                 "include-controls": [
-                    {"control-id": _control_target_id(ev.control_id)}
-                    for ev in bundle.control_evaluations
+                    {"control-id": tokens[ev.control_id]} for ev in bundle.control_evaluations
                 ],
             }
         ],
@@ -481,6 +580,7 @@ def _assessment_plan(bundle: EvidenceBundle, scope: str, last_modified: str) -> 
     so ``import-ssp`` resolves to a back-matter resource inside the plan that
     says so and names the application and repository assessed.
     """
+    tokens = _control_tokens(ev.control_id for ev in bundle.control_evaluations)
     metadata: dict[str, Any] = {
         "title": (
             f"Assessment Plan · {bundle.application.name} · release {bundle.release.release_id}"
@@ -503,7 +603,7 @@ def _assessment_plan(bundle: EvidenceBundle, scope: str, last_modified: str) -> 
             "metadata": metadata,
             "import-ssp": {"href": f"#{_ssp_placeholder_uuid(scope)}"},
             "reviewed-controls": _reviewed_controls(
-                bundle, "Controls the release is evaluated against"
+                bundle, "Controls the release is evaluated against", tokens
             ),
             "back-matter": {
                 "resources": [
@@ -533,7 +633,7 @@ def _assessment_plan_resource(
     not an assessment plan.
     """
     plan = json.dumps(
-        _assessment_plan(bundle, scope, last_modified),
+        _finalize(_assessment_plan(bundle, scope, last_modified)),
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
@@ -571,8 +671,15 @@ def _absolute_artifact_href(raw: RawEvidenceRef) -> str | None:
     path such as ``C:reports\\scan.json`` has a drive but no root: it is not
     absolute, and ``as_uri()`` raises on it.
     """
-    if raw.artifact_uri and urlsplit(raw.artifact_uri).scheme:
-        return raw.artifact_uri
+    if raw.artifact_uri and _URI_CHARS.fullmatch(raw.artifact_uri):
+        # urlsplit raises ValueError on input such as ``http://[``; a URI it
+        # cannot parse is not linked, and the record is embedded instead.
+        try:
+            scheme = urlsplit(raw.artifact_uri).scheme
+        except ValueError:
+            scheme = ""
+        if scheme:
+            return raw.artifact_uri
     path = raw.artifact_path
     if not path:
         return None

@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import json
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -21,8 +22,35 @@ from jsonschema import validators
 from jsonschema.exceptions import ValidationError
 
 from evidence_collector.application.orchestrator import run_pipeline
-from evidence_collector.domain.models import Application, EvidenceBundle, ReleaseContext
-from evidence_collector.exporters.oscal import export_oscal_assessment_results
+from evidence_collector.domain.enums import (
+    ControlCriticality,
+    ControlEvaluationStatus,
+    ControlFramework,
+    EvidenceStatus,
+    EvidenceType,
+    ReleaseStatus,
+    SubjectType,
+)
+from evidence_collector.domain.models import (
+    Application,
+    ControlDefinition,
+    ControlEvaluation,
+    EvidenceBundle,
+    EvidenceException,
+    EvidenceSource,
+    NormalizedEvidence,
+    RawEvidenceRef,
+    ReleaseContext,
+    Summary,
+)
+from evidence_collector.exporters.guac import build_guac_collection
+from evidence_collector.exporters.html import bundle_to_html
+from evidence_collector.exporters.intoto import build_dsse_envelope, build_statement
+from evidence_collector.exporters.markdown import bundle_to_markdown
+from evidence_collector.exporters.oscal import export_oscal_assessment_results, export_oscal_catalog
+from evidence_collector.exporters.report_set import export_report_set
+from evidence_collector.exporters.sarif_gaps import build_gap_sarif
+from evidence_collector.exporters.vex import build_openvex
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "oscal"
 
@@ -183,3 +211,216 @@ def test_not_ready_assessment_results_validate_against_the_oscal_schema(
     results = export_oscal_assessment_results(bundle)
     assert _errors(_validator("oscal_assessment-results_schema.json"), results) == []
     assert _errors(_validator("oscal_assessment-plan_schema.json"), _embedded_plan(results)) == []
+
+
+# ---------------------------------------------------------------------------
+# Hostile but schema-valid bundles
+# ---------------------------------------------------------------------------
+
+_AWARE_IST = timezone(timedelta(hours=5, minutes=30))
+_AWARE_BRT = timezone(timedelta(hours=-3))
+
+
+def _hostile_evidence(evidence_id: str, raw: RawEvidenceRef | None) -> NormalizedEvidence:
+    return NormalizedEvidence(
+        evidence_id=evidence_id,
+        evidence_type=EvidenceType.SAST_SCAN,
+        source=EvidenceSource(name="tool\nname", kind="sarif"),
+        producer="semgrep ✓",
+        subject_type=SubjectType.COMMIT,
+        subject_ref="abcdef1234567890",
+        status=EvidenceStatus.PASSED,
+        release_id="2026.04.10",
+        commit_sha="abcdef1234567890",
+        raw=raw,
+    )
+
+
+def _hostile_evaluation(
+    control_id: str,
+    status: ControlEvaluationStatus,
+    refs: list[str],
+    exception_refs: list[str] | None = None,
+) -> ControlEvaluation:
+    return ControlEvaluation(
+        control_id=control_id,
+        framework=ControlFramework.ORG_INTERNAL,
+        control_name=f"  {control_id} — naïve\nname  ",
+        evaluation_status=status,
+        criticality=ControlCriticality.HIGH,
+        evidence_refs=refs,
+        rationale=f"line one\nline two\t{control_id}  ",
+        exception_refs=exception_refs or [],
+        evaluated_at=datetime(2026, 4, 10, 12, 0, tzinfo=_AWARE_BRT),
+    )
+
+
+def _hostile_bundle(
+    evaluations: list[ControlEvaluation],
+    evidence: list[NormalizedEvidence],
+    exceptions: list[EvidenceException] | None = None,
+    generated_at: datetime | None = None,
+) -> EvidenceBundle:
+    def count(status: ControlEvaluationStatus) -> int:
+        return sum(1 for e in evaluations if e.evaluation_status is status)
+
+    return EvidenceBundle(
+        bundle_id="bundle hostile\n1",
+        generated_at=generated_at or datetime(2026, 4, 10, 18, 30, tzinfo=_AWARE_IST),
+        application=Application(
+            name="pay ments\napi", repository="acme/pay ments", environment="prod 1"
+        ),
+        release=ReleaseContext(release_id=" 2026.04.10 ", commit_sha="abcdef1234567890"),
+        evidence=evidence,
+        control_evaluations=evaluations,
+        exceptions=exceptions or [],
+        summary=Summary(
+            evidence_coverage_score=0,
+            confidence_score=0,
+            release_status=ReleaseStatus.NOT_READY,
+            total_controls=len(evaluations),
+            controls_met=count(ControlEvaluationStatus.MET),
+            controls_partial=count(ControlEvaluationStatus.PARTIAL),
+            controls_missing=count(ControlEvaluationStatus.MISSING),
+            controls_waived=count(ControlEvaluationStatus.WAIVED),
+            controls_not_applicable=count(ControlEvaluationStatus.NOT_APPLICABLE),
+        ),
+    )
+
+
+def _odd_waiver(exception_id: str, control_id: str) -> EvidenceException:
+    return EvidenceException(
+        exception_id=exception_id,
+        control_id=control_id,
+        approver="  lead@example.com\n",
+        approved_at=datetime(2026, 1, 1, tzinfo=_AWARE_BRT),
+        expires_at=datetime(2026, 12, 31, 23, 0, tzinfo=_AWARE_IST),
+        justification="  Compensating control\nrecorded in the register.  ",
+        reference=" ",
+    )
+
+
+def _hostile_cases() -> dict[str, EvidenceBundle]:
+    raws = [
+        RawEvidenceRef(artifact_uri="http://["),
+        RawEvidenceRef(artifact_uri="relative/thing.json"),
+        RawEvidenceRef(artifact_uri="https://ci.example/a b?x=1#frag"),
+        RawEvidenceRef(artifact_path="C:reports\\scan.json"),
+        RawEvidenceRef(artifact_path="\\\\server\\share\\scan report.json"),
+        RawEvidenceRef(artifact_path="C:\\ci\\relatório ñ.json", integrity_hash="sha256:zz"),
+        RawEvidenceRef(artifact_path="/srv/ci/a\nb.json", content_type=" "),
+        RawEvidenceRef(artifact_path="reports\\scan.json"),
+    ]
+    odd_ids = ["scan:1", "scan/1", "1", "évidence\nid", "scan_1", "scan 1"]
+    evidence = [
+        _hostile_evidence(odd_ids[i] if i < len(odd_ids) else f"extra {i}", raw)
+        for i, raw in enumerate(raws)
+    ]
+    ids = [e.evidence_id for e in evidence]
+    control_ids = ["1", "ORG:BUILD", "custom control", "ORG.BUILD", "ORG-BUILD", "org.build", "Ω-7"]
+    statuses = list(ControlEvaluationStatus)
+    evaluations = []
+    for i, cid in enumerate(control_ids):
+        status = statuses[i % len(statuses)]
+        waived = status is ControlEvaluationStatus.WAIVED
+        evaluations.append(
+            _hostile_evaluation(cid, status, ids[i::3], ["EXC 1\n", "exc:2"] if waived else None)
+        )
+    waived_id = next(
+        e.control_id for e in evaluations if e.evaluation_status is ControlEvaluationStatus.WAIVED
+    )
+    waivers = [_odd_waiver("EXC 1\n", waived_id), _odd_waiver("exc:2", waived_id)]
+    return {
+        "no-evaluations": _hostile_bundle([], []),
+        "evidence-without-evaluations": _hostile_bundle([], evidence[:3]),
+        "hostile-everything": _hostile_bundle(evaluations, evidence, waivers),
+        "naive-timestamp": _hostile_bundle(
+            evaluations[:2], evidence, generated_at=datetime(2026, 4, 10, 23, 59, 59)
+        ),
+    }
+
+
+_HOSTILE = _hostile_cases()
+_HREF = regex.compile(r"^[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]*$")
+
+
+def _walk(node: Any, key: str) -> Iterator[Any]:
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k == key:
+                yield v
+            yield from _walk(v, key)
+    elif isinstance(node, list):
+        for item in node:
+            yield from _walk(item, key)
+
+
+@pytest.mark.parametrize("case", sorted(_HOSTILE))
+def test_hostile_bundles_validate_against_the_oscal_schemas(case: str) -> None:
+    results = export_oscal_assessment_results(_HOSTILE[case])
+    plan = _embedded_plan(results)
+    assert _errors(_validator("oscal_assessment-results_schema.json"), results) == []
+    assert _errors(_validator("oscal_assessment-plan_schema.json"), plan) == []
+    # The schemas declare uri-reference, but jsonschema checks that format only
+    # with an optional package; hold every href to RFC 3986 characters here.
+    for document in (results, plan):
+        for href in _walk(document, "href"):
+            assert _HREF.match(href), href
+
+
+@pytest.mark.parametrize("case", sorted(_HOSTILE))
+def test_every_exporter_survives_hostile_bundles(case: str, tmp_path: Path) -> None:
+    bundle = _HOSTILE[case]
+    assert "assessment-results" in export_oscal_assessment_results(bundle)
+    guac = build_guac_collection(bundle)
+    assert len(guac["documents"]) == len(bundle.evidence)
+    assert "@context" in build_openvex(bundle, now=datetime(2026, 4, 11, tzinfo=UTC))
+    assert build_gap_sarif(bundle)["version"] == "2.1.0"
+    assert build_dsse_envelope(build_statement(bundle))["payload"]
+    assert bundle.bundle_id.split()[0] in bundle_to_markdown(bundle)
+    assert "<html" in bundle_to_html(bundle)
+    report = export_report_set(bundle, tmp_path)
+    assert report.json_path.is_file() and report.markdown_path.is_file()
+
+
+def test_timestamps_are_converted_to_utc_not_relabelled() -> None:
+    results = export_oscal_assessment_results(_HOSTILE["hostile-everything"])
+    # 18:30 at +05:30 is 13:00 UTC.
+    assert results["assessment-results"]["metadata"]["last-modified"].startswith(
+        "2026-04-10T13:00:00"
+    )
+    risk = results["assessment-results"]["results"][0]["risks"][0]
+    # 23:00 at +05:30 on 31 Dec is 17:30 UTC.
+    assert risk["deadline"].startswith("2026-12-31T17:30:00")
+    naive = export_oscal_assessment_results(_HOSTILE["naive-timestamp"])
+    assert naive["assessment-results"]["metadata"]["last-modified"].startswith(
+        "2026-04-10T23:59:59"
+    )
+
+
+def test_control_tokens_stay_distinct_and_keep_builtin_ids() -> None:
+    results = export_oscal_assessment_results(_HOSTILE["hostile-everything"])
+    result = results["assessment-results"]["results"][0]
+    selected = [
+        c["control-id"]
+        for c in result["reviewed-controls"]["control-selections"][0]["include-controls"]
+    ]
+    assert len(set(selected)) == len(selected) == 7
+    assert {f["target"]["target-id"] for f in result["findings"]} == set(selected)
+    catalog = export_oscal_catalog(
+        [
+            ControlDefinition(
+                control_id=cid,
+                framework=ControlFramework.ORG_INTERNAL,
+                name="n",
+                description="d",
+                criticality=ControlCriticality.HIGH,
+                required_evidence_types=[EvidenceType.SBOM],
+            )
+            for cid in ["SSDF-PS.3", "ORG-CODE-REVIEW", "1", "ORG:BUILD"]
+        ]
+    )
+    ids = [c["id"] for g in catalog["catalog"]["groups"] for c in g["controls"]]
+    assert ids[:2] == ["ssdf-ps-3", "org-code-review"]
+    token = regex.compile(r"^(\p{L}|_)(\p{L}|\p{N}|[.\-_])*$")
+    assert all(token.match(i) for i in ids), ids
