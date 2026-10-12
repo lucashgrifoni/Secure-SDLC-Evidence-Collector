@@ -309,6 +309,7 @@ def _assessment_scope(bundle: EvidenceBundle) -> str:
             bundle.application.repository,
             bundle.application.environment,
             bundle.release.release_id,
+            bundle.release.commit_sha,
         ],
         ensure_ascii=False,
     )
@@ -675,8 +676,11 @@ def _absolute_artifact_href(raw: RawEvidenceRef) -> str | None:
     if raw.artifact_uri and _URI_CHARS.fullmatch(raw.artifact_uri):
         # urlsplit raises ValueError on input such as ``http://[``; a URI it
         # cannot parse is not linked, and the record is embedded instead.
+        # Reading ``.port`` also rejects a non-numeric or out-of-range port.
         try:
-            scheme = urlsplit(raw.artifact_uri).scheme
+            parts = urlsplit(raw.artifact_uri)
+            _ = parts.port
+            scheme = parts.scheme
         except ValueError:
             scheme = ""
         if scheme:

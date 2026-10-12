@@ -550,3 +550,27 @@ def test_evidence_resource_links_a_uri_with_valid_percent_escapes() -> None:
     resource = _evidence_resource(export_oscal_assessment_results(bundle), "sca-1")
 
     assert resource["rlinks"][0]["href"] == uri
+
+
+def test_nested_uuids_differ_when_a_release_id_is_reused_for_another_commit() -> None:
+    first_bundle = _waived_bundle("api", "acme/api")
+    second_bundle = first_bundle.model_copy(
+        update={"release": first_bundle.release.model_copy(update={"commit_sha": "f" * 40})}
+    )
+    first = export_oscal_assessment_results(first_bundle)
+    second = export_oscal_assessment_results(second_bundle)
+
+    assert _all_uuids(first).isdisjoint(_all_uuids(second))
+
+
+@pytest.mark.parametrize(
+    "artifact_uri",
+    ["https://example.test:abc/report.json", "https://example.test:99999/report.json"],
+    ids=["non-numeric-port", "port-out-of-range"],
+)
+def test_evidence_resource_does_not_link_a_uri_with_an_invalid_port(artifact_uri: str) -> None:
+    bundle = _with_recorded_artifact(_waived_bundle("a", "o/a"), None, artifact_uri)
+    resource = _evidence_resource(export_oscal_assessment_results(bundle), "sca-1")
+
+    assert "rlinks" not in resource
+    assert "base64" in resource

@@ -326,6 +326,11 @@ def _sourced(
         # The collector's own attestation file (YAML or JSON) is not in-toto.
         (EvidenceType.GENERIC_ATTESTATION, "attestation", "application/yaml", "evidence"),
         (EvidenceType.ARTIFACT_SIGNATURE, "attestation", "application/json", "evidence"),
+        # A plugin's SBOM keeps its type even with a source kind and MIME
+        # type the built-in parsers never use.
+        (EvidenceType.SBOM, "syft", "application/json", "sbom"),
+        # The collector's own attestation describing an SBOM is not one.
+        (EvidenceType.SBOM, "attestation", "application/yaml", "evidence"),
     ],
 )
 def test_guac_document_type_follows_the_file_format(

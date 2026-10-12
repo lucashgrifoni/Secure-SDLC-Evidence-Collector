@@ -46,6 +46,7 @@ import re
 from pathlib import PureWindowsPath
 from typing import Any
 
+from evidence_collector.domain.enums import EvidenceType
 from evidence_collector.domain.models import EvidenceBundle, NormalizedEvidence
 
 # Every value `type` can take, in the order the docs list them.
@@ -59,6 +60,30 @@ GUAC_DOCUMENT_TYPES: tuple[str, ...] = ("sbom", "sarif", "attestation", "evidenc
 # `attestations[]` response) around the statements, a shape GUAC's file
 # collector does not read, so they are `evidence`.
 _INTOTO_SOURCE_KINDS = frozenset({"slsa-provenance", "slsa-vsa", "release-attestation"})
+
+
+# Source kinds the built-in normalizers emit; anything else came from a plugin.
+_BUILTIN_SOURCE_KINDS = frozenset(
+    {
+        "ai-eval",
+        "attestation",
+        "ci",
+        "dast",
+        "dataset-metadata",
+        "iac",
+        "junit-xml",
+        "model-card",
+        "registry-attestation",
+        "release-attestation",
+        "sarif",
+        "sbom",
+        "sca",
+        "scm",
+        "secrets",
+        "slsa-provenance",
+        "slsa-vsa",
+    }
+)
 
 
 def _document_type_for(evidence: NormalizedEvidence) -> str:
@@ -82,6 +107,11 @@ def _document_type_for(evidence: NormalizedEvidence) -> str:
         return "sarif"
     if kind in _INTOTO_SOURCE_KINDS or kind.startswith("in-toto-"):
         return "attestation"
+    # A collector plugin may report an SBOM under its own source kind and a
+    # plain JSON content type; its evidence type still says what the file is.
+    # The built-in kinds are known formats and are not second-guessed.
+    if evidence.evidence_type is EvidenceType.SBOM and kind not in _BUILTIN_SOURCE_KINDS:
+        return "sbom"
     return "evidence"
 
 
