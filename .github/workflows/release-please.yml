@@ -70,8 +70,19 @@ jobs:
           private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
 
       - name: Run release-please
+        id: release
         uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.1.3
         with:
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
           token: ${{ steps.app-token.outputs.token }}
+
+      # release-please titles the GitHub Release with the bare tag. Every
+      # release page uses "Secure SDLC Evidence Collector vX.Y.Z", so set it
+      # here. The tag goes through env, never into the script text.
+      - name: Title the GitHub Release
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG: ${{ steps.release.outputs.tag_name }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "Secure SDLC Evidence Collector $TAG"
