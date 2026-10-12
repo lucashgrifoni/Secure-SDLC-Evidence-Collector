@@ -20,6 +20,7 @@ References
 
 from __future__ import annotations
 
+import base64
 import json
 import uuid
 from collections.abc import Iterable
@@ -223,6 +224,16 @@ def _assessment_plan_resource_uuid(scope: str) -> str:
     return _scoped_uuid("ap", scope)
 
 
+def _assessment_plan_uuid(scope: str) -> str:
+    """Stable UUIDv5 for the embedded assessment-plan document itself."""
+    return _scoped_uuid("ap-document", scope)
+
+
+def _ssp_placeholder_uuid(scope: str) -> str:
+    """Stable UUIDv5 for the resource the embedded plan's ``import-ssp`` names."""
+    return _scoped_uuid("ssp", scope)
+
+
 def _result_uuid(scope: str) -> str:
     """Stable UUIDv5 for the single assessment result this AR carries."""
     return _scoped_uuid("result", scope)
@@ -393,17 +404,9 @@ def export_oscal_assessment_results(bundle: EvidenceBundle) -> dict[str, Any]:
                     ),
                     "start": collected_iso,
                     "end": collected_iso,
-                    "reviewed-controls": {
-                        "control-selections": [
-                            {
-                                "description": "Controls evaluated by this assessment",
-                                "include-controls": [
-                                    {"control-id": _control_target_id(ev.control_id)}
-                                    for ev in bundle.control_evaluations
-                                ],
-                            }
-                        ],
-                    },
+                    "reviewed-controls": _reviewed_controls(
+                        bundle, "Controls evaluated by this assessment"
+                    ),
                     "observations": observations,
                     "findings": findings,
                 }
@@ -414,35 +417,113 @@ def export_oscal_assessment_results(bundle: EvidenceBundle) -> dict[str, Any]:
         document["assessment-results"]["results"][0]["risks"] = risks
     document["assessment-results"]["back-matter"] = {
         "resources": [
-            _assessment_plan_resource(bundle, scope),
+            _assessment_plan_resource(bundle, scope, collected_iso),
             *_evidence_resources(bundle, scope),
         ]
     }
     return document
 
 
-def _assessment_plan_resource(bundle: EvidenceBundle, scope: str) -> dict[str, Any]:
-    """The resource ``import-ap`` resolves to.
+def _reviewed_controls(bundle: EvidenceBundle, description: str) -> dict[str, Any]:
+    return {
+        "control-selections": [
+            {
+                "description": description,
+                "include-controls": [
+                    {"control-id": _control_target_id(ev.control_id)}
+                    for ev in bundle.control_evaluations
+                ],
+            }
+        ],
+    }
 
-    OSCAL requires ``import-ap``, but the collector publishes no separate
-    assessment plan: the plan is the control catalog the bundle was evaluated
-    against. The fragment used to name a resource the document never defined.
+
+def _catalog_props(bundle: EvidenceBundle) -> list[dict[str, str]]:
+    if bundle.catalog is None:
+        return []
+    return [
+        {"name": "catalog_origin", "value": bundle.catalog.origin},
+        {"name": "catalog_name", "value": bundle.catalog.name},
+        {"name": "catalog_sha256", "value": bundle.catalog.sha256},
+    ]
+
+
+def _assessment_plan(bundle: EvidenceBundle, scope: str, last_modified: str) -> dict[str, Any]:
+    """A minimal OSCAL 1.1.2 assessment-plan generated from the same bundle.
+
+    It carries the fields the AP model requires (uuid, metadata, import-ssp,
+    reviewed-controls): the plan was to evaluate these controls against the
+    catalog recorded in the bundle. The collector has no system security plan,
+    so ``import-ssp`` resolves to a back-matter resource inside the plan that
+    says so and names the application and repository assessed.
     """
-    props: list[dict[str, str]] = []
-    if bundle.catalog is not None:
-        props = [
-            {"name": "catalog_origin", "value": bundle.catalog.origin},
-            {"name": "catalog_name", "value": bundle.catalog.name},
-            {"name": "catalog_sha256", "value": bundle.catalog.sha256},
-        ]
+    metadata: dict[str, Any] = {
+        "title": (
+            f"Assessment Plan · {bundle.application.name} · release {bundle.release.release_id}"
+        ),
+        "last-modified": last_modified,
+        "version": __version__,
+        "oscal-version": "1.1.2",
+    }
+    props = _catalog_props(bundle)
+    if props:
+        metadata["props"] = props
+    return {
+        "assessment-plan": {
+            "uuid": _assessment_plan_uuid(scope),
+            "metadata": metadata,
+            "import-ssp": {"href": f"#{_ssp_placeholder_uuid(scope)}"},
+            "reviewed-controls": _reviewed_controls(
+                bundle, "Controls the release is evaluated against"
+            ),
+            "back-matter": {
+                "resources": [
+                    {
+                        "uuid": _ssp_placeholder_uuid(scope),
+                        "title": "System under assessment",
+                        "description": (
+                            "No OSCAL system security plan is published. The system "
+                            f"assessed is {bundle.application.name} "
+                            f"({bundle.application.repository})."
+                        ),
+                    }
+                ]
+            },
+        }
+    }
+
+
+def _assessment_plan_resource(
+    bundle: EvidenceBundle, scope: str, last_modified: str
+) -> dict[str, Any]:
+    """The back-matter resource ``import-ap`` resolves to.
+
+    OSCAL requires ``import-ap``, and the collector publishes no separate plan
+    file, so the plan is generated from the bundle and embedded here as base64.
+    It first pointed at a fragment the document never defined, then at a
+    resource holding only a title and a description, which resolved but was
+    not an assessment plan.
+    """
+    plan = json.dumps(
+        _assessment_plan(bundle, scope, last_modified),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     resource: dict[str, Any] = {
         "uuid": _assessment_plan_resource_uuid(scope),
         "title": "Assessment plan",
         "description": (
-            "No separate OSCAL assessment plan is published. Each control was "
-            "evaluated against the control catalog recorded in the evidence bundle."
+            "OSCAL assessment-plan generated from the evidence bundle: the controls "
+            "evaluated and the catalog they were evaluated against."
         ),
+        "base64": {
+            "filename": "assessment-plan.json",
+            "media-type": "application/oscal+json",
+            "value": base64.b64encode(plan.encode("utf-8")).decode("ascii"),
+        },
     }
+    props = _catalog_props(bundle)
     if props:
         resource["props"] = props
     return resource

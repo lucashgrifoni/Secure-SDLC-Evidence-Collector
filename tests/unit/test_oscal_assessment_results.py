@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import json
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -312,3 +314,50 @@ def test_observation_links_each_evidence_ref_to_a_back_matter_resource() -> None
     resource = resources[links[0]["href"][1:]]
     assert {"name": "evidence_id", "value": "sca-1"} in resource["props"]
     assert links[0]["description"]
+
+
+def _embedded_assessment_plan(doc: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return (import-ap resource, decoded assessment-plan document)."""
+    ar = doc["assessment-results"]
+    target = ar["import-ap"]["href"]
+    assert target.startswith("#")
+    resource = next(r for r in ar["back-matter"]["resources"] if r["uuid"] == target[1:])
+    encoded = resource["base64"]
+    assert encoded["media-type"] == "application/oscal+json"
+    plan = json.loads(base64.b64decode(encoded["value"]).decode("utf-8"))
+    return resource, plan
+
+
+def test_import_ap_resolves_to_an_embedded_assessment_plan_document() -> None:
+    # import-ap used to point at a back-matter resource carrying only a title
+    # and a description: something that resolved, but not an assessment plan.
+    bundle = _waived_bundle("acme-api", "acme/api")
+    doc = export_oscal_assessment_results(bundle)
+    _resource, plan = _embedded_assessment_plan(doc)
+
+    ap = plan["assessment-plan"]
+    assert uuid.UUID(ap["uuid"])
+    for key in ("title", "last-modified", "version", "oscal-version"):
+        assert ap["metadata"][key]
+    assert ap["metadata"]["oscal-version"] == "1.1.2"
+    assert ap["import-ssp"]["href"].startswith("#")
+    ssp_target = ap["import-ssp"]["href"][1:]
+    assert ssp_target in {r["uuid"] for r in ap["back-matter"]["resources"]}
+
+    selected = ap["reviewed-controls"]["control-selections"][0]["include-controls"]
+    assert [c["control-id"] for c in selected] == ["ssdf-pw-4", "ssdf-pw-1"]
+
+
+def test_embedded_assessment_plan_is_stable_and_scoped_to_the_application() -> None:
+    first = _embedded_assessment_plan(
+        export_oscal_assessment_results(_waived_bundle("billing-api", "acme/billing-api"))
+    )[1]
+    again = _embedded_assessment_plan(
+        export_oscal_assessment_results(_waived_bundle("billing-api", "acme/billing-api"))
+    )[1]
+    other = _embedded_assessment_plan(
+        export_oscal_assessment_results(_waived_bundle("payments-api", "acme/payments-api"))
+    )[1]
+
+    assert first == again
+    assert first["assessment-plan"]["uuid"] != other["assessment-plan"]["uuid"]

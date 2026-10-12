@@ -78,7 +78,9 @@ def register(app: typer.Typer) -> None:
           file passed via ``--catalog``).
         * ``--kind assessment-results --bundle bundle.json`` — emits the
           OSCAL Assessment Results document that maps the bundle's
-          control evaluations to OSCAL findings + observations.
+          control evaluations to OSCAL findings + observations. Its
+          required ``import-ap`` resolves to a minimal assessment plan
+          generated from the same bundle, embedded as base64 in back-matter.
         """
         if kind is OscalKind.catalog:
             from evidence_collector.controls import default_catalog, load_catalog
