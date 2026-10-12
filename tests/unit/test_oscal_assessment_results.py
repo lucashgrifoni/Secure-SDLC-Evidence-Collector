@@ -296,9 +296,7 @@ def test_uuids_differ_per_environment_and_metadata_names_it() -> None:
     staging_bundle = _waived_bundle("api", "acme/api")
     staging_bundle = staging_bundle.model_copy(
         update={
-            "application": staging_bundle.application.model_copy(
-                update={"environment": "staging"}
-            )
+            "application": staging_bundle.application.model_copy(update={"environment": "staging"})
         }
     )
     staging = export_oscal_assessment_results(staging_bundle)
