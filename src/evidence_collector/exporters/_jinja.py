@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import UTC
 from functools import cache
 from importlib.resources import files
 
@@ -80,13 +81,17 @@ def split_exceptions(
     }
     application = bundle.application.name
     release_id = bundle.release.release_id
+    # Waiver windows are timezone-aware; a naive bundle clock means UTC.
+    now = bundle.generated_at
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=UTC)
     in_force: list[EvidenceException] = []
     not_in_force: list[tuple[EvidenceException, str]] = []
     for exc in bundle.exceptions:
         if exc.exception_id in applied:
             in_force.append(exc)
             continue
-        reason = exception_not_in_force_reason(exc, application, release_id, bundle.generated_at)
+        reason = exception_not_in_force_reason(exc, application, release_id, now)
         # Valid by its dates and scope, yet no control was waived by it: the
         # control it names was met, partial or missing on its own terms.
         not_in_force.append(

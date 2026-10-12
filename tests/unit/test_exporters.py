@@ -700,6 +700,28 @@ def test_a_valid_waiver_no_control_relied_on_is_not_listed_as_approved() -> None
     )
 
 
+def test_reports_render_with_a_timezone_naive_generated_at() -> None:
+    # Waiver timestamps are timezone-aware; a naive generated_at used to make
+    # the not-in-force check raise TypeError and abort both reports.
+    bundle = _build_bundle().model_copy(
+        update={
+            "generated_at": datetime(2026, 6, 1, 12, 0, 0),
+            "exceptions": [
+                _waiver(
+                    "EXC-NAIVE",
+                    approved_at=datetime(2026, 1, 1, tzinfo=UTC),
+                    expires_at=datetime(2026, 3, 1, tzinfo=UTC),
+                )
+            ],
+        }
+    )
+    markdown = bundle_to_markdown(bundle)
+    html = bundle_to_html(bundle)
+
+    assert re.search(r"EXC-NAIVE.*expired", _markdown_section(markdown, "Exceptions not in force"))
+    assert "EXC-NAIVE" in html
+
+
 def test_html_controls_tile_breakdown_adds_up_to_the_total() -> None:
     # The tile showed met, partial and missing only, so a waived or n/a control
     # left its breakdown one short of the total printed above it.
