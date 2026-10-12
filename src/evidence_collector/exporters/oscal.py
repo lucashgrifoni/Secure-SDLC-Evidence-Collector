@@ -25,7 +25,9 @@ import json
 import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
+from pathlib import PureWindowsPath
 from typing import Any
+from urllib.parse import quote
 
 from evidence_collector import __version__
 from evidence_collector.domain.enums import (
@@ -38,6 +40,7 @@ from evidence_collector.domain.models import (
     ControlEvaluation,
     EvidenceBundle,
     EvidenceException,
+    NormalizedEvidence,
 )
 
 # Stable, project-scoped namespace for synthesizing OSCAL UUIDs from
@@ -468,6 +471,10 @@ def _assessment_plan(bundle: EvidenceBundle, scope: str, last_modified: str) -> 
     props = _catalog_props(bundle)
     if props:
         metadata["props"] = props
+    no_ssp = (
+        "No OSCAL system security plan is published. The system assessed is "
+        f"{bundle.application.name} ({bundle.application.repository})."
+    )
     return {
         "assessment-plan": {
             "uuid": _assessment_plan_uuid(scope),
@@ -481,11 +488,10 @@ def _assessment_plan(bundle: EvidenceBundle, scope: str, last_modified: str) -> 
                     {
                         "uuid": _ssp_placeholder_uuid(scope),
                         "title": "System under assessment",
-                        "description": (
-                            "No OSCAL system security plan is published. The system "
-                            f"assessed is {bundle.application.name} "
-                            f"({bundle.application.repository})."
-                        ),
+                        "description": no_ssp,
+                        # A resource needs an rlink or base64; the statement is
+                        # the content, since there is no SSP to link to.
+                        "base64": _base64_payload("no-ssp.txt", "text/plain", no_ssp),
                     }
                 ]
             },
@@ -517,16 +523,60 @@ def _assessment_plan_resource(
             "OSCAL assessment-plan generated from the evidence bundle: the controls "
             "evaluated and the catalog they were evaluated against."
         ),
-        "base64": {
-            "filename": "assessment-plan.json",
-            "media-type": "application/oscal+json",
-            "value": base64.b64encode(plan.encode("utf-8")).decode("ascii"),
-        },
+        "base64": _base64_payload("assessment-plan.json", "application/oscal+json", plan),
     }
     props = _catalog_props(bundle)
     if props:
         resource["props"] = props
     return resource
+
+
+def _base64_payload(filename: str, media_type: str, text: str) -> dict[str, str]:
+    return {
+        "filename": filename,
+        "media-type": media_type,
+        "value": base64.b64encode(text.encode("utf-8")).decode("ascii"),
+    }
+
+
+def _artifact_href(path: str) -> str:
+    """A URI reference for a recorded artifact path.
+
+    A drive-letter or UNC path becomes a ``file:`` URI. Anything else is a
+    relative or absolute path reference, percent-encoded as recorded, so a
+    space or a backslash in a POSIX filename survives as ``%20`` / ``%5C``.
+    """
+    windows = PureWindowsPath(path)
+    if windows.drive:
+        return windows.as_uri()
+    return quote(path, safe="/")
+
+
+def _evidence_content(item: NormalizedEvidence | None, evidence_id: str) -> dict[str, Any]:
+    """The rlink or base64 an OSCAL 1.1.2 back-matter resource must carry.
+
+    The artifact the evidence was read from when its location is recorded;
+    otherwise the normalized evidence record itself, so the resource still
+    holds what the finding relied on.
+    """
+    raw = item.raw if item is not None else None
+    if raw is not None and (raw.artifact_uri or raw.artifact_path):
+        rlink: dict[str, Any] = {
+            "href": raw.artifact_uri or _artifact_href(raw.artifact_path or ""),
+        }
+        if raw.content_type:
+            rlink["media-type"] = raw.content_type
+        if raw.integrity_hash and raw.integrity_hash.startswith("sha256:"):
+            rlink["hashes"] = [
+                {"algorithm": "SHA-256", "value": raw.integrity_hash.removeprefix("sha256:")}
+            ]
+        return {"rlinks": [rlink]}
+    record = (
+        item.model_dump_json()
+        if item is not None
+        else json.dumps({"evidence_id": evidence_id, "present_in_bundle": False})
+    )
+    return {"base64": _base64_payload(f"{evidence_id}.json", "application/json", record)}
 
 
 def _evidence_resources(bundle: EvidenceBundle, scope: str) -> list[dict[str, Any]]:
@@ -551,6 +601,7 @@ def _evidence_resources(bundle: EvidenceBundle, scope: str) -> list[dict[str, An
                 "title": evidence_id,
                 "description": description,
                 "props": props,
+                **_evidence_content(item, evidence_id),
             }
         )
     return resources

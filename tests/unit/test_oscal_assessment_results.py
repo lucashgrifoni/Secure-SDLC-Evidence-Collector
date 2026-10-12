@@ -25,6 +25,7 @@ from evidence_collector.domain.models import (
     EvidenceException,
     EvidenceSource,
     NormalizedEvidence,
+    RawEvidenceRef,
     ReleaseContext,
     Summary,
 )
@@ -361,3 +362,71 @@ def test_embedded_assessment_plan_is_stable_and_scoped_to_the_application() -> N
 
     assert first == again
     assert first["assessment-plan"]["uuid"] != other["assessment-plan"]["uuid"]
+
+
+def _resources_without_content(resources: list[dict[str, Any]]) -> list[str]:
+    return [r["uuid"] for r in resources if not r.get("rlinks") and "base64" not in r]
+
+
+def test_every_back_matter_resource_carries_an_rlink_or_base64() -> None:
+    # OSCAL 1.1.2 requires each back-matter resource to hold at least one
+    # rlink or a base64 payload; metadata alone does not make a resource.
+    doc = export_oscal_assessment_results(_with_recorded_artifact(_waived_bundle("a", "o/a")))
+    _resource, plan = _embedded_assessment_plan(doc)
+
+    assert _resources_without_content(doc["assessment-results"]["back-matter"]["resources"]) == []
+    assert _resources_without_content(plan["assessment-plan"]["back-matter"]["resources"]) == []
+
+
+def _with_recorded_artifact(bundle: EvidenceBundle) -> EvidenceBundle:
+    item = bundle.evidence[0].model_copy(
+        update={
+            "raw": RawEvidenceRef(
+                artifact_path="artifacts/trivy report.sarif",
+                integrity_hash="sha256:" + "ab" * 32,
+                content_type="application/sarif+json",
+            )
+        }
+    )
+    return bundle.model_copy(update={"evidence": [item]})
+
+
+def _evidence_resource(doc: dict[str, Any], evidence_id: str) -> dict[str, Any]:
+    return next(
+        r
+        for r in doc["assessment-results"]["back-matter"]["resources"]
+        if {"name": "evidence_id", "value": evidence_id} in r.get("props", [])
+    )
+
+
+def test_evidence_resource_links_to_the_recorded_artifact() -> None:
+    doc = export_oscal_assessment_results(_with_recorded_artifact(_waived_bundle("a", "o/a")))
+    rlink = _evidence_resource(doc, "sca-1")["rlinks"][0]
+
+    assert rlink["href"] == "artifacts/trivy%20report.sarif"
+    assert rlink["media-type"] == "application/sarif+json"
+    assert rlink["hashes"] == [{"algorithm": "SHA-256", "value": "ab" * 32}]
+
+
+def test_evidence_resource_without_a_path_embeds_the_normalized_record() -> None:
+    doc = export_oscal_assessment_results(_waived_bundle("a", "o/a"))
+    encoded = _evidence_resource(doc, "sca-1")["base64"]
+
+    assert encoded["media-type"] == "application/json"
+    record = json.loads(base64.b64decode(encoded["value"]).decode("utf-8"))
+    assert record["evidence_id"] == "sca-1"
+    assert record["evidence_type"] == "sca_scan"
+
+
+def test_ssp_placeholder_carries_its_statement_as_base64() -> None:
+    _resource, plan = _embedded_assessment_plan(
+        export_oscal_assessment_results(_waived_bundle("acme-api", "acme/api"))
+    )
+    ap = plan["assessment-plan"]
+    target = ap["import-ssp"]["href"][1:]
+    placeholder = next(r for r in ap["back-matter"]["resources"] if r["uuid"] == target)
+
+    assert placeholder["base64"]["media-type"] == "text/plain"
+    text = base64.b64decode(placeholder["base64"]["value"]).decode("utf-8")
+    assert "No OSCAL system security plan is published" in text
+    assert "acme-api" in text
