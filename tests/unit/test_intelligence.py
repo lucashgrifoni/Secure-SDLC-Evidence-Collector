@@ -26,6 +26,8 @@ from evidence_collector.domain.models import (
     ReleaseContext,
 )
 from evidence_collector.intelligence import (
+    EpssFeed,
+    EpssRecord,
     enrich_bundle,
     enrich_evidence,
     load_epss_feed,
@@ -397,3 +399,92 @@ def test_a_readable_feed_with_no_rows_keeps_the_metadata_it_did_parse(
     assert feed.records == {}
     assert feed.feed_date == "2026-05-17"
     assert feed.model_version == "v2026.05.01"
+
+
+# ---------------------------------------------------------------------------
+# A feed that was not supplied is not a clean result (Codex P1 on #147).
+# Passing ``None`` for a source keeps that source's prior intelligence, or
+# records it as not consulted on a first enrichment.
+# ---------------------------------------------------------------------------
+
+
+def test_first_enrichment_with_epss_only_records_kev_as_not_consulted(synth_epss: Path) -> None:
+    evidence = _build_evidence(["CVE-2023-1111"])
+    enriched = enrich_evidence(evidence, load_epss_feed(synth_epss), None)
+    intel = enriched.vulnerability_intelligence
+    assert intel is not None
+    assert intel.epss_consulted is True
+    assert intel.kev_consulted is False
+    assert intel.cves_in_kev_count == 0
+    assert intel.kev_feed_date is None
+    assert intel.max_epss_percentile == pytest.approx(0.99001)
+
+
+def test_epss_only_re_enrichment_keeps_prior_kev_intelligence(
+    synth_epss: Path, synth_kev: Path
+) -> None:
+    evidence = _build_evidence(["CVE-2023-1111", "CVE-2024-5555"])
+    first = enrich_evidence(evidence, load_epss_feed(synth_epss), load_kev_feed(synth_kev))
+    prior = first.vulnerability_intelligence
+    assert prior is not None
+    assert (prior.cves_in_kev_count, prior.cves_known_ransomware_count) == (2, 1)
+
+    fresh_epss = EpssFeed(
+        feed_date="2026-06-01",
+        records={
+            "CVE-2023-1111": EpssRecord(
+                cve_id="CVE-2023-1111", epss_score=0.01, epss_percentile=0.02
+            )
+        },
+    )
+    again = enrich_evidence(first, fresh_epss, None)
+    intel = again.vulnerability_intelligence
+    assert intel is not None
+    assert intel.kev_consulted is True
+    assert intel.cves_in_kev_count == 2
+    assert intel.cves_known_ransomware_count == 1
+    assert intel.kev_feed_date == prior.kev_feed_date
+    assert intel.epss_feed_date == "2026-06-01"
+    # KEV flags travel with the CVE into the re-ranked top list.
+    assert intel.top_risk_cves[0].cve_id == "CVE-2023-1111"
+    assert intel.top_risk_cves[0].in_kev is True
+    assert intel.top_risk_cves[0].known_ransomware is True
+
+
+def test_kev_only_re_enrichment_keeps_prior_epss_intelligence(
+    synth_epss: Path, synth_kev: Path
+) -> None:
+    evidence = _build_evidence(["CVE-2023-1111", "CVE-2023-2222"])
+    first = enrich_evidence(evidence, load_epss_feed(synth_epss), None)
+    prior = first.vulnerability_intelligence
+    assert prior is not None and prior.kev_consulted is False
+
+    again = enrich_evidence(first, None, load_kev_feed(synth_kev))
+    intel = again.vulnerability_intelligence
+    assert intel is not None
+    assert intel.epss_consulted is True
+    assert intel.kev_consulted is True
+    assert intel.max_epss_percentile == prior.max_epss_percentile
+    assert intel.epss_feed_date == prior.epss_feed_date
+    assert intel.epss_model_version == prior.epss_model_version
+    assert [t.cve_id for t in intel.top_risk_cves] == [t.cve_id for t in prior.top_risk_cves]
+    by_id = {t.cve_id: t for t in intel.top_risk_cves}
+    assert by_id["CVE-2023-1111"].in_kev is True
+    assert by_id["CVE-2023-2222"].in_kev is False
+    assert intel.cves_in_kev_count == 1
+
+
+def test_first_enrichment_with_kev_only_records_epss_as_not_consulted(synth_kev: Path) -> None:
+    enriched = enrich_evidence(_build_evidence(["CVE-2024-5555"]), None, load_kev_feed(synth_kev))
+    intel = enriched.vulnerability_intelligence
+    assert intel is not None
+    assert intel.epss_consulted is False
+    assert intel.kev_consulted is True
+    assert intel.max_epss_percentile is None
+    assert intel.top_risk_cves == []
+    assert intel.cves_in_kev_count == 1
+
+
+def test_enrichment_with_neither_source_leaves_evidence_untouched(synth_epss: Path) -> None:
+    first = enrich_evidence(_build_evidence(["CVE-2023-1111"]), load_epss_feed(synth_epss), None)
+    assert enrich_evidence(first, None, None) is first

@@ -116,6 +116,10 @@ def _count_exploitable(
         # means the mode could not be evaluated at all, which must never be
         # reported as "nothing is exploitable" (see _decide_risk_weighted_status).
         "enriched_evidence": 0,
+        # Enriched records for which a source was never consulted: their zero
+        # counts for that source mean "not checked", not "not listed".
+        "kev_not_consulted": 0,
+        "epss_not_consulted": 0,
     }
     for evidence in evidence_list:
         if _reachability_blocks_signal(evidence):
@@ -124,6 +128,8 @@ def _count_exploitable(
         if intel is None:
             continue
         counters["enriched_evidence"] += 1
+        counters["kev_not_consulted"] += not intel.kev_consulted
+        counters["epss_not_consulted"] += not intel.epss_consulted
         top_exploitable = top_kev = top_kev_ransomware = top_high_epss = 0
         for top in intel.top_risk_cves:
             is_kev = top.in_kev
@@ -159,10 +165,11 @@ def _decide_risk_weighted_status(
     inside ``RiskAssessment.rationale``. Auditors read this string;
     keep it precise.
     """
+    gaps = _unconsulted_sources(counters)
     if counters["kev_ransomware"] > 0 and thresholds.kev_blocks:
         return ReleaseStatus.NOT_READY, (
             f"{counters['kev_ransomware']} CVE(s) in CISA KEV with known "
-            "ransomware use; release blocked under epss-weighted mode."
+            "ransomware use; release blocked under epss-weighted mode." + gaps
         )
     if counters["exploitable"] > 0:
         new_status = _worse(base, ReleaseStatus.CONDITIONAL)
@@ -170,7 +177,7 @@ def _decide_risk_weighted_status(
             f"{counters['exploitable']} exploitable CVE(s) "
             f"(KEV={counters['kev']}, EPSS>={thresholds.epss_percentile_threshold:.2f}: "
             f"{counters['high_epss']}); release downgraded to "
-            f"{new_status.value}."
+            f"{new_status.value}." + gaps
         )
     if counters["enriched_evidence"] == 0:
         # Nothing carried EPSS / KEV data, so no threshold was ever applied.
@@ -182,11 +189,32 @@ def _decide_risk_weighted_status(
             "evidence record; no EPSS / KEV threshold was applied. Run 'enrich' with "
             "valid feeds first. Presence-based verdict preserved."
         )
+    if gaps:
+        # A source nobody consulted cannot back "nothing exploitable".
+        return base, (
+            "No CVE matched the sources that were consulted "
+            f"({counters['enriched_evidence']} enriched evidence record(s) assessed)."
+            + gaps
+            + " Presence-based verdict preserved."
+        )
     return base, (
         "No exploitable CVEs detected under the EPSS / KEV thresholds "
         f"({counters['enriched_evidence']} enriched evidence record(s) assessed); "
         "presence-based verdict preserved."
     )
+
+
+def _unconsulted_sources(counters: dict[str, int]) -> str:
+    """Name each source that was never consulted for some enriched record."""
+    notes = []
+    if counters["kev_not_consulted"]:
+        notes.append(
+            f" CISA KEV was not consulted for {counters['kev_not_consulted']} record(s); "
+            "KEV-listed CVEs are not ruled out."
+        )
+    if counters["epss_not_consulted"]:
+        notes.append(f" EPSS was not consulted for {counters['epss_not_consulted']} record(s).")
+    return "".join(notes)
 
 
 def apply_risk_mode(

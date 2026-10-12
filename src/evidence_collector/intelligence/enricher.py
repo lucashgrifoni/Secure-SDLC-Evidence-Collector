@@ -47,8 +47,8 @@ class EnrichmentReport:
 
 def enrich_evidence(
     evidence: NormalizedEvidence,
-    epss: EpssFeed,
-    kev: KevFeed,
+    epss: EpssFeed | None,
+    kev: KevFeed | None,
     *,
     top_risk_limit: int = DEFAULT_TOP_RISK_LIMIT,
     now: datetime | None = None,
@@ -59,8 +59,15 @@ def enrich_evidence(
     the input (the optional field stays ``None``). This is a no-op for
     evidence types that do not carry CVE data (``test_result``,
     ``code_review``, ``threat_model``, etc).
+
+    ``None`` for a feed means that source was not supplied. An absent source
+    is not a clean result: its fields are carried over from the record's
+    prior intelligence (KEV counts and flags when there is no KEV feed, EPSS
+    scores and the EPSS-ranked top list when there is no EPSS feed), or, on a
+    first enrichment, marked ``kev_consulted`` / ``epss_consulted`` = False.
+    With neither feed the record is returned unchanged.
     """
-    if not evidence.cve_ids:
+    if not evidence.cve_ids or (epss is None and kev is None):
         return evidence
 
     cve_ids_upper = [cid.upper() for cid in evidence.cve_ids]
@@ -71,36 +78,70 @@ def enrich_evidence(
             seen.add(cid)
             deduped.append(cid)
 
-    epss_lookup = [(cid, epss.get(cid)) for cid in deduped]
-    kev_lookup = [(cid, kev.get(cid)) for cid in deduped]
+    prior = evidence.vulnerability_intelligence
 
-    epss_known = [(cid, record) for cid, record in epss_lookup if record is not None]
-    in_kev_count = sum(1 for _, rec in kev_lookup if rec is not None)
-    ransomware_count = sum(
-        1 for _, rec in kev_lookup if rec is not None and rec.known_ransomware_use
-    )
+    if kev is not None:
+        kev_by_cve = {cid: kev_rec for cid in deduped if (kev_rec := kev.get(cid)) is not None}
+        in_kev_count = len(kev_by_cve)
+        ransomware_count = sum(1 for rec in kev_by_cve.values() if rec.known_ransomware_use)
+        kev_feed_date = kev.feed_date
+        kev_consulted = True
 
-    max_epss_score = max(rec.epss_score for _, rec in epss_known) if epss_known else None
-    max_epss_percentile = max(rec.epss_percentile for _, rec in epss_known) if epss_known else None
+        def kev_flags(cid: str) -> tuple[bool, bool]:
+            rec = kev_by_cve.get(cid)
+            return rec is not None, bool(rec and rec.known_ransomware_use)
 
-    kev_by_cve = {cid: rec for cid, rec in kev_lookup if rec is not None}
-    ranked = sorted(
-        epss_known,
-        key=lambda pair: pair[1].epss_percentile,
-        reverse=True,
-    )
-    top_risk: list[TopRiskCve] = []
-    for cid, rec in ranked[:top_risk_limit]:
-        kev_rec = kev_by_cve.get(cid)
-        top_risk.append(
-            TopRiskCve(
-                cve_id=cid,
-                epss_score=rec.epss_score,
-                epss_percentile=rec.epss_percentile,
-                in_kev=kev_rec is not None,
-                known_ransomware=kev_rec.known_ransomware_use if kev_rec else False,
-            )
+    else:
+        # No KEV feed: keep what an earlier enrichment recorded. Per-CVE KEV
+        # membership is only stored for CVEs that were in the top list; the
+        # counts cover every CVE and still act as the floor in scoring.
+        prior_flags = {
+            top.cve_id: (top.in_kev, top.known_ransomware)
+            for top in (prior.top_risk_cves if prior else [])
+        }
+        in_kev_count = prior.cves_in_kev_count if prior else 0
+        ransomware_count = prior.cves_known_ransomware_count if prior else 0
+        kev_feed_date = prior.kev_feed_date if prior else None
+        kev_consulted = prior.kev_consulted if prior else False
+
+        def kev_flags(cid: str) -> tuple[bool, bool]:
+            return prior_flags.get(cid, (False, False))
+
+    if epss is not None:
+        epss_known = [(cid, epss_rec) for cid in deduped if (epss_rec := epss.get(cid)) is not None]
+        max_epss_score = max(rec.epss_score for _, rec in epss_known) if epss_known else None
+        max_epss_percentile = (
+            max(rec.epss_percentile for _, rec in epss_known) if epss_known else None
         )
+        ranked = sorted(epss_known, key=lambda pair: pair[1].epss_percentile, reverse=True)
+        scored = [
+            (cid, rec.epss_score, rec.epss_percentile) for cid, rec in ranked[:top_risk_limit]
+        ]
+        epss_feed_date = epss.feed_date
+        epss_model_version = epss.model_version
+        epss_consulted = True
+    else:
+        # No EPSS feed: keep the earlier scores and ranking, refresh KEV flags.
+        scored = [
+            (top.cve_id, top.epss_score, top.epss_percentile)
+            for top in (prior.top_risk_cves if prior else [])
+        ][:top_risk_limit]
+        max_epss_score = prior.max_epss_score if prior else None
+        max_epss_percentile = prior.max_epss_percentile if prior else None
+        epss_feed_date = prior.epss_feed_date if prior else None
+        epss_model_version = prior.epss_model_version if prior else None
+        epss_consulted = prior.epss_consulted if prior else False
+
+    top_risk = [
+        TopRiskCve(
+            cve_id=cid,
+            epss_score=score,
+            epss_percentile=percentile,
+            in_kev=kev_flags(cid)[0],
+            known_ransomware=kev_flags(cid)[1],
+        )
+        for cid, score, percentile in scored
+    ]
 
     intel = VulnerabilityIntelligence(
         cve_count=len(deduped),
@@ -109,9 +150,11 @@ def enrich_evidence(
         cves_in_kev_count=in_kev_count,
         cves_known_ransomware_count=ransomware_count,
         top_risk_cves=top_risk,
-        epss_feed_date=epss.feed_date,
-        epss_model_version=epss.model_version,
-        kev_feed_date=kev.feed_date,
+        epss_feed_date=epss_feed_date,
+        epss_model_version=epss_model_version,
+        kev_feed_date=kev_feed_date,
+        epss_consulted=epss_consulted,
+        kev_consulted=kev_consulted,
         enriched_at=now or datetime.now(tz=UTC),
     )
     return evidence.model_copy(update={"vulnerability_intelligence": intel})
@@ -119,8 +162,8 @@ def enrich_evidence(
 
 def enrich_bundle(
     bundle: EvidenceBundle,
-    epss: EpssFeed,
-    kev: KevFeed,
+    epss: EpssFeed | None,
+    kev: KevFeed | None,
     *,
     top_risk_limit: int = DEFAULT_TOP_RISK_LIMIT,
     now: datetime | None = None,
@@ -129,6 +172,7 @@ def enrich_bundle(
 
     The function never mutates the input bundle; consumers that want
     the in-memory bundle replaced should reassign the return value.
+    ``None`` for a feed means it was not supplied; see :func:`enrich_evidence`.
     """
     fixed_now = now or datetime.now(tz=UTC)
     enriched_evidence = [
@@ -156,7 +200,7 @@ def enrich_bundle(
         evidence_with_cves=with_cves,
         distinct_cves=len(distinct),
         cves_in_kev=in_kev,
-        epss_feed_date=epss.feed_date,
-        kev_feed_date=kev.feed_date,
+        epss_feed_date=epss.feed_date if epss else None,
+        kev_feed_date=kev.feed_date if kev else None,
     )
     return enriched_bundle, report

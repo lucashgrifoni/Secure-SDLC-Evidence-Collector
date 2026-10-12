@@ -197,7 +197,11 @@ def test_re_enrich_reflects_the_newer_feed_not_the_previous_verdict(
     assert second.summary.release_status is ReleaseStatus.READY
     assert second.summary.risk_assessment is not None
     assert second.summary.risk_assessment.base_release_status is ReleaseStatus.READY
-    assert "No exploitable CVEs detected" in second.summary.risk_assessment.rationale
+    # EPSS-only both times: KEV was never consulted, so no clean claim is made.
+    assert "No CVE matched the sources that were consulted" in (
+        second.summary.risk_assessment.rationale
+    )
+    assert "CISA KEV was not consulted" in second.summary.risk_assessment.rationale
 
 
 @pytest.mark.integration
@@ -616,3 +620,58 @@ def test_enrich_output_named_like_a_report_in_another_directory_keeps_it_json(
     bundle = EvidenceBundle.model_validate_json((dest / "summary.html").read_text(encoding="utf-8"))
     assert bundle.summary.release_status is ReleaseStatus.NOT_READY
     assert "**Release status:** `not_ready`" in (dest / "report.md").read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# One feed only: the other source is not a clean result (Codex P1 on #147).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_epss_only_re_enrich_keeps_a_kev_ransomware_block(
+    runner: CliRunner, sample_release_root: Path, tmp_path: Path
+) -> None:
+    _run(runner, sample_release_root, tmp_path / "out", "--risk-mode", "epss-weighted")
+    blocked = _enrich(
+        runner,
+        tmp_path / "out" / "bundle.json",
+        tmp_path / "blocked.json",
+        "--kev-feed",
+        str(_kev_feed(tmp_path, ransomware=True)),
+    )
+    assert blocked.summary.release_status is ReleaseStatus.NOT_READY
+
+    again = _enrich(
+        runner,
+        tmp_path / "blocked.json",
+        tmp_path / "again.json",
+        "--epss-feed",
+        str(_epss_feed(tmp_path, "0.10000")),
+    )
+    assert again.summary.release_status is ReleaseStatus.NOT_READY
+    assert again.summary.risk_assessment is not None
+    assert again.summary.risk_assessment.kev_ransomware_cve_count == 1
+    intel = next(e.vulnerability_intelligence for e in again.evidence if SAMPLE_CVE in e.cve_ids)
+    assert intel is not None
+    assert (intel.cves_in_kev_count, intel.cves_known_ransomware_count) == (1, 1)
+    assert intel.kev_consulted is True
+
+
+@pytest.mark.integration
+def test_first_enrichment_with_epss_only_says_kev_was_not_consulted(
+    runner: CliRunner, sample_release_root: Path, tmp_path: Path
+) -> None:
+    _run(runner, sample_release_root, tmp_path / "out", "--risk-mode", "epss-weighted")
+    enriched = _enrich(
+        runner,
+        tmp_path / "out" / "bundle.json",
+        tmp_path / "enriched.json",
+        "--epss-feed",
+        str(_epss_feed(tmp_path, "0.10000")),
+    )
+    assessment = enriched.summary.risk_assessment
+    assert assessment is not None
+    assert "CISA KEV was not consulted" in assessment.rationale
+    assert "No exploitable CVEs detected" not in assessment.rationale
+    intel = next(e.vulnerability_intelligence for e in enriched.evidence if SAMPLE_CVE in e.cve_ids)
+    assert intel is not None and intel.kev_consulted is False

@@ -1132,6 +1132,12 @@
           "description": "Timestamp at which enrichment ran; volatile, stripped before structural hash.",
           "title": "Enriched At"
         },
+        "epss_consulted": {
+          "default": true,
+          "description": "False when no EPSS feed has ever been consulted for this record; the EPSS fields then say nothing about exploitability.",
+          "title": "Epss Consulted",
+          "type": "boolean"
+        },
         "epss_feed_date": {
           "anyOf": [
             {
@@ -1159,6 +1165,12 @@
           "default": null,
           "description": "EPSS model version stamped on the feed header (e.g. 'v2026.01.04'). EPSS scores are not comparable across model versions, so recording it keeps day-to-day score deltas honest. None when enrichment is skipped or the feed header omits it.",
           "title": "Epss Model Version"
+        },
+        "kev_consulted": {
+          "default": true,
+          "description": "False when no CISA KEV catalog has ever been consulted for this record; zero KEV counts then mean 'not checked', not 'not listed'.",
+          "title": "Kev Consulted",
+          "type": "boolean"
         },
         "kev_feed_date": {
           "anyOf": [

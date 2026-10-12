@@ -403,3 +403,49 @@ def test_base_conditional_with_kev_non_ransomware_stays_conditional() -> None:
         _summary(ReleaseStatus.CONDITIONAL), [_evidence([kev])], mode=RiskMode.EPSS_WEIGHTED
     )
     assert out.release_status == ReleaseStatus.CONDITIONAL
+
+
+# ---------------------------------------------------------------------------
+# A source that was not consulted cannot back a clean claim (Codex P1 on #147).
+# ---------------------------------------------------------------------------
+
+
+def test_rationale_says_kev_was_not_consulted_and_makes_no_clean_claim() -> None:
+    benign = TopRiskCve(
+        cve_id="CVE-2024-0001",
+        epss_score=0.0001,
+        epss_percentile=0.01,
+        in_kev=False,
+        known_ransomware=False,
+    )
+    evidence = _evidence([benign])
+    assert evidence.vulnerability_intelligence is not None
+    evidence = evidence.model_copy(
+        update={
+            "vulnerability_intelligence": evidence.vulnerability_intelligence.model_copy(
+                update={"kev_consulted": False}
+            )
+        }
+    )
+    out = apply_risk_mode(_summary(ReleaseStatus.READY), [evidence], mode=RiskMode.EPSS_WEIGHTED)
+    assert out.release_status == ReleaseStatus.READY
+    assert out.risk_assessment is not None
+    rationale = out.risk_assessment.rationale
+    assert "No exploitable CVEs detected" not in rationale
+    assert "CISA KEV was not consulted" in rationale
+
+
+def test_rationale_says_epss_was_not_consulted_when_kev_still_blocks() -> None:
+    evidence = _counts_only_evidence(in_kev=1, ransomware=1)
+    assert evidence.vulnerability_intelligence is not None
+    evidence = evidence.model_copy(
+        update={
+            "vulnerability_intelligence": evidence.vulnerability_intelligence.model_copy(
+                update={"epss_consulted": False}
+            )
+        }
+    )
+    out = apply_risk_mode(_summary(ReleaseStatus.READY), [evidence], mode=RiskMode.EPSS_WEIGHTED)
+    assert out.release_status == ReleaseStatus.NOT_READY
+    assert out.risk_assessment is not None
+    assert "EPSS was not consulted" in out.risk_assessment.rationale

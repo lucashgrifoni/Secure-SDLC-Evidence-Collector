@@ -21,6 +21,11 @@ the input directory had. When ``--output`` is a different file in the input's
 directory, the reports there belong to the input bundle, so they are left alone
 and a warning says so. Otherwise the reports are not touched.
 
+With only one feed, the other source is not treated as a clean result: each
+CVE keeps that source's prior intelligence, or on a first enrichment is marked
+``kev_consulted`` / ``epss_consulted`` = False, and the risk rationale says the
+source was not consulted.
+
 With neither ``--epss-feed`` nor ``--kev-feed`` there is no source to consult:
 the bundle is left unchanged (copied to ``--output`` when given), a warning is
 printed, and the prior intelligence and verdict are kept.
@@ -99,8 +104,9 @@ def register(app: typer.Typer) -> None:
                 "--epss-feed",
                 help=(
                     "Local EPSS feed file (CSV or .csv.gz). Without this flag "
-                    "the enrichment runs with an empty EPSS feed (KEV-only); with "
-                    "neither feed the bundle is left unchanged. "
+                    "each CVE keeps its prior EPSS data, or is marked as not "
+                    "consulted for EPSS; with neither feed the bundle is left "
+                    "unchanged. "
                     "Download from https://epss.cyentia.com/."
                 ),
             ),
@@ -110,9 +116,9 @@ def register(app: typer.Typer) -> None:
             typer.Option(
                 "--kev-feed",
                 help=(
-                    "Local CISA KEV catalog JSON. Without this flag the "
-                    "enrichment runs with an empty KEV catalog (EPSS-only); with "
-                    "neither feed the bundle is left unchanged. "
+                    "Local CISA KEV catalog JSON. Without this flag each CVE "
+                    "keeps its prior KEV data, or is marked as not consulted for "
+                    "KEV; with neither feed the bundle is left unchanged. "
                     "Download from https://www.cisa.gov/sites/default/files/"
                     "feeds/known_exploited_vulnerabilities.json."
                 ),
@@ -150,16 +156,12 @@ def register(app: typer.Typer) -> None:
         # library never raises; at the CLI boundary that would be
         # indistinguishable from "no feed supplied", and the resulting bundle
         # would claim "no exploitable CVEs" without ever reading a feed.
-        epss = (
-            _require_usable(load_epss_feed(epss_feed), epss_feed, "EPSS")
-            if epss_feed
-            else EpssFeed(feed_date=None)
-        )
-        kev = (
-            _require_usable(load_kev_feed(kev_feed), kev_feed, "CISA KEV")
-            if kev_feed
-            else KevFeed(feed_date=None)
-        )
+        # A feed that was not supplied is passed as None, not as an empty feed:
+        # an empty feed reads as "consulted, nothing found", which would wipe the
+        # prior KEV / EPSS intelligence and back a clean verdict with a source
+        # nobody looked at.
+        epss = _require_usable(load_epss_feed(epss_feed), epss_feed, "EPSS") if epss_feed else None
+        kev = _require_usable(load_kev_feed(kev_feed), kev_feed, "CISA KEV") if kev_feed else None
 
         enriched, report = enrich_bundle(bundle, epss, kev, top_risk_limit=top_risk_limit)
         try:
@@ -252,14 +254,13 @@ def _sibling_reports(bundle: EvidenceBundle, source: Path, destination: Path) ->
     of thin air. The caller skips them when the output is a different file in
     the input's directory (see ``_shares_reports_with_input``).
     """
-    target_bundle = destination.resolve()
     return {
         destination.parent / name: render(bundle)
         for name, render in _REPORT_RENDERERS.items()
         # A bundle that is itself named report.md / summary.html must never be
         # overwritten by the rendered report.
         if (source.parent / name).is_file()
-        and (destination.parent / name).resolve() != target_bundle
+        and (destination.parent / name).resolve() != destination.resolve()
         and (source.parent / name).resolve() != source.resolve()
     }
 

@@ -389,6 +389,13 @@ These are explicitly out of scope for security reports (see
   verdict does not change, the reports are left alone. A bundle that is
   itself named `report.md` or `summary.html`, on either side, is never
   treated as a report or overwritten by one.
+- With only one feed, the source that was not supplied is not read as a
+  clean result. Each CVE keeps that source's intelligence from an
+  earlier enrichment (KEV counts and flags without `--kev-feed`, EPSS
+  scores and ranking without `--epss-feed`). On a first enrichment the
+  record is marked `kev_consulted: false` or `epss_consulted: false`, and
+  the risk rationale says the source was not consulted instead of
+  claiming that no exploitable CVE exists.
 - `enrich` with neither `--epss-feed` nor `--kev-feed` consults no
   source, so it leaves the bundle unchanged (copying it to `--output`
   when given), prints a warning, and keeps the prior intelligence and

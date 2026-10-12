@@ -226,6 +226,20 @@ class VulnerabilityIntelligence(_BaseModel):
         max_length=20,
         description="YYYY-MM-DD date stamped on the CISA KEV catalog used for enrichment.",
     )
+    epss_consulted: bool = Field(
+        default=True,
+        description=(
+            "False when no EPSS feed has ever been consulted for this record; the "
+            "EPSS fields then say nothing about exploitability."
+        ),
+    )
+    kev_consulted: bool = Field(
+        default=True,
+        description=(
+            "False when no CISA KEV catalog has ever been consulted for this "
+            "record; zero KEV counts then mean 'not checked', not 'not listed'."
+        ),
+    )
     enriched_at: datetime | None = Field(
         default=None,
         description="Timestamp at which enrichment ran; volatile, stripped before structural hash.",
