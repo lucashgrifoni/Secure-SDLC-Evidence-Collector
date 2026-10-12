@@ -117,15 +117,15 @@ and has no SARIF processor. Use the container to select the
 
 ```bash
 # 1. Start a local GUAC stack (see https://docs.guac.sh for the
-#    current quickstart; commands may evolve between GUAC releases)
+#    current quickstart; commands may evolve between GUAC releases).
+#    The subshell keeps your shell in the collection root.
 git clone https://github.com/guacsec/guac.git
-cd guac
-make container
-make start-service
+(cd guac && make container && make start-service)
 
 # 2. Ingest the documents GUAC understands. artifact_path is the path the
 #    collector read, made relative to --artifact-root when one was passed,
-#    so run this from that root (or from where `sdlc-evidence run` ran).
+#    so run this from that root (or from where `sdlc-evidence run` ran),
+#    not from inside the guac checkout.
 jq -r '.documents[] | select(.type == "sbom" or .type == "attestation") | .artifact_path | strings' \
   output/sample_release/guac-collection.json \
   | sort -u \
