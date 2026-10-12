@@ -521,3 +521,53 @@ def test_kev_identities_are_recorded_and_survive_an_epss_only_refresh(
     assert intel.kev_cve_ids == ["CVE-2023-1111", "CVE-2024-5555"]
     assert intel.kev_ransomware_cve_ids == ["CVE-2023-1111"]
     assert (intel.cves_in_kev_count, intel.cves_known_ransomware_count) == (2, 1)
+
+
+def test_kev_only_refresh_keeps_the_whole_prior_epss_ranking(synth_kev: Path) -> None:
+    """The cached EPSS list from an earlier, larger --top-risk-limit is not re-sliced."""
+    from evidence_collector.scoring import RiskMode, apply_risk_mode
+
+    cves = [f"CVE-2025-{1000 + i}" for i in range(8)]
+    epss = EpssFeed(
+        feed_date="2026-06-01",
+        records={
+            cid: EpssRecord(cve_id=cid, epss_score=0.9 - i * 0.1, epss_percentile=0.99 - i * 0.1)
+            for i, cid in enumerate(cves)
+        },
+    )
+    first = enrich_evidence(_build_evidence(cves), epss, None, top_risk_limit=8)
+    prior = first.vulnerability_intelligence
+    assert prior is not None and len(prior.top_risk_cves) == 8
+
+    again = enrich_evidence(first, None, load_kev_feed(synth_kev))  # default limit 5
+    intel = again.vulnerability_intelligence
+    assert intel is not None
+    assert [t.cve_id for t in intel.top_risk_cves] == [t.cve_id for t in prior.top_risk_cves]
+    assert [t.epss_percentile for t in intel.top_risk_cves] == [
+        t.epss_percentile for t in prior.top_risk_cves
+    ]
+
+    summary = _summary_for_counts()
+    before = apply_risk_mode(summary, [first], mode=RiskMode.EPSS_WEIGHTED).risk_assessment
+    after = apply_risk_mode(summary, [again], mode=RiskMode.EPSS_WEIGHTED).risk_assessment
+    assert before is not None and after is not None
+    assert before.high_epss_cve_count == 3  # percentiles 0.99, 0.89, 0.79 >= 0.70
+    assert after.high_epss_cve_count == before.high_epss_cve_count
+    assert after.exploitable_cve_count == before.exploitable_cve_count
+
+
+def _summary_for_counts() -> Any:
+    from evidence_collector.domain.enums import ReleaseStatus
+    from evidence_collector.domain.models import Summary
+
+    return Summary(
+        evidence_coverage_score=80,
+        confidence_score=80,
+        release_status=ReleaseStatus.READY,
+        total_controls=1,
+        controls_met=1,
+        controls_partial=0,
+        controls_missing=0,
+        controls_waived=0,
+        controls_not_applicable=0,
+    )

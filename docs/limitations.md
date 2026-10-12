@@ -392,7 +392,8 @@ These are explicitly out of scope for security reports (see
 - With only one feed, the source that was not supplied is not read as a
   clean result. Each CVE keeps that source's intelligence from an
   earlier enrichment (KEV counts and flags without `--kev-feed`, EPSS
-  scores and ranking without `--epss-feed`). On a first enrichment the
+  scores and the whole earlier ranking, not cut to the current
+  `--top-risk-limit`, without `--epss-feed`). On a first enrichment the
   record is marked `kev_consulted: false` or `epss_consulted: false`, and
   the risk rationale says the source was not consulted instead of
   claiming that no exploitable CVE exists.

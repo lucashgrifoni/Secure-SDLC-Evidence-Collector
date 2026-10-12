@@ -63,7 +63,8 @@ def enrich_evidence(
     ``None`` for a feed means that source was not supplied. An absent source
     is not a clean result: its fields are carried over from the record's
     prior intelligence (KEV counts and flags when there is no KEV feed, EPSS
-    scores and the EPSS-ranked top list when there is no EPSS feed), or, on a
+    scores and the whole EPSS-ranked top list, not re-limited by
+    ``top_risk_limit``, when there is no EPSS feed), or, on a
     first enrichment, marked ``kev_consulted`` / ``epss_consulted`` = False.
     With neither feed the record is returned unchanged.
     """
@@ -124,11 +125,14 @@ def enrich_evidence(
         epss_model_version = epss.model_version
         epss_consulted = True
     else:
-        # No EPSS feed: keep the earlier scores and ranking, refresh KEV flags.
+        # No EPSS feed: keep the earlier scores and the whole earlier ranking,
+        # refresh only the KEV flags. Re-slicing it to this command's
+        # --top-risk-limit would drop EPSS entries cached under a larger limit
+        # and lower the high-EPSS and exploitable counts with no new data.
         scored = [
             (top.cve_id, top.epss_score, top.epss_percentile)
             for top in (prior.top_risk_cves if prior else [])
-        ][:top_risk_limit]
+        ]
         max_epss_score = prior.max_epss_score if prior else None
         max_epss_percentile = prior.max_epss_percentile if prior else None
         epss_feed_date = prior.epss_feed_date if prior else None
