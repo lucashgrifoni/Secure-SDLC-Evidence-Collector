@@ -102,3 +102,21 @@ def test_doctor_absent_github_token_says_calls_go_out_unauthenticated(
     assert gh[1] is True
     assert "unauthenticated" in gh[2]
     assert "skip" not in gh[2]
+
+
+def test_doctor_present_gitlab_token_is_not_claimed_as_used_by_the_cli(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # No CLI command reads GITLAB_TOKEN, so a set token must not be reported
+    # as "will be used".
+    monkeypatch.setenv("GITLAB_TOKEN", "glpat_fake_for_test_only")
+    monkeypatch.setenv("GITHUB_TOKEN", "ghp_fake_for_test_only")
+    results = _doctor_checks()
+    gl = next(r for r in results if r[0] == "GitLab token (optional)")
+    gh = next(r for r in results if r[0] == "GitHub token (optional)")
+    assert gl[1] is True
+    assert gl[2].startswith("present")
+    assert "no CLI command" in gl[2]
+    assert "will be used" not in gl[2]
+    assert gh[2].startswith("present")
+    assert "--pull-request" in gh[2]

@@ -49,22 +49,24 @@ def doctor_checks() -> list[tuple[str, bool, str]]:
     # Optional credentials. These are not required for local runs. Without
     # GITHUB_TOKEN, `run --pull-request/--workflow-run` still calls the GitHub
     # API, just unauthenticated. No CLI command collects from GitLab.
-    for token_var, label, absent_detail in (
+    for token_var, label, present_detail, absent_detail in (
         (
             "GITHUB_TOKEN",
             "GitHub token (optional)",
+            "present (used by run --pull-request/--workflow-run)",
             "absent (run --pull-request/--workflow-run call the GitHub API "
             "unauthenticated: rate-limited, and private repositories return 404)",
         ),
         (
             "GITLAB_TOKEN",
             "GitLab token (optional)",
+            "present (library use only; no CLI command reads it)",
             "absent (only read by the GitLabCollector library API; no CLI command uses it)",
         ),
     ):
         present = bool(os.environ.get(token_var))
         # Optional checks always count as "ok" — we just report status.
-        detail = "present (will be used)" if present else absent_detail
+        detail = present_detail if present else absent_detail
         results.append((label, True, detail))
 
     # Schema export sanity. Confirms Pydantic + the bundle model are in
