@@ -188,6 +188,8 @@ _NOT_SATISFIED_REASON: dict[ControlEvaluationStatus, str] = {
 }
 
 _OSCAL_DATETIME = "%Y-%m-%dT%H:%M:%S.000+00:00"
+# A complete SHA-256 hex digest; anything else is left out of rlink hashes.
+_SHA256 = re.compile(r"[0-9A-Fa-f]{64}")
 
 
 def _assessment_scope(bundle: EvidenceBundle) -> str:
@@ -600,10 +602,13 @@ def _evidence_content(item: NormalizedEvidence | None, evidence_id: str) -> dict
         rlink: dict[str, Any] = {"href": href}
         if raw.content_type:
             rlink["media-type"] = raw.content_type
-        if raw.integrity_hash and raw.integrity_hash.startswith("sha256:"):
-            rlink["hashes"] = [
-                {"algorithm": "SHA-256", "value": raw.integrity_hash.removeprefix("sha256:")}
-            ]
+        digest = (raw.integrity_hash or "").removeprefix("sha256:")
+        if (
+            raw.integrity_hash
+            and raw.integrity_hash.startswith("sha256:")
+            and _SHA256.fullmatch(digest)
+        ):
+            rlink["hashes"] = [{"algorithm": "SHA-256", "value": digest}]
         return {"rlinks": [rlink]}
     record = (
         item.model_dump_json()

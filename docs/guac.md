@@ -143,14 +143,17 @@ itself does not see it, because it ingests the files one by one.
 
 ## Querying
 
-Once ingested, GUAC's GraphQL surface answers questions the bundle
-alone cannot — because the graph spans every release you have loaded:
+GUAC only receives the SBOM and attestation files the loop above hands
+it. It never sees the release envelope, the SARIF and tool-native
+reports, the bundle's CVE records or its `release_status`, so it cannot
+answer release-level questions such as which releases shipped a SAST
+scan or which release was last `ready`; those stay in the bundles.
 
-- "Which releases of this application shipped a SARIF SAST scan
-  **and** an SBOM **and** an artifact attestation?"
-- "Which bundles across the org contain `CVE-2026-XXXXX`?"
-- "What is the most recent `ready` release of product X, and what
-  evidence backed the verdict?"
+What the graph can answer is what GUAC builds from SBOMs and
+attestations across everything you have loaded, for example which
+packages and versions appear in your SBOMs, which artifacts have an
+attestation, and which known vulnerabilities GUAC associates with those
+packages.
 
 GUAC's own docs cover the GraphQL schema and the `guacone query`
 helpers: <https://docs.guac.sh>.

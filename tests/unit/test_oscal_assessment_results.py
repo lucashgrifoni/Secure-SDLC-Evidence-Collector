@@ -452,6 +452,22 @@ def test_evidence_resource_links_only_to_an_absolute_location(
 
 
 @pytest.mark.parametrize(
+    "integrity_hash",
+    ["sha256:", "sha256:" + "zz" * 32, "sha256:" + "ab" * 31, "md5:" + "ab" * 16],
+    ids=["empty", "not-hex", "too-short", "other-algorithm"],
+)
+def test_evidence_resource_omits_a_hash_that_is_not_a_full_sha256(integrity_hash: str) -> None:
+    bundle = _with_recorded_artifact(_waived_bundle("a", "o/a"), "/srv/ci/trivy.sarif")
+    item = bundle.evidence[0]
+    assert item.raw is not None
+    raw = item.raw.model_copy(update={"integrity_hash": integrity_hash})
+    bundle = bundle.model_copy(update={"evidence": [item.model_copy(update={"raw": raw})]})
+    rlink = _evidence_resource(export_oscal_assessment_results(bundle), "sca-1")["rlinks"][0]
+
+    assert "hashes" not in rlink
+
+
+@pytest.mark.parametrize(
     "artifact_path",
     [
         "artifacts/trivy report.sarif",
