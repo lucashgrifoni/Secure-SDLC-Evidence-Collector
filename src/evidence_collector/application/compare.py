@@ -61,11 +61,20 @@ class BundleComparison:
         `catalog.yaml` and an operator's own file of the same name.
 
         Like EPSS drift it needs a record on both sides. A bundle that predates
-        the catalog block carries none, which is unknown rather than changed.
+        the catalog block carries none: see `catalog_unknown`.
         """
         if self.before_catalog is None or self.after_catalog is None:
             return False
         return self.before_catalog.sha256 != self.after_catalog.sha256
+
+    @property
+    def catalog_unknown(self) -> bool:
+        """True when either bundle records no catalog, so drift cannot be ruled out.
+
+        Reported as `changed: null`, not `false`: "unchanged" would read as
+        proof that the control movement came from the evidence.
+        """
+        return self.before_catalog is None or self.after_catalog is None
 
     def catalog_drift_controls(self) -> list[str]:
         """Controls whose movement may come from the catalog, not the evidence."""
@@ -103,7 +112,7 @@ class BundleComparison:
             "catalog": {
                 "before": self.before_catalog.model_dump() if self.before_catalog else None,
                 "after": self.after_catalog.model_dump() if self.after_catalog else None,
-                "changed": self.catalog_drift,
+                "changed": None if self.catalog_unknown else self.catalog_drift,
             },
             "epss": {
                 "before_model_versions": list(self.before_epss_model_versions),

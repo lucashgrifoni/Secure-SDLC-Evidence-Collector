@@ -142,6 +142,21 @@ def register(app: typer.Typer) -> None:
                 f"{_describe_catalog(comparison.after_catalog)}. Control changes marked "
                 "'(catalog)' may come from the catalog rather than the evidence."
             )
+        elif comparison.catalog_unknown:
+            missing = [
+                side
+                for side, catalog in (
+                    ("baseline", comparison.before_catalog),
+                    ("candidate", comparison.after_catalog),
+                )
+                if catalog is None
+            ]
+            console.print(
+                f"[yellow]Catalog unknown:[/yellow] the {' and '.join(missing)} bundle "
+                "records no control catalog (made before catalog provenance was recorded). "
+                "Control changes cannot be attributed to the evidence rather than to a "
+                "catalog change."
+            )
 
         # EPSS scores are not comparable across model versions: v5 re-fits
         # the model rather than re-scoring under the old one, so exposure

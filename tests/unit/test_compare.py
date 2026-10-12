@@ -532,16 +532,47 @@ def test_the_same_catalog_on_both_sides_is_not_drift() -> None:
     assert cast(dict[str, list[str]], payload["controls"])["catalog_drift"] == []
 
 
-def test_a_bundle_without_a_catalog_record_is_not_called_drift() -> None:
-    # Bundles older than the catalog block carry none: unknown, not changed.
-    comparison = compare_bundles(*_catalog_pair(None, _WEAKENED))
+@pytest.mark.parametrize(
+    ("before_catalog", "after_catalog"),
+    [(None, _WEAKENED), (_BUILTIN, None), (None, None)],
+)
+def test_a_bundle_without_a_catalog_record_makes_the_catalog_unknown(
+    before_catalog: CatalogRef | None, after_catalog: CatalogRef | None
+) -> None:
+    # Bundles older than the catalog block carry none. That is unknown, not
+    # "unchanged": the JSON said changed=false, which a reader takes as proof.
+    comparison = compare_bundles(*_catalog_pair(before_catalog, after_catalog))
 
     assert comparison.catalog_drift is False
+    assert comparison.catalog_unknown is True
     assert comparison.to_dict()["catalog"] == {
-        "before": None,
-        "after": _WEAKENED.model_dump(),
-        "changed": False,
+        "before": before_catalog.model_dump() if before_catalog else None,
+        "after": after_catalog.model_dump() if after_catalog else None,
+        "changed": None,
     }
+
+
+def test_a_recorded_catalog_on_both_sides_is_known() -> None:
+    assert compare_bundles(*_catalog_pair(_BUILTIN, _BUILTIN)).catalog_unknown is False
+    assert compare_bundles(*_catalog_pair(_BUILTIN, _WEAKENED)).catalog_unknown is False
+
+
+def test_compare_table_warns_when_a_catalog_is_unrecorded(tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from evidence_collector.cli.main import app
+
+    paths = []
+    for bundle in _catalog_pair(None, _WEAKENED):
+        path = tmp_path / f"{bundle.bundle_id}.json"
+        path.write_text(bundle.model_dump_json(), encoding="utf-8", newline="\n")
+        paths.append(str(path))
+
+    result = CliRunner().invoke(app, ["compare", *paths], terminal_width=200)
+
+    assert result.exit_code == 0, result.output
+    assert "Catalog unknown" in result.output
+    assert "baseline" in result.output
 
 
 def test_compare_table_warns_when_the_catalog_changed(tmp_path: Path) -> None:

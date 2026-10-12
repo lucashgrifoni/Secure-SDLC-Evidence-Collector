@@ -562,7 +562,10 @@ normalized SHA-256 across runs and operating systems. When the two bundles
 were evaluated against different control catalogs (different SHA-256),
 `compare` names both catalogs and marks each control change `(catalog)`, since
 the movement may come from the catalog rather than the evidence. The JSON output
-carries the same facts under `catalog` and `controls.catalog_drift`.
+carries the same facts under `catalog` and `controls.catalog_drift`. If either
+bundle records no catalog (bundles made before catalog provenance was recorded),
+`catalog.changed` is `null` and the table warns that control changes cannot be
+attributed.
 
 ---
 
