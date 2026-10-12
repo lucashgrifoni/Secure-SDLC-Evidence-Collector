@@ -589,3 +589,20 @@ not backslash-escaped; only backticks and pipes are altered there.
 - Inspect logs differ only in that an errored, cancelled or unfinished
   run is recorded as `invalid`; a successful run is likewise accepted
   whatever its scores.
+
+## 22 · OSCAL assessment results embed a minimal plan and no SSP
+
+OSCAL links an Assessment Results document to an Assessment Plan
+(`import-ap`), and the plan to a System Security Plan (`import-ssp`). The
+collector produces neither of those as separate documents. `oscal --kind
+assessment-results` embeds, base64-encoded in its back-matter, a minimal
+OSCAL 1.1.2 assessment plan generated from the same bundle: the controls
+evaluated and the catalog digest they were evaluated against. `import-ap`
+resolves to that resource.
+
+The collector has no system security plan and does not invent one. The
+embedded plan's `import-ssp` points to a back-matter resource that says no
+SSP is published and names the application and repository assessed; it is
+not an SSP. Tools that resolve the full OSCAL chain (AR to AP to SSP to
+profile and catalog) will stop there. If you need that resolution, supply
+your own SSP and assessment plan and point `import-ap` at your plan.
