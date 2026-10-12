@@ -126,7 +126,7 @@ make start-service
 # 2. Ingest the documents GUAC understands. artifact_path is the path the
 #    collector read, made relative to --artifact-root when one was passed,
 #    so run this from that root (or from where `sdlc-evidence run` ran).
-jq -r '.documents[] | select(.type == "sbom" or .type == "attestation") | .artifact_path' \
+jq -r '.documents[] | select(.type == "sbom" or .type == "attestation") | .artifact_path | strings' \
   output/sample_release/guac-collection.json \
   | sort -u \
   | while read -r path; do guacone collect files "$path"; done
