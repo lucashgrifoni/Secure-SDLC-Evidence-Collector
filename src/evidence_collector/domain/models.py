@@ -226,6 +226,17 @@ class VulnerabilityIntelligence(_BaseModel):
         max_length=20,
         description="YYYY-MM-DD date stamped on the CISA KEV catalog used for enrichment.",
     )
+    kev_cve_ids: list[Annotated[str, Field(min_length=1, max_length=30)]] = Field(
+        default_factory=list,
+        description=(
+            "Every CVE on the record that is listed in CISA KEV, sorted. Kept "
+            "independently of top_risk_cves, which only holds EPSS-ranked CVEs."
+        ),
+    )
+    kev_ransomware_cve_ids: list[Annotated[str, Field(min_length=1, max_length=30)]] = Field(
+        default_factory=list,
+        description="The subset of kev_cve_ids with known ransomware campaign use, sorted.",
+    )
     epss_consulted: bool = Field(
         default=True,
         description=(

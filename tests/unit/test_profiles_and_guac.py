@@ -237,3 +237,44 @@ def test_refresh_cra_signal_updates_only_cra_annotated_records() -> None:
     # A bundle without the CRA profile is returned as-is.
     plain = _bundle([_evidence(in_kev=True)])
     assert refresh_cra_exploitation_signals(plain) is plain
+
+
+def _intel_variant(**update: object) -> NormalizedEvidence:
+    evidence = _evidence(epss_percentile=0.1)
+    assert evidence.vulnerability_intelligence is not None
+    return evidence.model_copy(
+        update={
+            "vulnerability_intelligence": evidence.vulnerability_intelligence.model_copy(
+                update=update
+            )
+        }
+    )
+
+
+def test_cra_signal_is_unavailable_when_kev_was_not_consulted_and_epss_is_low() -> None:
+    bundle = _bundle([_intel_variant(kev_consulted=False)])
+    annotated = apply_profile(bundle, ReleaseProfile.CRA_2026)
+    assert annotated.evidence[0].metadata["cra"]["global_exploitation_signal"] == "unavailable"
+
+
+def test_cra_signal_is_unavailable_when_epss_was_not_consulted_and_kev_has_no_match() -> None:
+    bundle = _bundle(
+        [_intel_variant(epss_consulted=False, top_risk_cves=[], max_epss_percentile=None)]
+    )
+    annotated = apply_profile(bundle, ReleaseProfile.CRA_2026)
+    assert annotated.evidence[0].metadata["cra"]["global_exploitation_signal"] == "unavailable"
+
+
+def test_cra_signal_still_reports_a_positive_kev_when_epss_was_not_consulted() -> None:
+    bundle = _bundle(
+        [
+            _intel_variant(
+                epss_consulted=False,
+                top_risk_cves=[],
+                cves_in_kev_count=1,
+                max_epss_percentile=None,
+            )
+        ]
+    )
+    annotated = apply_profile(bundle, ReleaseProfile.CRA_2026)
+    assert annotated.evidence[0].metadata["cra"]["global_exploitation_signal"] == "kev_listed"

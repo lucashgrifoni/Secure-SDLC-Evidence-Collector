@@ -488,3 +488,36 @@ def test_first_enrichment_with_kev_only_records_epss_as_not_consulted(synth_kev:
 def test_enrichment_with_neither_source_leaves_evidence_untouched(synth_epss: Path) -> None:
     first = enrich_evidence(_build_evidence(["CVE-2023-1111"]), load_epss_feed(synth_epss), None)
     assert enrich_evidence(first, None, None) is first
+
+
+# ---------------------------------------------------------------------------
+# KEV identities survive an EPSS-only refresh (Codex P1 on #147). The top list
+# is rebuilt from the new EPSS feed, so a KEV CVE that drops out of it must
+# still be known as KEV-listed.
+# ---------------------------------------------------------------------------
+
+
+def test_kev_identities_are_recorded_and_survive_an_epss_only_refresh(
+    synth_epss: Path, synth_kev: Path
+) -> None:
+    evidence = _build_evidence(["CVE-2023-1111", "CVE-2024-5555", "CVE-2024-9999"])
+    first = enrich_evidence(evidence, load_epss_feed(synth_epss), load_kev_feed(synth_kev))
+    prior = first.vulnerability_intelligence
+    assert prior is not None
+    assert prior.kev_cve_ids == ["CVE-2023-1111", "CVE-2024-5555"]
+    assert prior.kev_ransomware_cve_ids == ["CVE-2023-1111"]
+
+    # The new feed scores only CVE-2024-9999: the ransomware CVE leaves the top list.
+    fresh = EpssFeed(
+        feed_date="2026-06-01",
+        records={
+            "CVE-2024-9999": EpssRecord(cve_id="CVE-2024-9999", epss_score=0.5, epss_percentile=0.6)
+        },
+    )
+    again = enrich_evidence(first, fresh, None)
+    intel = again.vulnerability_intelligence
+    assert intel is not None
+    assert [t.cve_id for t in intel.top_risk_cves] == ["CVE-2024-9999"]
+    assert intel.kev_cve_ids == ["CVE-2023-1111", "CVE-2024-5555"]
+    assert intel.kev_ransomware_cve_ids == ["CVE-2023-1111"]
+    assert (intel.cves_in_kev_count, intel.cves_known_ransomware_count) == (2, 1)

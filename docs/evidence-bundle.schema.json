@@ -1172,6 +1172,16 @@
           "title": "Kev Consulted",
           "type": "boolean"
         },
+        "kev_cve_ids": {
+          "description": "Every CVE on the record that is listed in CISA KEV, sorted. Kept independently of top_risk_cves, which only holds EPSS-ranked CVEs.",
+          "items": {
+            "maxLength": 30,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Kev Cve Ids",
+          "type": "array"
+        },
         "kev_feed_date": {
           "anyOf": [
             {
@@ -1185,6 +1195,16 @@
           "default": null,
           "description": "YYYY-MM-DD date stamped on the CISA KEV catalog used for enrichment.",
           "title": "Kev Feed Date"
+        },
+        "kev_ransomware_cve_ids": {
+          "description": "The subset of kev_cve_ids with known ransomware campaign use, sorted.",
+          "items": {
+            "maxLength": 30,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Kev Ransomware Cve Ids",
+          "type": "array"
         },
         "max_epss_percentile": {
           "anyOf": [

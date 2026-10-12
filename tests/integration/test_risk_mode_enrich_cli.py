@@ -675,3 +675,43 @@ def test_first_enrichment_with_epss_only_says_kev_was_not_consulted(
     assert "No exploitable CVEs detected" not in assessment.rationale
     intel = next(e.vulnerability_intelligence for e in enriched.evidence if SAMPLE_CVE in e.cve_ids)
     assert intel is not None and intel.kev_consulted is False
+
+
+@pytest.mark.integration
+def test_epss_only_refresh_keeps_the_kev_cve_affected_in_vex(
+    runner: CliRunner, sample_release_root: Path, tmp_path: Path
+) -> None:
+    _run(runner, sample_release_root, tmp_path / "out", "--risk-mode", "epss-weighted")
+    _enrich(
+        runner,
+        tmp_path / "out" / "bundle.json",
+        tmp_path / "blocked.json",
+        "--kev-feed",
+        str(_kev_feed(tmp_path, ransomware=True)),
+        "--epss-feed",
+        str(_epss_feed(tmp_path, "0.99000")),
+    )
+    # The refreshed EPSS feed no longer scores the sample CVE at all.
+    other = tmp_path / "epss-other.csv"
+    other.write_text(
+        "#model_version:v2026.06.15,score_date:2026-09-01T00:00:00+0000\n"
+        "cve,epss,percentile\n"
+        "CVE-2099-0001,0.5,0.5\n",
+        encoding="utf-8",
+    )
+    again = _enrich(
+        runner, tmp_path / "blocked.json", tmp_path / "again.json", "--epss-feed", str(other)
+    )
+    intel = next(e.vulnerability_intelligence for e in again.evidence if SAMPLE_CVE in e.cve_ids)
+    assert intel is not None
+    assert intel.top_risk_cves == []
+    assert intel.kev_cve_ids == [SAMPLE_CVE]
+    assert intel.kev_ransomware_cve_ids == [SAMPLE_CVE]
+    assert again.summary.release_status is ReleaseStatus.NOT_READY
+
+    vex_out = tmp_path / "vex.json"
+    result = runner.invoke(app, ["vex", str(tmp_path / "again.json"), "--output", str(vex_out)])
+    assert result.exit_code == 0, result.output
+    doc = json.loads(vex_out.read_text(encoding="utf-8"))
+    statuses = {s["vulnerability"]["name"]: s["status"] for s in doc["statements"]}
+    assert statuses[SAMPLE_CVE] == "affected"

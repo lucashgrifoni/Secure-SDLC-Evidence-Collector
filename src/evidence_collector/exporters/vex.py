@@ -213,6 +213,9 @@ def _kev_ransomware_cves(evidence_list: list[NormalizedEvidence]) -> set[str]:
         intel = evidence.vulnerability_intelligence
         if intel is None:
             continue
+        # kev_cve_ids holds every KEV CVE; top_risk_cves only the EPSS-ranked
+        # ones, and is all that bundles enriched before that field carry.
+        out.update(cve_id.upper() for cve_id in intel.kev_cve_ids)
         for top in intel.top_risk_cves:
             if top.in_kev:
                 out.add(top.cve_id.upper())

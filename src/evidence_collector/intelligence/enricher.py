@@ -81,31 +81,34 @@ def enrich_evidence(
     prior = evidence.vulnerability_intelligence
 
     if kev is not None:
-        kev_by_cve = {cid: kev_rec for cid in deduped if (kev_rec := kev.get(cid)) is not None}
-        in_kev_count = len(kev_by_cve)
-        ransomware_count = sum(1 for rec in kev_by_cve.values() if rec.known_ransomware_use)
+        kev_ids = {cid for cid in deduped if kev.get(cid) is not None}
+        ransomware_ids = {
+            cid for cid in kev_ids if (rec := kev.get(cid)) is not None and rec.known_ransomware_use
+        }
+        in_kev_count = len(kev_ids)
+        ransomware_count = len(ransomware_ids)
         kev_feed_date = kev.feed_date
         kev_consulted = True
-
-        def kev_flags(cid: str) -> tuple[bool, bool]:
-            rec = kev_by_cve.get(cid)
-            return rec is not None, bool(rec and rec.known_ransomware_use)
-
     else:
-        # No KEV feed: keep what an earlier enrichment recorded. Per-CVE KEV
-        # membership is only stored for CVEs that were in the top list; the
-        # counts cover every CVE and still act as the floor in scoring.
-        prior_flags = {
-            top.cve_id: (top.in_kev, top.known_ransomware)
-            for top in (prior.top_risk_cves if prior else [])
+        # No KEV feed: carry forward what an earlier enrichment recorded. The
+        # identities live in kev_cve_ids; bundles enriched before that field
+        # existed only marked KEV CVEs inside the top list, so those count too.
+        prior_top = prior.top_risk_cves if prior else []
+        kev_ids = set(prior.kev_cve_ids if prior else []) | {
+            top.cve_id for top in prior_top if top.in_kev
         }
-        in_kev_count = prior.cves_in_kev_count if prior else 0
-        ransomware_count = prior.cves_known_ransomware_count if prior else 0
+        ransomware_ids = set(prior.kev_ransomware_cve_ids if prior else []) | {
+            top.cve_id for top in prior_top if top.in_kev and top.known_ransomware
+        }
+        in_kev_count = max(len(kev_ids), prior.cves_in_kev_count if prior else 0)
+        ransomware_count = max(
+            len(ransomware_ids), prior.cves_known_ransomware_count if prior else 0
+        )
         kev_feed_date = prior.kev_feed_date if prior else None
         kev_consulted = prior.kev_consulted if prior else False
 
-        def kev_flags(cid: str) -> tuple[bool, bool]:
-            return prior_flags.get(cid, (False, False))
+    def kev_flags(cid: str) -> tuple[bool, bool]:
+        return cid in kev_ids, cid in ransomware_ids
 
     if epss is not None:
         epss_known = [(cid, epss_rec) for cid in deduped if (epss_rec := epss.get(cid)) is not None]
@@ -153,6 +156,8 @@ def enrich_evidence(
         epss_feed_date=epss_feed_date,
         epss_model_version=epss_model_version,
         kev_feed_date=kev_feed_date,
+        kev_cve_ids=sorted(kev_ids),
+        kev_ransomware_cve_ids=sorted(ransomware_ids),
         epss_consulted=epss_consulted,
         kev_consulted=kev_consulted,
         enriched_at=now or datetime.now(tz=UTC),

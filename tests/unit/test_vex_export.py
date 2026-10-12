@@ -607,3 +607,23 @@ def test_merge_recomputes_the_document_id() -> None:
     consumed = [VexStatement(cve_id="CVE-2024-4444", status="not_affected")]
     merged = merge_consumed_vex(doc, bundle, consumed)
     assert merged["@id"] != original_id
+
+
+def test_build_openvex_marks_kev_cve_absent_from_the_top_list_as_affected() -> None:
+    """A KEV CVE without an EPSS record never reaches top_risk_cves (Codex P1 on #147)."""
+    evidence = _evidence(["CVE-2024-3333"], top_risk=[])
+    assert evidence.vulnerability_intelligence is not None
+    evidence = evidence.model_copy(
+        update={
+            "vulnerability_intelligence": evidence.vulnerability_intelligence.model_copy(
+                update={
+                    "cves_in_kev_count": 1,
+                    "cves_known_ransomware_count": 1,
+                    "kev_cve_ids": ["CVE-2024-3333"],
+                    "kev_ransomware_cve_ids": ["CVE-2024-3333"],
+                }
+            )
+        }
+    )
+    doc = build_openvex(_bundle([evidence]), now=datetime(2026, 5, 18, tzinfo=UTC))
+    assert doc["statements"][0]["status"] == STATUS_AFFECTED

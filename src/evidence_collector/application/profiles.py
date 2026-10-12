@@ -127,13 +127,21 @@ def _global_exploitation_signal(evidence: NormalizedEvidence) -> str:
         return "unavailable"
     # top_risk_cves only lists CVEs that have an EPSS record, capped at
     # --top-risk-limit; the counts and the maximum cover every CVE on the evidence.
-    if intel.cves_in_kev_count > 0 or any(top.in_kev for top in intel.top_risk_cves):
+    if (
+        intel.cves_in_kev_count > 0
+        or intel.kev_cve_ids
+        or any(top.in_kev for top in intel.top_risk_cves)
+    ):
         return "kev_listed"
     max_percentile = intel.max_epss_percentile
     if (max_percentile is not None and max_percentile >= 0.9) or any(
         top.epss_percentile >= 0.9 for top in intel.top_risk_cves
     ):
         return "high_epss_percentile"
+    if not (intel.kev_consulted and intel.epss_consulted):
+        # No positive signal, and one source was never checked: "none found"
+        # would be a claim about a source nobody consulted.
+        return "unavailable"
     return "no_kev_or_high_epss_in_top_risk_cves"
 
 

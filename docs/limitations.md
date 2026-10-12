@@ -396,6 +396,14 @@ These are explicitly out of scope for security reports (see
   record is marked `kev_consulted: false` or `epss_consulted: false`, and
   the risk rationale says the source was not consulted instead of
   claiming that no exploitable CVE exists.
+- Every KEV-listed CVE is recorded in `kev_cve_ids` (and
+  `kev_ransomware_cve_ids`), independently of the EPSS-ranked
+  `top_risk_cves`, and carried forward when `--kev-feed` is not given.
+  `vex` reads them, so a KEV CVE that has no EPSS score, or drops out of
+  the top list on an EPSS-only refresh, is still emitted as `affected`.
+- Under `--profile cra-2026`, `global_exploitation_signal` is
+  `unavailable` whenever KEV or EPSS was not consulted and neither gives
+  a positive signal.
 - `enrich` with neither `--epss-feed` nor `--kev-feed` consults no
   source, so it leaves the bundle unchanged (copying it to `--output`
   when given), prints a warning, and keeps the prior intelligence and
