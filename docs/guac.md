@@ -78,8 +78,7 @@ The container shape:
 
 Each `documents[]` entry carries the document `type`
 (`sbom` / `sarif` / `attestation` / `evidence`), the source
-artifact path (a path recorded on Windows is rewritten with forward
-slashes; a POSIX path is kept verbatim), the integrity hash, and
+artifact path, the integrity hash, and
 the CVE list when populated. `type` names the format of the file, not
 the kind of evidence it supports:
 
@@ -97,6 +96,15 @@ the kind of evidence it supports:
 
 The collector does not ingest VEX documents, so the container never
 lists one.
+
+`artifact_path` is rewritten with forward slashes only when it is an
+unambiguous Windows path: a drive-letter prefix (`C:\`) or a UNC prefix
+(`\\server\`). Every other path, including a relative path that contains
+backslashes such as `reports\scan.json`, is emitted exactly as the
+collector recorded it, because a backslash is a valid character in a POSIX
+filename. A bundle produced on Windows from relative paths therefore keeps
+its backslashes; produce it with `--artifact-root` on the system that will
+read the files, or convert the paths yourself.
 
 ## Loading into a local GUAC instance
 

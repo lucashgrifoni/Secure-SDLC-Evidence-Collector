@@ -85,19 +85,19 @@ def _document_type_for(evidence: NormalizedEvidence) -> str:
     return "evidence"
 
 
-_WINDOWS_DRIVE = re.compile(r"^[A-Za-z]:[\\/]")
+_WINDOWS_ABSOLUTE = re.compile(r"^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+\\)")
 
 
 def _posix_artifact_path(path: str) -> str:
-    """Write a path recorded on Windows with forward slashes; keep others verbatim.
+    """Write an unambiguous Windows path with forward slashes; keep others verbatim.
 
-    The container is read by POSIX tooling, so a Windows run's backslashes are
-    converted. They are converted only when the path has Windows semantics: a
-    drive letter, or backslashes and no forward slash (``str()`` of a Windows
-    path never contains one). On POSIX a backslash is an ordinary filename
-    character, and replacing it unconditionally renamed ``a\\b.json``.
+    Only a drive-letter prefix (``C:\\``) or a UNC prefix
+    (``\\\\server\\``) marks a path as Windows. On POSIX a backslash is an
+    ordinary filename character, so a relative path such as
+    ``reports\\scan.json`` is ambiguous and is emitted exactly as the collector
+    recorded it. Replacing every backslash renamed such files.
     """
-    if _WINDOWS_DRIVE.match(path) or ("\\" in path and "/" not in path):
+    if _WINDOWS_ABSOLUTE.match(path):
         return PureWindowsPath(path).as_posix()
     return path
 

@@ -336,20 +336,6 @@ def test_guac_document_type_follows_the_file_format(
     assert doc["documents"][0]["type"] == expected
 
 
-def test_guac_artifact_path_uses_posix_separators() -> None:
-    evidence = _sourced(
-        EvidenceType.DAST_SCAN,
-        "dast",
-        content_type="application/json",
-        artifact_path="examples\\sample_release\\artifacts\\zap-baseline.json",
-    )
-    doc = build_guac_collection(_bundle([evidence]))
-    assert (
-        doc["documents"][0]["artifact_path"]
-        == "examples/sample_release/artifacts/zap-baseline.json"
-    )
-
-
 def test_guac_docs_list_exactly_the_document_types_the_exporter_emits() -> None:
     docs = (Path(__file__).resolve().parents[2] / "docs" / "guac.md").read_text(encoding="utf-8")
     listed = " / ".join(f"`{t}`" for t in GUAC_DOCUMENT_TYPES)
@@ -366,6 +352,13 @@ def test_guac_docs_list_exactly_the_document_types_the_exporter_emits() -> None:
         # Recorded on Windows: str(Path) there never contains a forward slash.
         ("C:\\ci\\artifacts\\zap.json", "C:/ci/artifacts/zap.json"),
         ("\\\\server\\share\\sbom.cdx.json", "//server/share/sbom.cdx.json"),
+        # Backslash-only relative paths are ambiguous: a Windows path, or a
+        # valid POSIX name. They are emitted exactly as recorded.
+        ("reports\\scan.json", "reports\\scan.json"),
+        (
+            "examples\\sample_release\\artifacts\\zap-baseline.json",
+            "examples\\sample_release\\artifacts\\zap-baseline.json",
+        ),
         # Recorded on POSIX: a backslash is a legal filename character there.
         ("artifacts/we\\ird.json", "artifacts/we\\ird.json"),
         ("/srv/ci/artifacts/a\\b.sarif", "/srv/ci/artifacts/a\\b.sarif"),
