@@ -251,6 +251,11 @@ and the reusable workflow and the GitLab template always pass
 `--artifacts-dir`; all three rely on getting a bundle back. To stop a pipeline
 on a missing directory, fail the step when `collection_errors` is not empty.
 
+The exception is `run` with nothing readable at all: when none of the
+directories passed exists and no `--pull-request` or `--workflow-run` is
+requested, there is no evidence to evaluate, so it exits `3` and writes no
+bundle.
+
 > Before `3.0.0` this was inconsistent: `vex`, `guac`, `statement`, `enrich`
 > and `oscal` returned `2` for a malformed input — the same code as a
 > `not_ready` release — while `verify`, `compare` and `evaluate` returned `3`.

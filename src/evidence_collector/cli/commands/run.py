@@ -10,7 +10,12 @@ import typer
 from evidence_collector.application.orchestrator import run_pipeline
 from evidence_collector.application.profiles import ReleaseProfile, load_cra_context
 from evidence_collector.cli._builders import build_application, build_release
-from evidence_collector.cli._exit_codes import fail_on_exit_code, validate_fail_on
+from evidence_collector.cli._errors import report_error
+from evidence_collector.cli._exit_codes import (
+    EXIT_INPUT_ERROR,
+    fail_on_exit_code,
+    validate_fail_on,
+)
 from evidence_collector.cli._render import (
     render_collection_errors,
     render_ignored_artifacts,
@@ -204,6 +209,24 @@ def register(app: typer.Typer) -> None:
             raise typer.BadParameter(
                 "--fedramp-class requires --profile fedramp-20x and a class A, B, C or D"
             )
+
+        # A missing directory is a collection error while anything else can be
+        # read. When every directory passed is missing and no other source was
+        # asked for, nothing can be collected at all: exit 3 before any output.
+        input_dirs = [*(artifacts_dir or []), *(attestations_dir or []), *(exceptions_dir or [])]
+        if (
+            input_dirs
+            and pull_request is None
+            and workflow_run is None
+            and not any(Path(d).is_dir() for d in input_dirs)
+        ):
+            listed = ", ".join(str(d) for d in input_dirs)
+            report_error(
+                f"none of the input directories exist ({listed}); "
+                "nothing was collected and no bundle was written",
+                event="run_failed",
+            )
+            raise typer.Exit(code=EXIT_INPUT_ERROR)
 
         extra_evidence: list[NormalizedEvidence] = []
         if pull_request is not None or workflow_run is not None:
