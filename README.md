@@ -377,7 +377,8 @@ app, to serve them.
 exits `3`. A `--catalog` name that is not found on disk still falls back to the
 bundled catalog of the same name. With a `.yaml` name, which could be a local
 file you meant, the run prints a warning saying so; the name without the
-extension (`catalog-ssdf-1.2`) selects the bundled catalog without one.
+extension (`catalog-ssdf-1.2`) selects the bundled catalog without one, unless a
+file of that name with `.yaml` sits in the working directory.
 
 ### Use the collector as a pre-commit hook
 
