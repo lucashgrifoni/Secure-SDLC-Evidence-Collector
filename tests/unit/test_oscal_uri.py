@@ -41,6 +41,7 @@ def test_rfc_3986_examples_are_absolute_uris(uri: str) -> None:
         "http://[::ffff:192.0.2.128]/",
         "http://[1:2:3:4:5:6:7::]/",
         "http://[v7.fe80::abcd:x]/",
+        "http://[V1.example]/artifact",
         "http://192.0.2.16/",
         "http://999.1.1.1/",
         "file:///C:/ci/trivy.sarif",

@@ -49,7 +49,7 @@ _IPV6 = "|".join(
         rf"(?:(?:{_H16}:){{0,6}}{_H16})?::",
     )
 )
-_IPVFUTURE = rf"v[0-9A-Fa-f]+\.[{_UNRESERVED}{_SUB_DELIMS}:]+"
+_IPVFUTURE = rf"[vV][0-9A-Fa-f]+\.[{_UNRESERVED}{_SUB_DELIMS}:]+"
 _IP_LITERAL = rf"\[(?:{_IPV6}|{_IPVFUTURE})\]"
 _REG_NAME = rf"(?:[{_UNRESERVED}{_SUB_DELIMS}]|{_PCT})*"
 _HOST = rf"(?:{_IP_LITERAL}|{_IPV4}|{_REG_NAME})"
