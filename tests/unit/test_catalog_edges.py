@@ -507,3 +507,5 @@ def test_a_bare_name_warns_when_a_local_file_of_that_name_exists(
         controls = load_catalog("catalog-ssdf-1.2")
     assert controls
     assert "BUNDLED" in caplog.text
+    # The remedy must point at the file that exists, with its extension.
+    assert "./catalog-ssdf-1.2.yaml" in caplog.text

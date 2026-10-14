@@ -93,7 +93,7 @@ def _coerce_path(path: str | Path) -> Path:
                 "the extension to select the bundled catalog without this warning.",
                 str(path),
                 resolved,
-                name,
+                spelling,
             )
             return resolved
     available = ", ".join(bundled_catalog_names())
