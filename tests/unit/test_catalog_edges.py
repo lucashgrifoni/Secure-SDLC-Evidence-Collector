@@ -429,3 +429,16 @@ def test_a_bare_bundled_name_selects_the_bundled_catalog_without_a_warning(
         controls = load_catalog("catalog-ssdf-1.2")
     assert controls
     assert "BUNDLED" not in caplog.text
+
+
+def test_explicit_path_syntax_still_warns_when_it_falls_back(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`./name` says "my file here"; Path drops the `./`, so the raw text decides."""
+    monkeypatch.chdir(tmp_path)
+    with caplog.at_level(logging.WARNING):
+        controls = load_catalog("./catalog-ssdf-1.2")
+    assert controls
+    assert "BUNDLED" in caplog.text

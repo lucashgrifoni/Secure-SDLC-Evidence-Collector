@@ -69,7 +69,9 @@ def _coerce_path(path: str | Path) -> Path:
             # verdict. A bare name without an extension (`catalog-ssdf-1.2`)
             # is the documented way to ask for a bundled catalog and cannot be
             # a local file the user meant, so only a file-like name warns.
-            if spelling != name:
+            # Decided on the text as given: Path drops a leading `./`, which
+            # is exactly the syntax of someone pointing at their own file.
+            if spelling != name and str(path) == name:
                 return resolved
             logger.warning(
                 "Control catalog %r was not found on disk; falling back to the "
