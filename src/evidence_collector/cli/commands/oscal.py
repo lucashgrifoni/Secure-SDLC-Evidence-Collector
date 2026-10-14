@@ -91,7 +91,9 @@ def register(app: typer.Typer) -> None:
                 export_oscal_catalog,
             )
 
-            controls = load_catalog(catalog_path) if catalog_path else list(default_catalog())
+            controls = (
+                load_catalog(catalog_path) if catalog_path is not None else list(default_catalog())
+            )
             try:
                 catalog = export_oscal_catalog(controls)
             except OscalControlTokenCollisionError as exc:

@@ -28,7 +28,9 @@ def register(app: typer.Typer) -> None:
         """Print the control catalog currently used for evaluation."""
         from evidence_collector.controls import default_catalog, load_catalog
 
-        controls = load_catalog(catalog_path) if catalog_path else list(default_catalog())
+        controls = (
+            load_catalog(catalog_path) if catalog_path is not None else list(default_catalog())
+        )
         if is_json_logs():
             emit_event(
                 "controls_listed",

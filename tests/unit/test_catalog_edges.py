@@ -465,3 +465,45 @@ def test_cli_keeps_explicit_path_syntax_for_the_fallback_warning(
         result = CliRunner().invoke(app, [*command, "--catalog", "./catalog-ssdf-1.2"])
     assert result.exit_code == 0, result.output
     assert "BUNDLED" in caplog.text
+
+
+@pytest.mark.parametrize("given", ["", "."])
+def test_an_empty_or_nameless_catalog_path_is_refused_clearly(given: str) -> None:
+    with pytest.raises(FileNotFoundError, match="Bundled catalogs available by name"):
+        load_catalog(given)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [["controls"], ["oscal", "--kind", "catalog"]],
+    ids=["controls", "oscal-catalog"],
+)
+def test_cli_refuses_an_empty_catalog_option(command: list[str]) -> None:
+    """`--catalog ""` used to fall through to the default catalog silently.
+
+    Run as a real process so the CLI's exit-code mapping applies.
+    """
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, "-m", "evidence_collector.cli.main", *command, "--catalog", ""],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+    assert result.returncode == 3, result.stdout + result.stderr
+    assert "names no file" in result.stdout + result.stderr
+
+
+def test_a_bare_name_warns_when_a_local_file_of_that_name_exists(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A user's own `catalog-ssdf-1.2.yaml` in cwd must not be skipped silently."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "catalog-ssdf-1.2.yaml").write_text("controls: []\n", encoding="utf-8")
+    with caplog.at_level(logging.WARNING):
+        controls = load_catalog("catalog-ssdf-1.2")
+    assert controls
+    assert "BUNDLED" in caplog.text
