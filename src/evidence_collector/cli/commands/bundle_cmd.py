@@ -30,7 +30,9 @@ def register(app: typer.Typer) -> None:
             str, typer.Option(help="Target environment recorded in the bundle as stated fact")
         ] = "production",
         catalog_path: Annotated[
-            Path | None,
+            # str, not Path: Path drops a leading ./, which the bundled-catalog
+            # fallback needs to tell an explicit local path from a bare name.
+            str | None,
             typer.Option(
                 "--catalog", help="Control catalog: a path, or the bare name of a bundled catalog"
             ),

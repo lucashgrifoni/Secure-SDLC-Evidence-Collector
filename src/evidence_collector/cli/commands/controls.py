@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -18,7 +17,9 @@ def register(app: typer.Typer) -> None:
     @app.command("controls")
     def cmd_controls(
         catalog_path: Annotated[
-            Path | None,
+            # str, not Path: Path drops a leading ./, which the bundled-catalog
+            # fallback needs to tell an explicit local path from a bare name.
+            str | None,
             typer.Option(
                 "--catalog", help="Control catalog: a path, or the bare name of a bundled catalog"
             ),

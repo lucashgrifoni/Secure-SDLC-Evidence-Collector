@@ -38,7 +38,7 @@ def evaluate(
     branch: str,
     environment: str,
     owner_team: str | None,
-    catalog_path: Path | None,
+    catalog_path: str | None,
     fail_on: str,
     exceptions_dir: list[Path] | None = None,
     artifact_root: Path | None = None,
@@ -160,7 +160,9 @@ def register(app: typer.Typer) -> None:
             str | None, typer.Option(help="Owning team recorded on the release context")
         ] = None,
         catalog_path: Annotated[
-            Path | None,
+            # str, not Path: Path drops a leading ./, which the bundled-catalog
+            # fallback needs to tell an explicit local path from a bare name.
+            str | None,
             typer.Option(
                 "--catalog", help="Control catalog: a path, or the bare name of a bundled catalog"
             ),

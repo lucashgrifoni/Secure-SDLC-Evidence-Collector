@@ -442,3 +442,26 @@ def test_explicit_path_syntax_still_warns_when_it_falls_back(
         controls = load_catalog("./catalog-ssdf-1.2")
     assert controls
     assert "BUNDLED" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "command",
+    [["controls"], ["oscal", "--kind", "catalog"]],
+    ids=["controls", "oscal-catalog"],
+)
+def test_cli_keeps_explicit_path_syntax_for_the_fallback_warning(
+    command: list[str],
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The CLI must hand the raw `./name` text through, not a normalised Path."""
+    from typer.testing import CliRunner
+
+    from evidence_collector.cli.main import app
+
+    monkeypatch.chdir(tmp_path)
+    with caplog.at_level(logging.WARNING):
+        result = CliRunner().invoke(app, [*command, "--catalog", "./catalog-ssdf-1.2"])
+    assert result.exit_code == 0, result.output
+    assert "BUNDLED" in caplog.text
