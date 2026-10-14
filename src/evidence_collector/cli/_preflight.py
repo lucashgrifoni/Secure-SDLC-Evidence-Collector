@@ -171,7 +171,23 @@ def _json_logs(argv: list[str]) -> bool:
     }
 
 
+def force_utf8_std_streams() -> None:
+    """Switch stdout and stderr to UTF-8 so non-ASCII output cannot crash.
+
+    Windows terminals default to cp1252 and fail on Rich's separators or on
+    a non-ASCII path in a check detail. The missing-dependency guard exits
+    before ``main()`` runs, so it calls this itself.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        with contextlib.suppress(OSError, ValueError):
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def _report_missing_dependency(module: str, exc: ModuleNotFoundError, argv: list[str]) -> int:
+    force_utf8_std_streams()
     positional = [arg for arg in argv if arg not in _GLOBAL_FLAGS]
     if positional[:1] == ["doctor"] and not {"--help", "-h"} & set(argv):
         return _plain_doctor(module, exc, argv)

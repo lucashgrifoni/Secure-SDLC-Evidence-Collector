@@ -189,3 +189,26 @@ def test_guard_reports_the_missing_module_next_to_unrelated_failures(
     out = capsys.readouterr().out
     assert "Write permission in cwd" in out
     assert "Import: shellingham" in out
+
+
+@pytest.mark.parametrize(
+    "extra", [[], ["--json"], ["--json-logs"]], ids=["table", "json", "ndjson"]
+)
+def test_plain_doctor_reconfigures_a_non_utf8_console(
+    monkeypatch: pytest.MonkeyPatch, extra: list[str]
+) -> None:
+    # The guard exits before main() switches the streams to UTF-8, so the
+    # fallback must do it itself or a non-ASCII detail crashes on cp1252.
+    import io
+
+    raw = io.BytesIO()
+    console = io.TextIOWrapper(raw, encoding="cp1252", errors="strict")
+    monkeypatch.setattr(sys, "stdout", console)
+    monkeypatch.setattr(sys, "argv", ["sdlc-evidence", "doctor", *extra])
+    monkeypatch.delenv("SDLC_JSON_LOGS", raising=False)
+    monkeypatch.setattr(_preflight, "_cwd_write_check", lambda: (False, "denied: C:/proj/ação→é"))
+    with pytest.raises(SystemExit) as excinfo, _preflight.exit_on_missing_dependency():
+        _raise(ModuleNotFoundError("No module named 'shellingham'", name="shellingham"))
+    console.flush()
+    assert excinfo.value.code == 1
+    assert "shellingham" in raw.getvalue().decode("utf-8")

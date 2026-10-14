@@ -14,13 +14,12 @@ are re-exported here so the previous import surface is preserved.
 
 from __future__ import annotations
 
-import contextlib
 import sys
 from datetime import UTC, datetime
 from typing import Annotated
 
 from evidence_collector import __version__
-from evidence_collector.cli._preflight import exit_on_missing_dependency
+from evidence_collector.cli._preflight import exit_on_missing_dependency, force_utf8_std_streams
 
 # A missing third-party dependency fails right here, before any command can
 # run. The guard turns that into one actionable line (exit 3) - or, for
@@ -81,18 +80,6 @@ def main_callback(
         raise typer.Exit(code=0)
 
 
-def _force_utf8_std_streams() -> None:
-    # Windows terminals default to cp1252 and crash on Rich's Unicode
-    # separators (→, ⬆). Reconfigure both streams to UTF-8 so the CLI
-    # works out-of-the-box without requiring PYTHONIOENCODING=utf-8.
-    for stream in (sys.stdout, sys.stderr):
-        reconfigure = getattr(stream, "reconfigure", None)
-        if reconfigure is None:
-            continue
-        with contextlib.suppress(OSError, ValueError):
-            reconfigure(encoding="utf-8", errors="replace")
-
-
 # A command that could not run at all exits EXIT_INPUT_ERROR (3), deliberately
 # distinct from the release-verdict codes. 0/1/2 mean ready/conditional/not_ready,
 # so an unhandled exception exiting 1 — Click's default — was indistinguishable
@@ -142,7 +129,7 @@ def _report_command_failure(exc: BaseException) -> None:
 
 def main() -> None:
     """Console-script entrypoint."""
-    _force_utf8_std_streams()
+    force_utf8_std_streams()
     set_json_logs("--json-logs" in sys.argv)
     # Print banner only when stdout is a TTY, to avoid polluting pipelines.
     if sys.stdout.isatty() and not is_json_logs():
