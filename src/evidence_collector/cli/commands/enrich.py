@@ -282,7 +282,7 @@ def _require_usable[FeedT: (EpssFeed, KevFeed)](feed: FeedT, path: Path, label: 
     else:
         reason = "no usable records (unreadable, empty, or malformed)"
     report_error(
-        f"{label} feed {path} could not be used: {reason}",
+        f"{label} feed {path} could not be used: {reason}; nothing was written",
         event="enrich_failed",
         feed=str(path),
         feed_kind=label,

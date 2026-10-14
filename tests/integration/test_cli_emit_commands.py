@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -285,6 +287,53 @@ def test_enrich_exits_three_when_kev_feed_is_malformed(
     )
     assert result.exit_code == 3, result.output
     assert "no usable records" in result.output
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    ("flag", "name", "content", "label"),
+    [
+        ("--kev-feed", "kev.json", b"{ not valid json", "CISA KEV"),
+        # A .gz that is not gzip: the EPSS loader's own degradation path.
+        ("--epss-feed", "epss.csv.gz", b"not gzip at all", "EPSS"),
+    ],
+)
+def test_enrich_unusable_feed_never_says_it_is_continuing(
+    sample_bundle: Path, tmp_path: Path, flag: str, name: str, content: bytes, label: str
+) -> None:
+    """Enrichment fails closed, so no line may claim it carries on without the feed.
+
+    The loader logged "continuing without KEV enrichment" on its way to an
+    empty feed, and the CLI then exited 3 - two messages contradicting each
+    other about whether the bundle was enriched. Run as a real process so the
+    logging output on stderr is part of what is checked.
+    """
+    feed = tmp_path / name
+    feed.write_bytes(content)
+    target = tmp_path / "o.json"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "evidence_collector.cli.main",
+            "enrich",
+            str(sample_bundle),
+            "--output",
+            str(target),
+            flag,
+            str(feed),
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+    output = result.stdout + result.stderr
+    assert result.returncode == 3, output
+    assert "continuing" not in output.lower()
+    assert f"{label} feed" in output
+    assert "nothing was written" in output
+    assert not target.exists()
 
 
 @pytest.mark.integration

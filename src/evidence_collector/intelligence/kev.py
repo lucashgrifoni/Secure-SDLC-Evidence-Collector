@@ -108,10 +108,11 @@ def load_kev_feed(path: Path) -> KevFeed:
     # raised `UnicodeDecodeError`, `RecursionError` or a bare `ValueError`
     # straight past it and failed `enrich` outright. See `_feeds` for what
     # each member of the tuple stands for.
-    except MALFORMED_FEED:
-        logger.warning(
-            "Could not read the KEV feed at %s; continuing without KEV enrichment.", path
-        )
+    except MALFORMED_FEED as exc:
+        # Say only what happened. Whether the caller carries on is its call:
+        # `enrich` stops with exit 3 on an unusable feed, so "continuing
+        # without enrichment" here contradicted the command's own error.
+        logger.warning("Could not read the KEV feed at %s: %s: %s", path, type(exc).__name__, exc)
         return KevFeed(feed_date=None, records={})
     if not isinstance(raw, dict):
         return KevFeed(feed_date=None, records={})

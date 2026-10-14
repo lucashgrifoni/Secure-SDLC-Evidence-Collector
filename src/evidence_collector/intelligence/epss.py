@@ -89,10 +89,11 @@ def load_epss_feed(path: Path) -> EpssFeed:
         return EpssFeed(feed_date=None, records={})
     try:
         return _read_epss(path)
-    except MALFORMED_FEED:
-        logger.warning(
-            "Could not read the EPSS feed at %s; continuing without EPSS enrichment.", path
-        )
+    except MALFORMED_FEED as exc:
+        # Say only what happened. Whether the caller carries on is its call:
+        # `enrich` stops with exit 3 on an unusable feed, so "continuing
+        # without enrichment" here contradicted the command's own error.
+        logger.warning("Could not read the EPSS feed at %s: %s: %s", path, type(exc).__name__, exc)
         return EpssFeed(feed_date=None, records={})
 
 
