@@ -23,6 +23,7 @@ from evidence_collector.cli._render import (
 )
 from evidence_collector.collectors.github import GitHubCollector, GitHubCollectorConfig
 from evidence_collector.domain.models import NormalizedEvidence
+from evidence_collector.paths import relative_to_root
 from evidence_collector.scoring import (
     DEFAULT_EPSS_PERCENTILE_THRESHOLD,
     RiskMode,
@@ -220,7 +221,8 @@ def register(app: typer.Typer) -> None:
             and workflow_run is None
             and not any(Path(d).exists() for d in input_dirs)
         ):
-            listed = ", ".join(str(d) for d in input_dirs)
+            # Same redaction as collection_errors: relative to --artifact-root.
+            listed = ", ".join(str(relative_to_root(Path(d), artifact_root)) for d in input_dirs)
             report_error(
                 f"none of the input directories exist ({listed}); "
                 "nothing was collected and no bundle was written",

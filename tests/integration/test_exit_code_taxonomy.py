@@ -221,3 +221,27 @@ def test_files_passed_as_input_directories_stay_collection_errors(
     assert result.exit_code != EXIT_INPUT_ERROR, result.output
     bundle = json.loads((out / "bundle.json").read_text(encoding="utf-8"))
     assert [Path(e["path"]).name for e in bundle["collection_errors"]] == ["scan.sarif"]
+
+
+def test_the_no_input_error_lists_paths_relative_to_artifact_root(
+    runner: CliRunner, tmp_path: Path
+) -> None:
+    # The error goes to CI logs: an absolute workspace path must not leak when
+    # --artifact-root was set to avoid exactly that.
+    root = tmp_path / "clientA-private-workspace"
+    root.mkdir()
+    out = tmp_path / "out"
+    result = runner.invoke(
+        app,
+        _run_args(
+            out,
+            "--artifacts-dir",
+            str(root / "artifacts"),
+            "--artifact-root",
+            str(root),
+        ),
+    )
+
+    assert result.exit_code == EXIT_INPUT_ERROR, result.output
+    assert "clientA-private-workspace" not in result.output
+    assert "artifacts" in result.output
