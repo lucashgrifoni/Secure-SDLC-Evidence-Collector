@@ -218,7 +218,7 @@ def register(app: typer.Typer) -> None:
             input_dirs
             and pull_request is None
             and workflow_run is None
-            and not any(Path(d).is_dir() for d in input_dirs)
+            and not any(Path(d).exists() for d in input_dirs)
         ):
             listed = ", ".join(str(d) for d in input_dirs)
             report_error(

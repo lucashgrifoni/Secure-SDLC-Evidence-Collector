@@ -206,3 +206,18 @@ def test_missing_exceptions_dir_keeps_the_verdict_of_the_evidence(
     assert result.exit_code == exit_code_for_status(status), result.output
     assert result.exit_code != EXIT_INPUT_ERROR
     assert [Path(e["path"]).name for e in bundle["collection_errors"]] == ["missing-waivers"]
+
+
+def test_files_passed_as_input_directories_stay_collection_errors(
+    runner: CliRunner, tmp_path: Path
+) -> None:
+    # A shell glob can pass files where directories were expected. They exist,
+    # so this is not the "nothing to read" case: the bundle is still written.
+    stray = tmp_path / "scan.sarif"
+    stray.write_text("{}", encoding="utf-8")
+    out = tmp_path / "out"
+    result = runner.invoke(app, _run_args(out, "--artifacts-dir", str(stray)))
+
+    assert result.exit_code != EXIT_INPUT_ERROR, result.output
+    bundle = json.loads((out / "bundle.json").read_text(encoding="utf-8"))
+    assert [Path(e["path"]).name for e in bundle["collection_errors"]] == ["scan.sarif"]
