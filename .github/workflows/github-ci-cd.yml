@@ -86,6 +86,16 @@ jobs:
           python -m pip install --no-deps -e .
           python -m pip check
 
+      # Every lock must be exactly what its recorded `uv pip compile` command
+      # produces. Dependabot's pip ecosystem recompiles without --universal and
+      # drops platform markers (colorama on Windows, uvloop off it); this turns
+      # such a pull request red instead of shipping a lock that breaks an OS.
+      - name: Check requirement locks
+        if: matrix.python-version == '3.12'
+        run: |
+          python -m pip install --require-hashes -r .github/requirements/uv.txt
+          python scripts/check_requirement_locks.py
+
       - name: Ruff lint
         run: python -m ruff check src tests scripts
 

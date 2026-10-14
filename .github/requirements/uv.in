@@ -1,0 +1,2 @@
+# uv, used only by the CI lock check (scripts/check_requirement_locks.py).
+uv==0.12.18
