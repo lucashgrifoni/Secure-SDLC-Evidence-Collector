@@ -89,8 +89,7 @@ def _coerce_path(path: str | Path) -> Path:
                 "Control catalog %r was not found on disk; falling back to the "
                 "BUNDLED catalog of the same name (%s). The verdict will be "
                 "computed against the bundled control set, not yours. Pass an "
-                "explicit path (./%s) if you meant a local file, or the name without "
-                "the extension to select the bundled catalog without this warning.",
+                "explicit path (./%s) if you meant a local file.",
                 str(path),
                 resolved,
                 spelling,
