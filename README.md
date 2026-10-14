@@ -217,6 +217,9 @@ required check passes and `1` when any required check fails (optional checks,
 such as a missing token or `cosign`, never fail). That `1` is not a
 `conditional` verdict. It is kept for compatibility in the 4.x line and will
 move to `3` in the next major release, in line with every other failure.
+`doctor` also runs on a broken install: if a required dependency such as
+`defusedxml` is missing, its `Import:` row fails and it exits `1`, while every
+other command prints one line naming the missing package and exits `3`.
 
 **Every failure that is not a release verdict exits `3`.** A missing or
 malformed bundle, an unreadable catalog, an invalid `--commit-sha`, an
