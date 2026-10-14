@@ -1,8 +1,0 @@
-{
-  "name": "snyk-cli-pin",
-  "private": true,
-  "description": "Pins the Snyk CLI used by security-ci-cd.yml. Installed with `npm ci`, so every package is checked against the integrity hashes in package-lock.json.",
-  "dependencies": {
-    "snyk": "1.1307.4"
-  }
-}

@@ -153,15 +153,22 @@ jobs:
       # auth step was redundant and was the only place an invalid token could
       # fail — with a bare `exit 2` and no explanation. Without it, a bad token
       # surfaces in the scan itself, with the scanner's own message.
-      # `npm ci` checks every package against the integrity hashes in
-      # .github/snyk/package-lock.json (Dependabot's npm ecosystem bumps the
-      # pin). Installed under RUNNER_TEMP so node_modules never lands in the
-      # tree the scanners read.
+      # Standalone Snyk CLI binary, pinned by version and checked against the
+      # SHA-256 Snyk publishes for that asset (snyk-linux.sha256 next to it on
+      # downloads.snyk.io and on the snyk/cli GitHub release; the release's
+      # sha256sums.txt.asc is signed by Snyk's code-signing key). Kept under
+      # RUNNER_TEMP, outside the tree the scanners read. To bump: change both
+      # values together from the new release's snyk-linux.sha256.
       - name: Install Snyk CLI
         run: |
-          cp .github/snyk/package.json .github/snyk/package-lock.json "$RUNNER_TEMP/"
-          npm ci --prefix "$RUNNER_TEMP" --no-audit --no-fund
-          echo "$RUNNER_TEMP/node_modules/.bin" >>"$GITHUB_PATH"
+          set -euo pipefail
+          SNYK_VERSION="1.1307.4"
+          SNYK_SHA256="b0baee4fa4d7d11b7df927a1046cf8137a8a89fafac8101a45c3c0e0777ddc35"
+          mkdir -p "$RUNNER_TEMP/snyk-cli"
+          curl -fsSL -o "$RUNNER_TEMP/snyk-cli/snyk" "https://downloads.snyk.io/cli/v${SNYK_VERSION}/snyk-linux"
+          echo "${SNYK_SHA256}  $RUNNER_TEMP/snyk-cli/snyk" | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/snyk-cli/snyk"
+          echo "$RUNNER_TEMP/snyk-cli" >>"$GITHUB_PATH"
 
       - name: Run Snyk Code
         env:
@@ -230,15 +237,22 @@ jobs:
       # auth step was redundant and was the only place an invalid token could
       # fail — with a bare `exit 2` and no explanation. Without it, a bad token
       # surfaces in the scan itself, with the scanner's own message.
-      # `npm ci` checks every package against the integrity hashes in
-      # .github/snyk/package-lock.json (Dependabot's npm ecosystem bumps the
-      # pin). Installed under RUNNER_TEMP so node_modules never lands in the
-      # tree the scanners read.
+      # Standalone Snyk CLI binary, pinned by version and checked against the
+      # SHA-256 Snyk publishes for that asset (snyk-linux.sha256 next to it on
+      # downloads.snyk.io and on the snyk/cli GitHub release; the release's
+      # sha256sums.txt.asc is signed by Snyk's code-signing key). Kept under
+      # RUNNER_TEMP, outside the tree the scanners read. To bump: change both
+      # values together from the new release's snyk-linux.sha256.
       - name: Install Snyk CLI
         run: |
-          cp .github/snyk/package.json .github/snyk/package-lock.json "$RUNNER_TEMP/"
-          npm ci --prefix "$RUNNER_TEMP" --no-audit --no-fund
-          echo "$RUNNER_TEMP/node_modules/.bin" >>"$GITHUB_PATH"
+          set -euo pipefail
+          SNYK_VERSION="1.1307.4"
+          SNYK_SHA256="b0baee4fa4d7d11b7df927a1046cf8137a8a89fafac8101a45c3c0e0777ddc35"
+          mkdir -p "$RUNNER_TEMP/snyk-cli"
+          curl -fsSL -o "$RUNNER_TEMP/snyk-cli/snyk" "https://downloads.snyk.io/cli/v${SNYK_VERSION}/snyk-linux"
+          echo "${SNYK_SHA256}  $RUNNER_TEMP/snyk-cli/snyk" | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/snyk-cli/snyk"
+          echo "$RUNNER_TEMP/snyk-cli" >>"$GITHUB_PATH"
 
       - name: Run Snyk Open Source scan
         env:
