@@ -375,7 +375,9 @@ app, to serve them.
 
 `controls: []` used to evaluate to `ready` because nothing was checked; it now
 exits `3`. A `--catalog` name that is not found on disk still falls back to the
-bundled catalog of the same name, and the run prints a warning saying so.
+bundled catalog of the same name. With a `.yaml` name, which could be a local
+file you meant, the run prints a warning saying so; the name without the
+extension (`catalog-ssdf-1.2`) selects the bundled catalog without one.
 
 ### Use the collector as a pre-commit hook
 

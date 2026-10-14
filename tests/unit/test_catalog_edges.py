@@ -414,3 +414,18 @@ def test_a_catalog_alias_bomb_is_rejected(tmp_path: Path) -> None:
     local.write_text("\n".join(lines) + "\n" + _VALID_CONTROL, encoding="utf-8")
     with pytest.raises(ValueError, match="alias"):
         load_catalog(local)
+
+
+def test_a_bare_bundled_name_selects_the_bundled_catalog_without_a_warning(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`--catalog catalog-ssdf-1.2` (no extension) names a bundled catalog.
+
+    It cannot be a local file the user meant, so the substituted-control-set
+    warning, which still guards `catalog.yaml`, is noise there.
+    """
+    monkeypatch.chdir(tmp_path)
+    with caplog.at_level(logging.WARNING):
+        controls = load_catalog("catalog-ssdf-1.2")
+    assert controls
+    assert "BUNDLED" not in caplog.text
