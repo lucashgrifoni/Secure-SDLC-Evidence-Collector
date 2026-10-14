@@ -16,9 +16,13 @@ WORKDIR /build
 
 COPY pyproject.toml README.md LICENSE THIRD_PARTY_LICENSES.md ./
 COPY src/ ./src/
+COPY .github/requirements/pip.txt .github/requirements/runtime.txt /requirements/
 
-RUN python -m pip install --upgrade pip && \
-    python -m pip wheel --wheel-dir /wheels .
+# Third-party wheels come only from the hash-locked runtime.txt (the lock the
+# CI runtime jobs install); the project wheel is built with --no-deps.
+RUN python -m pip install --require-hashes -r /requirements/pip.txt && \
+    python -m pip wheel --wheel-dir /wheels --require-hashes -r /requirements/runtime.txt && \
+    python -m pip wheel --wheel-dir /wheels --no-deps .
 
 
 FROM python:${PYTHON_VERSION}-slim-bookworm@sha256:93ab4b7fa528b25124c97bcc755415e60eb671a86b4dbe0328df2fe2d1c1193d AS runtime
@@ -35,9 +39,14 @@ RUN groupadd --system --gid 10001 sdlc && \
 WORKDIR /app
 
 COPY --from=builder /wheels /wheels
+COPY --from=builder /requirements /requirements
+# Offline install from the builder's wheels: the dependencies are checked
+# against the lock's hashes again, then the project wheel goes on top.
 RUN python -m pip install --no-index --find-links=/wheels \
-        secure-sdlc-evidence-collector && \
-    rm -rf /wheels
+        --require-hashes -r /requirements/runtime.txt && \
+    python -m pip install --no-index --no-deps /wheels/secure_sdlc_evidence_collector-*.whl && \
+    python -m pip check && \
+    rm -rf /wheels /requirements
 
 # Default mount point for pipeline inputs/outputs
 USER sdlc

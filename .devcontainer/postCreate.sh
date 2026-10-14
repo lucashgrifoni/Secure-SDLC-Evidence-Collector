@@ -14,8 +14,12 @@
 set -euo pipefail
 
 echo "[postCreate] Installing the project (editable + dev extras)…"
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev,api,logs]"
+# Same hash-locked files as the CI quality jobs: dev.txt carries the dev, api
+# and logs extras; the project goes on top with --no-deps.
+python -m pip install --require-hashes -r .github/requirements/pip.txt
+python -m pip install --require-hashes -r .github/requirements/dev.txt
+python -m pip install --no-deps -e .
+python -m pip check
 
 echo "[postCreate] Installing cosign…"
 COSIGN_VERSION="2.4.1"
@@ -23,13 +27,27 @@ curl -fsSL -o /tmp/cosign \
   "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64"
 sudo install -m 0755 /tmp/cosign /usr/local/bin/cosign
 
+# syft and trivy: a pinned release tarball checked against the SHA-256 listed
+# in that release's checksums.txt (its Sigstore bundle was verified when the
+# pin was taken), instead of piping an install script from a moving branch
+# into sh.
 echo "[postCreate] Installing syft…"
-curl -fsSL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
-  | sudo sh -s -- -b /usr/local/bin
+SYFT_VERSION="1.54.0"
+SYFT_SHA256="54a87372498168b2d033e876fd41fa4e8035b872699e525a57046e1f2f09c860"
+curl -fsSL -o /tmp/syft.tar.gz \
+  "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+echo "${SYFT_SHA256}  /tmp/syft.tar.gz" | sha256sum --check --strict
+sudo tar -xzf /tmp/syft.tar.gz -C /usr/local/bin syft
+rm -f /tmp/syft.tar.gz
 
 echo "[postCreate] Installing trivy…"
-curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-  | sudo sh -s -- -b /usr/local/bin
+TRIVY_VERSION="0.75.0"
+TRIVY_SHA256="c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f"
+curl -fsSL -o /tmp/trivy.tar.gz \
+  "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+echo "${TRIVY_SHA256}  /tmp/trivy.tar.gz" | sha256sum --check --strict
+sudo tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy
+rm -f /tmp/trivy.tar.gz
 
 echo "[postCreate] Installing conftest…"
 CONFTEST_VERSION="0.55.0"
