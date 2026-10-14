@@ -651,7 +651,8 @@ In the assessment results, an evidence resource links to the artifact
 (`rlinks`) only when its `artifact_uri` is an absolute URI as defined by
 RFC 3986 (scheme, then authority and path, query and fragment, each
 with its allowed characters and `%XX` escapes; a port above 65535 is
-refused too), or when its `artifact_path` is absolute. A locator such
+refused too) whose scheme is not `javascript`, `vbscript` or `data`, or when
+its `artifact_path` is absolute. A locator such
 as `https://example.test/a#one#two`, one with a space, a raw non-ASCII
 character or `[` outside an IPv6 literal, is not linked: the resource
 embeds the normalized evidence record as base64 and keeps the locator

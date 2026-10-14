@@ -682,6 +682,11 @@ def _base64_payload(filename: str, media_type: str, text: str) -> dict[str, str]
     }
 
 
+# Valid absolute URIs that a tool rendering the rlink href would execute or
+# load inline; such a locator is embedded as the record instead of linked.
+_UNLINKABLE_SCHEMES = frozenset({"javascript", "vbscript", "data"})
+
+
 def _absolute_artifact_href(raw: RawEvidenceRef) -> str | None:
     r"""A link to where the artifact is, when that location is absolute.
 
@@ -693,7 +698,11 @@ def _absolute_artifact_href(raw: RawEvidenceRef) -> str | None:
     path such as ``C:reports\\scan.json`` has a drive but no root: it is not
     absolute, and ``as_uri()`` raises on it.
     """
-    if raw.artifact_uri and is_absolute_uri(raw.artifact_uri):
+    if (
+        raw.artifact_uri
+        and is_absolute_uri(raw.artifact_uri)
+        and raw.artifact_uri.split(":", 1)[0].lower() not in _UNLINKABLE_SCHEMES
+    ):
         return raw.artifact_uri
     path = raw.artifact_path
     if not path:

@@ -639,3 +639,18 @@ def test_evidence_resource_links_an_rfc_3986_absolute_uri(artifact_uri: str) -> 
 
     assert "base64" not in resource
     assert resource["rlinks"][0]["href"] == artifact_uri
+
+
+@pytest.mark.parametrize(
+    "artifact_uri",
+    ["javascript:alert(1)", "JavaScript:alert(1)", "vbscript:msgbox(1)", "data:text/html,x"],
+    ids=["javascript", "javascript-mixed-case", "vbscript", "data"],
+)
+def test_evidence_resource_does_not_link_a_script_or_data_uri(artifact_uri: str) -> None:
+    # Valid RFC 3986 URIs, but a GRC tool that renders the href as a link
+    # would run or load them; the record is embedded instead.
+    bundle = _with_recorded_artifact(_waived_bundle("a", "o/a"), None, artifact_uri)
+    resource = _evidence_resource(export_oscal_assessment_results(bundle), "sca-1")
+
+    assert "rlinks" not in resource
+    assert "base64" in resource
