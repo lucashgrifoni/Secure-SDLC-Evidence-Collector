@@ -125,8 +125,6 @@ def test_export_markdown_never_glues_two_bullets_onto_one_line(tmp_path: Path) -
     human-facing deliverable the README showcases. Fixed with `+%}` whitespace
     control; this test fails if any template regains the pattern.
     """
-    import re
-
     target = tmp_path / "report.md"
     export_markdown(_build_bundle(), target)
     glued = [
@@ -146,8 +144,6 @@ def test_sample_fixtures_carry_real_urls() -> None:
     the README's own smoke test rendered
     `| OWASP ZAP | \`http./sample_release\` |` as the subject reference.
     """
-    import re
-
     root = Path("examples")
     offenders = [
         f"{path}:{i}"
