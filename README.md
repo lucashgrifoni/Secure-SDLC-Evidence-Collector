@@ -238,6 +238,19 @@ A wrapper can therefore branch on the code alone. Outside `doctor`, `1` means
 `conditional` and nothing else; `3` means "nothing was produced, do not read
 this as a verdict".
 
+One input is deliberately not fatal: an input directory passed to `run`,
+`collect` or `evaluate` (`--artifacts-dir`, `--attestations-dir`,
+`--exceptions-dir`) that does not exist, or is a file. The command records it
+in the bundle's `collection_errors`, prints it under "Collection warnings" (a
+`collection_error` event with `--json-logs`), writes the bundle, and exits with
+the verdict for whatever evidence it did find. That is usually `2`
+(`not_ready`) when the missing directory held the evidence, but a missing
+`--exceptions-dir` next to complete evidence can still exit `0`. The GitHub
+Action passes a configured `exceptions-dir` through even when it is missing,
+and the reusable workflow and the GitLab template always pass
+`--artifacts-dir`; all three rely on getting a bundle back. To stop a pipeline
+on a missing directory, fail the step when `collection_errors` is not empty.
+
 > Before `3.0.0` this was inconsistent: `vex`, `guac`, `statement`, `enrich`
 > and `oscal` returned `2` for a malformed input — the same code as a
 > `not_ready` release — while `verify`, `compare` and `evaluate` returned `3`.

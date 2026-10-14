@@ -20,13 +20,15 @@ can.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
-from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR
+from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, exit_code_for_status
 from evidence_collector.cli.main import app
+from evidence_collector.domain.enums import ReleaseStatus
 
 
 @pytest.fixture
@@ -99,3 +101,84 @@ def test_no_command_uses_the_verdict_codes_for_a_bad_input(
             f"{command[0]} returned verdict code {code} for a missing input; "
             "a wrapper cannot tell that from a real release verdict"
         )
+
+
+# ---------------------------------------------------------------------------
+# A missing input directory is the documented exception to the taxonomy
+#
+# An end-user validation of 4.1.0 read "every failure that is not a release
+# verdict exits 3" and expected `run --artifacts-dir nope/a` to exit 3; it
+# exits with the verdict instead. That is deliberate and other documented
+# flows depend on it: the Action passes a configured `exceptions-dir` through
+# even when it is missing ("the collector reports the bad path in the
+# collection warnings"), and the reusable workflow and the GitLab template pass
+# `--artifacts-dir` unconditionally. Exiting 3 there would abort before any
+# bundle is written. The README now states the exception; these tests pin it.
+# ---------------------------------------------------------------------------
+
+
+def _run_args(output_dir: Path, *extra: str) -> list[str]:
+    return [
+        "run",
+        "--application",
+        "a",
+        "--repository",
+        "o/r",
+        "--release-id",
+        "1",
+        "--commit-sha",
+        "abcdef1",
+        "--output-dir",
+        str(output_dir),
+        *extra,
+    ]
+
+
+def test_missing_input_directories_are_reported_not_fatal(
+    runner: CliRunner, tmp_path: Path
+) -> None:
+    missing_artifacts = tmp_path / "nope" / "a"
+    missing_attestations = tmp_path / "nope" / "b"
+    out = tmp_path / "out"
+    result = runner.invoke(
+        app,
+        _run_args(
+            out,
+            "--artifacts-dir",
+            str(missing_artifacts),
+            "--attestations-dir",
+            str(missing_attestations),
+        ),
+    )
+
+    # No evidence was found, so the verdict is not_ready: exit 2, not 3.
+    assert result.exit_code == 2, result.output
+    bundle = json.loads((out / "bundle.json").read_text(encoding="utf-8"))
+    assert bundle["summary"]["release_status"] == "not_ready"
+    errors = {(Path(e["path"]).name, e["reason"]) for e in bundle["collection_errors"]}
+    assert errors == {("a", "directory not found"), ("b", "directory not found")}
+    assert "Collection warnings" in result.output
+
+
+def test_missing_exceptions_dir_keeps_the_verdict_of_the_evidence(
+    runner: CliRunner, tmp_path: Path, sample_release_root: Path
+) -> None:
+    out = tmp_path / "out"
+    result = runner.invoke(
+        app,
+        _run_args(
+            out,
+            "--artifacts-dir",
+            str(sample_release_root / "artifacts"),
+            "--attestations-dir",
+            str(sample_release_root / "attestations"),
+            "--exceptions-dir",
+            str(tmp_path / "missing-waivers"),
+        ),
+    )
+
+    bundle = json.loads((out / "bundle.json").read_text(encoding="utf-8"))
+    status = ReleaseStatus(bundle["summary"]["release_status"])
+    assert result.exit_code == exit_code_for_status(status), result.output
+    assert result.exit_code != EXIT_INPUT_ERROR
+    assert [Path(e["path"]).name for e in bundle["collection_errors"]] == ["missing-waivers"]

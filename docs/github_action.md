@@ -155,7 +155,10 @@ inputs.
 Unlike the evidence directories, a configured `exceptions-dir` that does not
 exist is **not** skipped silently — losing an approved, time-bound exception
 would change the verdict without a word, so the collector reports the bad path
-in the collection warnings instead.
+in the collection warnings and in the bundle's `collection_errors` instead.
+The run still writes the bundle and exits with the verdict, not `3`; fail a
+later step on a non-empty `collection_errors` if a missing waiver directory
+must stop the job.
 
 ## Outputs
 

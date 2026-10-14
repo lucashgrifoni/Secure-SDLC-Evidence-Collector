@@ -269,8 +269,10 @@ per control in `exception_refs`.
 ## CollectionError
 
 Top-level `collection_errors` lists inputs that were supplied but could not be
-ingested (unreadable, malformed, oversized), and evidence anchored to a
-different commit than the release. The key is omitted when the list is empty.
+ingested (unreadable, malformed, oversized, or an input directory that does not
+exist), and evidence anchored to a different commit than the release. The key
+is omitted when the list is empty. These inputs do not stop the command: it
+still writes the bundle and exits with the verdict.
 
 | Field | Type | Notes |
 |---|---|---|
