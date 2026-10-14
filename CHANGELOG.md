@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.1.3](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.1.2...v4.1.3) (2026-10-14)
+
+
+### Fixed
+
+* **catalog:** refuse an empty --catalog and warn when a bare name shadows a local file ([#170](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/170)) ([4edc200](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/4edc200b2679707d4ffebebc710f7bfb2f88b231))
+* low follow-ups from the 4.1.1 validation ([#167](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/167)) ([d0bfa0e](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/d0bfa0ec89d9958537156518f8937db5a86649fe))
+
 ## [4.1.2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.1.1...v4.1.2) (2026-10-14)
 
 
