@@ -191,3 +191,97 @@ def test_release_please_never_rewrites_a_workflow_file() -> None:
     ]
     assert paths, "expected the version-bearing extra-files to be configured"
     assert not [p for p in paths if p.startswith(".github/workflows/")]
+
+
+_REPOSITORY = "lucashgrifoni/Secure-SDLC-Evidence-Collector"
+# `uses: <repo>@vX.Y.Z` and raw URLs `<repo>/vX.Y.Z/...` that pin this project.
+_INLINE_SELF_PIN = re.compile(re.escape(_REPOSITORY) + r"(?:@|/)v(\d+\.\d+\.\d+)")
+# A pre-commit `rev:` line, commented out or not.
+_REV_LINE = re.compile(r"^[\s#]*rev:\s*v(\d+\.\d+\.\d+)")
+
+
+def _self_pins(lines: list[str]) -> list[tuple[int, str]]:
+    """(line number, version) for every line that pins a release of this project."""
+    pins: list[tuple[int, str]] = []
+    for index, line in enumerate(lines):
+        inline = _INLINE_SELF_PIN.search(line)
+        if inline:
+            pins.append((index + 1, inline.group(1)))
+            continue
+        rev = _REV_LINE.match(line)
+        if rev is None:
+            continue
+        # A `rev:` belongs to the nearest `repo:` above it in the same block.
+        repo_line = next(
+            (above for above in reversed(lines[max(0, index - 4) : index]) if "repo:" in above),
+            "",
+        )
+        if _REPOSITORY in repo_line:
+            pins.append((index + 1, rev.group(1)))
+    return pins
+
+
+def test_every_pinned_release_of_this_project_is_bumped_by_release_please() -> None:
+    """README and `.pre-commit-hooks.yaml` still said `rev: v4.0.0` after 4.1.0.
+
+    release-please bumped the Action and GitLab examples because they are in
+    `extra-files`, but the two pre-commit examples were not, so they went stale
+    on the first release after they were written. Every line outside the
+    workflows (which the release-please App may not write) and CHANGELOG.md
+    that pins a tag of this repository must carry the current version, the
+    `x-release-please-version` marker, and live in a file listed in
+    `extra-files` - otherwise the next release leaves it behind again.
+    """
+    tracked = subprocess.run(
+        ["git", "-c", f"safe.directory={Path.cwd()}", "ls-files", "-z"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if tracked.returncode != 0:
+        pytest.skip("git is not usable here; cannot list tracked files")
+    version = json.loads(Path(".github/.release-please-manifest.json").read_text(encoding="utf-8"))[
+        "."
+    ]
+    config = json.loads(Path(".github/release-please-config.json").read_text(encoding="utf-8"))
+    managed = {
+        entry if isinstance(entry, str) else entry["path"]
+        for package in config["packages"].values()
+        for entry in package.get("extra-files", [])
+    }
+
+    problems: list[str] = []
+    for name in filter(None, tracked.stdout.split("\0")):
+        if name.startswith(".github/workflows/") or name == "CHANGELOG.md":
+            continue
+        try:
+            lines = Path(name).read_text(encoding="utf-8").splitlines()
+        except (UnicodeDecodeError, OSError):
+            continue
+        for number, pinned in _self_pins(lines):
+            line = lines[number - 1]
+            if pinned != version:
+                problems.append(f"{name}:{number} pins v{pinned}, current is v{version}")
+            if "x-release-please-version" not in line:
+                problems.append(f"{name}:{number} has no x-release-please-version marker")
+            if name not in managed:
+                problems.append(f"{name}:{number} is not in release-please extra-files")
+    assert not problems, "\n".join(problems)
+
+
+def test_self_pin_detection_covers_the_forms_in_use() -> None:
+    """The scanner above must actually see the pins it is meant to police."""
+    lines = [
+        "repos:",
+        f"  - repo: https://github.com/{_REPOSITORY}",
+        "    # a comment between repo and rev",
+        "    rev: v4.0.0",
+        "  - repo: https://github.com/pre-commit/pre-commit-hooks",
+        "    rev: v4.6.0",
+        f"#     - repo: https://github.com/{_REPOSITORY}",
+        "#       rev: v3.0.0",
+        f"- uses: {_REPOSITORY}@v2.0.0",
+        f"'https://raw.githubusercontent.com/{_REPOSITORY}/v1.0.0/x.yml'",
+        f"https://github.com/{_REPOSITORY}/releases/tag/v2.0.0",
+    ]
+    assert _self_pins(lines) == [(4, "4.0.0"), (8, "3.0.0"), (9, "2.0.0"), (10, "1.0.0")]

@@ -9,7 +9,8 @@
 #
 #   repos:
 #     - repo: https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector
-#       rev: v4.0.0            # pin the release you run (hooks ship since v2.2.0)
+#       # Pin the release you run (hooks ship since v2.2.0).
+#       rev: v4.1.0  # x-release-please-version
 #       hooks:
 #         - id: sdlc-evidence-validate-exceptions
 #         - id: sdlc-evidence-doctor
