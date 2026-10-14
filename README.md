@@ -720,3 +720,7 @@ includes a BSD-2-Clause FIRST CVSS reference port; see
 
 The 4.0.0 changes and digest migration are documented in
 [evidence profile migration](./docs/evidence-profile-migration.md).
+
+## Repository wiki
+
+[Source-linked repository guide](openwiki/quickstart.md) · [OpenWiki setup and maintenance](docs/openwiki.md).

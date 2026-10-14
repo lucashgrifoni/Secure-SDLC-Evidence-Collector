@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:9ec39ef9b2af6e6db042bbc7f89f17a877e1e7ac6a791477c159c58454a689a8",
+  "claims": [
+    {
+      "id": "claim_e9c3fd344e2744b3af10220e1f0115ba",
+      "statement": "The root CLI registers command modules and exposes verbose, JSON-log and version options.",
+      "evidence": [
+        {
+          "resource": "repo://src/evidence_collector/cli/main.py#L17-L82",
+          "version": "repo-lines-v1:sha256:2c1d3e7a006e35289d1f08a2215c104ebe8aa3e347ce00dc71566707f9e61ace:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1MTc1Nzc4NTFjNDg5ZTQ1YWJhZTI1OTEyNTZjNDA0MDRhMDVjNmQxOWNkNGQ1YWU3ZmQyMmIwMDg0Y2VjNmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU1YjZlODcwNmI0MzA0N2YyYTZkYjY3ZjEzMjYzODU5NTYwNGU2N2YzNjk2Njg3NmNlMDE1OGYwMDUzZTZiZDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYxMGRiYTM5ZjA5OWI3YjU5ZmQ2NTI5Y2E4Y2JlN2JjNjNmMDY1YTU5Njg3ZDU3YmFiMzE5YzA4MzNlMWZmNDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3fa08989ca1342efb67e2e9245a9082e",
+      "statement": "Default release-status exits are 0/1/2, input failures use 3, and fail-on thresholds can return zero for softer verdicts.",
+      "evidence": [
+        {
+          "resource": "repo://src/evidence_collector/cli/_exit_codes.py#L18-L42",
+          "version": "repo-lines-v1:sha256:09db3bed43b0759de38930f0229ea6854ff312ab9b0cec5cd0dd73caa8749770:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkODFjZWIxYzYyNzU2N2I5NzQzM2U1NzE0OGNjNzEyOTJlYTA5YTljZDBiOTQyYzRhMTg2ZDI5YjViNmRhZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzNjZlOGUzYTBmMWZlOTU4YmQ0MjAzZjAyNGRiZDk3MDZhOWI4NWJlZDUwYzhmNWJjZGIyMGNiNDViZTNkZGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg3YmNkYzQ3YzA2MjE0ZDYyYmQzYTRlMzk0NTNjY2Y0NTY4NTAzMjI5MTc0MmIwNjhhMzYzN2M0OTY5MDJlOTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlMzQ1ZWFiMDA0ZDc4Zjc3YTdlZmI5YTBhOTdmMzQwZDVhMDkzZTY3ODJkYzExZTY2YzYzMDczNmVmNDY3NzEifQ"
+        },
+        {
+          "resource": "repo://src/evidence_collector/cli/_exit_codes.py#L86-L104",
+          "version": "repo-lines-v1:sha256:2155a1ad1dd35f23accab2ee419055fa207e3ee58552ba1d7cde0f74144fb140:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmYzkxNzhjOTFiMmZkYjIyNTdhN2M0NDkwYmFkNWIyN2EzMWZlZDExMTJjYjNkNmQ3YjUzY2Q4NWEyN2FjNDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2MjMzYjNmZmVhMzJhMjNkZjUzMDY1MzQzNDhmMmRlZTc3NmE1YTZmNzRmYjUzMzE3NWRkYzUzOWE4ZmU0NjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkYjI4Yzk1ZTQ0ODE2MmYyN2IzYWM1NjY5ZThmMjU0NTllMjkyMzViZTIyOTFhZGMyNzEzMzkzYzQ3YzAxNGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_25d0e7317c5a4d4584661ffeab0dad85",
+      "statement": "run exits 3 without a bundle when all supplied input directories are missing and no alternate source is available, while partly missing input sets retain errors in a evaluated bundle.",
+      "evidence": [
+        {
+          "resource": "repo://src/evidence_collector/cli/commands/run.py#L216-L233",
+          "version": "repo-lines-v1:sha256:e7e668a9eb55f229cfeeb49ec368252a7e66d2f20054fa872927e55642e75c76:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwMjIzYjFkMzdkNGU1NGU5Y2Y5YjhkYmNiNTc1YTFhMzNhZjAyMzBjOWIxM2Q5YjUwZWFjM2FjZWZmZDdiMzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwMWUwMjU5MmYzYWE1MDgyY2I1MjVhNzM5ZDFlM2M3ODQ0ODQ0NTViMDI0ZGIxZjA4NmM0NzBhOGZiYmJmZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY3NjI3MmU3ZTA4ZTI1Mzk4NTEwMDA0MTAzNTFhMWFjODQxOTIzMDJmYTYxNzUxZjIyODBjYzUwYzIxMzE4YzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2MWNjMTQ5ZDgwMWMxNDE2MzIxMjM5ZTZmMDZmZjdjZWVhZTgwOGJkYWI2M2NhN2E0NTdkZDgzMmQ2MjQwMTQifQ"
+        },
+        {
+          "resource": "repo://tests/integration/test_exit_code_taxonomy.py#L137-L208",
+          "version": "repo-lines-v1:sha256:df6eba2dbca79d4a60903c49a8804c0766bec0f75740c4e4ed4194ce87ddffa6:eyJzZWxlY3RlZExpbmVDb3VudCI6NzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkYTcyYmEzOTEzOWM1YWVlODgxY2Q4ZDQyZTRjMDI0Y2E1NmZiNTVkNGMzZTE1MWM2ODc3OWNiNTJmYWNhNWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhNjA2MDhiZGY3ZjJiMTFiOTYxMTc5MjAyZDI1MDUwY2NmZTZiYWE4NTAxMmM2ZDA4MGUwYmY2N2E4ZTQxOTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhODJlYmU5ZWQ0MDdjM2E2YmE0YjAwMzQyOTJiYWE1MmMxMWNlNWFlMjg2MTA3NDAyZGU0NzkyZWVlY2FjZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJlY2ZlNTcxMDhmODM1ZWY5OTIyZjZhZmRjMjU1NDU5MTcxZDZjYTQxZjI4MzM3NGE4OTUzYjZlOThkMDZlMmMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_edb8d8df2df7423db50bceeded36419c",
+      "statement": "The GitHub CI/CD quality job configures Python 3.12/3.13 with locked dependency installation, Ruff, Mypy and coverage tests.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/github-ci-cd.yml#L54-L122",
+          "version": "repo-lines-v1:sha256:d988381f94748f284ea5f56fabe3bbfdaf2960ccd330316f62e010c9f86791ec:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhMTNmYzNjNGY4YjNlYzk5ZGIzNzVjYmE1YjhmMTU1ZjNjOTRiZDZhNzkxYjEwYTEwYTI2ODA4ODBiNDY1NTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5MjNjOGU5NzIxYTc0MGU4YThmZWIwMmU1N2VkYTQ5NTE4YzEwZDYyOTNlZmIxYWRkYzQ3MGE4NzE1YTI4OGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM4OWVlNjhjZmE2M2QzNGUzMmFmNDk5NzRjN2U4MGIyYzVkMDIwODRkOTJkOTg0NWY1MjJkMGEyOGZlM2U5MGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNiN2Q5MDgwY2MxMjZhNjNmZGFiYzQ4OTNmMzQ3ZTBjNzQwM2U3NDg1MWRiNzE4NzU4YmYzNTkzYjdjYTZiNGQifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T18:37:45.397Z"
+  }
+}

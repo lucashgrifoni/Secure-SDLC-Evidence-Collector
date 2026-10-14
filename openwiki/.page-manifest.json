@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "pages": {
+    "/openwiki/architecture/release-pipeline.md": {
+      "gitHead": "c7110bf8ea9c11367dc1aff407afb8fa8a9a348b",
+      "sourceFingerprint": "sha256:c624f2629577ba04c90b63e644446871e6e79bd34af3dbf85768f78866afd540",
+      "pageVersion": "sha256:fd3ab26bdb4a9b8c8d1d90d5586eb4f3b67ebb3d0b0610ef457d0b3925a046f3",
+      "completedBy": "codex",
+      "completedRunId": "2f4860d7-4f55-45be-9e69-d7e3099e9bb8"
+    },
+    "/openwiki/concepts/evidence-and-readiness.md": {
+      "gitHead": "c7110bf8ea9c11367dc1aff407afb8fa8a9a348b",
+      "sourceFingerprint": "sha256:c624f2629577ba04c90b63e644446871e6e79bd34af3dbf85768f78866afd540",
+      "pageVersion": "sha256:63cc654fc9e9da55b118fb67c67a316044f448cecef6e38b182275140bf9b065",
+      "completedBy": "codex",
+      "completedRunId": "2f4860d7-4f55-45be-9e69-d7e3099e9bb8"
+    },
+    "/openwiki/quickstart.md": {
+      "gitHead": "c7110bf8ea9c11367dc1aff407afb8fa8a9a348b",
+      "sourceFingerprint": "sha256:c624f2629577ba04c90b63e644446871e6e79bd34af3dbf85768f78866afd540",
+      "pageVersion": "sha256:96092524cfec4d0090d3223ef8ab13943288a5ef9119d70a1d3243095be7e7f2",
+      "completedBy": "codex",
+      "completedRunId": "2f4860d7-4f55-45be-9e69-d7e3099e9bb8"
+    },
+    "/openwiki/workflows/cli-and-ci.md": {
+      "gitHead": "c7110bf8ea9c11367dc1aff407afb8fa8a9a348b",
+      "sourceFingerprint": "sha256:c624f2629577ba04c90b63e644446871e6e79bd34af3dbf85768f78866afd540",
+      "pageVersion": "sha256:9ec39ef9b2af6e6db042bbc7f89f17a877e1e7ac6a791477c159c58454a689a8",
+      "completedBy": "codex",
+      "completedRunId": "2f4860d7-4f55-45be-9e69-d7e3099e9bb8"
+    }
+  }
+}

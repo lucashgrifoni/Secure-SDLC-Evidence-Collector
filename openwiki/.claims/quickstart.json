@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:96092524cfec4d0090d3223ef8ab13943288a5ef9119d70a1d3243095be7e7f2",
+  "claims": [
+    {
+      "id": "claim_237d3a591ec34947b3e5d3f6a51bae62",
+      "statement": "The package requires Python >=3.12 and registers sdlc-evidence as evidence_collector.cli.main:main.",
+      "evidence": [
+        {
+          "resource": "repo://pyproject.toml#L5-L12",
+          "version": "repo-lines-v1:sha256:6a298df4dcdfe799eca2019747d55d6f1415404283ceb877db6957ae79f34b2b:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzAyYTgxYzM4MzZlZGVmMmQwYmExMWQyMzUzZmI2ZGFiYzc3NzE1MGE3Y2E4M2VhMGQ5ZTlhNzAzMTNmZWFiYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzc3NjU0NjVmNjQ2N2NhMjdkYzNlZDgzZWM3NGQ2MjhlZWU0MGRhZTIwOGYyYjA0OTg3NTA0ODJlMGMyZDQ5ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDNjNWQzZTcxYTRmMjdmNjEyMDkyNzhmZWRiMWY1OTlhMGMxOGJkMTQ5YTdjYjA2ZWIzMDRmMzhmNDI0YmI4MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2UzZTlkNzRhYjY4NjdhNTI5YjA2OTAyMGNjMGUyY2EyYjViMTJmZGNmNmE2ODhkM2RhZWFjYTg0MDRjZGYyNiJ9"
+        },
+        {
+          "resource": "repo://pyproject.toml#L77-L78",
+          "version": "repo-lines-v1:sha256:0f146a197b81d9a39239bb489946426c7fd4aa6ddc2ced7e27acb9cd72d54c59:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGVhYjRlYzYzZGU1MTdkYTRjZDhlNWM4MzA3ZmIyYzc3MzdkMzkxOTBhYjY5ZjMyYTVlOWVmODFlYTQ0MTZkZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjlkNGJlNjI2M2JkNWE4ZDY0Y2U5MGVmNGNhY2E4NmFhNTYxNjgxMTY4MDI0ODg4YTk5OTFlNDUyNGNlMjRlYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDJmOTRhZDcwNTg1ZmI4MTJiM2IwMTdkOWY4YTIwN2Q1OTUwNjExYzkzNTJmZmU2ODBmM2VhN2E2NWMyOGRkMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzMzZGY5YTI5NDg4MDEzODRjNDcwNWI1OTI1ZTc2ZmQzNDQ1YmUyZDRhZDllNGM5YWRhODgyYTQ0ZmYyMjhkOSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_15468728d2e8437397137d0740a922d9",
+      "statement": "run_pipeline collects local inputs, builds a bundle, applies the selected profile and exports JSON, Markdown and HTML report paths.",
+      "evidence": [
+        {
+          "resource": "repo://src/evidence_collector/application/orchestrator.py#L219-L280",
+          "version": "repo-lines-v1:sha256:93a1d1948e64e566bf4b5bff838ae2485ebda652501eb9cd5adf8555165bb422:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU0YzNmNDgzMzhlZTAzY2FhOTcxZWUwMmVmMTU5OTc5MzhlODgxNWRjZjdhM2UwMjM5NTFiZThjZDA5ZWNiZjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MjRkYjYwNTk1ZWFiNmVkZWQwNTFiNGM2NDc5OWNjNWNiZDk5MjhmYjMzNDMxY2FmZGQ3ZTU3MmExYmRjYzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T18:37:45.397Z"
+  }
+}

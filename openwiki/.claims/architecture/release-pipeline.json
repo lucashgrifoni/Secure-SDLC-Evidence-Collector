@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:fd3ab26bdb4a9b8c8d1d90d5586eb4f3b67ebb3d0b0610ef457d0b3925a046f3",
+  "claims": [
+    {
+      "id": "claim_e6e8f70ebba046069d92bd2bc7c3213d",
+      "statement": "The local collector resolves paths before deduplicating files from overlapping directories and records invalid input-directory errors.",
+      "evidence": [
+        {
+          "resource": "repo://src/evidence_collector/collectors/local.py#L193-L253",
+          "version": "repo-lines-v1:sha256:ba53447817aef6996eb8c8263f1fe3e2f5bef2946890612c0b7e196076779436:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzODg1MzgwMjE0MTRjOTliYzc5MTlhMzUxMzc5MTFjMmViNTA2ZGI3ZDE3OGJhNzY0MjRhODc1OGMxNjdjMmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjYzEzYWZjYjVhZDIxMzcyOGNiMDMzNDI4MDNlYWZlMmViMmIzNGMwYjM2MGFjNWNiNGMzYzc5NTZhZTgzOTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxMDcwMmY2MzJjMzE5NjMzYTFjZDkxZjdhZDg1OWVkZmFjOWRkN2Q0NDU4ZThkOGUxNmM3OGRjYTk2N2E2NDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJmNGI5OTZhMTkwOWE1NmRkNmNjMmEyYWE3MTE2OGRjMzFkYThkMGUzNWExZmM0NzJmNjRhZTU4NjE4ZGViNzMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fbcf02ebeb2e4c429e920a69776ff857",
+      "statement": "build_bundle combines catalog provenance, control evaluations, risk-adjusted summary, gaps, exceptions and collection errors into EvidenceBundle.",
+      "evidence": [
+        {
+          "resource": "repo://src/evidence_collector/application/orchestrator.py#L174-L216",
+          "version": "repo-lines-v1:sha256:00821629b9ffbaf801ee7cf261e7e6e9fcff8a23701759f16f7bf1fd5f5b4fc6:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5NmY2Yzc1YjNjYWM2NDU4Y2VjNzVmMjIwMTI4MmNiNGE0NDNmZTFmYTI0MzJmMjcxZTIwZDRlMTczYmY4MzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjN2MyM2E3NmQ0YjcxZTQwM2M0NjNhOThiMWQxMzgyODlmNzJlYmQxZjJmMDA1NTQ0MmUwZjQ4NGRiMmU1ODQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU4NWY2YzA3YjYzODg4MzA0ZjgyNzc2OWQwYzg0NGNlMTBiYTBjNjFiY2ZkMzg0MzgxMjEzMjAwMGIwNWE5NGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU5MGY0ZDRjYzFlMDE0YjE0ZWY3ZDY4MzRkMTU5ODQ3ZjE5MWJjYjNjMDlhYmExYzkwMTM5ZGI5M2IxYjRiYjUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d91731702222445087ca4b94bb41b800",
+      "statement": "The collect/evaluate split retains collection errors in an envelope and carries them into the resulting bundle.",
+      "evidence": [
+        {
+          "resource": "repo://src/evidence_collector/cli/commands/collect.py#L75-L92",
+          "version": "repo-lines-v1:sha256:3178618cd1191fbf54b0b3bdcdb85b9abf10eb36943913a7939d70ae771b3ff4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmY2UxZDAzNjJkMjEzMGU2ZGU1YjQzOTdjNjc3NzkyYzQ1MzMzNmQ4OWE2OWIwYWVmMDQyZTI0NjI2ZjY1ZjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVjNDZjNDk2YzRlZDNmMmJkYTJiY2ViYTAzMDc3NDNkMmM4OGI0YjgxYTIyZjg0OTIwMjc3NjcyNjhhNjUxMjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlN2EyYTM0YjQzZTZhMzgzMmZjMDcxYWEzMGU5ZjQ2YzAxNGFlNDA3NzQ3MzRiNzJhNjQzODEzZmYzMmY2Y2YifQ"
+        },
+        {
+          "resource": "repo://src/evidence_collector/cli/commands/evaluate.py#L72-L90",
+          "version": "repo-lines-v1:sha256:20963688d389bd5dfa43bed999746fa91a1142d6ea9a0fc0ea1e9d2f1b644250:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1MzkyMDRkMDk4NmVkNTBkNThiYmVkYjExMjNmY2NkYWQ5YmQ4ODY4MGRjYzdlMjI1ZjA4YTllOTVlMTNmMDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyNWY0YTNlYzM4ZmVkMjUwMGJlZTM3YTE3M2VlOTc2MGNlZDljYjg2MDQzYzM1ZTg4YTY2NmM1YTRhNDA4MGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkzNGFiNTAzN2EyZmYxZjliMmM4OGU5ZjJkOTZlMWU2MTZhNzA5YjAxY2FmMmQyN2U3YTIwNTFlY2YzMTdhYzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyNDdiNGQzMTNkNmZhYTg0ZjQyYzg1Y2VlMjA3OGVkYWNkOWY0M2JkNzkxMzllMjEzNTM3MzZjMTBjZjRmMDMifQ"
+        },
+        {
+          "resource": "repo://tests/integration/test_collect_evaluate_split.py#L90-L110",
+          "version": "repo-lines-v1:sha256:6621695e1f8aad80489bef2d687b7d47bd8a927b9ca0cc929452bfcb0f5c3e32:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhMzVlODgxNTY2MmY4ZjBiYmNhODA5MjA5ZTU1NmVkN2M5NDY4Mjk3Mzc1MTI4YTRlZTljZGEzZDIxNWIwYTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhNzEwNjg4ZGE3NmI4MDEwYjFjOWM2MjMyYjQ3MjVlN2Y5YWY2ZjljYTk5NjZiNTMxYjhjNTUyY2M2MmEyMzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmYjYxOTE0MzBlMTdiNTg2ZjBhOTg3OTI2MzliZmEwOGE3MTA4MWU3MDNkNTNiNDQ4OTAyMjNjYjQ0NGNjYTcifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T18:37:45.397Z"
+  }
+}

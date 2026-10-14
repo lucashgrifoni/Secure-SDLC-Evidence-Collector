@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:63cc654fc9e9da55b118fb67c67a316044f448cecef6e38b182275140bf9b065",
+  "claims": [
+    {
+      "id": "claim_e9c76087fe2a4682b3be29e7e80eadb6",
+      "statement": "The base verdict is not_ready for a critical blocking gap, conditional for high blocking gaps or partial/missing evaluations, and ready otherwise.",
+      "evidence": [
+        {
+          "resource": "repo://src/evidence_collector/scoring/engine.py#L109-L139",
+          "version": "repo-lines-v1:sha256:5a1cc116f3d41b056ed42bac27901f7f04d50af8da556dd70b624caa925caca5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5YzEyZjI1MDRjNmE0ZThiYTMyMjY1MGQ1NTUxZTJjOTdkZDdmZjBmNDYwM2VlN2M3ZjUwNjA2YjJlNmJiMGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzZjkwOGI0NGEwNGFiMmViMDhkNWM2ODMyYjU5MjgwN2Q5YmJjMzRmOTAwZDRkZGQ4YjVkNGQ3NjIzYWE0YjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE3YjRlMjRlYzM5MzUwNjk4NTg4MTI0NTkzMTAzZDRkMTA1NTljYTQ2MjQ3NzA1ZGZlNDgxZmJkY2NkM2IyZTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE1OWQ0ZmJkNmY5ZTk5ZWFhMzJiZGY1MWMyZmM3YzExYWMwZGNhMTdmM2EyZmRjZmIyZDYwNDlkNjdhZThlN2MifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f14f129a134f42138c644f0411b1ce79",
+      "statement": "Coverage and confidence are computed independently from the base gap-driven release status.",
+      "evidence": [
+        {
+          "resource": "repo://src/evidence_collector/scoring/engine.py#L200-L221",
+          "version": "repo-lines-v1:sha256:baf9806a8065bb8110b304e3a04feff089127b5ba81e40924a6021e743ea3183:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3MjU0ZjQzZTYxYTEwMTgxMmM2NTkwZWY5NmZiMjg5ZTVjOTQ2MzIyODc0ODI3ZTVlNzQ3MzU4ZGQwMmMxZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5ZDIwZDUxZmUyODIwNzAzNDFkOWU5MzJiY2MzYWExZjU3NDJjOWU1ZmNiOGQyM2NlZTJlNDc2MjY2ZDE0MDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3727165866df4f69bdbdc2620f43040a",
+      "statement": "Mismatched evidence release_id/commit_sha anchors create collection errors and downgrade a ready summary to conditional without promoting stricter statuses.",
+      "evidence": [
+        {
+          "resource": "repo://src/evidence_collector/application/orchestrator.py#L198-L215",
+          "version": "repo-lines-v1:sha256:3ce2bf6d69cc4979d3f1625e487224abd49b5309267c4ec97b3840857dc16ff2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjZGViN2FjOTBhNzgzYzZmNjU4ZDc0ZTY1ZTNhMmMxMmVlMDI2N2M4YzAyMDYxOWViODgxNjY3NDlhY2FhNzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0OWNiYWI5MTZkZjNhN2UzZjYyM2I2YjllNzg5OTQxMTFlYWY3M2NmMzg2ODAzYjNiOTIxMTIwMDIyYWNjNDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE2MjRkYjYwNTk1ZWFiNmVkZWQwNTFiNGM2NDc5OWNjNWNiZDk5MjhmYjMzNDMxY2FmZGQ3ZTU3MmExYmRjYzAifQ"
+        },
+        {
+          "resource": "repo://src/evidence_collector/application/orchestrator.py#L85-L134",
+          "version": "repo-lines-v1:sha256:c58561e0809782458ebfa7b99fd78150eb9e2d104825815da753a5be52c23bd3:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI2NGRkMzgwOWM0MzJhZGFjYThlMjVjMzBmNTVjZmVjNjY5YWQ3ZWI3MmI0OWFjNWE0MzYzYzI4NzQwZmM4NDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjViOTI1MDAxZjQ5ODE1OGRhMWI4M2VmMmNmMmI4ZDA3NmQyMzVkZmQ2ZjYzZmE3NDViMDNmMjEzNDc3MjE5MDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzN2E2MWY2ODU5MjdkNjMwMmFmZWMwZDU4ZTM4YzNmOTYzZDFjOGE5OTAwNmU2ZmMzMWM2ZTBjY2ZhZTExYmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQyMjVhMmZkNWJmMzA1NGFhN2IyZTk3NTNiNzQ5OWQ5MDM3OGFjYWFjZmE5ODA3ZTRhNTQ5NmQ2MWQzZDZiY2EifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T18:37:45.397Z"
+  }
+}

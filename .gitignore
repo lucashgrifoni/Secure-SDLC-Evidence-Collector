@@ -117,3 +117,11 @@ seção do gitpage do meu perfil.txt
 # GitPage authoring scratch (contains local author paths — never commit)
 gitpage/CURSOR_PROMPT_GITPAGE.md
 gitpage/node_modules/
+
+# Local OpenWiki integration and generated scheduling scaffold
+/.agents/skills/openwiki/
+/.codex/
+/.github/workflows/openwiki-update.yml
+/AGENTS.md
+/CLAUDE.md
+/GEMINI.md
