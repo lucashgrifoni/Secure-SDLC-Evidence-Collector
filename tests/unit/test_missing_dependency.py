@@ -125,6 +125,12 @@ def test_doctor_reports_a_missing_dependency_it_does_not_import_by_name() -> Non
 # In-process checks of the guard itself, so its branches count toward coverage.
 
 
+def _raise(exc: BaseException) -> None:
+    # A call keeps the assertions after each ``with`` block reachable for
+    # static analysis, which does not know the guard turns this into SystemExit.
+    raise exc
+
+
 def test_guard_exit_code_matches_the_cli_taxonomy() -> None:
     assert _preflight.EXIT_INPUT_ERROR == EXIT_INPUT_ERROR
 
@@ -135,7 +141,7 @@ def test_guard_converts_a_missing_dependency(
     monkeypatch.setattr(sys, "argv", ["sdlc-evidence", "controls"])
     monkeypatch.delenv("SDLC_JSON_LOGS", raising=False)
     with pytest.raises(SystemExit) as excinfo, _preflight.exit_on_missing_dependency():
-        raise ModuleNotFoundError("No module named 'defusedxml'", name="defusedxml.ElementTree")
+        _raise(ModuleNotFoundError("No module named 'defusedxml'", name="defusedxml.ElementTree"))
     assert excinfo.value.code == EXIT_INPUT_ERROR
     assert "'defusedxml'" in capsys.readouterr().err
 
@@ -145,7 +151,7 @@ def test_guard_leaves_doctor_help_to_the_one_line_error(
 ) -> None:
     monkeypatch.setattr(sys, "argv", ["sdlc-evidence", "doctor", "--help"])
     with pytest.raises(SystemExit) as excinfo, _preflight.exit_on_missing_dependency():
-        raise ModuleNotFoundError("No module named 'rich'", name="rich")
+        _raise(ModuleNotFoundError("No module named 'rich'", name="rich"))
     assert excinfo.value.code == EXIT_INPUT_ERROR
     assert "'rich'" in capsys.readouterr().err
 
@@ -157,7 +163,7 @@ def test_guard_runs_plain_doctor_for_an_unlisted_module(
     monkeypatch.setattr(sys, "argv", ["sdlc-evidence", "-v", "doctor"])
     monkeypatch.delenv("SDLC_JSON_LOGS", raising=False)
     with pytest.raises(SystemExit) as excinfo, _preflight.exit_on_missing_dependency():
-        raise ModuleNotFoundError("No module named 'shellingham'", name="shellingham")
+        _raise(ModuleNotFoundError("No module named 'shellingham'", name="shellingham"))
     assert excinfo.value.code == 1
     out = capsys.readouterr().out
     assert "Import: shellingham" in out
@@ -168,3 +174,18 @@ def test_guard_runs_plain_doctor_for_an_unlisted_module(
 def test_guard_reraises_what_is_not_a_third_party_dependency(name: str | None) -> None:
     with pytest.raises(ModuleNotFoundError), _preflight.exit_on_missing_dependency():
         raise ModuleNotFoundError("boom", name=name)
+
+
+def test_guard_reports_the_missing_module_next_to_unrelated_failures(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # An unwritable cwd used to hide the module that actually stopped the CLI.
+    monkeypatch.setattr(sys, "argv", ["sdlc-evidence", "doctor"])
+    monkeypatch.delenv("SDLC_JSON_LOGS", raising=False)
+    monkeypatch.setattr(_preflight, "_cwd_write_check", lambda: (False, "PermissionError"))
+    with pytest.raises(SystemExit) as excinfo, _preflight.exit_on_missing_dependency():
+        _raise(ModuleNotFoundError("No module named 'shellingham'", name="shellingham"))
+    assert excinfo.value.code == 1
+    out = capsys.readouterr().out
+    assert "Write permission in cwd" in out
+    assert "Import: shellingham" in out

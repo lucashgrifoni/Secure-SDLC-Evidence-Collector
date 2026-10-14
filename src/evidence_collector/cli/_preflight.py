@@ -192,8 +192,14 @@ def _report_missing_dependency(module: str, exc: ModuleNotFoundError, argv: list
 def _plain_doctor(module: str, exc: ModuleNotFoundError, argv: list[str]) -> int:
     """Run ``doctor`` without Typer or Rich, which may be what is missing."""
     results = doctor_checks()
-    if all(ok for _, ok, _ in results):
-        # The module is needed by the CLI but is not one doctor imports by name.
+    # Report the module that stopped the CLI unless a failed Import row already
+    # names it; an unrelated failure (an unwritable cwd) must not hide it.
+    represented = any(
+        not ok and label.removeprefix("Import: ").partition(".")[0] == module
+        for label, ok, _ in results
+        if label.startswith("Import: ")
+    )
+    if not represented:
         results.append((f"Import: {module}", False, str(exc)))
     payload = doctor_payload(results)
     if _json_logs(argv):
