@@ -22,6 +22,11 @@ from jsonschema import validators
 from jsonschema.exceptions import ValidationError
 
 from evidence_collector.application.orchestrator import run_pipeline
+from evidence_collector.controls.catalog import (
+    bundled_catalog_names,
+    bundled_catalog_path,
+    load_catalog,
+)
 from evidence_collector.domain.enums import (
     ControlCriticality,
     ControlEvaluationStatus,
@@ -47,7 +52,12 @@ from evidence_collector.exporters.guac import build_guac_collection
 from evidence_collector.exporters.html import bundle_to_html
 from evidence_collector.exporters.intoto import build_dsse_envelope, build_statement
 from evidence_collector.exporters.markdown import bundle_to_markdown
-from evidence_collector.exporters.oscal import export_oscal_assessment_results, export_oscal_catalog
+from evidence_collector.exporters.oscal import (
+    OscalControlTokenCollisionError,
+    control_token,
+    export_oscal_assessment_results,
+    export_oscal_catalog,
+)
 from evidence_collector.exporters.report_set import export_report_set
 from evidence_collector.exporters.sarif_gaps import build_gap_sarif
 from evidence_collector.exporters.vex import build_openvex
@@ -317,7 +327,17 @@ def _hostile_cases() -> dict[str, EvidenceBundle]:
         for i, raw in enumerate(raws)
     ]
     ids = [e.evidence_id for e in evidence]
-    control_ids = ["1", "ORG:BUILD", "custom control", "ORG.BUILD", "ORG-BUILD", "org.build", "Ω-7"]
+    # Odd ids that stay distinct as tokens. Ids that differ only by case or
+    # "."/"-" (ORG.BUILD and ORG-BUILD) are refused; see the collision tests.
+    control_ids = [
+        "1",
+        "ORG:BUILD",
+        "custom control",
+        "ORG.BUILD",
+        "ORG_BUILD",
+        "org.build-2",
+        "Ω-7",
+    ]
     statuses = list(ControlEvaluationStatus)
     evaluations = []
     for i, cid in enumerate(control_ids):
@@ -398,6 +418,28 @@ def test_timestamps_are_converted_to_utc_not_relabelled() -> None:
     )
 
 
+def _control(control_id: str) -> ControlDefinition:
+    return ControlDefinition(
+        control_id=control_id,
+        framework=ControlFramework.ORG_INTERNAL,
+        name="n",
+        description="d",
+        criticality=ControlCriticality.HIGH,
+        required_evidence_types=[EvidenceType.SBOM],
+    )
+
+
+def _catalog_ids(catalog: dict[str, Any]) -> dict[str, str]:
+    return {
+        next(p["value"] for p in c["props"] if p["name"] == "control_id"): c["id"]
+        for g in catalog["catalog"]["groups"]
+        for c in g["controls"]
+    }
+
+
+_TOKEN = regex.compile(r"^(\p{L}|_)(\p{L}|\p{N}|[.\-_])*$")
+
+
 def test_control_tokens_stay_distinct_and_keep_builtin_ids() -> None:
     results = export_oscal_assessment_results(_HOSTILE["hostile-everything"])
     result = results["assessment-results"]["results"][0]
@@ -408,19 +450,89 @@ def test_control_tokens_stay_distinct_and_keep_builtin_ids() -> None:
     assert len(set(selected)) == len(selected) == 7
     assert {f["target"]["target-id"] for f in result["findings"]} == set(selected)
     catalog = export_oscal_catalog(
-        [
-            ControlDefinition(
-                control_id=cid,
-                framework=ControlFramework.ORG_INTERNAL,
-                name="n",
-                description="d",
-                criticality=ControlCriticality.HIGH,
-                required_evidence_types=[EvidenceType.SBOM],
-            )
-            for cid in ["SSDF-PS.3", "ORG-CODE-REVIEW", "1", "ORG:BUILD"]
-        ]
+        [_control(cid) for cid in ["SSDF-PS.3", "ORG-CODE-REVIEW", "1", "ORG:BUILD"]]
     )
     ids = [c["id"] for g in catalog["catalog"]["groups"] for c in g["controls"]]
     assert ids[:2] == ["ssdf-ps-3", "org-code-review"]
-    token = regex.compile(r"^(\p{L}|_)(\p{L}|\p{N}|[.\-_])*$")
-    assert all(token.match(i) for i in ids), ids
+    assert all(_TOKEN.match(i) for i in ids), ids
+
+
+def test_every_token_in_a_document_is_the_token_of_its_own_id() -> None:
+    # Findings, reviewed-controls, the embedded plan and the catalog all use
+    # the same per-id token, so a profile can select controls by it.
+    bundle = _HOSTILE["hostile-everything"]
+    results = export_oscal_assessment_results(bundle)
+    result = results["assessment-results"]["results"][0]
+    plan = _embedded_plan(results)["assessment-plan"]
+    expected = [control_token(ev.control_id) for ev in bundle.control_evaluations]
+    for reviewed in (result["reviewed-controls"], plan["reviewed-controls"]):
+        selection = reviewed["control-selections"][0]["include-controls"]
+        assert [c["control-id"] for c in selection] == expected
+    assert [f["target"]["target-id"] for f in result["findings"]] == expected
+    catalog = export_oscal_catalog(_control(ev.control_id) for ev in bundle.control_evaluations)
+    assert _catalog_ids(catalog) == {
+        ev.control_id: control_token(ev.control_id) for ev in bundle.control_evaluations
+    }
+
+
+def test_a_control_token_does_not_depend_on_the_other_ids_in_the_catalog() -> None:
+    alone = _catalog_ids(export_oscal_catalog([_control("ORG.BUILD")]))
+    crowded = _catalog_ids(
+        export_oscal_catalog(
+            [_control(cid) for cid in ["ORG.BUILD", "ORG:BUILD", "org build", "ORG_BUILD", "1"]]
+        )
+    )
+    assert alone == {"ORG.BUILD": "org-build"}
+    assert crowded["ORG.BUILD"] == "org-build"
+    assert all(crowded[cid] == control_token(cid) for cid in crowded)
+    assert control_token("ORG:BUILD") == control_token("ORG:BUILD")
+    assert control_token("ORG:BUILD").startswith("org-build-")
+
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [("ORG.BUILD", "ORG-BUILD"), ("ORG-BUILD", "org.build"), ("SSDF-PS.3", "ssdf-ps-3")],
+)
+def test_ids_that_share_a_token_fail_the_catalog_export(first: str, second: str) -> None:
+    # They used to be renamed with a hash suffix, which changed the token of an
+    # id already referenced as e.g. `org-build` as soon as the other was added.
+    with pytest.raises(OscalControlTokenCollisionError) as raised:
+        export_oscal_catalog([_control(first), _control("OTHER"), _control(second)])
+    message = str(raised.value)
+    assert repr(first) in message and repr(second) in message
+    assert repr(control_token(first)) in message
+
+
+def test_ids_that_share_a_token_fail_the_assessment_results_export() -> None:
+    base = _HOSTILE["hostile-everything"]
+    clash = base.control_evaluations[3].model_copy(update={"control_id": "ORG-BUILD"})
+    bundle = base.model_copy(update={"control_evaluations": [*base.control_evaluations, clash]})
+    with pytest.raises(OscalControlTokenCollisionError, match=r"'ORG\.BUILD' and 'ORG-BUILD'"):
+        export_oscal_assessment_results(bundle)
+
+
+def test_the_same_id_twice_is_not_a_collision() -> None:
+    catalog = export_oscal_catalog([_control("ORG.BUILD"), _control("ORG.BUILD")])
+    assert [c["id"] for g in catalog["catalog"]["groups"] for c in g["controls"]] == [
+        "org-build",
+        "org-build",
+    ]
+
+
+@pytest.mark.parametrize("name", bundled_catalog_names())
+def test_bundled_catalog_tokens_keep_the_legacy_rule(name: str) -> None:
+    # Every shipped id is a valid token once lower-cased with dots replaced,
+    # the rule every earlier release used, so their tokens do not change and
+    # no shipped catalog hits the collision error.
+    controls = load_catalog(bundled_catalog_path(name))
+    tokens = _catalog_ids(export_oscal_catalog(controls))
+    assert tokens == {c.control_id: c.control_id.lower().replace(".", "-") for c in controls}
+    assert all(_TOKEN.match(t) for t in tokens.values()), tokens
+
+
+def test_bundled_catalogs_share_no_token_between_distinct_ids() -> None:
+    owners: dict[str, set[str]] = {}
+    for name in bundled_catalog_names():
+        for control in load_catalog(bundled_catalog_path(name)):
+            owners.setdefault(control_token(control.control_id), set()).add(control.control_id)
+    assert {t: ids for t, ids in owners.items() if len(ids) > 1} == {}

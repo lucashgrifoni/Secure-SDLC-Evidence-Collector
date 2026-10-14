@@ -29,7 +29,6 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
-from urllib.parse import urlsplit
 
 from evidence_collector import __version__
 from evidence_collector.domain.enums import (
@@ -45,6 +44,7 @@ from evidence_collector.domain.models import (
     NormalizedEvidence,
     RawEvidenceRef,
 )
+from evidence_collector.exporters._uri import is_absolute_uri
 
 # Stable, project-scoped namespace for synthesizing OSCAL UUIDs from
 # control IDs. Generated once and frozen so the same control_id always
@@ -194,10 +194,6 @@ _NOT_SATISFIED_REASON: dict[ControlEvaluationStatus, str] = {
 _OSCAL_DATETIME = "%Y-%m-%dT%H:%M:%S.000+00:00"
 # A complete SHA-256 hex digest; anything else is left out of rlink hashes.
 _SHA256 = re.compile(r"[0-9A-Fa-f]{64}")
-# Characters RFC 3986 allows in a URI, with every "%" starting a two-digit hex
-# escape (RFC 3986 section 2.1); an artifact_uri with anything else (a space,
-# a raw newline, "%zz") is not linked.
-_URI_CHARS = re.compile(r"(?:[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=]|%[0-9A-Fa-f]{2})+")
 
 
 def _oscal_datetime(value: datetime) -> str:
@@ -224,33 +220,56 @@ def _short_hash(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()[:8]
 
 
-def _control_tokens(control_ids: Iterable[str]) -> dict[str, str]:
-    """Map each control id to the NCName token OSCAL uses for it.
+class OscalControlTokenCollisionError(ValueError):
+    """Two distinct control ids in one document map to the same OSCAL token."""
 
-    The token was the id lower-cased with dots replaced, which is valid for the
-    shipped catalogs (``SSDF-PS.3`` -> ``ssdf-ps-3``) and is kept for them. A
-    custom catalog may use ``1``, ``ORG:BUILD`` or ``custom control``; those
-    are sanitized and given a short hash of the original id, so two ids that
-    sanitize alike stay apart. Ids whose tokens still collide (``ORG.BUILD``
-    and ``ORG-BUILD``) all get the hash suffix.
+
+def control_token(control_id: str) -> str:
+    """The NCName token OSCAL uses for ``control_id``, from that id alone.
+
+    The id lower-cased with dots replaced by dashes, when that is a valid
+    NCName: the rule every release has used, so the shipped catalogs keep
+    their tokens (``SSDF-PS.3`` -> ``ssdf-ps-3``). Otherwise (``1``,
+    ``ORG:BUILD``, ``custom control``) the invalid characters become dashes,
+    ``control-`` is prepended when the result does not start with a letter or
+    underscore, and the first 8 hex digits of the id's SHA-256 are appended.
+
+    The token depends on nothing but the id, so an OSCAL profile that selects
+    ``org-build`` keeps matching whatever else the catalog contains. Ids that
+    differ only by case or by ``.`` versus ``-`` share a token; see
+    :func:`_control_tokens`.
     """
-    ids = list(dict.fromkeys(control_ids))
-    base: dict[str, str] = {}
-    for control_id in ids:
-        token = control_id.lower().replace(".", "-")
-        if not _is_ncname(token):
-            cleaned = "".join(ch if ch.isalnum() or ch in ".-_" else "-" for ch in token)
-            if not cleaned or not (cleaned[0].isalpha() or cleaned[0] == "_"):
-                cleaned = f"control-{cleaned}"
-            token = f"{cleaned}-{_short_hash(control_id)}"
-        base[control_id] = token
-    seen: dict[str, int] = {}
-    for token in base.values():
-        seen[token] = seen.get(token, 0) + 1
-    return {
-        control_id: token if seen[token] == 1 else f"{token}-{_short_hash(control_id)}"
-        for control_id, token in base.items()
-    }
+    token = control_id.lower().replace(".", "-")
+    if _is_ncname(token):
+        return token
+    cleaned = "".join(ch if ch.isalnum() or ch in ".-_" else "-" for ch in token)
+    if not cleaned or not (cleaned[0].isalpha() or cleaned[0] == "_"):
+        cleaned = f"control-{cleaned}"
+    return f"{cleaned}-{_short_hash(control_id)}"
+
+
+def _control_tokens(control_ids: Iterable[str]) -> dict[str, str]:
+    """Map each control id in one document to its :func:`control_token`.
+
+    OSCAL control ids must be unique within a document. Two distinct ids that
+    share a token (``ORG.BUILD`` and ``ORG-BUILD``) fail the export instead of
+    being renamed: an earlier release appended a hash to both, which changed
+    the token of an id a profile already referenced as soon as the other was
+    added to the catalog.
+    """
+    tokens: dict[str, str] = {}
+    owners: dict[str, str] = {}
+    for control_id in dict.fromkeys(control_ids):
+        token = control_token(control_id)
+        other = owners.setdefault(token, control_id)
+        if other != control_id:
+            raise OscalControlTokenCollisionError(
+                f"Control ids {other!r} and {control_id!r} both map to the OSCAL "
+                f"control id {token!r}; OSCAL control ids must be unique within a "
+                "document. Rename one of them in the catalog."
+            )
+        tokens[control_id] = token
+    return tokens
 
 
 def _prop_value(value: object) -> str:
@@ -668,23 +687,14 @@ def _absolute_artifact_href(raw: RawEvidenceRef) -> str | None:
 
     A relative ``artifact_path`` is relative to the collection root, but OSCAL
     resolves a relative rlink against the AR document itself, so linking it
-    would point somewhere else. Only an absolute URI, or an absolute Windows
-    or POSIX path (as a ``file:`` URI), is linked. A drive-relative Windows
+    would point somewhere else. Only an RFC 3986 absolute URI (checked by
+    ``is_absolute_uri``), or an absolute Windows or POSIX path (as a ``file:``
+    URI), is linked; anything else is embedded as the record. A drive-relative Windows
     path such as ``C:reports\\scan.json`` has a drive but no root: it is not
     absolute, and ``as_uri()`` raises on it.
     """
-    if raw.artifact_uri and _URI_CHARS.fullmatch(raw.artifact_uri):
-        # urlsplit raises ValueError on input such as ``http://[``; a URI it
-        # cannot parse is not linked, and the record is embedded instead.
-        # Reading ``.port`` also rejects a non-numeric or out-of-range port.
-        try:
-            parts = urlsplit(raw.artifact_uri)
-            _ = parts.port
-            scheme = parts.scheme
-        except ValueError:
-            scheme = ""
-        if scheme:
-            return raw.artifact_uri
+    if raw.artifact_uri and is_absolute_uri(raw.artifact_uri):
+        return raw.artifact_uri
     path = raw.artifact_path
     if not path:
         return None

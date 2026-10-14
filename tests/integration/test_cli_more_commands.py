@@ -154,6 +154,54 @@ def test_oscal_writes_valid_json_to_output_path(runner: CliRunner, tmp_path: Pat
     assert "ORG-CODE-REVIEW" in serialized
 
 
+_COLLIDING_CATALOG = """controls:
+  - control_id: "ORG.BUILD"
+    framework: "ORG_INTERNAL"
+    name: "Build provenance"
+    description: "d"
+    criticality: "high"
+    required_evidence_types: ["sbom"]
+  - control_id: "ORG-BUILD"
+    framework: "ORG_INTERNAL"
+    name: "Build hardening"
+    description: "d"
+    criticality: "high"
+    required_evidence_types: ["sbom"]
+"""
+
+
+@pytest.mark.integration
+def test_oscal_catalog_refuses_ids_that_share_a_token(runner: CliRunner, tmp_path: Path) -> None:
+    catalog = tmp_path / "custom.yaml"
+    catalog.write_text(_COLLIDING_CATALOG, encoding="utf-8")
+    target = tmp_path / "catalog.json"
+    result = runner.invoke(app, ["oscal", "--catalog", str(catalog), "--output", str(target)])
+    assert result.exit_code == EXIT_INPUT_ERROR, result.output
+    assert "'ORG.BUILD' and 'ORG-BUILD'" in result.output
+    assert "'org-build'" in result.output
+    assert not target.exists()
+
+
+@pytest.mark.integration
+def test_oscal_assessment_results_refuses_ids_that_share_a_token(
+    runner: CliRunner, sample_bundle: Path, tmp_path: Path
+) -> None:
+    raw = json.loads(sample_bundle.read_text(encoding="utf-8"))
+    first, second = raw["control_evaluations"][:2]
+    second["control_id"] = first["control_id"].lower()
+    bundle = tmp_path / "colliding.json"
+    bundle.write_text(json.dumps(raw), encoding="utf-8")
+    result = runner.invoke(
+        app, ["--json-logs", "oscal", "--kind", "assessment-results", "--bundle", str(bundle)]
+    )
+    assert result.exit_code == EXIT_INPUT_ERROR, result.output
+    events = [json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]
+    failed = [e for e in events if e.get("event") == "oscal_failed"]
+    assert failed, result.output
+    reason = failed[0]["reason"]
+    assert repr(first["control_id"]) in reason and repr(second["control_id"]) in reason
+
+
 # ---------------------------------------------------------------------------
 # schema
 # ---------------------------------------------------------------------------

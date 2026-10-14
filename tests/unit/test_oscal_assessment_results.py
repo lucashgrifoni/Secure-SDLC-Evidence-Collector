@@ -574,3 +574,68 @@ def test_evidence_resource_does_not_link_a_uri_with_an_invalid_port(artifact_uri
 
     assert "rlinks" not in resource
     assert "base64" in resource
+
+
+@pytest.mark.parametrize(
+    "artifact_uri",
+    [
+        # Each of these passed the old character check and urlsplit, and was
+        # emitted as an rlink that is not an RFC 3986 URI.
+        "https://example.test/a#one#two",
+        "http://user@host@example.test/report.json",
+        "https://example.test/a[1].json",
+        "https://example.test/report.json?y=[1]",
+        "https://example.test/report.json#[x]",
+        "mailto:a[b]@example.test",
+        # Already refused before; kept so the validator does not regress.
+        "http://exa[mple.test/report.json",
+        "http://[fe80::1]x/report.json",
+        "https://example.test/a|b.json",
+        "https://exämple.test/report.json",
+        ":report.json",
+    ],
+    ids=[
+        "second-hash",
+        "second-at-sign",
+        "bracket-in-path",
+        "bracket-in-query",
+        "bracket-in-fragment",
+        "bracket-in-rootless-path",
+        "bracket-in-reg-name",
+        "text-after-ip-literal",
+        "pipe",
+        "raw-unicode-host",
+        "empty-scheme",
+    ],
+)
+def test_evidence_resource_does_not_link_a_structurally_invalid_uri(artifact_uri: str) -> None:
+    # A locator that is not an absolute RFC 3986 URI falls back to the
+    # embedded record, with the recorded locator kept as a prop.
+    bundle = _with_recorded_artifact(_waived_bundle("a", "o/a"), None, artifact_uri)
+    resource = _evidence_resource(export_oscal_assessment_results(bundle), "sca-1")
+
+    assert "rlinks" not in resource
+    record = json.loads(base64.b64decode(resource["base64"]["value"]).decode("utf-8"))
+    assert record["evidence_id"] == "sca-1"
+    assert {
+        "name": "artifact-path",
+        "ns": EVIDENCE_COLLECTOR_OSCAL_NS,
+        "value": artifact_uri,
+    } in resource["props"]
+
+
+@pytest.mark.parametrize(
+    "artifact_uri",
+    [
+        "ldap://[2001:db8::7]/c=GB?objectClass?one",
+        "telnet://192.0.2.16:80/",
+        "urn:oasis:names:specification:docbook:dtd:xml:4.1.2",
+        "http://[v7.fe80::abcd]/report.json",
+    ],
+)
+def test_evidence_resource_links_an_rfc_3986_absolute_uri(artifact_uri: str) -> None:
+    bundle = _with_recorded_artifact(_waived_bundle("a", "o/a"), None, artifact_uri)
+    resource = _evidence_resource(export_oscal_assessment_results(bundle), "sca-1")
+
+    assert "base64" not in resource
+    assert resource["rlinks"][0]["href"] == artifact_uri

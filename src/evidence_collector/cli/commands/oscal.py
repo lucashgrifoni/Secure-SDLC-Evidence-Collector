@@ -84,15 +84,18 @@ def register(app: typer.Typer) -> None:
         """
         if kind is OscalKind.catalog:
             from evidence_collector.controls import default_catalog, load_catalog
-            from evidence_collector.exporters.oscal import export_oscal_catalog
+            from evidence_collector.exporters.oscal import (
+                OscalControlTokenCollisionError,
+                export_oscal_catalog,
+            )
 
             controls = load_catalog(catalog_path) if catalog_path else list(default_catalog())
-            payload = json.dumps(
-                export_oscal_catalog(controls),
-                indent=2,
-                sort_keys=True,
-                ensure_ascii=False,
-            )
+            try:
+                catalog = export_oscal_catalog(controls)
+            except OscalControlTokenCollisionError as exc:
+                report_error("Cannot render the catalog as OSCAL", exc, event="oscal_failed")
+                raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
+            payload = json.dumps(catalog, indent=2, sort_keys=True, ensure_ascii=False)
             _write_or_echo(payload, output_path, label="OSCAL Catalog")
             return
 
@@ -104,7 +107,10 @@ def register(app: typer.Typer) -> None:
             raise typer.Exit(code=EXIT_INPUT_ERROR)
 
         from evidence_collector.domain.models import EvidenceBundle
-        from evidence_collector.exporters.oscal import export_oscal_assessment_results
+        from evidence_collector.exporters.oscal import (
+            OscalControlTokenCollisionError,
+            export_oscal_assessment_results,
+        )
 
         try:
             raw = json.loads(bundle_path.read_text(encoding="utf-8-sig"))
@@ -119,12 +125,12 @@ def register(app: typer.Typer) -> None:
             report_error(f"Could not read {bundle_path}", exc, event="oscal_failed")
             raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
 
-        payload = json.dumps(
-            export_oscal_assessment_results(bundle),
-            indent=2,
-            sort_keys=True,
-            ensure_ascii=False,
-        )
+        try:
+            results = export_oscal_assessment_results(bundle)
+        except OscalControlTokenCollisionError as exc:
+            report_error("Cannot render the bundle as OSCAL", exc, event="oscal_failed")
+            raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
+        payload = json.dumps(results, indent=2, sort_keys=True, ensure_ascii=False)
         _write_or_echo(payload, output_path, label="OSCAL Assessment Results")
 
 

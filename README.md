@@ -160,7 +160,7 @@ sdlc-evidence bundle                 # alias of evaluate
 sdlc-evidence controls               # print the active control catalog
 sdlc-evidence compare BEFORE AFTER   # diff two bundles (coverage, status, per-control)
 sdlc-evidence oscal [--output PATH]  # render the control catalog as OSCAL Catalog JSON
-sdlc-evidence oscal --kind assessment-results --bundle BUNDLE  # OSCAL Assessment Results (limits: docs/limitations.md §22)
+sdlc-evidence oscal --kind assessment-results --bundle BUNDLE  # OSCAL Assessment Results (limits: docs/limitations.md §22-23)
 sdlc-evidence plugins                # list parser and collector entry-point plugins
 sdlc-evidence schema [--output PATH] # emit JSON Schema for EvidenceBundle
 sdlc-evidence doctor [--json]        # run local environment health checks

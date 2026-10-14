@@ -606,3 +606,53 @@ SSP is published and names the application and repository assessed; it is
 not an SSP. Tools that resolve the full OSCAL chain (AR to AP to SSP to
 profile and catalog) will stop there. If you need that resolution, supply
 your own SSP and assessment plan and point `import-ap` at your plan.
+
+## 23 · OSCAL control ids come from each control id alone
+
+OSCAL control ids (the catalog's `controls[].id`, a finding's
+`target-id`, and `control-id` under `reviewed-controls` in the
+assessment results and in the embedded plan) must be NCName tokens and
+unique within a document. The `oscal` command derives each token from
+its own control id and nothing else:
+
+- The id lower-cased with `.` replaced by `-`, when that is a valid
+  NCName. Every id in the bundled catalogs takes this form, so their
+  tokens are the ones earlier releases produced: `SSDF-PS.3` becomes
+  `ssdf-ps-3`, `ORG-CODE-REVIEW` becomes `org-code-review`.
+- Otherwise (`1`, `ORG:BUILD`, `custom control`) each character that is
+  not a letter, digit, `-` or `_` becomes `-`, `control-` is prepended
+  when the result does not start with a letter or `_`, and the first
+  8 hex digits of the SHA-256 of the original id are appended:
+  `ORG:BUILD` becomes `org-build-92a2db4b`, `1` becomes
+  `control-1-6b86b273`.
+
+A token therefore stays the same across catalogs, bundles and exports,
+and an OSCAL profile that selects `org-build` keeps matching it.
+
+Two different ids that differ only by letter case or by `.` versus `-`
+(`ORG.BUILD`, `ORG-BUILD`, `org.build`) produce the same token. The
+export then fails with exit code 3 and an `oscal_failed` error naming
+both ids and the token, for example `Control ids 'ORG.BUILD' and
+'ORG-BUILD' both map to the OSCAL control id 'org-build'`, and writes
+no document. Rename one of the controls in the catalog.
+
+**Behaviour change for custom catalogs.** Releases before 4.1.0
+exported both under the same id, which OSCAL does not allow. 4.1.0
+exported each with a hash suffix instead (`org-build-9b7a8e07`,
+`org-build-33d2563c`). That made a token depend on the other ids in
+the catalog: a catalog holding only `ORG.BUILD` exported `org-build`,
+and adding `ORG-BUILD` silently renamed it, breaking every profile
+that referenced `org-build`. A custom catalog with ids that differ
+only by case or `.`/`-` now fails the `oscal` export until one of them
+is renamed. The bundled catalogs contain no such pair, and their
+tokens are unchanged.
+
+In the assessment results, an evidence resource links to the artifact
+(`rlinks`) only when its `artifact_uri` is an absolute URI as defined by
+RFC 3986 (scheme, then authority and path, query and fragment, each
+with its allowed characters and `%XX` escapes; a port above 65535 is
+refused too), or when its `artifact_path` is absolute. A locator such
+as `https://example.test/a#one#two`, one with a space, a raw non-ASCII
+character or `[` outside an IPv6 literal, is not linked: the resource
+embeds the normalized evidence record as base64 and keeps the locator
+as an `artifact-path` prop.
