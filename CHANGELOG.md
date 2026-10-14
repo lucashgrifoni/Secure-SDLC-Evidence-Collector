@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.1.2](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.1.1...v4.1.2) (2026-10-14)
+
+
+### Fixed
+
+* **cli:** exit 3 from run when none of the input directories exists ([#164](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/164)) ([9d43c0a](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/9d43c0a3ca2db2a65d82ce147b6958cd8c342139))
+
 ## [4.1.1](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.1.0...v4.1.1) (2026-10-14)
 
 
