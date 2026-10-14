@@ -15,6 +15,7 @@ from evidence_collector.controls.catalog import (
     bundled_catalog_names,
     bundled_catalog_path,
     catalog_from_source,
+    catalog_with_provenance,
     default_catalog,
     load_catalog,
 )
@@ -251,6 +252,59 @@ def test_catalog_from_source_returns_custom_when_given(tmp_path: Path) -> None:
 def test_bundled_catalog_resolves_by_bare_name(name: str) -> None:
     controls = load_catalog(name)
     assert controls, f"{name} resolved but produced no controls"
+
+
+@pytest.mark.parametrize("name", ["catalog-ssdf-1.2", "catalog-ai", "catalog"])
+def test_bundled_catalog_resolves_without_the_yaml_extension(name: str) -> None:
+    """`--catalog catalog-ssdf-1.2` was rejected although the help promises a bare name.
+
+    Only `catalog-ssdf-1.2.yaml` worked. The bare name now resolves to the
+    bundled file, and provenance records the file actually read, so a bundle
+    made either way is identical.
+    """
+    assert load_catalog(name) == load_catalog(f"{name}.yaml")
+    controls, ref = catalog_with_provenance(name)
+    _, ref_with_suffix = catalog_with_provenance(f"{name}.yaml")
+    assert ref == ref_with_suffix
+    assert ref.origin == "builtin"
+    assert ref.name == f"{name}.yaml"
+    assert controls
+
+
+def test_cli_accepts_a_bundled_catalog_with_and_without_the_extension() -> None:
+    from typer.testing import CliRunner
+
+    from evidence_collector.cli.main import app
+
+    runner = CliRunner()
+    bare = runner.invoke(app, ["controls", "--catalog", "catalog-ssdf-1.2"])
+    with_suffix = runner.invoke(app, ["controls", "--catalog", "catalog-ssdf-1.2.yaml"])
+    assert bare.exit_code == 0, bare.output
+    assert with_suffix.exit_code == 0, with_suffix.output
+    assert bare.stdout == with_suffix.stdout
+
+
+def test_an_extensionless_local_file_still_wins(tmp_path: Path, monkeypatch) -> None:
+    local = tmp_path / "catalog-ai"
+    local.write_text(
+        "controls:\n"
+        '  - control_id: "LOCAL-2"\n'
+        '    framework: "NIST_SSDF"\n'
+        '    name: "Local override"\n'
+        '    description: "only in the local file"\n'
+        '    criticality: "low"\n'
+        '    required_evidence_types: ["sast_scan"]\n'
+        "    recommended_evidence_types: []\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    assert [c.control_id for c in load_catalog("catalog-ai")] == ["LOCAL-2"]
+
+
+def test_unknown_bare_name_is_still_refused_with_the_list() -> None:
+    with pytest.raises(FileNotFoundError) as excinfo:
+        load_catalog("catalog-does-not-exist")
+    assert "catalog-ssdf-1.2.yaml" in str(excinfo.value)
 
 
 def test_every_bundled_catalog_is_loadable_by_name() -> None:

@@ -405,7 +405,9 @@ evidence does not claim an environment nobody asserted.
   followed; each one is reported as a collection error.
 - `--attestations-dir PATH` — folder with YAML/JSON attestations
   (repeatable).
-- `--catalog FILE.yaml` — override the default control catalog.
+- `--catalog FILE.yaml` — override the default control catalog: a path, or
+  the name of a bundled catalog with or without `.yaml` (`catalog-ssdf-1.2`
+  and `catalog-ssdf-1.2.yaml` both work).
 - `--artifact-root PATH` — base directory that absolute artifact paths
   are rewritten against, so the bundle records repo-relative paths
   instead of leaking local filesystem locations. Recommended in CI.

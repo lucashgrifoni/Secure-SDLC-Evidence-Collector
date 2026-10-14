@@ -7,7 +7,6 @@ extended by passing an alternative path.
 
 from __future__ import annotations
 
-import contextlib
 import hashlib
 import logging
 from functools import cache
@@ -37,7 +36,8 @@ logger = logging.getLogger(__name__)
 def _coerce_path(path: str | Path) -> Path:
     """Resolve ``path`` to a readable catalog file.
 
-    A bare bundled name (``catalog-ai.yaml``) resolves to the packaged copy.
+    A bare bundled name (``catalog-ai.yaml``, or ``catalog-ai`` without the
+    extension) resolves to the packaged copy.
     The five shipped catalogs — AI, SSDF 1.2, FedRAMP 20x KSI, OSPS Baseline
     and the default — otherwise had no CLI surface at all: `--catalog
     catalog-ai.yaml` raised FileNotFoundError, and the only documented way in
@@ -50,8 +50,15 @@ def _coerce_path(path: str | Path) -> Path:
         return candidate
     name = candidate.name
     if candidate == Path(name):
-        with contextlib.suppress(FileNotFoundError):
-            resolved = bundled_catalog_path(name)
+        # `--help` promises "the bare name of a bundled catalog", but only the
+        # `.yaml` spelling resolved: `--catalog catalog-ssdf-1.2` was refused.
+        # Path.suffix cannot tell, since it reads `.2` as the extension there.
+        spellings = (name,) if name.endswith((".yaml", ".yml")) else (name, f"{name}.yaml")
+        for spelling in spellings:
+            try:
+                resolved = bundled_catalog_path(spelling)
+            except FileNotFoundError:
+                continue
             # The fallback is a real feature, but it must never be silent.
             # ``catalog.yaml`` is both the default bundled name and the most
             # likely name a user gives their own file: running from one
