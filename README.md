@@ -383,7 +383,7 @@ environment for you. Add to your `.pre-commit-config.yaml`:
 repos:
   - repo: https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector
     # Pin the release you run; the schema hook writes that release's contract.
-    rev: v4.1.0  # x-release-please-version
+    rev: v4.1.1  # x-release-please-version
     hooks:
       - id: sdlc-evidence-validate-exceptions   # validate staged waiver files
       - id: sdlc-evidence-doctor                # smoke-test the pinned release

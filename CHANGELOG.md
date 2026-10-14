@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.1.1](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.1.0...v4.1.1) (2026-10-14)
+
+
+### Fixed
+
+* **cli:** doctor, missing dependencies, enrich messages and bare catalog names ([#158](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/158)) ([c112e7d](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/c112e7d64d8fe9c19748ae9d8bfec2436b073be5))
+* **oscal:** validate artifact URIs against RFC 3986 and keep control tokens stable ([#157](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/157)) ([1133bd5](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/1133bd5645a66e68ed729631242c2c0edfa01ab8))
+
+
+### CI
+
+* install tools and dependencies from hash-locked requirement files ([#160](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/160)) ([b28ac6d](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/b28ac6dcce38761e45c2d57b4412740c8969e493))
+
 ## [4.1.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.0.0...v4.1.0) (2026-10-12)
 
 
