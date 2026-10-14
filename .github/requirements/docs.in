@@ -1,0 +1,6 @@
+# Runtime plus the docs extra from pyproject.toml; used by
+# deploy-github-pages.yml. tests/unit/test_ci_requirements.py checks the mirror.
+-r runtime.in
+mkdocs>=1.6,<2.0
+mkdocs-material>=9.5,<10.0
+pymdown-extensions>=10.7,<13.0

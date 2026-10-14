@@ -1,0 +1,8 @@
+# Environment the release self-SBOM is generated from (publish-pypi.yml, sbom
+# job; mirrored on pull requests by the package job in github-ci-cd.yml): the
+# project's runtime closure plus the SBOM generator. The wheel is installed on
+# top with --no-deps. cyclonedx-bom is an exact pin on purpose: bumping it is a
+# visible, reviewable change, and a yank fails the release instead of silently
+# moving to another version.
+-r runtime.in
+cyclonedx-bom==5.5.0

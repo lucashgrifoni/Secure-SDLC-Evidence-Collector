@@ -1,0 +1,4 @@
+# pip itself. Every job installs this lock first, so the pip that verifies the
+# other locks is hash-pinned too. Regenerate the lock with the command in the
+# header of pip.txt, run from this directory.
+pip

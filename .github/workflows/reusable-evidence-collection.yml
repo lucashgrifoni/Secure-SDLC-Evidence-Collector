@@ -141,7 +141,10 @@ jobs:
           COLLECTOR_VERSION: ${{ inputs.collector-version }}
         run: |
           set -euo pipefail
-          python -m pip install --upgrade pip
+          # The pip setup-python ships is used as is. The collector install
+          # below cannot be hash-pinned: it fetches whichever release the
+          # caller asks for, in the caller's repository, where this
+          # project's lock files do not exist.
           if [ -n "$COLLECTOR_VERSION" ]; then
             python -m pip install "secure-sdlc-evidence-collector==${COLLECTOR_VERSION}"
           else

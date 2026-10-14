@@ -1,0 +1,4 @@
+# PEP 517 frontend used by `python -m build` in github-ci-cd.yml (package job)
+# and publish-pypi.yml (build job). The build backend itself (setuptools, wheel)
+# is still resolved by build's isolated environment from [build-system].
+build

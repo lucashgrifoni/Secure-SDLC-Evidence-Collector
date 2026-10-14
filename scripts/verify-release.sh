@@ -29,6 +29,7 @@ WHEEL="${PYPI_NAME//-/_}-${PKG_VERSION}-py3-none-any.whl"
 SDIST="${PYPI_NAME//-/_}-${PKG_VERSION}.tar.gz"
 BASE="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}"
 GHCR_IMAGE="ghcr.io/${OWNER,,}/${PYPI_NAME}:${TAG}"
+REQUIREMENTS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.github/requirements"
 
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "$WORKDIR"' EXIT
@@ -94,12 +95,22 @@ cosign download attestation "$GHCR_IMAGE" > attestations.jsonl \
   || fail "cosign download attestation failed for $GHCR_IMAGE"
 test -s attestations.jsonl || fail "empty attestation payload"
 
-step "Fresh venv install from PyPI"
+step "Fresh venv install from PyPI (pinned to the verified wheel)"
+# PyPI has to serve the exact bytes cosign and slsa-verifier accepted above:
+# the package is installed with --require-hashes against the SHA-256 of the
+# downloaded wheel, and --no-deps. Its dependencies come from this checkout's
+# hash-locked runtime.txt; `pip check` fails if that lock does not satisfy the
+# release being verified (expected when checking an old tag whose dependency
+# ranges have since moved).
 python -m venv venv
 # shellcheck disable=SC1091
 . venv/bin/activate
-python -m pip install --quiet --upgrade pip
-python -m pip install --quiet "${PYPI_NAME}==${PKG_VERSION}"
+python -m pip install --quiet --require-hashes -r "$REQUIREMENTS/pip.txt"
+python -m pip install --quiet --require-hashes -r "$REQUIREMENTS/runtime.txt"
+printf '%s==%s --hash=sha256:%s\n' "$PYPI_NAME" "$PKG_VERSION" \
+  "$(sha256sum "$WHEEL" | cut -d' ' -f1)" > pypi-pin.txt
+python -m pip install --quiet --no-deps --require-hashes -r pypi-pin.txt
+python -m pip check
 INSTALLED_VERSION="$(python -m evidence_collector.cli.main --version)"
 test "$INSTALLED_VERSION" = "$PKG_VERSION" \
   || fail "expected version $PKG_VERSION, got $INSTALLED_VERSION"

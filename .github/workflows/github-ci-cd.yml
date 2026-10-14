@@ -72,14 +72,19 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
+      # Third-party code comes only from hash-locked files in
+      # .github/requirements (see the .in files there); the project itself is
+      # installed with --no-deps and `pip check` fails if the lock no longer
+      # satisfies pyproject.toml. dev.txt carries the `[api]` extra so
+      # mypy --strict can resolve the fastapi imports in
+      # `src/evidence_collector/api/app.py`. publish-pypi.yml's quality job
+      # runs these same commands on ubuntu / 3.12.
       - name: Install project
         run: |
-          python -m pip install --upgrade pip
-          # `[api]` is required so mypy --strict can resolve the fastapi
-          # imports in `src/evidence_collector/api/app.py`. The runtime
-          # API is still optional for end-users; it is only force-installed
-          # in CI so the type-check has every symbol available.
-          python -m pip install -e ".[dev,api]"
+          python -m pip install --require-hashes -r .github/requirements/pip.txt
+          python -m pip install --require-hashes -r .github/requirements/dev.txt
+          python -m pip install --no-deps -e .
+          python -m pip check
 
       - name: Ruff lint
         run: python -m ruff check src tests scripts
@@ -149,10 +154,30 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
+      # Same lock files as publish-pypi.yml's build job, so a tag can only
+      # reach a build step whose installs a pull request already ran.
       - name: Build wheel and sdist
         run: |
-          python -m pip install --upgrade pip build
+          python -m pip install --require-hashes -r .github/requirements/pip.txt
+          python -m pip install --require-hashes -r .github/requirements/build.txt
           python -m build --wheel --sdist --outdir dist
+
+      # Pull-request rehearsal of publish-pypi.yml's sbom job: same locks,
+      # same install order, same generator invocation, against the wheel just
+      # built. A lock that cannot install, or that no longer satisfies the
+      # wheel's requirements, fails here instead of burning a release tag.
+      - name: Self-SBOM rehearsal (publish-pypi sbom job)
+        run: |
+          set -euo pipefail
+          python -m venv /tmp/sbom-venv
+          /tmp/sbom-venv/bin/python -m pip install --require-hashes -r .github/requirements/pip.txt
+          /tmp/sbom-venv/bin/python -m pip install --require-hashes -r .github/requirements/sbom.txt
+          /tmp/sbom-venv/bin/python -m pip install --no-deps dist/*.whl
+          /tmp/sbom-venv/bin/python -m pip check
+          /tmp/sbom-venv/bin/cyclonedx-py environment \
+            --output-format json \
+            --output-file /tmp/sbom-rehearsal.cdx.json
+          ls -lah /tmp/sbom-rehearsal.cdx.json
 
       - name: Upload dist artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -183,10 +208,14 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
+      # dev.txt rather than runtime.txt: it also carries jsonschema, which
+      # the schema-validation step below needs.
       - name: Install project
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .
+          python -m pip install --require-hashes -r .github/requirements/pip.txt
+          python -m pip install --require-hashes -r .github/requirements/dev.txt
+          python -m pip install --no-deps -e .
+          python -m pip check
 
       - name: Generate sample bundle
         run: |
@@ -208,7 +237,6 @@ jobs:
 
       - name: Validate bundle against exported schema
         run: |
-          python -m pip install --quiet "jsonschema>=4.20,<5"
           python - <<'PY'
           import json
           import sys
@@ -314,8 +342,10 @@ jobs:
       - name: Install project
         shell: pwsh
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .
+          python -m pip install --require-hashes -r .github/requirements/pip.txt
+          python -m pip install --require-hashes -r .github/requirements/runtime.txt
+          python -m pip install --no-deps -e .
+          python -m pip check
 
       - name: Generate sample bundle (windows)
         shell: pwsh
@@ -379,10 +409,13 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      # Same commands as publish-pypi.yml's release-bundle job (ubuntu / 3.12).
       - name: Install collector (for shared normalize_bundle helper)
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .
+          python -m pip install --require-hashes -r .github/requirements/pip.txt
+          python -m pip install --require-hashes -r .github/requirements/runtime.txt
+          python -m pip install --no-deps -e .
+          python -m pip check
 
       - name: Compare normalized SHA-256 across OSes
         # Uses the same `normalize_bundle` helper that

@@ -1,0 +1,2 @@
+# Semgrep CLI for the sast-semgrep job in security-ci-cd.yml.
+semgrep>=1.100.0,<2

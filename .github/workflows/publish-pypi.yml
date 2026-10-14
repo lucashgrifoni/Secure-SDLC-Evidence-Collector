@@ -94,14 +94,19 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
+      # Hash-locked installs from .github/requirements. Every lock used in
+      # this workflow is also installed, with the same commands, on ubuntu /
+      # 3.12 by a pull_request job in github-ci-cd.yml (quality, package,
+      # cross-os-determinism), so a tag never runs an install no PR has run.
+      # dev.txt carries `[api]` so mypy --strict can resolve the fastapi
+      # imports in `src/evidence_collector/api/app.py`. The runtime release
+      # artefact is still installed without `[api]` further down.
       - name: Install project
         run: |
-          python -m pip install --upgrade pip
-          # `[api]` so mypy --strict can resolve fastapi imports in
-          # `src/evidence_collector/api/app.py` during the type-check
-          # gate. The runtime release artefact is still installed
-          # without `[api]` further down.
-          python -m pip install -e ".[dev,api]"
+          python -m pip install --require-hashes -r .github/requirements/pip.txt
+          python -m pip install --require-hashes -r .github/requirements/dev.txt
+          python -m pip install --no-deps -e .
+          python -m pip check
 
       - name: Ruff lint
         run: python -m ruff check src tests scripts
@@ -180,7 +185,8 @@ jobs:
         env:
           SOURCE_DATE_EPOCH: ${{ steps.sde.outputs.value }}
         run: |
-          python -m pip install --upgrade pip build
+          python -m pip install --require-hashes -r .github/requirements/pip.txt
+          python -m pip install --require-hashes -r .github/requirements/build.txt
           python -m build --wheel --sdist --outdir dist
           python scripts/normalize_sdist.py dist
 
@@ -307,8 +313,10 @@ jobs:
 
       - name: Install project
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .
+          python -m pip install --require-hashes -r .github/requirements/pip.txt
+          python -m pip install --require-hashes -r .github/requirements/runtime.txt
+          python -m pip install --no-deps -e .
+          python -m pip check
 
       - name: Generate release evidence bundle
         run: |
@@ -361,15 +369,24 @@ jobs:
         with:
           egress-policy: audit
 
+      # For .github/requirements/sbom.txt, which the SBOM environment is
+      # installed from. Same checkout as the other jobs here; it runs before
+      # the artifact download so it cannot touch dist/.
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
       - name: Download distribution
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: python-dist
           path: dist
 
-      # No pip cache here: this job has no checkout, and setup-python keys
-      # the cache on a dependency file in the workspace. Asking for one
-      # failed the 3.0.0 release before the SBOM was generated.
+      # No pip cache here. The job used to have no checkout at all, and
+      # setup-python keys the cache on a dependency file in the workspace;
+      # asking for one failed the 3.0.0 release before the SBOM was generated.
       - name: Setup Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
@@ -388,17 +405,16 @@ jobs:
           # Install the wheel into a clean environment so the SBOM
           # captures only the runtime closure, not dev dependencies.
           python -m venv /tmp/sbom-venv
-          /tmp/sbom-venv/bin/pip install --upgrade pip
-          /tmp/sbom-venv/bin/pip install dist/*.whl
-          # Pinned rather than a range. As a `>=4.5,<6` range this resolved to
-          # whatever PyPI served at release time, and being inside a `run:`
-          # block it was invisible to Dependabot's pip ecosystem, so it was
-          # both floating and outside the update process — which is how it sat
-          # two majors behind upstream without anyone being told. Bumping it is
-          # now a visible, reviewable change. The trade-off is real: an exact
-          # pin trades availability for integrity, so a yank of this version
-          # fails the release where the range would have moved on.
-          /tmp/sbom-venv/bin/pip install "cyclonedx-bom==5.5.0"
+          /tmp/sbom-venv/bin/python -m pip install --require-hashes -r .github/requirements/pip.txt
+          # The runtime closure and cyclonedx-bom come from one hash-locked
+          # file (sbom.in pins cyclonedx-bom exactly; Dependabot's uv
+          # ecosystem proposes bumps). The wheel goes on top with --no-deps,
+          # and `pip check` fails if the lock no longer satisfies it. The
+          # package job in github-ci-cd.yml rehearses these exact commands on
+          # every pull request.
+          /tmp/sbom-venv/bin/python -m pip install --require-hashes -r .github/requirements/sbom.txt
+          /tmp/sbom-venv/bin/python -m pip install --no-deps dist/*.whl
+          /tmp/sbom-venv/bin/python -m pip check
           mkdir -p sbom
           /tmp/sbom-venv/bin/cyclonedx-py environment \
             --output-format json \
