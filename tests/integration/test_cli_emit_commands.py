@@ -355,3 +355,35 @@ def test_enrich_accepts_a_usable_feed(
     )
     assert result.exit_code == 0, result.output
     assert target.is_file()
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(("flag", "label"), [("--epss-feed", "EPSS"), ("--kev-feed", "KEV")])
+def test_enrich_names_a_directory_passed_as_a_feed(
+    sample_bundle: Path, tmp_path: Path, flag: str, label: str
+) -> None:
+    """A directory is not a missing file: say what it is so the fix is obvious."""
+    feed_dir = tmp_path / "feeds"
+    feed_dir.mkdir()
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "evidence_collector.cli.main",
+            "enrich",
+            str(sample_bundle),
+            "--output",
+            str(tmp_path / "o.json"),
+            flag,
+            str(feed_dir),
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+    output = result.stdout + result.stderr
+    assert result.returncode == 3, output
+    assert f"{label} feed" in output
+    assert "is a directory, not a file" in output
+    assert "file not found" not in output

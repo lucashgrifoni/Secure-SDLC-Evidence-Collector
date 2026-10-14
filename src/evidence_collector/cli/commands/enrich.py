@@ -277,7 +277,9 @@ def _require_usable[FeedT: (EpssFeed, KevFeed)](feed: FeedT, path: Path, label: 
     """
     if feed.records:
         return feed
-    if not path.is_file():
+    if path.is_dir():
+        reason = "is a directory, not a file"
+    elif not path.is_file():
         reason = "file not found"
     else:
         reason = "no usable records (unreadable, empty, or malformed)"
