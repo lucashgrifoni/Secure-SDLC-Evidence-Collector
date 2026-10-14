@@ -6,7 +6,7 @@ import json
 import os
 import shutil
 import sys
-import tempfile
+import uuid
 from pathlib import Path
 from typing import Annotated
 
@@ -79,12 +79,7 @@ def doctor_checks() -> list[tuple[str, bool, str]]:
 
     # Write permissions. We never write outside an explicit --output-dir,
     # but it is useful to confirm the user's cwd is writable.
-    try:
-        with tempfile.NamedTemporaryFile(dir=Path.cwd(), delete=True):
-            pass
-        results.append(("Write permission in cwd", True, str(Path.cwd())))
-    except OSError as exc:
-        results.append(("Write permission in cwd", False, f"{type(exc).__name__}: {exc}"))
+    results.append(("Write permission in cwd", *_cwd_write_check()))
 
     # Optional cosign — used by the release workflow for keyless signing.
     cosign_path = shutil.which("cosign")
@@ -92,6 +87,30 @@ def doctor_checks() -> list[tuple[str, bool, str]]:
     results.append(("cosign (optional)", True, cosign_detail))
 
     return results
+
+
+def _cwd_write_check() -> tuple[bool, str]:
+    """Create and remove one uniquely named file in the cwd, exactly once.
+
+    ``tempfile.NamedTemporaryFile`` was used here and hung ``doctor`` forever
+    at 100% CPU in a read-only directory on Windows: CPython's tempfile reads a
+    PermissionError in a directory that looks writable as a name collision and
+    retries with a new name up to TMP_MAX, which is 2**31 - 1 on Windows. One
+    ``O_CREAT | O_EXCL`` attempt on a random name answers the same question and
+    always returns.
+    """
+    try:
+        cwd = Path.cwd()
+        probe = cwd / f".sdlc-evidence-doctor-{uuid.uuid4().hex}.tmp"
+        fd = os.open(probe, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except OSError as exc:
+        return False, f"{type(exc).__name__}: {exc}"
+    os.close(fd)
+    try:
+        os.unlink(probe)
+    except OSError as exc:
+        return False, f"created {probe.name} but could not remove it: {type(exc).__name__}: {exc}"
+    return True, str(cwd)
 
 
 def register(app: typer.Typer) -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from collections import namedtuple
 from pathlib import Path
@@ -120,3 +121,87 @@ def test_doctor_present_gitlab_token_is_not_claimed_as_used_by_the_cli(
     assert "will be used" not in gl[2]
     assert gh[2].startswith("present")
     assert "--pull-request" in gh[2]
+
+
+# A cwd the user cannot write to hung `doctor` forever at 100% CPU on Windows.
+# The check used `tempfile.NamedTemporaryFile`, and CPython's tempfile treats a
+# PermissionError in a directory it believes writable as a name collision on
+# Windows and retries with a new name - up to TMP_MAX, which is 2**31 - 1
+# there. The probe must make one attempt and report what it got.
+
+
+def _deny_writes_in(directory: Path, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Make every ``os.open`` inside ``directory`` fail; return the attempts."""
+    real_open = os.open
+    attempts: list[str] = []
+
+    def fake_open(path: str | os.PathLike[str], flags: int, *args: int, **kwargs: int) -> int:
+        target = Path(os.fspath(path))
+        if target.parent.exists() and os.path.samefile(target.parent, directory):
+            attempts.append(str(target))
+            if len(attempts) > 3:
+                # Fail instead of looping: this is the retry the fix removes.
+                raise AssertionError(f"write probe retried {len(attempts)} times")
+            raise PermissionError(13, "Permission denied", str(target))
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(os, "open", fake_open)
+    return attempts
+
+
+def test_doctor_write_check_fails_once_on_a_read_only_cwd(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    attempts = _deny_writes_in(tmp_path, monkeypatch)
+
+    results = _doctor_checks()
+
+    write = next(r for r in results if r[0] == "Write permission in cwd")
+    assert write[1] is False
+    assert "PermissionError" in write[2]
+    assert len(attempts) == 1, attempts
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_doctor_cli_exits_one_on_a_read_only_cwd(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    _deny_writes_in(tmp_path, monkeypatch)
+
+    result = CliRunner().invoke(app, ["doctor", "--json"])
+
+    assert result.exception is None or isinstance(result.exception, SystemExit), result.exception
+    assert result.exit_code == 1, result.output
+    payload = json.loads(result.output)
+    failed = [item["check"] for item in payload["checks"] if not item["ok"]]
+    assert failed == ["Write permission in cwd"]
+
+
+def test_doctor_write_check_leaves_no_probe_file_behind(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    write = next(r for r in _doctor_checks() if r[0] == "Write permission in cwd")
+    assert write[1] is True
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32" or (hasattr(os, "geteuid") and os.geteuid() == 0),
+    reason="POSIX permission bits; root ignores them",
+)
+def test_doctor_write_check_reports_a_real_read_only_directory(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    locked.chmod(0o500)
+    try:
+        monkeypatch.chdir(locked)
+        write = next(r for r in _doctor_checks() if r[0] == "Write permission in cwd")
+    finally:
+        locked.chmod(0o700)
+    assert write[1] is False
+    assert "PermissionError" in write[2]
