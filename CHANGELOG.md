@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.1.4](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.1.3...v4.1.4) (2026-10-15)
+
+
+### Fixed
+
+* **action:** shorten the description so the Action can be listed on the Marketplace ([#176](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/176)) ([305f7e3](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/305f7e3a2a05f0b062c84e788630b1c8781539f4))
+
+
+### Documentation
+
+* add OpenWiki repository guide ([#171](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/171)) ([05d1316](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/05d1316924a97f6550dc680f923faef2044afb8c))
+* keep OpenWiki update baseline reachable ([#173](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/173)) ([8ddffae](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/8ddffae3906215e155fc165721b91251fbd3d8f8))
+* **limitations:** state that a passing record beside a failing one still meets the control ([#175](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/175)) ([6a42ac7](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/6a42ac75dd829e04b65bab7babb79fcebd2a5524))
+* refresh OpenWiki page provenance from main ([#174](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/174)) ([744c2dc](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/744c2dc7ecb3cbebca9223e9c8a50053c7aa7148))
+
 ## [4.1.3](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.1.2...v4.1.3) (2026-10-14)
 
 
