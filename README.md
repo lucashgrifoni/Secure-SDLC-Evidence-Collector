@@ -6,15 +6,7 @@
 ![Python 3.12 & 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)
 ![License Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-green)
 [![Cosign signing configured](https://img.shields.io/badge/release%20signing-cosign%20keyless%20(configured)-9cf)](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/actions/workflows/publish-pypi.yml)
-<!--
-  T6.C1 — OpenSSF Best Practices Badge (passing tier). After the
-  maintainer completes the self-assessment at https://www.bestpractices.dev/
-  and the project receives its public project ID (PROJECT_ID), replace
-  the placeholder below with:
-    [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/PROJECT_ID/badge)](https://www.bestpractices.dev/projects/PROJECT_ID)
-  Tracking for the public project ID lives in the maintainer issue queue.
--->
-![OpenSSF Best Practices (registration pending)](https://img.shields.io/badge/openssf%20best%20practices-registration%20pending-lightgrey)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15519/badge)](https://www.bestpractices.dev/projects/15519)
 
 **CLI-first AppSec/DevSecOps tool that answers: "Which evidence proves this
 release followed a minimum Secure SDLC process?"**

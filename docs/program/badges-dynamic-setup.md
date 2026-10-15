@@ -128,7 +128,7 @@ https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/<usuario>
 Alvos no README atual (linhas do bloco de badges no topo):
 
 - a badge estatica `python-3.12 | 3.13` e
-- a badge `openssf best practices - registration pending`
+- a badge `OpenSSF Best Practices` (projeto 15519, nivel passing)
 
 sao candidatas a serem acompanhadas pelas novas badges dinamicas de
 Tests e Coverage, mantendo compatibilidade com as badges ja existentes
