@@ -71,6 +71,12 @@ def test_published_outputs_keep_their_names(action: dict[str, Any]) -> None:
     assert set(action["outputs"]) >= _PUBLISHED_OUTPUTS
 
 
+def test_description_fits_the_marketplace_limit(action: dict[str, Any]) -> None:
+    # The Marketplace refuses to list an Action whose description is 125
+    # characters or longer, and it checks the action.yml at the release tag.
+    assert len(action["description"]) < 125
+
+
 @pytest.mark.parametrize(
     ("input_name", "flag"),
     [

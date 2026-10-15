@@ -1,8 +1,7 @@
 name: "Secure SDLC Evidence Collector"
 description: >-
-  Collect, normalize and evaluate Secure SDLC evidence per release and
-  produce bundle.json, report.md, and summary.html with an explicit
-  release_status gate.
+  Collect, normalize and evaluate Secure SDLC evidence per release, with an
+  explicit release_status gate.
 author: "Lucas Henrique Grifoni"
 branding:
   icon: shield
