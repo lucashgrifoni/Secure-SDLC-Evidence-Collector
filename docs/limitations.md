@@ -657,3 +657,24 @@ as `https://example.test/a#one#two`, one with a space, a raw non-ASCII
 character or `[` outside an IPv6 literal, is not linked: the resource
 embeds the normalized evidence record as base64 and keeps the locator
 as an `artifact-path` prop.
+
+## 24 · A passing record beside a failing one still meets the control
+
+Each required evidence type needs one record whose status satisfies it.
+When the same type also has a `failed` or `invalid` record, for example
+a safety suite that failed in one job and passed in another, the control
+is still `met` (or `partial`), and the failing record is left out of
+`evidence_refs`.
+
+The failing record is not dropped in silence: the rationale names it,
+as in `Evidence promptfoo-fail (failed) of type ai_safety_eval did not
+count.`
+
+The rule is deliberate. A re-run that passes after a flaky failure is
+the common case, and a rule where any failure wins would block those
+releases. Changing it would change the verdict of bundles that already
+exist, so it stays for the 4.x line.
+
+To make a failure block the release, give the control one record per
+input: collect only the run that gates the release, or fail the
+producing job in CI before collection.
