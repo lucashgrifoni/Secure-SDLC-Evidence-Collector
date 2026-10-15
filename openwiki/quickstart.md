@@ -3,15 +3,15 @@ type: "quickstart"
 title: "Secure SDLC Evidence Collector"
 description: "Navigate collection, release decisions and CLI validation in the implemented evidence collector."
 tags: ["evidence","sdlc","cli"]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-14T18:37:45.397Z
 sources:
   - id: openwiki-source-05ccef8d4cf1698187f20464
     resource: repo://pyproject.toml
   - id: openwiki-source-884501b861b7372e2e6b7d8f
     resource: repo://src/evidence_collector/application/orchestrator.py
 generated: { by: "codex", at: "2026-10-14T18:37:45.397Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-15T00:04:31.320Z
 ---
 
 # Secure SDLC Evidence Collector

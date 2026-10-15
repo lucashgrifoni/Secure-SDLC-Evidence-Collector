@@ -3,15 +3,15 @@ type: "concept"
 title: "Evidence and release readiness"
 description: "Interpret the base gap-driven verdict, optional risk processing and mismatched release anchors."
 tags: ["readiness","controls","evidence"]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-14T18:37:45.397Z
 sources:
   - id: openwiki-source-884501b861b7372e2e6b7d8f
     resource: repo://src/evidence_collector/application/orchestrator.py
   - id: openwiki-source-ec9365904f6d4eb255797a89
     resource: repo://src/evidence_collector/scoring/engine.py
 generated: { by: "codex", at: "2026-10-14T18:37:45.397Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-15T00:04:31.320Z
 ---
 
 # Evidence and release readiness

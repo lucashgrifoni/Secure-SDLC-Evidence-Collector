@@ -3,9 +3,6 @@ type: "workflow"
 title: "CLI outcomes and CI"
 description: "Use the command entrypoint and distinguish release-verdict exits from input failures and CI validation."
 tags: ["cli","ci","testing"]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-14T18:37:45.397Z
 sources:
   - id: openwiki-source-e4347ec9a24d3f6fdf562920
     resource: repo://.github/workflows/github-ci-cd.yml
@@ -18,6 +15,9 @@ sources:
   - id: openwiki-source-2d15416690365c71f93b8c3b
     resource: repo://tests/integration/test_exit_code_taxonomy.py
 generated: { by: "codex", at: "2026-10-14T18:37:45.397Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-15T00:04:31.320Z
 ---
 
 # CLI outcomes and CI

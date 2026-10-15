@@ -2,32 +2,32 @@
   "schemaVersion": 1,
   "pages": {
     "/openwiki/architecture/release-pipeline.md": {
-      "gitHead": "e51edb94d499c818dfd4d691653532c6c4b8b482",
-      "sourceFingerprint": "sha256:44d391f8eebd389b42a10347949cea86c705e5205f307a9fb11b2d9ef1be6e17",
-      "pageVersion": "sha256:fd3ab26bdb4a9b8c8d1d90d5586eb4f3b67ebb3d0b0610ef457d0b3925a046f3",
+      "pageVersion": "sha256:3beac7bcd3ee074f565348cef1adabb9f3fb894dc17bb0b3ba31eec52b90b855",
       "completedBy": "codex",
-      "completedRunId": "2f4860d7-4f55-45be-9e69-d7e3099e9bb8"
+      "completedRunId": "c4fddcd4-b0f2-401c-a450-355128e3526c",
+      "gitHead": "8ddffae3906215e155fc165721b91251fbd3d8f8",
+      "sourceFingerprint": "sha256:ddec4f1614948c96ec2286149d026425d2e7e3ee69103caa8c4d8e8976a93bd4"
     },
     "/openwiki/concepts/evidence-and-readiness.md": {
-      "gitHead": "e51edb94d499c818dfd4d691653532c6c4b8b482",
-      "sourceFingerprint": "sha256:44d391f8eebd389b42a10347949cea86c705e5205f307a9fb11b2d9ef1be6e17",
-      "pageVersion": "sha256:63cc654fc9e9da55b118fb67c67a316044f448cecef6e38b182275140bf9b065",
+      "pageVersion": "sha256:8a07c0adea99bebdc466df68f71886a7b69f648f30bb7be305dd81c7bbb6243a",
       "completedBy": "codex",
-      "completedRunId": "2f4860d7-4f55-45be-9e69-d7e3099e9bb8"
+      "completedRunId": "c4fddcd4-b0f2-401c-a450-355128e3526c",
+      "gitHead": "8ddffae3906215e155fc165721b91251fbd3d8f8",
+      "sourceFingerprint": "sha256:ddec4f1614948c96ec2286149d026425d2e7e3ee69103caa8c4d8e8976a93bd4"
     },
     "/openwiki/quickstart.md": {
-      "gitHead": "e51edb94d499c818dfd4d691653532c6c4b8b482",
-      "sourceFingerprint": "sha256:44d391f8eebd389b42a10347949cea86c705e5205f307a9fb11b2d9ef1be6e17",
-      "pageVersion": "sha256:96092524cfec4d0090d3223ef8ab13943288a5ef9119d70a1d3243095be7e7f2",
+      "pageVersion": "sha256:d1bfa6c28f2ec88114526a8b02749b6bbebbc6157038db216d6b605e0e4b3327",
       "completedBy": "codex",
-      "completedRunId": "2f4860d7-4f55-45be-9e69-d7e3099e9bb8"
+      "completedRunId": "c4fddcd4-b0f2-401c-a450-355128e3526c",
+      "gitHead": "8ddffae3906215e155fc165721b91251fbd3d8f8",
+      "sourceFingerprint": "sha256:ddec4f1614948c96ec2286149d026425d2e7e3ee69103caa8c4d8e8976a93bd4"
     },
     "/openwiki/workflows/cli-and-ci.md": {
-      "gitHead": "e51edb94d499c818dfd4d691653532c6c4b8b482",
-      "sourceFingerprint": "sha256:44d391f8eebd389b42a10347949cea86c705e5205f307a9fb11b2d9ef1be6e17",
-      "pageVersion": "sha256:9ec39ef9b2af6e6db042bbc7f89f17a877e1e7ac6a791477c159c58454a689a8",
+      "pageVersion": "sha256:067fd9d5f2645cd6f9dd7978c831883024d3d4687233a4064f837c0a0461eb7e",
       "completedBy": "codex",
-      "completedRunId": "2f4860d7-4f55-45be-9e69-d7e3099e9bb8"
+      "completedRunId": "c4fddcd4-b0f2-401c-a450-355128e3526c",
+      "gitHead": "8ddffae3906215e155fc165721b91251fbd3d8f8",
+      "sourceFingerprint": "sha256:ddec4f1614948c96ec2286149d026425d2e7e3ee69103caa8c4d8e8976a93bd4"
     }
   }
 }

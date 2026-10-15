@@ -5,7 +5,7 @@ description: "Follow local collection through catalog evaluation, anchor checks 
 tags: ["architecture","evidence","bundle"]
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-14T18:37:45.397Z
+    at: 2026-10-15T00:04:31.320Z
 sources:
   - id: openwiki-source-884501b861b7372e2e6b7d8f
     resource: repo://src/evidence_collector/application/orchestrator.py
