@@ -677,4 +677,10 @@ exist, so it stays for the 4.x line.
 
 To make a failure block the release, give the control one record per
 input: collect only the run that gates the release, or fail the
-producing job in CI before collection.
+producing job in CI before collection. Collecting only the failed run
+leaves the control without satisfying evidence, and how far that
+reaches depends on its criticality: a `critical` control makes the
+release `not_ready`, but a `high` one, such as `AI-SAFETY-EVAL`, only
+makes it `conditional`, which the default `--fail-on not_ready` lets
+through with exit 0. For a `high` control, gate with
+`--fail-on conditional`.
