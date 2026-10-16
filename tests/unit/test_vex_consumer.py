@@ -552,3 +552,18 @@ def test_purl_versions_are_compared_decoded(tmp_path: Path) -> None:
         build_openvex(bundle), bundle, built, products=["pkg:deb/acme@1.0+deb1"]
     )
     assert _status_of(merged, "CVE-2024-1111") == "not_affected"
+
+
+def test_a_bom_link_still_matches_across_documents(tmp_path: Path) -> None:
+    bundle = _bundle_with_cve("CVE-2024-1111")
+    link = "urn:cdx:3e671687-395b-41f5-a30f-a58921a69b79/1#component-a"
+    first = tmp_path / "a"
+    second = tmp_path / "b"
+    first.mkdir()
+    second.mkdir()
+    consumed = [
+        *parse_vex(_cdx_file(first, [{"ref": link}])),
+        *parse_vex(_openvex_file(second, ["pkg:npm/unrelated@1.0.0"], cve="CVE-2024-2222")),
+    ]
+    merged = merge_consumed_vex(build_openvex(bundle), bundle, consumed, products=[link])
+    assert _status_of(merged, "CVE-2024-1111") == "not_affected"

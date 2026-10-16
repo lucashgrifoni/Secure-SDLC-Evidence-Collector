@@ -428,8 +428,9 @@ def _purl_parts(identifier: str) -> tuple[str, str | None]:
 
 
 def _is_global_id(identifier: str) -> bool:
-    """Purls and CPEs mean the same thing in every document; local ids do not."""
-    return identifier.startswith(("pkg:", "cpe:"))
+    """Purls, CPEs and CycloneDX BOM-Links (``urn:cdx:``, which carry the BOM
+    serial number) mean the same thing in every document; local ids do not."""
+    return identifier.startswith(("pkg:", "cpe:", "urn:cdx:"))
 
 
 def _names_release(
