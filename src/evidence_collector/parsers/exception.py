@@ -33,6 +33,7 @@ from typing import Any, cast
 from evidence_collector.domain.models import EvidenceException, ExceptionScope
 from evidence_collector.parsers._common import (
     ParseError,
+    describe_failure,
     ensure_file,
     load_yaml_or_json,
 )
@@ -110,4 +111,4 @@ def parse_exception(path: str | Path) -> EvidenceException:
     except ParseError:
         raise
     except ValueError as exc:
-        raise ParseError(f"Invalid exception file {resolved}: {exc}") from exc
+        raise ParseError(f"Invalid exception file {resolved}: {describe_failure(exc)}") from exc

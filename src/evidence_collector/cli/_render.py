@@ -20,6 +20,7 @@ from evidence_collector.cli._state import console, is_json_logs
 def render_summary(result: BundleBuildResult) -> None:
     """Render the release-readiness summary as a Rich table or NDJSON event."""
     summary = result.bundle.summary
+    risk = summary.risk_assessment
 
     if is_json_logs():
         emit_event(
@@ -36,6 +37,7 @@ def render_summary(result: BundleBuildResult) -> None:
             evidence_count=len(result.bundle.evidence),
             collection_error_count=len(result.bundle.collection_errors),
             missing_critical_evidence=list(summary.missing_critical_evidence),
+            risk_rationale=risk.rationale if risk else None,
             bundle_json=str(result.json_path) if result.json_path else None,
             report_md=str(result.markdown_path) if result.markdown_path else None,
             summary_html=str(result.html_path) if result.html_path else None,
@@ -61,8 +63,16 @@ def render_summary(result: BundleBuildResult) -> None:
     )
     if summary.missing_critical_evidence:
         table.add_row(
-            "Missing critical",
-            ", ".join(summary.missing_critical_evidence),
+            "Missing critical/high",
+            escape(", ".join(summary.missing_critical_evidence)),
+        )
+    if risk:
+        table.add_row(
+            "Risk-weighted",
+            escape(
+                f"{risk.mode}: presence-based {risk.base_release_status.value} -> "
+                f"{summary.release_status.value}. {risk.rationale}"
+            ),
         )
     console.print(table)
     if result.json_path:

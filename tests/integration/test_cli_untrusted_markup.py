@@ -18,9 +18,9 @@ from typer.testing import CliRunner
 
 from evidence_collector.cli.main import app
 
-# Longer than the normalizer's cap, so the record fails validation and the
-# pydantic message (which quotes the value) becomes a collection warning.
-_HOSTILE_DRIVER = "[/x]" + "A" * 120
+# An unknown key, so the attestation is rejected and the parser message
+# (which names the key) becomes a collection warning.
+_HOSTILE_KEY = "[/x]AAAA"
 
 
 @pytest.fixture
@@ -28,15 +28,17 @@ def runner() -> CliRunner:
     return CliRunner()
 
 
-def _artifacts(tmp_path: Path) -> Path:
-    artifacts = tmp_path / "artifacts"
-    artifacts.mkdir()
-    sarif = {
-        "version": "2.1.0",
-        "runs": [{"tool": {"driver": {"name": _HOSTILE_DRIVER, "rules": []}}, "results": []}],
+def _attestations(tmp_path: Path) -> Path:
+    attestations = tmp_path / "attestations"
+    attestations.mkdir()
+    attestation = {
+        "evidence_type": "rollback_plan",
+        "producer": "release-team",
+        "subject_ref": "payments-api",
+        _HOSTILE_KEY: 1,
     }
-    (artifacts / "scan.sarif").write_text(json.dumps(sarif), encoding="utf-8")
-    return artifacts
+    (attestations / "rollback.json").write_text(json.dumps(attestation), encoding="utf-8")
+    return attestations
 
 
 @pytest.mark.integration
@@ -55,8 +57,8 @@ def test_run_prints_a_markup_like_collection_warning_and_returns_its_verdict(
             "1.0.0",
             "--commit-sha",
             "abcdef1234567890",
-            "--artifacts-dir",
-            str(_artifacts(tmp_path)),
+            "--attestations-dir",
+            str(_attestations(tmp_path)),
             "--output-dir",
             str(tmp_path / "out"),
             "--fail-on",
@@ -80,8 +82,8 @@ def test_collect_prints_a_markup_like_collection_warning_verbatim(
             "1.0.0",
             "--commit-sha",
             "abcdef1234567890",
-            "--artifacts-dir",
-            str(_artifacts(tmp_path)),
+            "--attestations-dir",
+            str(_attestations(tmp_path)),
             "--output",
             str(tmp_path / "evidence.json"),
         ],

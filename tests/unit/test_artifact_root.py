@@ -197,7 +197,7 @@ def test_a_link_does_not_publish_the_directory_name_it_hides(tmp_path: Path) -> 
     raw = report.evidence[0].raw
     assert raw is not None and raw.artifact_path is not None
     assert "internal-clientA-staging" not in raw.artifact_path
-    assert raw.artifact_path == str(Path("artifacts") / "semgrep.sarif")
+    assert raw.artifact_path == "artifacts/semgrep.sarif"
 
 
 def test_the_reason_is_redacted_even_when_the_error_escapes_its_backslashes(

@@ -85,7 +85,13 @@ def _run(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str
 def test_unhandled_failure_exits_three_without_a_traceback(
     label: str, args: tuple[str, ...], tmp_path: Path
 ) -> None:
-    extra = ("--output-dir", str(tmp_path / "out")) if args[0] == "run" else ()
+    # An existing (empty) input directory, so `run` reaches the failure under
+    # test instead of stopping on "no evidence source was given".
+    extra = (
+        ("--output-dir", str(tmp_path / "out"), "--attestations-dir", str(tmp_path))
+        if args[0] == "run"
+        else ()
+    )
     result = _run(*args, *extra)
 
     assert result.returncode == 3, f"{label}: expected 3, got {result.returncode}"
@@ -135,6 +141,8 @@ def test_verdict_exit_codes_are_untouched(tmp_path: Path, sample_release_root: P
         "abcdef1234567890",
         "--output-dir",
         str(tmp_path / "empty"),
+        "--attestations-dir",
+        str(tmp_path),
     )
     assert not_ready.returncode == 2
 

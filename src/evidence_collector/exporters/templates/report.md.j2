@@ -45,9 +45,13 @@ in `bundle.json`.
 - **Confidence score:** {{ bundle.summary.confidence_score }}/100
 - **Controls:** {{ bundle.summary.controls_met }} met · {{ bundle.summary.controls_partial }} partial · {{ bundle.summary.controls_missing }} missing · {{ bundle.summary.controls_waived }} waived · {{ bundle.summary.controls_not_applicable }} n/a
 {% if bundle.summary.missing_critical_evidence %}
-- **Missing critical evidence:** {{ bundle.summary.missing_critical_evidence | map("md") | join(", ") }}
+- **Missing critical/high evidence:** {{ bundle.summary.missing_critical_evidence | map("md") | join(", ") }}
 {% else %}
-- **Missing critical evidence:** none
+- **Missing critical/high evidence:** none
+{% endif %}
+{% if bundle.summary.risk_assessment %}
+{% set risk = bundle.summary.risk_assessment %}
+- **Risk-weighted verdict (`{{ risk.mode | md_code }}`):** presence-based `{{ risk.base_release_status.value }}` → `{{ bundle.summary.release_status.value }}`. {{ risk.rationale | md }}
 {% endif %}
 {% if bundle.collection_errors %}
 

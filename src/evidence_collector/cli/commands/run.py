@@ -214,20 +214,28 @@ def register(app: typer.Typer) -> None:
             )
 
         # A missing directory is a collection error while anything else can be
-        # read. When every directory passed is missing and no other source was
-        # asked for, nothing can be collected at all: exit 3 before any output.
+        # read. When no source was given, or every directory passed is missing
+        # and no other source was asked for, nothing can be collected at all:
+        # exit 3 before any output.
         input_dirs = [*(artifacts_dir or []), *(attestations_dir or []), *(exceptions_dir or [])]
         if (
-            input_dirs
-            and pull_request is None
+            pull_request is None
             and workflow_run is None
             and not any(Path(d).exists() for d in input_dirs)
         ):
-            # Same redaction as collection_errors: relative to --artifact-root.
-            listed = ", ".join(str(relative_to_root(Path(d), artifact_root)) for d in input_dirs)
+            if input_dirs:
+                # Same redaction as collection_errors: relative to --artifact-root.
+                listed = ", ".join(
+                    str(relative_to_root(Path(d), artifact_root)) for d in input_dirs
+                )
+                reason = f"none of the input directories exist ({listed})"
+            else:
+                reason = (
+                    "no evidence source was given (--artifacts-dir, --attestations-dir, "
+                    "--exceptions-dir, --pull-request or --workflow-run)"
+                )
             report_error(
-                f"none of the input directories exist ({listed}); "
-                "nothing was collected and no bundle was written",
+                f"{reason}; nothing was collected and no bundle was written",
                 event="run_failed",
             )
             raise typer.Exit(code=EXIT_INPUT_ERROR)
