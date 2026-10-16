@@ -76,3 +76,19 @@ def test_parse_zap_rejects_document_without_site(tmp_path: Path) -> None:
     path.write_text('{"version": "2.14.0"}', encoding="utf-8")
     with pytest.raises(ParseError):
         parse_zap(path)
+
+
+def test_parse_zap_defaults_for_missing_riskcode_and_bad_count(tmp_path: Path) -> None:
+    # An alert without riskcode buckets as medium; a count that is not a
+    # number still counts the alert once.
+    path = _write_zap(
+        tmp_path / "zap.json",
+        alerts=[
+            {"name": "no risk code", "count": "2"},
+            {"name": "x", "riskcode": "1", "count": "abc"},
+        ],
+    )
+    parsed = parse_zap(path)
+    assert parsed.findings_count["medium"] == 2
+    assert parsed.findings_count["low"] == 1
+    assert parsed.total_findings == 3

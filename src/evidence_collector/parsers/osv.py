@@ -10,8 +10,10 @@ This parser handles both shapes:
 
 * **OSV-Scanner output** — a JSON object with a ``results`` array,
   where each result has ``packages[*].vulnerabilities[*]`` (one OSV
-  record per vulnerability) plus ``packages[*].groups[*]`` summarising
-  group-level severity.
+  record per vulnerability) plus ``packages[*].groups[*]``, which clusters
+  aliased records (a GHSA and a Go advisory for the same issue, say). Each
+  group counts as one finding, at the most severe bucket among its rated
+  members, else its ``max_severity``; a record in no group counts alone.
 * **Single OSV record** — a flat OSV vulnerability document with ``id``
   and ``affected[*]`` at the top level. Common when GHSA or PyPA
   records are saved directly as evidence.
@@ -193,6 +195,43 @@ def _bucket_for_vulnerability(vuln: dict[str, Any]) -> str:
     return "medium"
 
 
+def _is_rated(vuln: dict[str, Any]) -> bool:
+    """Whether a record carries a severity of its own (not the medium fallback)."""
+    severities = vuln.get("severity")
+    if isinstance(severities, list) and any(_extract_cvss_score(e) is not None for e in severities):
+        return True
+    specific = vuln.get("database_specific")
+    rating = specific.get("severity") if isinstance(specific, dict) else None
+    return isinstance(rating, str) and rating.strip().upper() in _QUALITATIVE_BUCKETS
+
+
+_BUCKET_ORDER = ("info", "low", "medium", "high", "critical")
+
+
+def _package_buckets(entry: dict[str, Any], vulns: list[dict[str, Any]]) -> list[str]:
+    """One bucket per finding in a package, folding alias groups into one."""
+    groups = entry.get("groups")
+    by_id = {v["id"]: v for v in vulns if isinstance(v.get("id"), str)}
+    grouped: set[str] = set()
+    buckets: list[str] = []
+    for group in groups if isinstance(groups, list) else []:
+        ids = group.get("ids") if isinstance(group, dict) else None
+        members = [by_id[i] for i in ids if i in by_id] if isinstance(ids, list) else []
+        if not members:
+            continue
+        grouped.update(str(m["id"]) for m in members)
+        rated = [_bucket_for_vulnerability(m) for m in members if _is_rated(m)]
+        if rated:
+            buckets.append(max(rated, key=_BUCKET_ORDER.index))
+            continue
+        score = _extract_cvss_score({"score": group.get("max_severity")})
+        buckets.append("medium" if score is None else _severity_bucket_from_cvss(score))
+    for vuln in vulns:
+        if vuln.get("id") not in grouped:
+            buckets.append(_bucket_for_vulnerability(vuln))
+    return buckets
+
+
 def _collect_cves_from_strings(values: Any, sink: set[str]) -> None:
     if not isinstance(values, list):
         return
@@ -241,11 +280,11 @@ def _parse_osv_scanner_envelope(
                 continue
             if vulns:
                 package_count += 1
-            for vuln in vulns:
-                if not isinstance(vuln, dict):
-                    continue
+            records = [vuln for vuln in vulns if isinstance(vuln, dict)]
+            for bucket in _package_buckets(entry, records):
                 total += 1
-                findings[_bucket_for_vulnerability(vuln)] += 1
+                findings[bucket] += 1
+            for vuln in records:
                 _collect_cves_from_strings(vuln.get("aliases"), cve_ids)
                 _collect_cves_from_strings([vuln.get("id")], cve_ids)
     return findings, total, sorted(cve_ids), ecosystems, package_count

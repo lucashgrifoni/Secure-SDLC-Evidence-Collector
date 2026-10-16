@@ -253,3 +253,38 @@ def test_collector_records_a_bad_schema_version_as_an_error(tmp_path: Path) -> N
     assert not report.evidence
     assert len(report.errors) == 1
     assert "SchemaVersion" in report.errors[0].reason
+
+
+def test_vulnerability_without_severity_counts_as_unknown(tmp_path: Path) -> None:
+    payload = _report()
+    payload["Results"] = [
+        {"Target": "go.sum", "Class": "lang-pkgs", "Vulnerabilities": [{"VulnerabilityID": "X"}]}
+    ]
+    parsed = parse_trivy_json(_write(tmp_path, payload))
+    assert parsed.groups[0].findings_count == {"unknown": 1}
+
+
+def test_any_secret_fails_the_secrets_evidence(tmp_path: Path) -> None:
+    # A secret is blocking whatever severity Trivy gave it; the count keeps
+    # Trivy's severity.
+    payload = _report()
+    payload["Results"] = [
+        {
+            "Target": ".env",
+            "Class": "secret",
+            "Secrets": [{"RuleID": "jwt-token", "Severity": "LOW"}],
+        }
+    ]
+    (evidence,) = normalize_trivy_json(parse_trivy_json(_write(tmp_path, payload)), _release())
+    assert evidence.evidence_type == EvidenceType.SECRETS_SCAN
+    assert evidence.findings_count == {"low": 1}
+    assert evidence.status == EvidenceStatus.FAILED
+
+
+def test_report_without_results_needs_the_artifact_keys() -> None:
+    from evidence_collector.parsers.trivy_json import looks_like_trivy_json
+
+    clean = {"SchemaVersion": 2, "ArtifactName": "repo", "ArtifactType": "filesystem"}
+    assert looks_like_trivy_json(clean)
+    assert not looks_like_trivy_json({"SchemaVersion": 2})
+    assert not looks_like_trivy_json({**clean, "Results": "not-a-list"})

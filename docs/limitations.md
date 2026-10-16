@@ -53,6 +53,35 @@ and emits **one evidence record per run**.
   Downstream consumers can filter or weight evidence by classification
   confidence, and a `fallback_sast` reason is a reliable signal that
   the underlying tool was unknown to the heuristic.
+- IaC scanners (Checkov, KICS, tfsec, Terrascan) are classified as
+  `iac_scan`. Until 4.2.0 Checkov was matched as a SAST tool, so a
+  Terraform-only scan met SSDF-PW.7 at high classification confidence.
+  Trivy's SARIF still cannot be split by finding class from its driver
+  name; the native Trivy JSON route (§6b) does that.
+- Each result is bucketed by its effective SARIF level (SARIF 2.1.0
+  §3.27.10): the result's `level`, then `none` for a result whose `kind`
+  is not `fail`, then the `defaultConfiguration.level` of the rule it
+  references (by index or id, in the driver or a `tool.extensions`
+  entry), then `warning`. Semgrep, Gitleaks and KICS leave the result
+  level out, so before 4.3.0 every one of their results counted as
+  medium and an `ERROR` rule hit never failed the scan. A rule's numeric
+  `security-severity` can raise the bucket (9.0 critical, 7.0 high, 4.0
+  medium), never lower it. Invocation `ruleConfigurationOverrides` are not
+  applied.
+- A run whose invocation says `executionSuccessful: false` is recorded as
+  `invalid` and cannot satisfy a control: the scanner itself says it did
+  not complete. A run with no `results` array, or with error-level tool
+  notifications, keeps its status but drops to `low` confidence and logs a
+  warning. Semgrep 1.179.0, for one, writes `executionSuccessful: true`
+  plus an error notification when a rule does not parse, then exits 2.
+- A result whose every suppression is `accepted`, or carries no status (a
+  `# nosemgrep` line), is not an open finding. It is counted in
+  `metadata.suppressed_count` and named in the summary. `underReview` and
+  `rejected` suppressions leave the result open.
+- In a `secrets_scan` every open result is a detected secret, so any one
+  fails the scan whatever its level. The counts keep the level the scanner
+  reported. The secret class of a native Trivy report follows the same
+  rule.
 
 ## 3 · Evidence quality is shallow
 

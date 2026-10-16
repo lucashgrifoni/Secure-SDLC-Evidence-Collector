@@ -124,10 +124,18 @@ def looks_like_trivy_json(data: Any) -> bool:
 
     Takes parsed data so the collector can feed it from the memoized JSON
     peek rather than reading the file a second time.
+
+    Trivy leaves ``Results`` out when a scan found nothing (0.74.0 writes
+    only SchemaVersion, Trivy, ReportID, CreatedAt, ArtifactName and
+    ArtifactType), so a report without it is recognised by the artifact keys
+    every report carries.
     """
-    if not isinstance(data, dict):
+    if not isinstance(data, dict) or "SchemaVersion" not in data:
         return False
-    return "SchemaVersion" in data and isinstance(data.get("Results"), list)
+    results = data.get("Results")
+    if results is None:
+        return "ArtifactName" in data and "ArtifactType" in data
+    return isinstance(results, list)
 
 
 def _repo_digest(metadata: dict[str, Any]) -> str | None:
@@ -175,7 +183,8 @@ def parse_trivy_json(path: str | Path) -> ParsedTrivyJson:
     if not looks_like_trivy_json(data):
         raise ParseError(
             f"File {resolved} is not a native Trivy JSON report "
-            "(expected 'SchemaVersion' and a 'Results' array)."
+            "(expected 'SchemaVersion' and a 'Results' array, or 'ArtifactName' "
+            "and 'ArtifactType' when nothing was found)."
         )
 
     schema_version = data.get("SchemaVersion")
