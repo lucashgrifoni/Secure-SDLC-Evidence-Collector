@@ -604,7 +604,13 @@ def test_merge_recomputes_the_document_id() -> None:
     bundle = _bundle([_evidence(["CVE-2024-4444"])])
     doc = build_openvex(bundle, now=_NOW)
     original_id = doc["@id"]
-    consumed = [VexStatement(cve_id="CVE-2024-4444", status="not_affected")]
+    consumed = [
+        VexStatement(
+            cve_id="CVE-2024-4444",
+            status="not_affected",
+            products=(doc["statements"][0]["products"][0]["@id"],),
+        )
+    ]
     merged = merge_consumed_vex(doc, bundle, consumed)
     assert merged["@id"] != original_id
 

@@ -463,6 +463,18 @@ These are explicitly out of scope for security reports (see
   signed or that the source is authentic. Pipelines that need that
   guarantee must verify signatures before piping the file into
   `--consume`.
+- A consumed statement applies only when it names a product of this
+  release: the bundle's own `pkg:generic/<repository>@<release>` id or an
+  identifier passed with `--product` (a purl, CPE, CycloneDX ref or CSAF
+  product id; CSAF ids are also resolved to the purl or CPE in the
+  product tree). A versionless identifier covers every version of the
+  package; a statement for another version does not apply. Statements
+  that name no release product, including those that name no product at
+  all, are skipped and listed in a warning. Matching on the CVE id alone
+  let a VEX for an unrelated package silence a CVE the release carries.
+- CycloneDX justifications are translated into the five OpenVEX
+  justifications (the original is kept in `status_notes`); an unknown
+  justification falls back to `vulnerable_code_not_in_execute_path`.
 - Conflict policy (`first-wins`, `last-wins`, `fail`) decides what
   happens when sources disagree. `fail` is the right choice when an
   unexpected disagreement is itself a finding.

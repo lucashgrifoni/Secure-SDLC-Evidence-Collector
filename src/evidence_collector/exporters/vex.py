@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
@@ -80,6 +81,17 @@ STATUS_UNDER_INVESTIGATION = "under_investigation"
 # carry a specific reason; consumers can override by setting
 # `justification` directly on the exception scope in future schemas.
 DEFAULT_NOT_AFFECTED_JUSTIFICATION = "vulnerable_code_not_in_execute_path"
+
+# The five justifications OpenVEX 0.2.0 defines for ``not_affected``.
+OPENVEX_JUSTIFICATIONS = frozenset(
+    {
+        "component_not_present",
+        "vulnerable_code_not_present",
+        "vulnerable_code_not_in_execute_path",
+        "vulnerable_code_cannot_be_controlled_by_adversary",
+        "inline_mitigations_already_exist",
+    }
+)
 
 # Map CycloneDX inline-analysis ``state`` to an OpenVEX status. The
 # CycloneDX vocabulary is broader than OpenVEX (e.g. ``resolved`` vs
@@ -384,6 +396,43 @@ def build_openvex(bundle: EvidenceBundle, *, now: datetime | None = None) -> dic
     }
 
 
+def _openvex_justification(stmt: VexStatement) -> tuple[str, str | None]:
+    """Return an OpenVEX justification and, when it was translated, the original."""
+    raw = stmt.justification
+    if raw in OPENVEX_JUSTIFICATIONS:
+        return raw, None
+    if raw and stmt.source_shape == "cyclonedx-vex" and raw in _CYCLONEDX_JUSTIFICATION_TO_OPENVEX:
+        return _CYCLONEDX_JUSTIFICATION_TO_OPENVEX[raw], raw
+    return DEFAULT_NOT_AFFECTED_JUSTIFICATION, raw
+
+
+def _purl_parts(identifier: str) -> tuple[str, str | None]:
+    """Split ``pkg:type/ns/name@version?q#sub`` into (name part, version)."""
+    core = identifier.split("#", 1)[0].split("?", 1)[0].strip()
+    if "@" in core:
+        head, tail = core.rsplit("@", 1)
+        if "/" not in tail:
+            return head, tail
+    return core, None
+
+
+def _names_release(products: tuple[str, ...], release_products: set[str]) -> bool:
+    """True when a statement names one of the release's products.
+
+    An exact identifier always matches. A versionless identifier matches the
+    same package at any version, as OpenVEX allows; a statement for another
+    version of the product does not.
+    """
+    release_parts = [_purl_parts(p) for p in release_products]
+    for product in products:
+        if product in release_products:
+            return True
+        name, version = _purl_parts(product)
+        if version is None and any(name == r_name for r_name, _ in release_parts):
+            return True
+    return False
+
+
 def _statement_from_consumed(cve_id: str, product_id: str, stmt: VexStatement) -> dict[str, Any]:
     """Translate a consumed VEX statement into an OpenVEX statement dict."""
     out: dict[str, Any] = {
@@ -391,9 +440,12 @@ def _statement_from_consumed(cve_id: str, product_id: str, stmt: VexStatement) -
         "products": [{"@id": product_id}],
         "status": stmt.status,
     }
-    if stmt.status == STATUS_NOT_AFFECTED:
-        out["justification"] = stmt.justification or DEFAULT_NOT_AFFECTED_JUSTIFICATION
     notes: list[str] = []
+    if stmt.status == STATUS_NOT_AFFECTED:
+        justification, original = _openvex_justification(stmt)
+        out["justification"] = justification
+        if original:
+            notes.append(f"source justification={original}")
     if stmt.source_shape:
         notes.append(f"source={stmt.source_shape}")
     if stmt.source_path:
@@ -411,8 +463,17 @@ def merge_consumed_vex(
     consumed: list[VexStatement],
     *,
     policy: MergeConflictPolicy = MergeConflictPolicy.LAST_WINS,
+    products: Iterable[str] = (),
+    skipped: list[VexStatement] | None = None,
 ) -> dict[str, Any]:
     """Merge ``consumed`` VEX statements into a bundle-derived OpenVEX document.
+
+    A consumed statement applies only when it names one of the release's
+    products: the bundle's own purl-shaped id or one of ``products`` (the
+    release's real identifiers, such as its published purl). A statement about
+    any other product is set aside in ``skipped`` instead of being matched on
+    the CVE id alone, which let a VEX for an unrelated package silence a CVE
+    the release itself carries.
 
     Conflict policy semantics:
 
@@ -428,12 +489,17 @@ def merge_consumed_vex(
       pipelines where an unexpected disagreement is itself a finding.
     """
     product_id = _product_id(bundle)
+    release_products = {product_id, *(p.strip() for p in products if p.strip())}
     by_cve: dict[str, dict[str, Any]] = {
         s["vulnerability"]["name"]: s
         for s in bundle_document.get("statements", [])
         if isinstance(s, dict) and isinstance(s.get("vulnerability"), dict)
     }
     for stmt in consumed:
+        if not _names_release(stmt.products, release_products):
+            if skipped is not None:
+                skipped.append(stmt)
+            continue
         cve_id = stmt.cve_id.upper()
         new_statement = _statement_from_consumed(cve_id, product_id, stmt)
         existing = by_cve.get(cve_id)

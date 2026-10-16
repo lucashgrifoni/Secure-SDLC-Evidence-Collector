@@ -28,7 +28,7 @@ from evidence_collector.exporters.vex import (
     build_openvex,
     merge_consumed_vex,
 )
-from evidence_collector.parsers.vex import parse_vex
+from evidence_collector.parsers.vex import VexStatement, parse_vex
 
 
 def register(app: typer.Typer) -> None:
@@ -67,6 +67,18 @@ def register(app: typer.Typer) -> None:
                 ),
             ),
         ] = None,
+        product: Annotated[
+            list[str] | None,
+            typer.Option(
+                "--product",
+                help=(
+                    "An identifier of this release (purl, CPE, CycloneDX ref or CSAF "
+                    "product id) that --consume statements may name. Repeatable. The "
+                    "bundle's own pkg:generic id always counts; statements naming no "
+                    "release product are skipped with a warning."
+                ),
+            ),
+        ] = None,
         policy: Annotated[
             str,
             typer.Option(
@@ -100,17 +112,19 @@ def register(app: typer.Typer) -> None:
         document = build_openvex(bundle)
 
         consumed_count = 0
+        skipped: list[VexStatement] = []
         if consume:
             consumed_statements = []
             for path in consume:
                 consumed_statements.extend(parse_vex(path))
-            consumed_count = len(consumed_statements)
             try:
                 document = merge_consumed_vex(
                     document,
                     bundle,
                     consumed_statements,
                     policy=MergeConflictPolicy(policy),
+                    products=product or (),
+                    skipped=skipped,
                 )
             except VexMergeConflictError as exc:
                 report_error(
@@ -121,6 +135,17 @@ def register(app: typer.Typer) -> None:
                     policy=policy,
                 )
                 raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
+            consumed_count = len(consumed_statements) - len(skipped)
+            if skipped and not is_json_logs():
+                listed = ", ".join(
+                    f"{s.cve_id} ({', '.join(s.products) or 'no product'})" for s in skipped[:5]
+                )
+                more = f" and {len(skipped) - 5} more" if len(skipped) > 5 else ""
+                console.print(
+                    f"[yellow]Skipped {len(skipped)} consumed statement(s) that name no "
+                    f"product of this release:[/yellow] {listed}{more}. Pass --product "
+                    "with the release's purl to apply them."
+                )
 
         write_atomic(output, json.dumps(document, indent=2, sort_keys=False))
 
@@ -132,6 +157,7 @@ def register(app: typer.Typer) -> None:
                 output=str(output),
                 statements=len(statements),
                 consumed=consumed_count,
+                skipped=len(skipped),
                 policy=policy,
             )
         else:

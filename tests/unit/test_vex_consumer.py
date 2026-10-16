@@ -29,7 +29,9 @@ from evidence_collector.exporters.vex import (
     merge_consumed_vex,
 )
 from evidence_collector.parsers._common import ParseError
-from evidence_collector.parsers.vex import parse_vex
+from evidence_collector.parsers.vex import VexStatement, parse_vex
+
+_RELEASE_PURL = "pkg:generic/acme/api@2026.05.19"
 
 
 def _bundle_with_cve(cve_id: str) -> EvidenceBundle:
@@ -207,4 +209,147 @@ def parse_vex_inline_openvex(cve_id: str, status: str):
         justification=("vulnerable_code_not_present" if status == "not_affected" else None),
         source_shape="openvex",
         source_path="<test>",
+        products=(_RELEASE_PURL,),
     )
+
+
+def _openvex_file(tmp_path: Path, products: list[object], cve: str = "CVE-2024-1111") -> Path:
+    path = tmp_path / "vendor.openvex.json"
+    path.write_text(
+        json.dumps(
+            {
+                "@context": "https://openvex.dev/ns/v0.2.0",
+                "statements": [
+                    {
+                        "vulnerability": {"name": cve},
+                        "products": products,
+                        "status": "not_affected",
+                        "justification": "vulnerable_code_not_present",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _status_of(document: dict[str, object], cve: str) -> object:
+    statements = document["statements"]
+    assert isinstance(statements, list)
+    return next(s["status"] for s in statements if s["vulnerability"]["name"] == cve)
+
+
+def test_a_statement_about_another_product_does_not_silence_the_release_cve(
+    tmp_path: Path,
+) -> None:
+    """A VEX for an unrelated package used to match on the CVE id alone."""
+    bundle = _bundle_with_cve("CVE-2024-1111")
+    consumed = parse_vex(_openvex_file(tmp_path, [{"@id": "pkg:npm/totally-unrelated@1.0.0"}]))
+    skipped: list[VexStatement] = []
+    merged = merge_consumed_vex(build_openvex(bundle), bundle, consumed, skipped=skipped)
+    assert _status_of(merged, "CVE-2024-1111") == "under_investigation"
+    assert len(skipped) == 1
+
+
+def test_a_statement_naming_a_declared_release_product_applies(tmp_path: Path) -> None:
+    bundle = _bundle_with_cve("CVE-2024-1111")
+    consumed = parse_vex(_openvex_file(tmp_path, [{"@id": "pkg:pypi/acme-api@1.4.0"}]))
+    merged = merge_consumed_vex(
+        build_openvex(bundle), bundle, consumed, products=["pkg:pypi/acme-api@1.4.0"]
+    )
+    assert _status_of(merged, "CVE-2024-1111") == "not_affected"
+
+
+def test_a_versionless_product_covers_every_version_but_another_version_does_not(
+    tmp_path: Path,
+) -> None:
+    bundle = _bundle_with_cve("CVE-2024-1111")
+    versionless = parse_vex(_openvex_file(tmp_path, ["pkg:pypi/acme-api"]))
+    merged = merge_consumed_vex(
+        build_openvex(bundle), bundle, versionless, products=["pkg:pypi/acme-api@1.4.0"]
+    )
+    assert _status_of(merged, "CVE-2024-1111") == "not_affected"
+
+    other_version = parse_vex(_openvex_file(tmp_path, ["pkg:pypi/acme-api@1.3.0"]))
+    merged = merge_consumed_vex(
+        build_openvex(bundle), bundle, other_version, products=["pkg:pypi/acme-api@1.4.0"]
+    )
+    assert _status_of(merged, "CVE-2024-1111") == "under_investigation"
+
+
+def test_a_statement_that_names_no_product_is_skipped(tmp_path: Path) -> None:
+    bundle = _bundle_with_cve("CVE-2024-1111")
+    consumed = parse_vex(_openvex_file(tmp_path, []))
+    skipped: list[VexStatement] = []
+    merged = merge_consumed_vex(build_openvex(bundle), bundle, consumed, skipped=skipped)
+    assert _status_of(merged, "CVE-2024-1111") == "under_investigation"
+    assert len(skipped) == 1
+
+
+def test_cyclonedx_affects_and_justification_reach_openvex_vocabulary(tmp_path: Path) -> None:
+    """CycloneDX justifications were copied verbatim, outside the OpenVEX enum."""
+    vex_path = tmp_path / "vendor.cdx.json"
+    vex_path.write_text(
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.6",
+                "vulnerabilities": [
+                    {
+                        "id": "CVE-2024-1111",
+                        "affects": [{"ref": "pkg:pypi/acme-api@1.4.0"}],
+                        "analysis": {
+                            "state": "not_affected",
+                            "justification": "code_not_reachable",
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    bundle = _bundle_with_cve("CVE-2024-1111")
+    consumed = parse_vex(vex_path)
+    assert consumed[0].products == ("pkg:pypi/acme-api@1.4.0",)
+    merged = merge_consumed_vex(
+        build_openvex(bundle), bundle, consumed, products=["pkg:pypi/acme-api@1.4.0"]
+    )
+    statement = next(
+        s for s in merged["statements"] if s["vulnerability"]["name"] == "CVE-2024-1111"
+    )
+    assert statement["justification"] == "vulnerable_code_not_in_execute_path"
+    assert "source justification=code_not_reachable" in statement["status_notes"]
+
+
+def test_csaf_product_ids_resolve_to_purls_from_the_product_tree(tmp_path: Path) -> None:
+    vex_path = tmp_path / "vendor.csaf.json"
+    vex_path.write_text(
+        json.dumps(
+            {
+                "document": {"category": "csaf_vex", "title": "vendor advisory"},
+                "product_tree": {
+                    "branches": [
+                        {
+                            "product": {
+                                "product_id": "ACME-API-1.4.0",
+                                "name": "acme-api 1.4.0",
+                                "product_identification_helper": {
+                                    "purl": "pkg:pypi/acme-api@1.4.0"
+                                },
+                            }
+                        }
+                    ]
+                },
+                "vulnerabilities": [
+                    {
+                        "cve": "CVE-2024-1111",
+                        "product_status": {"known_not_affected": ["ACME-API-1.4.0"]},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    consumed = parse_vex(vex_path)
+    assert consumed[0].products == ("ACME-API-1.4.0", "pkg:pypi/acme-api@1.4.0")

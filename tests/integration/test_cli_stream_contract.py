@@ -191,6 +191,7 @@ def _conflicting_vex(tmp_path: Path, bundle_file: Path) -> Path:
     """A consumed OpenVEX statement that disagrees with the bundle's own one."""
     bundle = json.loads(bundle_file.read_text(encoding="utf-8"))
     cve = next(cve for item in bundle["evidence"] for cve in item.get("cve_ids") or [])
+    product = f"pkg:generic/{bundle['application']['repository']}@{bundle['release']['release_id']}"
     source = tmp_path / "vendor.openvex.json"
     source.write_text(
         json.dumps(
@@ -199,6 +200,7 @@ def _conflicting_vex(tmp_path: Path, bundle_file: Path) -> Path:
                 "statements": [
                     {
                         "vulnerability": {"name": cve},
+                        "products": [{"@id": product}],
                         "status": "not_affected",
                         "justification": "vulnerable_code_not_present",
                     }

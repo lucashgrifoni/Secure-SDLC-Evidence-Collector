@@ -15,8 +15,7 @@ discriminating top-level keys:
   ``vulnerabilities[*].product_status`` (``known_affected`` /
   ``known_not_affected`` / ``fixed`` / ``under_investigation``).
 
-SPDX VEX is deferred (low industry adoption; tracked under v2.1
-backlog).
+SPDX VEX is deferred (low industry adoption) and not scheduled.
 
 Normalization rules (canonical OpenVEX vocabulary):
 
@@ -83,6 +82,10 @@ class VexStatement:
     detail: str | None = None
     source_shape: VexShape | None = None
     source_path: str | None = None
+    # Product identifiers the source statement names (purl, CPE, CycloneDX
+    # ref or CSAF product id). The merger applies a statement only to the
+    # release it names; an empty tuple means the source named no product.
+    products: tuple[str, ...] = ()
 
 
 def _detect_shape(data: dict[str, Any]) -> VexShape:
@@ -129,6 +132,63 @@ def _normalise_cve(value: Any) -> str | None:
     return None
 
 
+def _strings(values: Any) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    return [v.strip() for v in values if isinstance(v, str) and v.strip()]
+
+
+def _openvex_products(entry: dict[str, Any]) -> tuple[str, ...]:
+    products: list[str] = []
+    raw = entry.get("products")
+    for product in raw if isinstance(raw, list) else []:
+        if isinstance(product, str) and product.strip():
+            products.append(product.strip())
+        elif isinstance(product, dict):
+            ident = product.get("@id")
+            if isinstance(ident, str) and ident.strip():
+                products.append(ident.strip())
+            identifiers = product.get("identifiers")
+            if isinstance(identifiers, dict):
+                products.extend(
+                    v.strip() for v in identifiers.values() if isinstance(v, str) and v.strip()
+                )
+    return tuple(dict.fromkeys(products))
+
+
+def _csaf_identities(data: dict[str, Any]) -> dict[str, list[str]]:
+    """Map each CSAF product id to its purl / CPE from the product tree."""
+    identities: dict[str, list[str]] = {}
+
+    def visit(node: Any) -> None:
+        if isinstance(node, list):
+            for item in node:
+                visit(item)
+            return
+        if not isinstance(node, dict):
+            return
+        product = node.get("product")
+        candidates = [product] if isinstance(product, dict) else []
+        names = node.get("full_product_names")
+        if isinstance(names, list):
+            candidates.extend(n for n in names if isinstance(n, dict))
+        for candidate in candidates:
+            pid = candidate.get("product_id")
+            helper = candidate.get("product_identification_helper")
+            if isinstance(pid, str) and isinstance(helper, dict):
+                identities.setdefault(pid, []).extend(
+                    v.strip()
+                    for key in ("purl", "cpe")
+                    for v in [helper.get(key)]
+                    if isinstance(v, str) and v.strip()
+                )
+        visit(node.get("branches"))
+        visit(node.get("relationships"))
+
+    visit(data.get("product_tree"))
+    return identities
+
+
 def _parse_openvex(data: dict[str, Any]) -> list[VexStatement]:
     statements_raw = data.get("statements")
     if not isinstance(statements_raw, list):
@@ -158,6 +218,7 @@ def _parse_openvex(data: dict[str, Any]) -> list[VexStatement]:
                     if isinstance(entry.get("status_notes"), str)
                     else None
                 ),
+                products=_openvex_products(entry),
             )
         )
     return out
@@ -185,6 +246,12 @@ def _parse_cyclonedx_vex(data: dict[str, Any]) -> list[VexStatement]:
             continue
         justification_raw = analysis.get("justification")
         detail_raw = analysis.get("detail")
+        affects = vuln.get("affects")
+        refs = [
+            a["ref"].strip()
+            for a in (affects if isinstance(affects, list) else [])
+            if isinstance(a, dict) and isinstance(a.get("ref"), str) and a["ref"].strip()
+        ]
         out.append(
             VexStatement(
                 cve_id=cve_id,
@@ -193,6 +260,7 @@ def _parse_cyclonedx_vex(data: dict[str, Any]) -> list[VexStatement]:
                     str(justification_raw) if isinstance(justification_raw, str) else None
                 ),
                 detail=str(detail_raw) if isinstance(detail_raw, str) else None,
+                products=tuple(dict.fromkeys(refs)),
             )
         )
     return out
@@ -203,6 +271,7 @@ def _parse_csaf(data: dict[str, Any]) -> list[VexStatement]:
     if not isinstance(vulns, list):
         return []
     out: list[VexStatement] = []
+    identities = _csaf_identities(data)
     for vuln in vulns:
         if not isinstance(vuln, dict):
             continue
@@ -215,9 +284,11 @@ def _parse_csaf(data: dict[str, Any]) -> list[VexStatement]:
         # Pick the most specific bucket: known_affected wins over recommended
         # because we want the "affected" signal explicit when both apply.
         status: str | None = None
+        chosen_key: str | None = None
         for csaf_key, openvex_status in _CSAF_PRODUCT_STATUS_TO_OPENVEX.items():
             if csaf_key in product_status:
                 status = openvex_status
+                chosen_key = csaf_key
                 if openvex_status == "affected":
                     break
         if status is None:
@@ -232,12 +303,17 @@ def _parse_csaf(data: dict[str, Any]) -> list[VexStatement]:
                 t = first.get("details")
                 if isinstance(t, str):
                     detail = t
+        product_ids = _strings(product_status.get(chosen_key)) if chosen_key else []
+        products = list(product_ids)
+        for pid in product_ids:
+            products.extend(identities.get(pid, []))
         out.append(
             VexStatement(
                 cve_id=cve_id,
                 status=status,
                 justification=None,
                 detail=detail,
+                products=tuple(dict.fromkeys(products)),
             )
         )
     return out
