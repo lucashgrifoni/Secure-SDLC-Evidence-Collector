@@ -1,25 +1,44 @@
 {
-  "source": "https://raw.githubusercontent.com/FedRAMP/rules/1c33385a06acf4faf50da2b9b4dc31cd826e5b91/fedramp-consolidated-rules.json",
-  "commit": "1c33385a06acf4faf50da2b9b4dc31cd826e5b91",
-  "ruleset_version": "2026.10.05.01",
-  "source_sha256": "d8a1cd5513fb0e1ecebf2ad8a74259c4b74900e8f7b4b429d6d6741bf9fe555f",
+  "source": "https://raw.githubusercontent.com/FedRAMP/rules/a89d78477ddea98dc57eca24f5007794c2b4eeb6/fedramp-consolidated-rules.json",
+  "commit": "a89d78477ddea98dc57eca24f5007794c2b4eeb6",
+  "ruleset_version": "2026.10.13.01",
+  "source_sha256": "fb48d677a85d77fb72735a325de2c1945a1e0ceab1d2e655292fe9ebe3e4e0b4",
   "mapping_authority": "project_interpretation",
   "assessment": "partial_supporting_evidence",
   "selected_indicators": {
     "KSI-SCR-MIT": {
       "source_controls": [
+        "ac-19",
         "ac-20",
+        "ca-7.4",
+        "ra-3",
         "ra-3.1",
-        "sa-9",
         "sa-10",
         "sa-11",
+        "sa-11.1",
+        "sa-11.2",
+        "sa-15",
         "sa-15.3",
+        "sa-16",
+        "sa-17",
+        "sa-21",
         "sa-22",
+        "sa-4",
+        "sa-4.1",
+        "sa-4.2",
+        "sa-4.5",
+        "sa-4.9",
+        "sa-9",
+        "sa-9.1",
+        "sa-9.2",
+        "sa-9.5",
+        "sc-18",
         "si-7.1",
+        "si-7.15",
+        "sr-2",
+        "sr-3",
         "sr-5",
-        "sr-6",
-        "ca-7.4",
-        "sc-18"
+        "sr-6"
       ],
       "required_evidence_types": [
         "sbom",
@@ -31,13 +50,17 @@
     },
     "KSI-SCR-MON": {
       "source_controls": [
+        "ac-19",
         "ac-20",
+        "ca-2.3",
         "ca-3",
         "ir-6.3",
         "ps-7",
+        "ra-3",
         "ra-5",
         "sa-9",
         "si-5",
+        "sr-3",
         "sr-5",
         "sr-6",
         "sr-8"
@@ -54,6 +77,8 @@
         "cm-3",
         "cm-3.2",
         "cm-4.2",
+        "cm-6.2",
+        "ir-9.4",
         "si-2"
       ],
       "required_evidence_types": [
@@ -68,12 +93,14 @@
         "ac-5",
         "au-3.3",
         "cm-3.4",
+        "ia-5.7",
         "pl-8",
         "pm-7",
+        "ra-9",
         "sa-3",
         "sa-8",
-        "sc-4",
         "sc-18",
+        "sc-4",
         "si-10",
         "si-11",
         "si-16"
@@ -88,6 +115,7 @@
     },
     "KSI-RPL-TRC": {
       "source_controls": [
+        "cp-10",
         "cp-2.1",
         "cp-2.3",
         "cp-4",
@@ -95,9 +123,10 @@
         "cp-6",
         "cp-6.1",
         "cp-9.1",
-        "cp-10",
         "ir-3",
-        "ir-3.2"
+        "ir-3.2",
+        "ir-9.3",
+        "sc-12.1"
       ],
       "required_evidence_types": [
         "rollback_plan"
@@ -108,13 +137,20 @@
     },
     "KSI-SVC-VRI": {
       "source_controls": [
+        "ac-17.4",
+        "ac-18",
+        "ac-19",
+        "au-9.3",
+        "cm-14",
         "cm-2.2",
         "cm-8.3",
         "sc-13",
         "sc-23",
         "si-7",
         "si-7.1",
-        "sr-10"
+        "si-7.15",
+        "sr-10",
+        "sr-11"
       ],
       "required_evidence_types": [
         "artifact_signature"

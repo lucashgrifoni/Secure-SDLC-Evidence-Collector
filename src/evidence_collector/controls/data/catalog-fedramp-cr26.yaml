@@ -9,7 +9,7 @@ controls:
   description: 'Partial, project-defined release evidence mapping to FedRAMP CR26 KSI-SCR-MIT. Presence
     of these records cannot establish persistent measures, automation, cryptographic verification,
     independent assessment, or authorization. Review relevance, scope, frequency, and effectiveness
-    separately. Source: FedRAMP/rules 2026.10.05.01, commit 1c33385a06acf4faf50da2b9b4dc31cd826e5b91.'
+    separately. Source: FedRAMP/rules 2026.10.13.01, commit a89d78477ddea98dc57eca24f5007794c2b4eeb6.'
   criticality: high
   required_evidence_types:
   - sbom
@@ -22,7 +22,7 @@ controls:
   description: 'Partial, project-defined release evidence mapping to FedRAMP CR26 KSI-SCR-MON. Presence
     of these records cannot establish persistent measures, automation, cryptographic verification,
     independent assessment, or authorization. Review relevance, scope, frequency, and effectiveness
-    separately. Source: FedRAMP/rules 2026.10.05.01, commit 1c33385a06acf4faf50da2b9b4dc31cd826e5b91.'
+    separately. Source: FedRAMP/rules 2026.10.13.01, commit a89d78477ddea98dc57eca24f5007794c2b4eeb6.'
   criticality: high
   required_evidence_types:
   - sca_scan
@@ -34,7 +34,7 @@ controls:
   description: 'Partial, project-defined release evidence mapping to FedRAMP CR26 KSI-CMT-VTD. Presence
     of these records cannot establish persistent measures, automation, cryptographic verification,
     independent assessment, or authorization. Review relevance, scope, frequency, and effectiveness
-    separately. Source: FedRAMP/rules 2026.10.05.01, commit 1c33385a06acf4faf50da2b9b4dc31cd826e5b91.'
+    separately. Source: FedRAMP/rules 2026.10.13.01, commit a89d78477ddea98dc57eca24f5007794c2b4eeb6.'
   criticality: high
   required_evidence_types:
   - test_result
@@ -46,7 +46,7 @@ controls:
   description: 'Partial, project-defined release evidence mapping to FedRAMP CR26 KSI-PIY-RSD. Presence
     of these records cannot establish persistent measures, automation, cryptographic verification,
     independent assessment, or authorization. Review relevance, scope, frequency, and effectiveness
-    separately. Source: FedRAMP/rules 2026.10.05.01, commit 1c33385a06acf4faf50da2b9b4dc31cd826e5b91.'
+    separately. Source: FedRAMP/rules 2026.10.13.01, commit a89d78477ddea98dc57eca24f5007794c2b4eeb6.'
   criticality: high
   required_evidence_types:
   - threat_model
@@ -60,7 +60,7 @@ controls:
     requires persistent testing of recovery against defined recovery objectives. Manual review required:
     no collected evidence type establishes that. A rollback plan is partial support only, and a generic
     test result is not counted. The control is met only by a generic_attestation that a reviewer supplies
-    for a recovery exercise. Source: FedRAMP/rules 2026.10.05.01, commit 1c33385a06acf4faf50da2b9b4dc31cd826e5b91.'
+    for a recovery exercise. Source: FedRAMP/rules 2026.10.13.01, commit a89d78477ddea98dc57eca24f5007794c2b4eeb6.'
   criticality: high
   required_evidence_types:
   - rollback_plan
@@ -72,7 +72,7 @@ controls:
   description: 'Partial, project-defined release evidence mapping to FedRAMP CR26 KSI-SVC-VRI. Presence
     of these records cannot establish persistent measures, automation, cryptographic verification,
     independent assessment, or authorization. Review relevance, scope, frequency, and effectiveness
-    separately. Source: FedRAMP/rules 2026.10.05.01, commit 1c33385a06acf4faf50da2b9b4dc31cd826e5b91.'
+    separately. Source: FedRAMP/rules 2026.10.13.01, commit a89d78477ddea98dc57eca24f5007794c2b4eeb6.'
   criticality: high
   required_evidence_types:
   - artifact_signature

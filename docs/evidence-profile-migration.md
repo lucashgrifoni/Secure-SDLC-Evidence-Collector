@@ -135,10 +135,28 @@ Month-end dates clamp to the last valid day. `evidence[].metadata.cra.article` c
 `14(2)` for a vulnerability context, `14(4)` for an incident context and
 `14(2),14(4)` when no context is supplied.
 
+Open-source software stewards set `"operator_role": "open_source_steward"` in
+the context. Article 24(3) applies Article 14(1) to stewards, and Article 14(3)
+and (8) only for severe incidents that affect network and information systems
+the steward provides for development. Article 24 applies with the rest of the
+Regulation from 11 December 2027 (Article 71(2)). A steward context therefore
+records `reporting_obligation_start` `2027-12-11`, records awareness before
+that date as `not_applicable`, cites `24(3) applying 14(1)` or
+`24(3) applying 14(3),14(8)`, and adds `incident_scope`
+`steward_provided_development_systems` to an incident context. The deadline
+windows are computed as for a manufacturer; `legal_applicability` stays
+`not_assessed`. `"operator_role": "manufacturer"` keeps the manufacturer
+dates. The role is recorded as `operator_role`, and included in
+`canonical_context_sha256`, only when the context sets it: a context without
+it produces the same metadata and digest as before the field existed.
+
 KEV and EPSS do not establish exploitation in this product, manufacturer
 awareness or legal applicability; those states remain `not_assessed`.
-Completeness uses ENISA SRP glossary 1.4, dated 1 October 2026, and records
-required field IDs by stage. Optional field `40` (AR Note) is accepted; field
+Completeness uses ENISA SRP glossary 1.5, last updated 15 October 2026, and
+records required field IDs by stage. Collector 4.0.0 to 4.2.0 recorded
+glossary 1.4, dated 1 October 2026; 1.5 kept the same field IDs and the same
+required fields per stage, so only `srp_glossary_version` and
+`srp_glossary_date` change. Optional field `40` (AR Note) is accepted; field
 `41` (CSIRT Note) is written by the CSIRT and is rejected. Narrative adequacy and operator timestamps need
 human review. Context is hashed; supplied narratives are not repeated per
 evidence. This is release context, not a per-CVE case or SRP submission payload.
@@ -167,10 +185,19 @@ The GitHub Action and reusable workflow accept optional `cra-context` and
 ## FedRAMP and framework references
 
 `run --profile fedramp-20x --fedramp-class A` records operator-selected class
-A–D (any case) and CR26 version 2026.10.05.01 at commit
-`1c33385a06acf4faf50da2b9b4dc31cd826e5b91`. No automatic class or 10-year
+A–D (any case) and CR26 version 2026.10.13.01 at commit
+`a89d78477ddea98dc57eca24f5007794c2b4eeb6`. Collector 4.0.0 to 4.2.0 recorded
+2026.10.05.01 at `1c33385a06acf4faf50da2b9b4dc31cd826e5b91`; the newer
+revision changed only the SP 800-53 references of the six catalog KSIs, not
+their statements. No automatic class or 10-year
 retention rule is imposed. The class is metadata only: it does not change
 which controls are evaluated or the verdict.
+
+Class D also prints a warning, on the console and as a JSON log event:
+[fedramp.gov/20x](https://www.fedramp.gov/20x/) states that the full 20x rules
+are finalized for Class A, B and C, and that Class D certifications will be
+developed during 20x Phase 4. CR26 itself defines Class D, so the bundle still
+records the class, with no added key.
 
 Opt-in `catalog-fedramp-cr26.yaml` requests supporting evidence for six actual
 KSI IDs. It does not verify persistent monitoring, validated automation,
@@ -254,8 +281,10 @@ triggering commit.
 
 - [CISA/ASD 2026 SBOM elements](https://www.cyber.gov.au/publication/2026-minimum-elements-for-a-software-bill-of-materials-sbom)
 - [G7 SBOM for AI](https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/KI/SBOM-for-AI_minimum-elements.pdf?__blob=publicationFile&v=4)
-- [CRA Article 14](https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32024R2847)
-- [ENISA SRP 1.4](https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2)
-- [Pinned FedRAMP CR26](https://github.com/FedRAMP/rules/blob/1c33385a06acf4faf50da2b9b4dc31cd826e5b91/fedramp-consolidated-rules.json)
+- [CRA Articles 14, 24 and 71](https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32024R2847)
+- [Commission: CRA reporting obligations](https://digital-strategy.ec.europa.eu/en/policies/cra-reporting)
+- [ENISA SRP 1.5](https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2)
+- [Pinned FedRAMP CR26](https://github.com/FedRAMP/rules/blob/a89d78477ddea98dc57eca24f5007794c2b4eeb6/fedramp-consolidated-rules.json)
+- [FedRAMP 20x classes](https://www.fedramp.gov/20x/)
 - [NIST SP 800-218A](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-218A.pdf)
 - [Preserved CSF references](adr/0014-csf-2-crosswalk-for-built-in-catalogs.md)

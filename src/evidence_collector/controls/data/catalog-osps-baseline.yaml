@@ -1,9 +1,22 @@
 # OpenSSF OSPS Baseline catalog — OPT-IN, preview.
 #
 # Status: preview. Maps the *evidence-attestable subset* of the OpenSSF
-# Open Source Project Security (OSPS) Baseline (v2025-02-25,
-# https://baseline.openssf.org/) to the collector's canonical evidence
-# types. The Baseline's full control set also covers repository
+# Open Source Project Security (OSPS) Baseline v2026.08.28, the version
+# https://baseline.openssf.org/ labels current (checked 2026-10-16), to the
+# collector's canonical evidence types.
+#
+# Source: ossf/security-baseline tag v2026.08.28, commit
+# a26a7963f6fd098c1e82829322ec9e1196a4f294. SHA-256 of the control files
+# read at that commit:
+#   baseline/OSPS-BR.yaml b4517ddec4b3beffc3f0858e2233c9619a8d76d0f1ed39a3f1e93414a6109ef7
+#   baseline/OSPS-QA.yaml 45cb66e92cb50711f2f3d9ef45c2fc39b815bca09b7a8b468adc300309f21940
+#   baseline/OSPS-SA.yaml fd3dc78e6b8784868ad52c3cd42eb856fe6289dc01b61ad562b091cb268a18df
+#   baseline/OSPS-VM.yaml a78fd8a665689ff804a5eecdb77e2925f834c97b723aec9b8f42aa77f789f9d5
+# Changes since v2025.02.25 that touch this subset: VM-05.03 and VM-06.02
+# lost the "While active" qualifier, and QA-07.01 now requires a non-author
+# *human* approval. No control used here was renumbered or removed.
+#
+# The Baseline's full control set also covers repository
 # configuration, governance, and documentation that automated release
 # evidence cannot attest (e.g. MFA, branch-protection settings, LICENSE
 # presence); those criteria are deliberately omitted here — overlay your
@@ -16,7 +29,11 @@
 # --------------
 # Include an OSPS criterion only when at least one canonical evidence
 # type (test_result, workflow_run, code_review/pr_metadata, sast_scan,
-# sca_scan, sbom, artifact_signature/artifact_attestation) satisfies it.
+# sca_scan, sbom, artifact_signature/artifact_attestation, threat_model)
+# satisfies it. SA-03.02 and BR-02.01, added with the v2026.08.28 re-pin,
+# carry recommended evidence only: a gap makes a release ``conditional``,
+# never ``not_ready``. VM-04.02 (VEX documents) and DO-05.01 (end of
+# security updates) need evidence the collector does not read yet.
 #
 # Use:
 #     sdlc-evidence run --catalog <path-to-this-file>
@@ -89,11 +106,14 @@ controls:
 
   - control_id: "OSPS-QA-07.01"
     framework: "NIST_SSDF"
-    name: "OSPS Baseline QA-07.01: non-author review before merge"
+    name: "OSPS Baseline QA-07.01: non-author human review before merge"
     description: >-
       OSPS Baseline QA-07.01 — the version control system must require at
-      least one non-author approval of changes before merging. Satisfied by
-      code-review / PR-approval evidence. Maps onward to NIST SSDF PW.7.
+      least one non-author human approval of changes before merging.
+      Satisfied by code-review / PR-approval evidence. That evidence counts
+      approvals by reviewer login and does not tell a bot account from a
+      person, so confirm that at least one approver is human. Maps onward to
+      NIST SSDF PW.7.
       NIST CSF 2.0 informative references for SSDF 1.1 PW.7: none listed. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["code_review"]
@@ -110,3 +130,34 @@ controls:
     criticality: "medium"
     required_evidence_types: ["workflow_run"]
     recommended_evidence_types: []
+
+  # Added with the v2026.08.28 re-pin; recommended evidence only.
+  - control_id: "OSPS-SA-03.02"
+    framework: "NIST_SSDF"
+    name: "OSPS Baseline SA-03.02: threat model and attack surface analysis"
+    description: >-
+      OSPS Baseline SA-03.02 (maturity level 3) — when the project has made a
+      release, it must perform a threat modeling and attack surface analysis
+      to protect against attacks on critical code paths, functions and
+      interactions. A recorded threat model is the recommended evidence; its
+      adequacy needs review. Maps onward to NIST SSDF PW.1.
+      NIST CSF 2.0 informative references for SSDF 1.1 PW.1: ID.RA-05. Snapshot 2026-09-24, SHA-256 7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0. See ADR-0014; references support traceability, not compliance.
+    criticality: "low"
+    required_evidence_types: []
+    recommended_evidence_types: ["threat_model"]
+
+  # Added with the v2026.08.28 re-pin; recommended evidence only.
+  - control_id: "OSPS-BR-02.01"
+    framework: "NIST_SSDF"
+    name: "OSPS Baseline BR-02.01: release has a unique version identifier"
+    description: >-
+      OSPS Baseline BR-02.01 (maturity levels 2 and 3) — when an official
+      release is created, it must be assigned a unique version identifier.
+      An in-toto release attestation records the released package URL,
+      which carries the version, and is read as artifact_attestation, the
+      recommended evidence. Controls match by evidence type, so any artifact
+      attestation counts here; confirm that the identifier is unique. OSPS
+      lists no NIST SSDF relation for this control.
+    criticality: "low"
+    required_evidence_types: []
+    recommended_evidence_types: ["artifact_attestation"]

@@ -38,3 +38,46 @@ def test_osps_baseline_maps_controls_to_expected_evidence() -> None:
     assert EvidenceType.TEST_RESULT in controls["OSPS-QA-06.01"].required_evidence_types
     assert EvidenceType.CODE_REVIEW in controls["OSPS-QA-07.01"].required_evidence_types
     assert EvidenceType.WORKFLOW_RUN in controls["OSPS-QA-03.01"].required_evidence_types
+
+
+def test_osps_baseline_catalog_pins_the_current_upstream_release() -> None:
+    """v2026.08.28 is the release baseline.openssf.org labels current.
+
+    The catalog cited v2025-02-25, three releases behind, in a hyphenated
+    form upstream does not use. The pin names the tag and its commit so the
+    exact source text can be fetched again.
+    """
+    text = bundled_catalog_path("catalog-osps-baseline.yaml").read_text(encoding="utf-8")
+    assert "v2026.08.28" in text
+    assert "a26a7963f6fd098c1e82829322ec9e1196a4f294" in text
+    assert "v2025-02-25" not in text
+
+
+def test_osps_qa_07_01_names_a_human_approval_and_its_limit() -> None:
+    """v2026.08.28 requires a non-author *human* approval.
+
+    Code-review evidence counts approvals by reviewer login and cannot tell a
+    bot account from a person, so the description says what is left to review.
+    """
+    controls = {
+        c.control_id: c for c in load_catalog(bundled_catalog_path("catalog-osps-baseline.yaml"))
+    }
+    description = controls["OSPS-QA-07.01"].description
+    assert "non-author human approval" in description
+    assert "bot" in description
+
+
+def test_osps_baseline_adds_attestable_controls_as_recommended_only() -> None:
+    controls = {
+        c.control_id: c for c in load_catalog(bundled_catalog_path("catalog-osps-baseline.yaml"))
+    }
+    threat_model = controls["OSPS-SA-03.02"]
+    assert threat_model.required_evidence_types == []
+    assert threat_model.recommended_evidence_types == [EvidenceType.THREAT_MODEL]
+    version_id = controls["OSPS-BR-02.01"]
+    assert version_id.required_evidence_types == []
+    assert version_id.recommended_evidence_types == [EvidenceType.ARTIFACT_ATTESTATION]
+    # VM-04.02 needs VEX documents as evidence and DO-05.01 an end-of-support
+    # statement; neither is an evidence type the collector reads yet.
+    assert "OSPS-VM-04.02" not in controls
+    assert "OSPS-DO-05.01" not in controls

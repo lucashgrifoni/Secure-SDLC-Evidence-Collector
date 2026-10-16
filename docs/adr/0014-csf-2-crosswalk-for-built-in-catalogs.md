@@ -45,6 +45,11 @@ Update 2026-10-07: ADR 0015 implements the descriptions alongside the intentiona
 CISA 2026 digest change. The source snapshot below remains the authority for
 SSDF 1.1 references; it is not an AI-specific crosswalk.
 
+Update 2026-10-16: `catalog-ssdf-1.2.yaml` adds `SSDF-PS.4` and `SSDF-PO.6`
+from the SSDF 1.2 draft, and `catalog-osps-baseline.yaml`, re-pinned to OSPS
+Baseline v2026.08.28, adds `OSPS-SA-03.02` and `OSPS-BR-02.01`. Their rows are
+in the table below; the SSDF 1.1 snapshot is unchanged.
+
 Record the crosswalk in this ADR, using only relationships NIST itself lists.
 Where NIST lists no CSF 2.0 reference for an SSDF task, the table says so
 rather than filling the gap with a judgment call.
@@ -80,11 +85,15 @@ Controls, per catalog:
 | | `SSDF-PW.1` | PW.1 | ID.RA-05 |
 | | `SSDF-PW.4` | PW.4 | GV.SC-03, GV.SC-07, ID.AM-08 |
 | | `SSDF-PW.6` (1.2 catalog only), `SSDF-PW.7`, `SSDF-PW.8` | PW.6, PW.7, PW.8 | none listed |
+| | `SSDF-PS.4` (1.2 catalog only) | PS.4 (SSDF 1.2 draft) | none listed in the draft |
+| | `SSDF-PO.6` (1.2 catalog only) | PO.6 (SSDF 1.2 draft) | ID.IM (category, from the draft) |
 | | `ORG-*`, `SAMM-*` | none | no NIST reference; `SAMM-DESIGN-TA-1` complements `SSDF-PW.1` by its own description, which is not a NIST mapping |
 | `catalog-osps-baseline.yaml` | `OSPS-QA-02.02` | PS.3 | PR.DS-01, PR.DS-11 |
 | | `OSPS-BR-06.01` | PS.2 | PR.DS-01 |
 | | `OSPS-VM-05.03` | PW.4 | GV.SC-03, GV.SC-07, ID.AM-08 |
 | | `OSPS-VM-06.02`, `OSPS-QA-06.01`, `OSPS-QA-07.01`, `OSPS-QA-03.01` | PW.7, PW.8, RV.1 | none listed |
+| | `OSPS-SA-03.02` | PW.1 | ID.RA-05 |
+| | `OSPS-BR-02.01` | none: OSPS lists no SSDF relation | no NIST reference |
 | `catalog-ai.yaml` | `AI-SBOM` | PS.3 | PR.DS-01, PR.DS-11 |
 | | `AI-SCA` | PW.4 | GV.SC-03, GV.SC-07, ID.AM-08 |
 | | `AI-SAST` | PW.7 | none listed |

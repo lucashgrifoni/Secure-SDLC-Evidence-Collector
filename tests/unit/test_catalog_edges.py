@@ -61,7 +61,11 @@ def test_bundled_ssdf_12_catalog_loads_cleanly() -> None:
 
 
 def test_ssdf_12_catalog_promotes_attestation_to_required_on_ps3() -> None:
-    """SSDF 1.2 refinement: PS.3 requires SBOM *and* artifact_attestation."""
+    """Project policy, stricter than NIST: PS.3 requires SBOM *and* artifact_attestation.
+
+    The SSDF 1.2 initial public draft does not change PS.3. The stricter rule
+    is kept and labelled as this project's policy in the control description.
+    """
     path = bundled_catalog_path("catalog-ssdf-1.2.yaml")
     controls = {c.control_id: c for c in load_catalog(path)}
     ps3 = controls["SSDF-PS.3"]
@@ -70,11 +74,78 @@ def test_ssdf_12_catalog_promotes_attestation_to_required_on_ps3() -> None:
 
 
 def test_ssdf_12_catalog_adds_pw6_control() -> None:
-    """SSDF 1.2 introduces PW.6 (build-process security)."""
+    """PW.6 exists since SSDF 1.1; only this opt-in catalog evaluates it."""
     path = bundled_catalog_path("catalog-ssdf-1.2.yaml")
     controls = {c.control_id: c for c in load_catalog(path)}
     assert "SSDF-PW.6" in controls
     assert EvidenceType.ARTIFACT_ATTESTATION in controls["SSDF-PW.6"].required_evidence_types
+
+
+def test_ssdf_12_catalog_cites_what_the_initial_public_draft_changes() -> None:
+    """The SP 800-218r1 ipd change log adds PO.6 and PS.4; PS.3 and PW.6 are unchanged.
+
+    The catalog used to say "SSDF 1.2 strengthens PS.3" and that PW.6 was new
+    in 1.2. Neither statement is in the draft, so an auditor reading the
+    rationale saw claims attributed to NIST that NIST did not make.
+    """
+    path = bundled_catalog_path("catalog-ssdf-1.2.yaml")
+    text = path.read_text(encoding="utf-8")
+    assert "initial public draft" in text
+    assert "2025-12-17" in text
+    assert "draft direction" not in text
+    assert "SSDF 1.2 strengthens" not in text
+    controls = {c.control_id: c for c in load_catalog(path)}
+    assert "project policy" in controls["SSDF-PS.3"].description.lower()
+    assert "unchanged" in controls["SSDF-PW.6"].description.lower()
+
+
+def test_ssdf_12_catalog_adds_the_draft_practices_as_recommended_only() -> None:
+    """PS.4 and PO.6 enter as recommended evidence: a gap is never blocking."""
+    path = bundled_catalog_path("catalog-ssdf-1.2.yaml")
+    controls = {c.control_id: c for c in load_catalog(path)}
+    ps4, po6 = controls["SSDF-PS.4"], controls["SSDF-PO.6"]
+    assert ps4.required_evidence_types == []
+    assert ps4.recommended_evidence_types == [
+        EvidenceType.TEST_RESULT,
+        EvidenceType.ROLLBACK_PLAN,
+    ]
+    assert "PS.4.1" in ps4.description and "PS.4.3" in ps4.description
+    assert "manual review" in ps4.description.lower()
+    assert po6.required_evidence_types == []
+    assert po6.recommended_evidence_types == [EvidenceType.GENERIC_ATTESTATION]
+    assert "ID.IM" in po6.description
+
+
+def test_draft_practice_gaps_make_a_release_conditional_never_not_ready() -> None:
+    """With every required type present, the new practices alone cannot block."""
+    from evidence_collector.controls.engine import evaluate_controls
+    from evidence_collector.scoring.engine import build_summary
+    from tests.unit.test_profiles_and_guac import _evidence
+
+    path = bundled_catalog_path("catalog-ssdf-1.2.yaml")
+    controls = load_catalog(path)
+    required = {t for c in controls for t in c.required_evidence_types}
+    recommended_old = {
+        t
+        for c in controls
+        if c.control_id not in {"SSDF-PS.4", "SSDF-PO.6"}
+        for t in c.recommended_evidence_types
+    }
+    evidence = [
+        _evidence(evidence_type=t, evidence_id=f"ev-{t.value}")
+        for t in sorted(required | recommended_old, key=lambda t: t.value)
+        if t not in {EvidenceType.TEST_RESULT, EvidenceType.ROLLBACK_PLAN}
+    ]
+    evidence += [
+        _evidence(evidence_type=EvidenceType.TEST_RESULT, evidence_id="ev-test"),
+        _evidence(evidence_type=EvidenceType.ROLLBACK_PLAN, evidence_id="ev-rollback"),
+    ]
+    evaluations, gaps = evaluate_controls(controls, evidence)
+    status = {e.control_id: e.evaluation_status.value for e in evaluations}
+    assert status["SSDF-PS.4"] == "met"
+    assert status["SSDF-PO.6"] == "partial"
+    assert all(g.criticality.value == "low" for g in gaps if g.control_id == "SSDF-PO.6")
+    assert build_summary(controls, evaluations, gaps).release_status.value == "conditional"
 
 
 def test_bundled_catalog_path_raises_for_missing_file() -> None:

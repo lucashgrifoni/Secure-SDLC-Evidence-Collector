@@ -1,9 +1,11 @@
 # NIST SSDF 1.2 (SP 800-218 Rev. 1) catalog — OPT-IN, preview.
 #
-# Status: preview, based on NIST SP 800-218 Rev. 1 draft direction.
-# Default ``catalog.yaml`` still encodes SSDF 1.1 because Rev. 1 is not
-# final at the time this file ships. Pipelines that want to evaluate
-# against the 1.2 expectations select this catalog via:
+# Status: preview, based on the initial public draft of NIST SP 800-218r1
+# (SSDF version 1.2), published 2025-12-17. Its comment period closed on
+# 2026-01-30 and no final version had been issued as of 2026-10-16
+# (https://csrc.nist.gov/pubs/sp/800/218/r1/ipd). Default ``catalog.yaml``
+# still encodes SSDF 1.1. Pipelines that want to evaluate against the 1.2
+# draft select this catalog via:
 #
 #     sdlc-evidence run --catalog <path-to-this-file>
 #
@@ -13,18 +15,26 @@
 #     path = files("evidence_collector.controls.data") / "catalog-ssdf-1.2.yaml"
 #     sdlc-evidence run --catalog "$path"
 #
+# What the draft changes (its Appendix B change log): it adds two
+# practices, PO.6 (continuous process improvement) and PS.4 (robust and
+# reliable updates), rewords tasks RV.1.2 and RV.3.3, and edits examples
+# and references. It does not change the PS.3 or PW.6 practices or tasks.
+#
 # Diff vs default 1.1 catalog
 # --------------------------
-# * ``SSDF-PS.3`` — promotes ``artifact_attestation`` from
-#   ``recommended_evidence_types`` to ``required_evidence_types``.
-#   Rationale: SSDF 1.2 strengthens the build-provenance expectation so
-#   an SBOM alone is no longer sufficient; the release must also carry
-#   a verifiable build attestation (SLSA, in-toto, Sigstore).
-# * ``SSDF-PW.6`` — NEW control (not present in 1.1 catalog).
-#   Maps to NIST SSDF 1.2 PW.6 "Configure the Compilation, Interpreter,
-#   and Build Processes to Improve Executable Security". Required
-#   evidence: ``artifact_attestation`` (build-process attestation).
-#   Recommended: ``test_result`` (build-hardening tests).
+# * ``SSDF-PS.3`` — project policy, stricter than SSDF: promotes
+#   ``artifact_attestation`` from ``recommended_evidence_types`` to
+#   ``required_evidence_types``, so an SBOM alone does not meet PS.3 here.
+#   NIST does not require this; the 1.2 draft leaves PS.3 as in 1.1.
+# * ``SSDF-PW.6`` — added. PW.6 "Configure the Compilation, Interpreter,
+#   and Build Processes to Improve Executable Security" is an SSDF 1.1
+#   practice, unchanged in the draft, that the default catalog does not
+#   evaluate. Required evidence: ``artifact_attestation`` (build-process
+#   attestation). Recommended: ``test_result`` (build-hardening tests).
+# * ``SSDF-PS.4`` and ``SSDF-PO.6`` — added from the draft with
+#   recommended evidence only. A missing recommended type makes a control
+#   partial with a low-criticality gap: a ``ready`` verdict becomes
+#   ``conditional``, never ``not_ready``.
 #
 # Every other control is copied verbatim from the 1.1 catalog so a
 # pipeline switching from 1.1 to 1.2 sees only additive expectations.
@@ -61,14 +71,16 @@ controls:
     required_evidence_types: ["secrets_scan"]
     recommended_evidence_types: []
 
-  # SSDF 1.2 refinement: artifact_attestation is now required.
+  # Project policy: artifact_attestation is required here, not by NIST.
   - control_id: "SSDF-PS.3"
     framework: "NIST_SSDF"
     name: "Archive and protect each software release (SBOM + attestation)"
     description: >-
-      SSDF 1.2 strengthens PS.3: the release must carry both a Software Bill
-      of Materials AND a verifiable build attestation (SLSA / in-toto /
-      Sigstore). An SBOM alone is no longer sufficient.
+      Project policy, stricter than SSDF: the release must carry both a
+      Software Bill of Materials and a verifiable build attestation (SLSA /
+      in-toto / Sigstore), so an SBOM alone does not meet this control. The
+      SSDF 1.2 initial public draft leaves PS.3 as in SSDF 1.1; the
+      attestation requirement is this catalog's choice, not NIST's.
       NIST CSF 2.0 informative references for SSDF 1.1 PS.3: PR.DS-01, PR.DS-11. Snapshot 2026-09-24, SHA-256 7a34c3ab5e500b380327bb2f9cc8a8ca46fe2bc058ad30d963efc793950995b0. See ADR-0014; references support traceability, not compliance.
     criticality: "critical"
     required_evidence_types: ["sbom", "artifact_attestation"]
@@ -106,19 +118,56 @@ controls:
     required_evidence_types: ["threat_model"]
     recommended_evidence_types: []
 
-  # SSDF 1.2 NEW control compared to 1.1 catalog.
+  # Not in the default 1.1 catalog, although PW.6 is an SSDF 1.1 practice.
   - control_id: "SSDF-PW.6"
     framework: "NIST_SSDF"
     name: "Configure compilation, interpreter, and build processes for security"
     description: >-
-      SSDF 1.2 PW.6: the build process itself must be configured to improve
+      SSDF PW.6: the build process itself must be configured to improve
       executable security (hardened compiler flags, reproducible builds,
-      controlled toolchain). The release must carry an attestation of the
-      build process and ideally test evidence that the hardening is in place.
+      controlled toolchain). PW.6 is an SSDF 1.1 practice, unchanged in the
+      1.2 initial public draft, that the default catalog does not evaluate.
+      The release must carry an attestation of the build process and ideally
+      test evidence that the hardening is in place.
       NIST CSF 2.0 informative references for SSDF 1.1 PW.6: none listed. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["artifact_attestation"]
     recommended_evidence_types: ["test_result"]
+
+  # From the SSDF 1.2 initial public draft; recommended evidence only.
+  - control_id: "SSDF-PS.4"
+    framework: "NIST_SSDF"
+    name: "Ensure software updates are robust and reliable (SSDF 1.2 draft)"
+    description: >-
+      SSDF 1.2 initial public draft PS.4, "Ensure Software Updates Are Robust
+      and Reliable". Recorded test results support PS.4.1 (thoroughly test
+      all releases) and a rollback plan supports PS.4.3 (include robust
+      rollback mechanisms for updates). Both are recommended evidence, so a
+      gap never blocks a release. PS.4.2 (tiered update and release
+      strategies) and PS.4.4 (update engines and delivery infrastructure)
+      need manual review. The draft lists no NIST CSF 2.0 reference for PS.4.
+      Draft content: it changes if the final SSDF 1.2 changes it.
+    criticality: "low"
+    required_evidence_types: []
+    recommended_evidence_types: ["test_result", "rollback_plan"]
+
+  # From the SSDF 1.2 initial public draft; recommended evidence only.
+  - control_id: "SSDF-PO.6"
+    framework: "NIST_SSDF"
+    name: "Define and implement a continuous process improvement plan (SSDF 1.2 draft)"
+    description: >-
+      SSDF 1.2 initial public draft PO.6, "Define and Implement a Continuous
+      Process Improvement Plan": PO.6.1 update development environments for
+      new threats and tools, PO.6.2 identify new processes, tools and
+      techniques that avoid software errors, PO.6.3 improve vulnerability
+      response and review prior decisions. Release evidence cannot show an
+      improvement process, so a reviewer-supplied generic attestation is the
+      recommended record and a gap never blocks a release. The draft cites
+      NIST CSF 2.0 ID.IM (category level) for PO.6.1 to PO.6.3; see ADR-0014.
+      Draft content: it changes if the final SSDF 1.2 changes it.
+    criticality: "low"
+    required_evidence_types: []
+    recommended_evidence_types: ["generic_attestation"]
 
   - control_id: "ORG-RELEASE-APPROVAL"
     framework: "ORG_INTERNAL"

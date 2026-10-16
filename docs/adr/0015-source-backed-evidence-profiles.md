@@ -54,3 +54,10 @@ The typed bundle schema stays at 2.1.0; catalog and metadata hashes change.
 compatibility, clocks, manual review boundaries, concurrency recovery and sources.
 [CR26 provenance](data/0015-fedramp-cr26-provenance.json) records the official
 rules version, commit and selected KSI/SP 800-53 references.
+
+Update 2026-10-16: re-pinned to CR26 2026.10.13.01 (commit `a89d7847`). That
+revision changed only the SP 800-53 references and change history of the six
+selected KSIs; their statements are unchanged, so the evidence mapping is too.
+The provenance file now records the new revision. The SRP field stages above
+were checked against ENISA glossary 1.5 (15 October 2026), which kept the 1.4
+field ids and per-stage requirements.
