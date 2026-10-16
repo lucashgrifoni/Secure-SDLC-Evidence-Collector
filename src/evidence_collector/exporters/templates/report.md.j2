@@ -51,7 +51,7 @@ in `bundle.json`.
 {% endif %}
 {% if bundle.summary.risk_assessment %}
 {% set risk = bundle.summary.risk_assessment %}
-- **Risk-weighted verdict (`{{ risk.mode | md_code }}`):** presence-based `{{ risk.base_release_status.value }}` → `{{ bundle.summary.release_status.value }}`. {{ risk.rationale | md }}
+- **Risk-weighted verdict (`{{ risk.mode | md_code }}`):** presence-based verdict `{{ risk.base_release_status.value }}`. {{ risk.rationale | md }}
 {% endif %}
 {% if bundle.collection_errors %}
 

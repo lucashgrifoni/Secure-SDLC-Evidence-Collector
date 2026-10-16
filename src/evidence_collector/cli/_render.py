@@ -69,9 +69,11 @@ def render_summary(result: BundleBuildResult) -> None:
     if risk:
         table.add_row(
             "Risk-weighted",
+            # No arrow to the final status: evidence anchored to another
+            # commit can lower it too, and the rationale says which applied.
             escape(
-                f"{risk.mode}: presence-based {risk.base_release_status.value} -> "
-                f"{summary.release_status.value}. {risk.rationale}"
+                f"{risk.mode}: presence-based verdict {risk.base_release_status.value}. "
+                f"{risk.rationale}"
             ),
         )
     console.print(table)

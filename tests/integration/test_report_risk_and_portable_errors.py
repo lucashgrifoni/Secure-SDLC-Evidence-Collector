@@ -59,6 +59,11 @@ def test_reports_explain_a_risk_weighted_verdict(tmp_path: Path, sample_release_
 
     report = (out / "report.md").read_text(encoding="utf-8")
     assert "Risk-weighted verdict" in report
+    risk_line = next(line for line in report.splitlines() if "Risk-weighted verdict" in line)
+    # The final status can also be lowered by evidence anchored to another
+    # commit, so the risk line names only the presence-based verdict.
+    assert "presence-based verdict `" in risk_line
+    assert "→" not in risk_line
     assert "no EPSS / KEV threshold was applied" in report
     assert "no EPSS / KEV threshold was applied" in (out / "summary.html").read_text(
         encoding="utf-8"
