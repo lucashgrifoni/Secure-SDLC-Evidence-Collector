@@ -44,6 +44,7 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
+from urllib.parse import unquote
 from uuid import NAMESPACE_URL, uuid5
 
 from evidence_collector.domain.enums import ControlEvaluationStatus
@@ -419,23 +420,33 @@ def _purl_parts(identifier: str) -> tuple[str, str | None]:
     if "@" in core:
         head, tail = core.rsplit("@", 1)
         if "/" not in tail:
-            core, version = head, tail
+            # Decoded: `1.0%2Bdeb1` and `1.0+deb1` are the same version.
+            core, version = head, unquote(tail)
     qualifiers = "&".join(sorted(q for q in query.split("&") if q))
     identity = core + (f"?{qualifiers}" if qualifiers else "") + (f"#{subpath}" if subpath else "")
     return identity, version
 
 
-def _names_release(products: tuple[str, ...], release_products: set[str]) -> bool:
+def _is_global_id(identifier: str) -> bool:
+    """Purls and CPEs mean the same thing in every document; local ids do not."""
+    return identifier.startswith(("pkg:", "cpe:"))
+
+
+def _names_release(
+    products: tuple[str, ...], release_products: set[str], *, local_ids: bool = True
+) -> bool:
     """True when a statement names one of the release's products.
 
     An exact identifier always matches. A versionless purl matches the same
     package at any version, as OpenVEX allows; a statement for another
     version of the product does not. Other identifiers (CPEs, CycloneDX refs,
     CSAF product ids) only match exactly: an `@` in them is not a version.
+    With ``local_ids`` off, CycloneDX refs and CSAF product ids do not match
+    at all: they are unique only inside their own document.
     """
     release_parts = [_purl_parts(p) for p in release_products if p.startswith("pkg:")]
     for product in products:
-        if product in release_products:
+        if product in release_products and (local_ids or _is_global_id(product)):
             return True
         if not product.startswith("pkg:"):
             continue
@@ -511,8 +522,12 @@ def merge_consumed_vex(
         for s in bundle_document.get("statements", [])
         if isinstance(s, dict) and isinstance(s.get("vulnerability"), dict)
     }
+    # A CSAF product id or a CycloneDX bom-ref is unique only within its own
+    # document; with several documents, `--product CSAFPID-0001` would match
+    # unrelated products that reuse the token. Only purls and CPEs then count.
+    local_ids = len({stmt.source_path for stmt in consumed}) <= 1
     for stmt in consumed:
-        if not _names_release(stmt.products, release_products):
+        if not _names_release(stmt.products, release_products, local_ids=local_ids):
             if skipped is not None:
                 skipped.append(stmt)
             continue

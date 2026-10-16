@@ -34,6 +34,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import quote, unquote
 
 from evidence_collector.parsers._common import (
     ParseError,
@@ -260,12 +261,13 @@ def _cyclonedx_affected_refs(entry: dict[str, Any]) -> list[str]:
     if "@" in core:
         # A versioned ref keeps its meaning only when the constraint lists
         # that same version; otherwise the two disagree and nothing is named.
-        return [ref] if core.rsplit("@", 1)[1] in explicit else []
+        return [ref] if unquote(core.rsplit("@", 1)[1]) in explicit else []
     base, sep, rest = ref.partition("?")
     if not sep:
         base, sep, rest = ref.partition("#")
     suffix = f"{sep}{rest}" if sep else ""
-    return [f"{base}@{version}{suffix}" for version in sorted(explicit)]
+    # Encoded as a canonical purl version: `1.0+deb1` becomes `1.0%2Bdeb1`.
+    return [f"{base}@{quote(version, safe='.-_~')}{suffix}" for version in sorted(explicit)]
 
 
 def _parse_cyclonedx_vex(data: dict[str, Any]) -> list[VexStatement]:

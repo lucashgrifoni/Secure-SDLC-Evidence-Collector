@@ -511,3 +511,44 @@ def test_a_versioned_purl_ref_must_agree_with_its_versions(tmp_path: Path) -> No
         )
     )
     assert agreeing[0].products == ("pkg:pypi/acme-api@1.4.0",)
+
+
+def test_local_product_ids_do_not_match_across_documents(tmp_path: Path) -> None:
+    """Two CSAF files may reuse CSAFPID-0001 for unrelated products."""
+    bundle = _bundle_with_cve("CVE-2024-1111")
+    first = tmp_path / "a"
+    second = tmp_path / "b"
+    first.mkdir()
+    second.mkdir()
+    consumed = [
+        *parse_vex(_csaf_file(first, {}, {"known_affected": ["CSAFPID-0001"]})),
+        *parse_vex(_csaf_file(second, {}, {"known_not_affected": ["CSAFPID-0001"]})),
+    ]
+    skipped: list[VexStatement] = []
+    merged = merge_consumed_vex(
+        build_openvex(bundle), bundle, consumed, products=["CSAFPID-0001"], skipped=skipped
+    )
+    assert _status_of(merged, "CVE-2024-1111") == "under_investigation"
+    assert len(skipped) == 2
+
+    single = parse_vex(_csaf_file(first, {}, {"known_not_affected": ["CSAFPID-0001"]}))
+    merged = merge_consumed_vex(build_openvex(bundle), bundle, single, products=["CSAFPID-0001"])
+    assert _status_of(merged, "CVE-2024-1111") == "not_affected"
+
+
+def test_purl_versions_are_compared_decoded(tmp_path: Path) -> None:
+    agreeing = parse_vex(
+        _cdx_file(
+            tmp_path, [{"ref": "pkg:deb/acme@1.0%2Bdeb1", "versions": [{"version": "1.0+deb1"}]}]
+        )
+    )
+    assert agreeing[0].products == ("pkg:deb/acme@1.0%2Bdeb1",)
+    built = parse_vex(
+        _cdx_file(tmp_path, [{"ref": "pkg:deb/acme", "versions": [{"version": "1.0+deb1"}]}])
+    )
+    assert built[0].products == ("pkg:deb/acme@1.0%2Bdeb1",)
+    bundle = _bundle_with_cve("CVE-2024-1111")
+    merged = merge_consumed_vex(
+        build_openvex(bundle), bundle, built, products=["pkg:deb/acme@1.0+deb1"]
+    )
+    assert _status_of(merged, "CVE-2024-1111") == "not_affected"
