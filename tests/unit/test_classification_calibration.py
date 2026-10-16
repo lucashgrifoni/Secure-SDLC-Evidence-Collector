@@ -121,9 +121,8 @@ def test_dast_tool_can_be_recovered_via_explicit_override() -> None:
         # Bandit fork variants must keep landing in SAST.
         ("PyBandit", EvidenceType.SAST_SCAN),
         ("custom-bandit-wrapper", EvidenceType.SAST_SCAN),
-        # Checkov is IaC but classifier treats it as SAST (limitation:
-        # we don't have an IaC bucket in the catalog yet).
-        ("Checkov", EvidenceType.SAST_SCAN),
+        # Checkov scans infrastructure code, not application code.
+        ("Checkov", EvidenceType.IAC_SCAN),
     ],
 )
 def test_confusable_drivers_keep_their_documented_bucket(

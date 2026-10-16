@@ -4,10 +4,26 @@ Reads a SARIF file and emits a format-agnostic `ParsedSarif` summary that
 normalizers can consume. The parser stays minimal on purpose: it does not
 interpret tool-specific taxonomies, only counts and surfaces enough
 metadata to build a NormalizedEvidence record.
+
+Each result is bucketed by its effective level, resolved the way SARIF
+2.1.0 section 3.27.10 says: the result's own ``level``; for a result whose
+``kind`` is not ``fail``, ``none``; otherwise the ``defaultConfiguration``
+level of the rule it references (``ruleIndex``/``rule.index``, then
+``ruleId``/``rule.id``, in the driver or in the extension named by
+``rule.toolComponent``); otherwise ``warning``. A rule's numeric
+``security-severity`` property can raise that bucket, never lower it.
+Invocation overrides (``ruleConfigurationOverrides``) are not applied.
+
+A result whose every suppression is ``accepted`` or carries no status is
+not an open finding; it is counted in ``suppressed_count`` instead. The run
+also records whether an invocation reported ``executionSuccessful: false``,
+how many error-level tool notifications it carried, and whether it had no
+``results`` array at all, which SARIF distinguishes from an empty one.
 """
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -27,6 +43,9 @@ _SEVERITY_MAP: dict[str, str] = {
     "note": "low",
     "none": "info",
 }
+_BUCKET_RANK: dict[str, int] = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
+# Result kinds other than "fail" (SARIF 3.27.9); their level defaults to none.
+_NON_FAIL_KINDS = frozenset({"pass", "open", "informational", "notApplicable", "review"})
 
 # CVE identifiers follow CVE-YYYY-NNNN+. We accept years 1999..2099 and
 # 4+-digit sequence numbers because some scanners emit padded values.
@@ -45,12 +64,127 @@ class ParsedSarif:
     # file carries one run per tool, and each is its own evidence.
     run_index: int = 0
     raw: dict[str, Any] = field(default_factory=dict)
+    # Results whose suppressions are all accepted: reported, not open.
+    suppressed_count: int = 0
+    # An invocation said ``executionSuccessful: false``.
+    execution_failed: bool = False
+    # Error-level tool execution or configuration notifications.
+    tool_error_count: int = 0
+    # The run has no ``results`` array (SARIF: unknown, not zero findings).
+    results_absent: bool = False
 
 
-def _normalize_severity(raw_level: str | None) -> str:
-    if raw_level is None:
-        return "medium"
+def _normalize_severity(raw_level: str) -> str:
     return _SEVERITY_MAP.get(raw_level.lower(), "medium")
+
+
+def _valid_index(value: Any, size: int) -> int | None:
+    if isinstance(value, int) and not isinstance(value, bool) and 0 <= value < size:
+        return value
+    return None
+
+
+def _dict_list(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item if isinstance(item, dict) else {} for item in value]
+
+
+def _resolve_rule(
+    result: dict[str, Any], driver: dict[str, Any], extensions: list[dict[str, Any]]
+) -> dict[str, Any] | None:
+    """Return the rule descriptor ``result`` references, or ``None``."""
+    reference = result.get("rule")
+    reference = reference if isinstance(reference, dict) else {}
+    component: dict[str, Any] | None = driver
+    tool_component = reference.get("toolComponent")
+    if isinstance(tool_component, dict):
+        index = _valid_index(tool_component.get("index"), len(extensions))
+        name = tool_component.get("name")
+        if index is not None:
+            component = extensions[index]
+        elif isinstance(name, str):
+            named = [c for c in [driver, *extensions] if c.get("name") == name]
+            component = named[0] if len(named) == 1 else None
+        else:
+            component = None
+    if component is None:
+        return None
+    rules = _dict_list(component.get("rules"))
+    index = _valid_index(reference.get("index", result.get("ruleIndex")), len(rules))
+    if index is not None:
+        return rules[index]
+    rule_id = reference.get("id", result.get("ruleId"))
+    if isinstance(rule_id, str):
+        for rule in rules:
+            if rule.get("id") == rule_id:
+                return rule
+    return None
+
+
+def _security_severity_bucket(rule: dict[str, Any] | None) -> str | None:
+    """Bucket a rule's ``security-severity`` (0.0 to 10.0) as GitHub does."""
+    properties = rule.get("properties") if rule is not None else None
+    raw = properties.get("security-severity") if isinstance(properties, dict) else None
+    if isinstance(raw, bool) or not isinstance(raw, (str, int, float)):
+        return None
+    try:
+        score = float(raw)
+    except ValueError:
+        return None
+    if not math.isfinite(score) or not 0.0 <= score <= 10.0:
+        return None
+    if score >= 9.0:
+        return "critical"
+    if score >= 7.0:
+        return "high"
+    if score >= 4.0:
+        return "medium"
+    return "low" if score > 0.0 else "info"
+
+
+def _severity_bucket(
+    result: dict[str, Any], driver: dict[str, Any], extensions: list[dict[str, Any]]
+) -> str:
+    """Severity bucket of one result, from its effective SARIF level."""
+    level = result.get("level")
+    kind = result.get("kind")
+    if isinstance(kind, str) and kind in _NON_FAIL_KINDS:
+        return _normalize_severity(level if isinstance(level, str) else "none")
+    rule = _resolve_rule(result, driver, extensions)
+    if not isinstance(level, str):
+        configuration = rule.get("defaultConfiguration") if rule is not None else None
+        default = configuration.get("level") if isinstance(configuration, dict) else None
+        level = default if isinstance(default, str) else "warning"
+    bucket = _normalize_severity(level)
+    security = _security_severity_bucket(rule)
+    if security is not None and _BUCKET_RANK[security] > _BUCKET_RANK[bucket]:
+        return security
+    return bucket
+
+
+def _is_suppressed(result: dict[str, Any]) -> bool:
+    """True when every suppression is accepted or has no status."""
+    suppressions = result.get("suppressions")
+    if not isinstance(suppressions, list) or not suppressions:
+        return False
+    return all(
+        isinstance(item, dict) and item.get("status", "accepted") == "accepted"
+        for item in suppressions
+    )
+
+
+def _invocation_signals(run: dict[str, Any]) -> tuple[bool, int]:
+    """Whether an invocation failed, and how many error notifications it raised."""
+    failed = False
+    errors = 0
+    for invocation in _dict_list(run.get("invocations")):
+        if invocation.get("executionSuccessful") is False:
+            failed = True
+        for key in ("toolExecutionNotifications", "toolConfigurationNotifications"):
+            notes = _dict_list(invocation.get(key))
+            errors += sum(1 for note in notes if note.get("level") == "error")
+    return failed, errors
 
 
 def parse_sarifs(path: str | Path) -> list[ParsedSarif]:
@@ -76,6 +210,8 @@ def parse_sarifs(path: str | Path) -> list[ParsedSarif]:
             driver = {}
         tool_name = str(driver.get("name") or "unknown-sarif-tool")
         tool_version_raw = driver.get("version") or driver.get("semanticVersion")
+        extensions = _dict_list(tool.get("extensions")) if isinstance(tool, dict) else []
+        execution_failed, tool_error_count = _invocation_signals(run)
 
         findings_count: dict[str, int] = {
             "critical": 0,
@@ -85,17 +221,17 @@ def parse_sarifs(path: str | Path) -> list[ParsedSarif]:
             "info": 0,
         }
         total = 0
+        suppressed = 0
         cve_ids: set[str] = set()
         results = run.get("results")
         for result in results if isinstance(results, list) else []:
             if not isinstance(result, dict):
                 continue
+            if _is_suppressed(result):
+                suppressed += 1
+                continue
             total += 1
-            level = result.get("level")
-            severity_bucket = _normalize_severity(level if isinstance(level, str) else None)
-            if severity_bucket not in findings_count:
-                findings_count[severity_bucket] = 0
-            findings_count[severity_bucket] += 1
+            findings_count[_severity_bucket(result, driver, extensions)] += 1
             _collect_cves_from_result(result, cve_ids)
 
         parsed.append(
@@ -108,6 +244,10 @@ def parse_sarifs(path: str | Path) -> list[ParsedSarif]:
                 cve_ids=sorted(cve_ids),
                 run_index=index,
                 raw=data,
+                suppressed_count=suppressed,
+                execution_failed=execution_failed,
+                tool_error_count=tool_error_count,
+                results_absent=not isinstance(results, list),
             )
         )
 

@@ -9,13 +9,15 @@ Heuristics for evidence classification:
 - SARIF produced by Semgrep, SonarQube, Snyk Code, or CodeQL is classified
   as `sast_scan`. SARIF produced by Gitleaks, Trufflehog, or similar tools
   is classified as `secrets_scan`. SARIF produced by Trivy/Grype/Snyk
-  (dependencies) is classified as `sca_scan`. When the tool is unknown, the
-  caller can override via `evidence_type_override`.
+  (dependencies) is classified as `sca_scan`. SARIF produced by Checkov,
+  KICS, tfsec or Terrascan is classified as `iac_scan`. When the tool is
+  unknown, the caller can override via `evidence_type_override`.
 """
 
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 from datetime import UTC, datetime
 from pathlib import Path
@@ -69,8 +71,17 @@ _SAST_TOOLS: frozenset[str] = frozenset(
         "codeql",
         "bandit",
         "brakeman",
-        "checkov",
         "eslint",
+    }
+)
+# Infrastructure-as-code scanners. Checkov sat in the SAST set, so a
+# Terraform-only scan met the SAST control at high classification confidence.
+_IAC_TOOLS: frozenset[str] = frozenset(
+    {
+        "checkov",
+        "kics",
+        "tfsec",
+        "terrascan",
     }
 )
 _SCA_TOOLS: frozenset[str] = frozenset(
@@ -109,6 +120,8 @@ _UNSUPPORTED_SARIF_TOOLS: frozenset[str] = frozenset({"scorecard"})
 # a ready release, having no results, met SSDF-PW.7 as a passing SAST scan.
 # Matched exactly: it is a name this tool writes, not a family of producers.
 _SELF_SARIF_DRIVER = "secure-sdlc-evidence-collector"
+
+logger = logging.getLogger(__name__)
 
 
 def _driver_matches(tool_name: str, tokens: frozenset[str]) -> bool:
@@ -303,6 +316,12 @@ def _classify_sarif_with_provenance(
             reason="driver_match",
             driver_name=tool_name,
         )
+    if _matches(_IAC_TOOLS):
+        return EvidenceType.IAC_SCAN, EvidenceClassification(
+            confidence=ConfidenceLevel.HIGH,
+            reason="driver_match",
+            driver_name=tool_name,
+        )
     if _matches(_SECRETS_TOOLS):
         return EvidenceType.SECRETS_SCAN, EvidenceClassification(
             confidence=ConfidenceLevel.HIGH,
@@ -329,6 +348,48 @@ def _sarif_status(findings_count: dict[str, int]) -> EvidenceStatus:
     return EvidenceStatus.PASSED
 
 
+def _sarif_run_status(parsed: ParsedSarif, evidence_type: EvidenceType) -> EvidenceStatus:
+    """Status of one SARIF run.
+
+    A run whose invocation reports ``executionSuccessful: false`` did not
+    scan, so it is ``invalid`` (as a JUnit report with no executed test is)
+    and cannot satisfy a control. In a secrets scan every open result is a
+    detected secret, so any result fails it whatever its level; the counts
+    keep the level the scanner reported.
+    """
+    if parsed.execution_failed:
+        return EvidenceStatus.INVALID
+    if evidence_type == EvidenceType.SECRETS_SCAN and parsed.total_findings > 0:
+        return EvidenceStatus.FAILED
+    return _sarif_status(parsed.findings_count)
+
+
+def _sarif_summary(parsed: ParsedSarif, evidence_type: EvidenceType) -> str:
+    blocking = parsed.findings_count.get("critical", 0) + parsed.findings_count.get("high", 0)
+    if parsed.execution_failed:
+        summary = (
+            f"{parsed.tool_name} reported that its scan did not complete "
+            f"(executionSuccessful=false), so this file does not show that a scan ran"
+        )
+    else:
+        summary = f"{parsed.tool_name} reported {parsed.total_findings} findings (high/critical={blocking})"
+    notes: list[str] = []
+    if parsed.results_absent and not parsed.execution_failed:
+        notes.append("the run has no results array, so its findings are unknown")
+    if parsed.tool_error_count:
+        notes.append(f"the tool reported {parsed.tool_error_count} error notification(s)")
+    if parsed.suppressed_count:
+        notes.append(f"{parsed.suppressed_count} suppressed result(s) not counted")
+    if (
+        evidence_type == EvidenceType.SECRETS_SCAN
+        and parsed.total_findings > 0
+        and blocking == 0
+        and not parsed.execution_failed
+    ):
+        notes.append("any finding fails a secrets scan")
+    return "; ".join([summary, *notes])
+
+
 def normalize_sarif(
     parsed: ParsedSarif,
     release: ReleaseContext,
@@ -344,20 +405,48 @@ def normalize_sarif(
     evidence_type, classification = _classify_sarif_with_provenance(
         parsed.tool_name, evidence_type_override
     )
-    status = _sarif_status(parsed.findings_count)
+    status = _sarif_run_status(parsed, evidence_type)
     prefix = {
         EvidenceType.SAST_SCAN: "sast",
         EvidenceType.SCA_SCAN: "sca",
         EvidenceType.SECRETS_SCAN: "secrets",
+        EvidenceType.IAC_SCAN: "iac",
     }.get(evidence_type, "scan")
     # When the classification fell through to the SAST default we cannot
     # claim HIGH overall confidence for the record either: the evidence
     # type itself is a heuristic guess. Reflect that on the existing
     # ``confidence`` field so consumers that ignore ``classification``
     # still see the weakened signal.
+    #
+    # The same holds when the run itself casts doubt on its result: it failed,
+    # it exported no results array, or the tool raised error notifications
+    # (Semgrep 1.179.0 writes executionSuccessful=true and an error notice
+    # when a rule does not parse, then exits 2). Each of these is recorded in
+    # metadata only when it occurs, so a plain run keeps its exact record.
+    doubtful_run = parsed.execution_failed or parsed.results_absent or parsed.tool_error_count > 0
     overall_confidence = (
-        ConfidenceLevel.LOW if classification.reason == "fallback_sast" else ConfidenceLevel.HIGH
+        ConfidenceLevel.LOW
+        if classification.reason == "fallback_sast" or doubtful_run
+        else ConfidenceLevel.HIGH
     )
+    metadata: dict[str, Any] = {}
+    if parsed.execution_failed:
+        metadata["execution_successful"] = False
+    elif parsed.results_absent:
+        metadata["results_absent"] = True
+    if parsed.tool_error_count:
+        metadata["tool_error_notifications"] = parsed.tool_error_count
+    if parsed.suppressed_count:
+        metadata["suppressed_count"] = parsed.suppressed_count
+    if not parsed.execution_failed and (parsed.results_absent or parsed.tool_error_count):
+        logger.warning(
+            "SARIF run from %s in %s %s; recorded at low confidence",
+            parsed.tool_name,
+            parsed.artifact.path.name,
+            "has no results array, so its findings are unknown"
+            if parsed.results_absent
+            else f"carries {parsed.tool_error_count} error notification(s) from the tool",
+        )
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
             prefix,
@@ -384,10 +473,8 @@ def normalize_sarif(
         raw=_raw_ref(parsed.artifact, artifact_root),
         findings_count=dict(parsed.findings_count),
         cve_ids=list(parsed.cve_ids),
-        summary=(
-            f"{parsed.tool_name} reported {parsed.total_findings} findings "
-            f"(high/critical={parsed.findings_count.get('critical', 0) + parsed.findings_count.get('high', 0)})"
-        ),
+        summary=_sarif_summary(parsed, evidence_type),
+        metadata=metadata,
     )
 
 
@@ -737,7 +824,9 @@ def normalize_trivy_json(
     three do not collide.
 
     Status follows the convention the OSV normalizer set: FAILED when the
-    class carries a critical or high finding, PASSED otherwise. An empty
+    class carries a critical or high finding, PASSED otherwise. The secret
+    class is the exception: every entry is a detected secret, so any one
+    fails it, and the counts keep Trivy's severity. An empty
     class produces no evidence at all rather than a vacuous PASSED, since
     "Trivy found no secrets" and "Trivy was not asked about secrets" are
     different claims and the report cannot tell them apart.
@@ -751,6 +840,8 @@ def normalize_trivy_json(
             continue
         evidence_type, source_kind = _TRIVY_KIND_SHAPE[group.kind]
         blocking = group.findings_count.get("critical", 0) + group.findings_count.get("high", 0)
+        if evidence_type == EvidenceType.SECRETS_SCAN:
+            blocking = group.total
         metadata: dict[str, Any] = {
             "trivy_schema_version": parsed.schema_version,
             "result_class": group.kind,
