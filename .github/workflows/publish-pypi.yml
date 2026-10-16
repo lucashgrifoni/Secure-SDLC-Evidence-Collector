@@ -21,12 +21,22 @@ concurrency:
 env:
   PYTHON_VERSION: "3.12"
 
+# Every job pins `ubuntu-24.04`, the image pull-request CI pins too, so a tag
+# never runs on an image no pull request ran. `ubuntu-latest` moves to Ubuntu
+# 26.04 from 2026-10-19 in a gradual rollout. Move this pin together with the
+# Linux pins in github-ci-cd.yml and security-ci-cd.yml, and only after a run
+# on the new image. The SLSA generator's own jobs cannot be pinned from here.
+#
+# No setup-python step here asks for `cache: pip`: on a tag it would restore a
+# cache written by main-branch runs. The installs are hash-checked, but any
+# code running in a main-branch job could seed that cache, and skipping it
+# costs a release a few seconds.
 jobs:
   quality:
     name: Quality gates
     outputs:
       tag: ${{ steps.resolve.outputs.tag }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -92,7 +102,6 @@ jobs:
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
 
       # Hash-locked installs from .github/requirements. Every lock used in
       # this workflow is also installed, with the same commands, on ubuntu /
@@ -122,7 +131,7 @@ jobs:
 
   build:
     name: Build wheel and sdist
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: quality
     timeout-minutes: 10
     permissions:
@@ -146,7 +155,6 @@ jobs:
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
 
       # T6.C4 reproducible build: pin SOURCE_DATE_EPOCH from the tag's commit
       # so build timestamps are deterministic
@@ -288,7 +296,7 @@ jobs:
 
   release-bundle:
     name: Produce release evidence bundle
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     timeout-minutes: 10
     permissions:
@@ -309,7 +317,6 @@ jobs:
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
 
       - name: Install project
         run: |
@@ -318,15 +325,18 @@ jobs:
           python -m pip install --no-deps -e .
           python -m pip check
 
+      # Values reach the script through the environment, as in `Resolve tag`.
       - name: Generate release evidence bundle
+        env:
+          TAG: ${{ needs.build.outputs.tag }}
         run: |
           python -m evidence_collector.cli.main run \
             --application payments-api \
             --repository acme/payments-api \
-            --release-id "${{ needs.build.outputs.tag }}" \
-            --commit-sha "${{ github.sha }}" \
-            --branch "${{ github.ref_name }}" \
-            --tag "${{ needs.build.outputs.tag }}" \
+            --release-id "$TAG" \
+            --commit-sha "$GITHUB_SHA" \
+            --branch "$GITHUB_REF_NAME" \
+            --tag "$TAG" \
             --artifacts-dir examples/sample_release/artifacts \
             --attestations-dir examples/sample_release/attestations \
             --output-dir release-evidence \
@@ -358,7 +368,7 @@ jobs:
   # versions for declared ranges, which is a worse SBOM.
   sbom:
     name: Generate self-SBOM
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     timeout-minutes: 10
     permissions:
@@ -430,7 +440,7 @@ jobs:
 
   sign-and-publish:
     name: Sign artifacts and publish GitHub Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [build, release-bundle, provenance, sbom]
     timeout-minutes: 20
     permissions:
@@ -552,7 +562,7 @@ jobs:
     # No PYPI_API_TOKEN is needed: PyPI mints a short-lived token from the
     # OIDC claim issued by GitHub at publish time.
     name: Publish to PyPI
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [build, sign-and-publish]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     timeout-minutes: 10
@@ -599,7 +609,7 @@ jobs:
     # NOT rebuild from source inside this job — the build context is
     # the same wheel we already produced and signed.
     name: Build and sign multi-arch container
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [build, sign-and-publish]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     timeout-minutes: 30
@@ -607,7 +617,6 @@ jobs:
       contents: read
       packages: write     # push to ghcr.io
       id-token: write     # mint OIDC token for cosign keyless
-      attestations: write # SBOM attestation
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}

@@ -129,14 +129,14 @@ def test_rollback_note_does_not_contradict_the_sdist_normalisation() -> None:
 def test_rollback_note_says_a_matching_rebuild_needs_linux() -> None:
     """A rebuild only matches the published bytes on the platform the job uses.
 
-    The build job runs on `ubuntu-latest`. A Windows rebuild of the same tree
-    with the same SOURCE_DATE_EPOCH gets CRLF in PKG-INFO, setup.cfg and the
+    The build job runs on a GitHub-hosted Ubuntu runner. A Windows rebuild of
+    the same tree with the same SOURCE_DATE_EPOCH gets CRLF in PKG-INFO, setup.cfg and the
     wheel's METADATA, and Windows file attributes in the wheel, so it never
     matches. The page has to say so, or a verifier reads the mismatch as
     tampering.
     """
     workflow = _PUBLISH_WORKFLOW.read_text(encoding="utf-8")
-    assert "runs-on: ubuntu-latest" in workflow, "precondition: releases build on Linux"
+    assert "runs-on: ubuntu-" in workflow, "precondition: releases build on Linux"
     doc = _prose(_ROLLBACK)
     assert "SOURCE_DATE_EPOCH" in doc
     assert "Linux" in doc

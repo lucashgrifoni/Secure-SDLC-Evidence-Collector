@@ -52,7 +52,7 @@ concurrency:
 jobs:
   release-please:
     name: Open or update release PR
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read   # write scopes are supplied by the App token, not GITHUB_TOKEN

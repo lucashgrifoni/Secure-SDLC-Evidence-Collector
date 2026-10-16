@@ -19,6 +19,10 @@
 # Harden-Runner egress: starts at `audit`; switch to `block` with an
 # allowed-endpoints allowlist once the audited traffic is stable.
 #
+# Runner image: the Linux jobs pin `ubuntu-24.04`, the image publish-pypi.yml
+# pins, so a release never runs on an image these jobs have not run on. Move
+# both pins together.
+#
 # Secrets: none.
 
 name: GitHub CI/CD
@@ -49,7 +53,7 @@ env:
 jobs:
   quality:
     name: Lint, type-check, and test (py${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -118,7 +122,7 @@ jobs:
 
   version-consistency:
     name: Version consistency gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Harden runner
@@ -144,7 +148,7 @@ jobs:
 
   package:
     name: Build package artifacts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: quality
     timeout-minutes: 10
     steps:
@@ -198,7 +202,7 @@ jobs:
 
   sample-bundle:
     name: Produce sample evidence bundle
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: quality
     timeout-minutes: 10
     steps:
@@ -227,6 +231,9 @@ jobs:
           python -m pip install --no-deps -e .
           python -m pip check
 
+      # Same --fail-on as publish-pypi.yml's release-bundle job, which runs
+      # this sample on every tag: a change that drops it to `conditional`
+      # fails here, not in the release.
       - name: Generate sample bundle
         run: |
           python -m evidence_collector.cli.main run \
@@ -238,7 +245,7 @@ jobs:
             --artifacts-dir examples/sample_release/artifacts \
             --attestations-dir examples/sample_release/attestations \
             --output-dir output/sample_release \
-            --fail-on not_ready
+            --fail-on conditional
 
       - name: Export bundle JSON Schema
         run: |
@@ -288,7 +295,7 @@ jobs:
             --artifacts-dir examples/sample_release/artifacts \
             --attestations-dir examples/sample_release/attestations \
             --output-dir output/sample_release_rerun \
-            --fail-on not_ready
+            --fail-on conditional
           python - <<'PY'
           import hashlib
           import json
@@ -386,7 +393,7 @@ jobs:
     # should produce the same bundle"); without this job the claim
     # was tested by humans, not by CI.
     name: Cross-OS determinism gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - sample-bundle
       - sample-bundle-windows
