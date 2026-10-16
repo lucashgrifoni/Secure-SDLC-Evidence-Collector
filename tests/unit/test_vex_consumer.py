@@ -679,3 +679,39 @@ def test_an_absolute_iri_still_matches_across_documents(tmp_path: Path) -> None:
     ]
     merged = merge_consumed_vex(build_openvex(bundle), bundle, consumed, products=[iri])
     assert _status_of(merged, "CVE-2024-1111") == "not_affected"
+
+
+def test_a_resolved_bom_ref_keeps_the_component_version(tmp_path: Path) -> None:
+    """`version: 1.3.0` beside a versionless purl must not become a wildcard."""
+    path = tmp_path / "vendor.cdx.json"
+    path.write_text(
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.6",
+                "components": [
+                    {
+                        "bom-ref": "component-a",
+                        "name": "acme-api",
+                        "version": "1.3.0",
+                        "purl": "pkg:pypi/acme-api",
+                    }
+                ],
+                "vulnerabilities": [
+                    {
+                        "id": "CVE-2024-1111",
+                        "affects": [{"ref": "component-a"}],
+                        "analysis": {"state": "not_affected"},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    consumed = parse_vex(path)
+    assert consumed[0].products == ("component-a", "pkg:pypi/acme-api@1.3.0")
+    bundle = _bundle_with_cve("CVE-2024-1111")
+    merged = merge_consumed_vex(
+        build_openvex(bundle), bundle, consumed, products=["pkg:pypi/acme-api@1.4.0"]
+    )
+    assert _status_of(merged, "CVE-2024-1111") == "under_investigation"

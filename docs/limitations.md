@@ -500,7 +500,8 @@ not care which you choose.
   are not matched (they are unique only inside their own document); name
   the release by purl, CPE, URN (such as a CycloneDX BOM-Link) or
   absolute IRI instead. CycloneDX bom-refs are resolved to the purl or
-  CPE of the component they point at. A CSAF vulnerability yields one statement per status, naming the
+  CPE of the component they point at, with the component's `version`
+  added to a versionless purl. A CSAF vulnerability yields one statement per status, naming the
   products of every bucket that maps to it. Statements
   that name no release product, including those that name no product at
   all, are skipped and listed in a warning. Matching on the CVE id alone

@@ -242,7 +242,11 @@ _CDX_VERSION_STATUS_FOR: dict[str, frozenset[str]] = {
 
 
 def _cyclonedx_identities(data: dict[str, Any]) -> dict[str, list[str]]:
-    """Map each component or service ``bom-ref`` to its purl / CPE."""
+    """Map each component or service ``bom-ref`` to its purl / CPE.
+
+    A versionless purl takes the component's own ``version``: resolved bare,
+    it would stand for every version of the package.
+    """
     identities: dict[str, list[str]] = {}
 
     def visit(node: Any) -> None:
@@ -254,12 +258,19 @@ def _cyclonedx_identities(data: dict[str, Any]) -> dict[str, list[str]]:
             return
         ref = node.get("bom-ref")
         if isinstance(ref, str) and ref.strip():
-            identities.setdefault(ref.strip(), []).extend(
-                v.strip()
-                for key in ("purl", "cpe")
-                for v in [node.get(key)]
-                if isinstance(v, str) and v.strip()
-            )
+            names: list[str] = []
+            purl = node.get("purl")
+            if isinstance(purl, str) and purl.strip():
+                purl = purl.strip()
+                version = node.get("version")
+                versionless = "@" not in purl.split("?", 1)[0].split("#", 1)[0]
+                if versionless and isinstance(version, str) and version.strip():
+                    purl = _constrain_purl(purl, {version.strip()})[0]
+                names.append(purl)
+            cpe = node.get("cpe")
+            if isinstance(cpe, str) and cpe.strip():
+                names.append(cpe.strip())
+            identities.setdefault(ref.strip(), []).extend(names)
         visit(node.get("components"))
         visit(node.get("services"))
 
