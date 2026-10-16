@@ -467,8 +467,12 @@ These are explicitly out of scope for security reports (see
   release: the bundle's own `pkg:generic/<repository>@<release>` id or an
   identifier passed with `--product` (a purl, CPE, CycloneDX ref or CSAF
   product id; CSAF ids are also resolved to the purl or CPE in the
-  product tree). A versionless identifier covers every version of the
-  package; a statement for another version does not apply. Statements
+  product tree, including relationship products). A versionless
+  identifier covers every version of the package with the same
+  qualifiers and subpath; a statement for another version, or for the
+  same package from another repository (`?repository_url=`), does not
+  apply. A CSAF vulnerability yields one statement per status, naming the
+  products of every bucket that maps to it. Statements
   that name no release product, including those that name no product at
   all, are skipped and listed in a warning. Matching on the CVE id alone
   let a VEX for an unrelated package silence a CVE the release carries.

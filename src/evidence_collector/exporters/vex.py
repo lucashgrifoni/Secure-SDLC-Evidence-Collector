@@ -407,13 +407,22 @@ def _openvex_justification(stmt: VexStatement) -> tuple[str, str | None]:
 
 
 def _purl_parts(identifier: str) -> tuple[str, str | None]:
-    """Split ``pkg:type/ns/name@version?q#sub`` into (name part, version)."""
-    core = identifier.split("#", 1)[0].split("?", 1)[0].strip()
+    """Split ``pkg:type/ns/name@version?q#sub`` into (identity, version).
+
+    Only the version is taken out. Qualifiers (sorted) and the subpath stay in
+    the identity, so ``pkg:docker/acme/api?repository_url=a`` never stands for
+    the same image pulled from another registry.
+    """
+    rest, _, subpath = identifier.strip().partition("#")
+    core, _, query = rest.partition("?")
+    version: str | None = None
     if "@" in core:
         head, tail = core.rsplit("@", 1)
         if "/" not in tail:
-            return head, tail
-    return core, None
+            core, version = head, tail
+    qualifiers = "&".join(sorted(q for q in query.split("&") if q))
+    identity = core + (f"?{qualifiers}" if qualifiers else "") + (f"#{subpath}" if subpath else "")
+    return identity, version
 
 
 def _names_release(products: tuple[str, ...], release_products: set[str]) -> bool:

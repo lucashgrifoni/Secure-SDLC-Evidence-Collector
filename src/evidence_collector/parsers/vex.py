@@ -167,8 +167,13 @@ def _csaf_identities(data: dict[str, Any]) -> dict[str, list[str]]:
             return
         if not isinstance(node, dict):
             return
-        product = node.get("product")
-        candidates = [product] if isinstance(product, dict) else []
+        # Branch leaves carry `product`; relationships carry the derived
+        # product as a singular `full_product_name`.
+        candidates = [
+            value
+            for value in (node.get("product"), node.get("full_product_name"))
+            if isinstance(value, dict)
+        ]
         names = node.get("full_product_names")
         if isinstance(names, list):
             candidates.extend(n for n in names if isinstance(n, dict))
@@ -281,17 +286,16 @@ def _parse_csaf(data: dict[str, Any]) -> list[VexStatement]:
         product_status = vuln.get("product_status")
         if not isinstance(product_status, dict):
             continue
-        # Pick the most specific bucket: known_affected wins over recommended
-        # because we want the "affected" signal explicit when both apply.
-        status: str | None = None
-        chosen_key: str | None = None
+        # One statement per OpenVEX status, each naming the products of every
+        # CSAF bucket that maps to it: `known_affected: [a]` beside
+        # `first_affected: [b]` marks both a and b affected.
+        ids_by_status: dict[str, list[str]] = {}
         for csaf_key, openvex_status in _CSAF_PRODUCT_STATUS_TO_OPENVEX.items():
             if csaf_key in product_status:
-                status = openvex_status
-                chosen_key = csaf_key
-                if openvex_status == "affected":
-                    break
-        if status is None:
+                ids_by_status.setdefault(openvex_status, []).extend(
+                    _strings(product_status.get(csaf_key))
+                )
+        if not ids_by_status:
             continue
         # Threats / impact text travels into ``detail`` so reviewers
         # keep the CSAF rationale visible after merge.
@@ -303,19 +307,19 @@ def _parse_csaf(data: dict[str, Any]) -> list[VexStatement]:
                 t = first.get("details")
                 if isinstance(t, str):
                     detail = t
-        product_ids = _strings(product_status.get(chosen_key)) if chosen_key else []
-        products = list(product_ids)
-        for pid in product_ids:
-            products.extend(identities.get(pid, []))
-        out.append(
-            VexStatement(
-                cve_id=cve_id,
-                status=status,
-                justification=None,
-                detail=detail,
-                products=tuple(dict.fromkeys(products)),
+        for status, product_ids in ids_by_status.items():
+            products = list(product_ids)
+            for pid in product_ids:
+                products.extend(identities.get(pid, []))
+            out.append(
+                VexStatement(
+                    cve_id=cve_id,
+                    status=status,
+                    justification=None,
+                    detail=detail,
+                    products=tuple(dict.fromkeys(products)),
+                )
             )
-        )
     return out
 
 

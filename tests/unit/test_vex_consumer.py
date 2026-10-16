@@ -353,3 +353,76 @@ def test_csaf_product_ids_resolve_to_purls_from_the_product_tree(tmp_path: Path)
     )
     consumed = parse_vex(vex_path)
     assert consumed[0].products == ("ACME-API-1.4.0", "pkg:pypi/acme-api@1.4.0")
+
+
+def test_a_versionless_purl_keeps_its_qualifiers(tmp_path: Path) -> None:
+    """Dropping qualifiers let an image from another registry match the release."""
+    bundle = _bundle_with_cve("CVE-2024-1111")
+    release = "pkg:docker/acme/api@1.0?repository_url=registry-b"
+    other_registry = parse_vex(
+        _openvex_file(tmp_path, ["pkg:docker/acme/api?repository_url=registry-a"])
+    )
+    merged = merge_consumed_vex(build_openvex(bundle), bundle, other_registry, products=[release])
+    assert _status_of(merged, "CVE-2024-1111") == "under_investigation"
+
+    same_registry = parse_vex(
+        _openvex_file(tmp_path, ["pkg:docker/acme/api?repository_url=registry-b"])
+    )
+    merged = merge_consumed_vex(build_openvex(bundle), bundle, same_registry, products=[release])
+    assert _status_of(merged, "CVE-2024-1111") == "not_affected"
+
+
+def _csaf_file(tmp_path: Path, product_tree: dict[str, object], status: dict[str, object]) -> Path:
+    path = tmp_path / "vendor.csaf.json"
+    path.write_text(
+        json.dumps(
+            {
+                "document": {"category": "csaf_vex", "title": "vendor advisory"},
+                "product_tree": product_tree,
+                "vulnerabilities": [{"cve": "CVE-2024-1111", "product_status": status}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_csaf_buckets_with_the_same_status_are_combined(tmp_path: Path) -> None:
+    """Only the first affected bucket was read, so `first_affected` products were lost."""
+    consumed = parse_vex(
+        _csaf_file(
+            tmp_path,
+            {},
+            {
+                "known_affected": ["product-a"],
+                "first_affected": ["product-b"],
+                "known_not_affected": ["product-c"],
+            },
+        )
+    )
+    by_status = {stmt.status: stmt.products for stmt in consumed}
+    assert by_status == {"affected": ("product-a", "product-b"), "not_affected": ("product-c",)}
+
+
+def test_csaf_relationship_products_resolve_through_full_product_name(tmp_path: Path) -> None:
+    consumed = parse_vex(
+        _csaf_file(
+            tmp_path,
+            {
+                "relationships": [
+                    {
+                        "category": "default_component_of",
+                        "product_reference": "lib",
+                        "relates_to_product_reference": "platform",
+                        "full_product_name": {
+                            "product_id": "lib-on-platform",
+                            "name": "lib on platform",
+                            "product_identification_helper": {"purl": "pkg:pypi/acme-api@1.4.0"},
+                        },
+                    }
+                ]
+            },
+            {"known_not_affected": ["lib-on-platform"]},
+        )
+    )
+    assert consumed[0].products == ("lib-on-platform", "pkg:pypi/acme-api@1.4.0")
