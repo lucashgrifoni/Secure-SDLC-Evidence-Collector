@@ -23,19 +23,39 @@ inputs:
     required: false
     default: ${{ github.sha }}
   branch:
-    description: "Branch name (defaults to github.ref_name)"
+    description: >-
+      Branch name. Defaults to the pull request's source branch, the pushed
+      branch, or on a tag the repository's default branch (a tag is not a
+      branch; it goes to the tag input)
     required: false
-    default: ${{ github.ref_name }}
+    default: ${{ github.head_ref || (github.ref_type == 'branch' && github.ref_name) || github.event.repository.default_branch || github.ref_name }}
+  tag:
+    description: "Git tag recorded for the release (defaults to the pushed tag, empty otherwise)"
+    required: false
+    default: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+  pipeline-run-id:
+    description: "Pipeline run recorded for the release (defaults to github.run_id); empty to omit"
+    required: false
+    default: ${{ github.run_id }}
+  build-id:
+    description: "Build recorded for the release (defaults to run id and attempt); empty to omit"
+    required: false
+    default: ${{ github.run_id }}-${{ github.run_attempt }}
   environment:
     description: "Target environment"
     required: false
     default: "production"
   artifacts-dir:
-    description: "Directory containing raw evidence artifacts (SARIF, SBOM, JUnit)"
+    description: >-
+      Directory containing raw evidence artifacts (SARIF, SBOM, JUnit). Skipped
+      with a notice (default value) or a warning (any other value) when it does
+      not exist
     required: false
     default: "artifacts"
   attestations-dir:
-    description: "Directory containing YAML/JSON attestations"
+    description: >-
+      Directory containing YAML/JSON attestations. Skipped with a notice
+      (default value) or a warning (any other value) when it does not exist
     required: false
     default: "attestations"
   pull-request:
@@ -98,7 +118,11 @@ inputs:
     required: false
     default: "output/sdlc-evidence"
   fail-on:
-    description: "Exit non-zero when release_status reaches: ready|conditional|not_ready"
+    description: >-
+      Verdict from which the step fails: not_ready (default; a conditional
+      release passes) or conditional. 'ready' behaves like conditional. 'none'
+      is observe mode: the verdict is reported and the step passes, unless the
+      collector could not run at all (exit 3)
     required: false
     default: "not_ready"
   python-version:
@@ -106,7 +130,9 @@ inputs:
     required: false
     default: "3.12"
   version:
-    description: "Version of the collector to install (git ref on this repo)"
+    description: >-
+      Collector to install instead of this action's own copy: a git ref of this
+      repository. A plain release number such as 4.2.0 is read as the tag v4.2.0
     required: false
     default: ""
 
@@ -135,6 +161,15 @@ outputs:
   controls-missing:
     description: "Controls with no satisfying evidence"
     value: ${{ steps.collect.outputs.controls-missing }}
+  controls-waived:
+    description: "Controls covered by an approved waiver"
+    value: ${{ steps.collect.outputs.controls-waived }}
+  controls-not-applicable:
+    description: "Controls that do not apply to this release"
+    value: ${{ steps.collect.outputs.controls-not-applicable }}
+  collection-errors:
+    description: "Number of supplied inputs that could not be ingested (bundle collection_errors)"
+    value: ${{ steps.collect.outputs.collection-errors }}
 
 runs:
   using: "composite"
@@ -149,6 +184,11 @@ runs:
     # into the run script. This is the GitHub-recommended defense against
     # script injection (CodeQL actions/code-injection) when a caller wires an
     # input from untrusted data (issue titles, branch names, etc.).
+    #
+    # Every interpreter call uses `python -P`: the working directory is the
+    # caller's checkout, and without -P a module planted there (json.py,
+    # typer.py, an evidence_collector/ package) is imported ahead of the real
+    # one and runs inside these steps.
     - name: Install collector
       shell: bash
       env:
@@ -157,23 +197,45 @@ runs:
       run: |
         set -euo pipefail
         if [ -n "$VERSION" ]; then
-          python -m pip install --upgrade "git+https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector@${VERSION}"
+          # The other surfaces take a release number (4.2.0); the tags are v4.2.0.
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            VERSION="v${VERSION}"
+          fi
+          python -P -m pip install --upgrade "git+https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector@${VERSION}"
         elif [ -f "${ACTION_PATH}/pyproject.toml" ]; then
-          python -m pip install "${ACTION_PATH}"
+          # Third-party code comes from the hash locks shipped with this
+          # action, then the collector itself with --no-deps, as in CI. The
+          # locks are tested on Python 3.12 and 3.13 (action-self-test); other
+          # versions resolve the dependency ranges in pyproject.toml.
+          locks="${ACTION_PATH}/.github/requirements"
+          if python -P -c 'import sys; sys.exit(sys.version_info[:2] not in ((3, 12), (3, 13)))'; then
+            python -P -m pip install --require-hashes -r "${locks}/pip.txt"
+            python -P -m pip install --require-hashes -r "${locks}/runtime.txt"
+            python -P -m pip install --no-deps "${ACTION_PATH}"
+          else
+            echo "::notice title=Dependencies not hash-locked::The dependency locks cover Python 3.12 and 3.13; installing the version ranges from pyproject.toml instead."
+            python -P -m pip install "${ACTION_PATH}"
+          fi
         else
-          python -m pip install --upgrade "git+https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector"
+          python -P -m pip install --upgrade "git+https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector"
         fi
 
     - name: Run Secure SDLC Evidence Collector
       id: collect
       shell: bash
       env:
-        GITHUB_TOKEN: ${{ github.token }}
+        # Only --pull-request and --workflow-run call the GitHub API. Without
+        # them the token stays out of the step, and an inherited GITHUB_TOKEN
+        # is blanked rather than handed to the collector process.
+        GITHUB_TOKEN: ${{ (inputs.pull-request != '' || inputs.workflow-run != '') && github.token || '' }}
         APPLICATION: ${{ inputs.application }}
         REPOSITORY: ${{ inputs.repository }}
         RELEASE_ID: ${{ inputs.release-id }}
         COMMIT_SHA: ${{ inputs.commit-sha }}
         BRANCH: ${{ inputs.branch }}
+        TAG: ${{ inputs.tag }}
+        PIPELINE_RUN_ID: ${{ inputs.pipeline-run-id }}
+        BUILD_ID: ${{ inputs.build-id }}
         ENVIRONMENT: ${{ inputs.environment }}
         OUTPUT_DIR: ${{ inputs.output-dir }}
         FAIL_ON: ${{ inputs.fail-on }}
@@ -191,6 +253,36 @@ runs:
         EPSS_PERCENTILE_THRESHOLD: ${{ inputs.epss-percentile-threshold }}
       run: |
         set -euo pipefail
+
+        # Workflow commands end at the line break, so text taken from inputs
+        # is escaped the way @actions/core escapes a message.
+        annotate() {
+          local message="$3"
+          message="${message//%/%25}"
+          message="${message//$'\r'/%0D}"
+          message="${message//$'\n'/%0A}"
+          echo "::$1 title=$2::${message}"
+        }
+        # A missing evidence directory is still skipped, as before, but no
+        # longer silently: a typo in the path is named in the log.
+        report_skipped_dir() {
+          local level=warning
+          if [ "$2" = "$3" ]; then
+            level=notice
+          fi
+          annotate "$level" "$1 not found" "$1 '$2' does not exist, so nothing was collected from it."
+        }
+
+        # Observe mode: with `fail-on: none` the collector runs with the
+        # default threshold and the verdict exits (1, 2) become 0 below. Exit 3,
+        # the collector could not run, still fails the step.
+        fail_on="$FAIL_ON"
+        observe=""
+        if [ "$(printf '%s' "$FAIL_ON" | tr '[:upper:]' '[:lower:]')" = "none" ]; then
+          observe=1
+          fail_on="not_ready"
+        fi
+
         extra_args=()
         if [ -n "$PULL_REQUEST" ]; then
           extra_args+=(--pull-request "$PULL_REQUEST")
@@ -201,11 +293,24 @@ runs:
         if [ -n "$CATALOG" ]; then
           extra_args+=(--catalog "$CATALOG")
         fi
+        if [ -n "$TAG" ]; then
+          extra_args+=(--tag "$TAG")
+        fi
+        if [ -n "$PIPELINE_RUN_ID" ]; then
+          extra_args+=(--pipeline-run-id "$PIPELINE_RUN_ID")
+        fi
+        if [ -n "$BUILD_ID" ]; then
+          extra_args+=(--build-id "$BUILD_ID")
+        fi
         if [ -d "$ARTIFACTS_DIR" ]; then
           extra_args+=(--artifacts-dir "$ARTIFACTS_DIR")
+        elif [ -n "$ARTIFACTS_DIR" ]; then
+          report_skipped_dir artifacts-dir "$ARTIFACTS_DIR" artifacts
         fi
         if [ -d "$ATTESTATIONS_DIR" ]; then
           extra_args+=(--attestations-dir "$ATTESTATIONS_DIR")
+        elif [ -n "$ATTESTATIONS_DIR" ]; then
+          report_skipped_dir attestations-dir "$ATTESTATIONS_DIR" attestations
         fi
         # A waiver directory that was configured but is not there is a real
         # problem — the release would silently lose an approved, time-bound
@@ -238,7 +343,7 @@ runs:
         # fails before writing one. The CLI writes the bundle before any
         # --fail-on exit, so a bundle newer than this marker is this run's.
         started="$(mktemp)"
-        python -m evidence_collector.cli.main run \
+        python -P -m evidence_collector.cli.main run \
           --application "$APPLICATION" \
           --repository "$REPOSITORY" \
           --release-id "$RELEASE_ID" \
@@ -246,17 +351,18 @@ runs:
           --branch "$BRANCH" \
           --environment "$ENVIRONMENT" \
           --output-dir "$OUTPUT_DIR" \
-          --fail-on "$FAIL_ON" \
+          --fail-on "$fail_on" \
           "${extra_args[@]}" || exit_code=$?
 
         bundle="${OUTPUT_DIR}/bundle.json"
         if [ -f "$bundle" ] && [ "$bundle" -nt "$started" ]; then
-          BUNDLE_FILE="$bundle" python - <<'PY' >>"$GITHUB_OUTPUT"
+          BUNDLE_FILE="$bundle" python -P - <<'PY' >>"$GITHUB_OUTPUT"
         import json, os
         bundle = os.environ["BUNDLE_FILE"]
         with open(bundle, encoding="utf-8") as fh:
             data = json.load(fh)
         summary = data["summary"]
+        errors = data.get("collection_errors") or []
         print(f"bundle-path={os.path.abspath(bundle)}")
         print(f"release-status={summary['release_status']}")
         print(f"coverage-score={summary['evidence_coverage_score']}")
@@ -266,6 +372,9 @@ runs:
         print(f"controls-met={summary['controls_met']}")
         print(f"controls-partial={summary['controls_partial']}")
         print(f"controls-missing={summary['controls_missing']}")
+        print(f"controls-waived={summary['controls_waived']}")
+        print(f"controls-not-applicable={summary['controls_not_applicable']}")
+        print(f"collection-errors={len(errors)}")
 
 
         def code(value):
@@ -275,23 +384,51 @@ runs:
             return f"`{text}`"
 
 
+        def listed(items):
+            return ", ".join(code(item) for item in items) if items else "none"
+
+
         step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
         if step_summary:
+            # A missing critical control makes the release not_ready, a
+            # missing high one conditional; the summary keeps them apart.
+            criticality = {
+                evaluation["control_id"]: evaluation["criticality"]
+                for evaluation in data.get("control_evaluations") or []
+            }
             missing = summary.get("missing_critical_evidence") or []
+            critical = [m for m in missing if criticality.get(m.split(":", 1)[0]) == "critical"]
+            high = [m for m in missing if m not in critical]
             lines = [
                 "### Secure SDLC Evidence Collector",
                 "",
                 f"{code(data['application']['name'])} release {code(data['release']['release_id'])}",
                 "",
-                "| Release status | Coverage | Met | Partial | Missing | Waived | Total |",
-                "|---|---|---|---|---|---|---|",
+                "| Release status | Coverage | Met | Partial | Missing | Waived | Not applicable | Total |",
+                "|---|---|---|---|---|---|---|---|",
                 f"| {code(summary['release_status'])} | {summary['evidence_coverage_score']} "
                 f"| {summary['controls_met']} | {summary['controls_partial']} "
                 f"| {summary['controls_missing']} | {summary['controls_waived']} "
-                f"| {summary['total_controls']} |",
+                f"| {summary['controls_not_applicable']} | {summary['total_controls']} |",
                 "",
-                "Missing critical/high evidence: "
-                + (", ".join(code(item) for item in missing) if missing else "none"),
+                f"Missing critical evidence (not_ready): {listed(critical)}",
+                "",
+                f"Missing high evidence (conditional): {listed(high)}",
+                "",
+            ]
+            if errors:
+                lines += [f"Collection warnings, inputs that could not be read ({len(errors)}):", ""]
+                lines += [
+                    f"- {code(error.get('path', ''))}: {code(error.get('reason', ''))}"
+                    for error in errors[:10]
+                ]
+                if len(errors) > 10:
+                    lines.append(f"- {len(errors) - 10} more in the report")
+                lines.append("")
+            shown = os.path.join(os.path.dirname(bundle), "report.md")
+            lines += [
+                f"Full report: {code(shown)}. Upload the output directory with "
+                "actions/upload-artifact to keep it after the job.",
                 "",
             ]
             with open(step_summary, "a", encoding="utf-8") as fh:
@@ -300,4 +437,8 @@ runs:
         fi
         rm -f "$started"
 
+        if [ -n "$observe" ] && { [ "${exit_code:-0}" = 1 ] || [ "${exit_code:-0}" = 2 ]; }; then
+          annotate notice "Observe mode" "fail-on is none, so the release status did not fail the step (the collector exited ${exit_code})."
+          exit_code=0
+        fi
         exit "${exit_code:-0}"

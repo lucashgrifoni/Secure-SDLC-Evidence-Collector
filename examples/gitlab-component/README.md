@@ -38,7 +38,7 @@ Use an exact component version or reviewed commit SHA in production.
 | cra-context | empty | CRA operator context JSON; needs profile `cra-2026` |
 | fedramp-class | empty | CR26 class A, B, C or D, metadata only; needs profile `fedramp-20x` |
 | collector-version | 4.2.0 | Exact package version |
-| fail-on | conditional | Failure threshold |
+| fail-on | conditional | Lowest release status that fails the job; see the differences below |
 
 The profile inputs map to the collector's `--profile`, `--cra-context` and
 `--fedramp-class` options. The collector rejects a CRA context without the
@@ -54,6 +54,18 @@ branch. The job writes `release-evidence/`
 with a 30-day GitLab artifact expiry. Set artifact access restrictions in your
 project according to the sensitivity of the supplied evidence. Input values
 are passed as quoted arguments, including paths and names with spaces.
+
+## Differences from the GitHub Action and reusable workflow
+
+- `fail-on` defaults to `conditional` here and to `not_ready` on GitHub. With
+  the same evidence, a `conditional` release (a high control missing or
+  failed, such as SAST, SCA or the secrets scan) fails this job and passes the
+  GitHub surfaces. Set `fail-on: not_ready` to get the GitHub behavior, or
+  `fail-on: conditional` on GitHub to get this one.
+- There is no environment input. Every bundle records the collector default,
+  `production`, also on merge request and branch pipelines.
+- The full input comparison is in `docs/reusable_workflow.md` in the
+  collector repository.
 
 ## Scope and validation
 

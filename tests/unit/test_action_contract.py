@@ -18,7 +18,7 @@ Two things are pinned here:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import pytest
 import yaml
@@ -189,11 +189,17 @@ _SUMMARY_OUTPUTS = {
 }
 
 
-def test_summary_outputs_are_wired_to_the_collect_step(action: dict[str, Any]) -> None:
-    wiring = {name: action["outputs"][name]["value"] for name in _SUMMARY_OUTPUTS}
-    assert wiring == {
-        name: "${{ steps.collect.outputs." + name + " }}" for name in _SUMMARY_OUTPUTS
-    }
+# Outputs that let a later step reconcile the totals (the five control counts
+# add up to controls-total) and see whether any input could not be read.
+_TOTALS_OUTPUTS = {"controls-waived", "controls-not-applicable", "collection-errors"}
+
+
+@pytest.mark.parametrize("outputs", [_SUMMARY_OUTPUTS, _TOTALS_OUTPUTS])
+def test_summary_outputs_are_wired_to_the_collect_step(
+    action: dict[str, Any], outputs: set[str]
+) -> None:
+    wiring = {name: action["outputs"][name]["value"] for name in outputs}
+    assert wiring == {name: "${{ steps.collect.outputs." + name + " }}" for name in outputs}
 
 
 def _output_script(collect_step: dict[str, Any]) -> str:
@@ -245,16 +251,22 @@ def test_the_output_script_reports_every_output_and_writes_a_summary(
     summary_file = tmp_path / "summary.md"
     outputs = _run_output_script(collect_step, sample_bundle, summary_file)
 
-    assert set(outputs) == _PUBLISHED_OUTPUTS | _SUMMARY_OUTPUTS
+    assert set(outputs) == _PUBLISHED_OUTPUTS | _SUMMARY_OUTPUTS | _TOTALS_OUTPUTS
     assert outputs["release-status"] == "ready"
     assert outputs["controls-total"] == "13"
     assert outputs["controls-met"] == "13"
     assert outputs["controls-missing"] == "0"
+    assert outputs["controls-waived"] == "0"
+    assert outputs["controls-not-applicable"] == "0"
+    assert outputs["collection-errors"] == "0"
     assert Path(outputs["report-path"]).name == "report.md"
     assert Path(outputs["report-path"]).is_file()
     text = summary_file.read_text(encoding="utf-8")
-    assert "| `ready` | 100 | 13 | 0 | 0 | 0 | 13 |" in text
-    assert "Missing critical/high evidence: none" in text
+    assert "| `ready` | 100 | 13 | 0 | 0 | 0 | 0 | 13 |" in text
+    assert "Missing critical evidence (not_ready): none" in text
+    assert "Missing high evidence (conditional): none" in text
+    assert "Collection warnings" not in text
+    assert "Full report: `" in text and "report.md`" in text
 
 
 def test_caller_text_in_the_summary_cannot_break_out_of_its_code_span(
@@ -285,11 +297,15 @@ def test_caller_text_in_the_summary_cannot_break_out_of_its_code_span(
 
 
 _STEP_ENV = [
+    "GITHUB_TOKEN",
     "APPLICATION",
     "REPOSITORY",
     "RELEASE_ID",
     "COMMIT_SHA",
     "BRANCH",
+    "TAG",
+    "PIPELINE_RUN_ID",
+    "BUILD_ID",
     "ENVIRONMENT",
     "FAIL_ON",
     "PULL_REQUEST",
@@ -307,29 +323,59 @@ _STEP_ENV = [
 ]
 
 
+class _StepRun(NamedTuple):
+    code: int
+    outputs: str
+    summary: Path
+    stdout: str
+    cli_args: list[str]
+
+
+def _bash_or_skip() -> str:
+    import shutil
+
+    bash = shutil.which("bash")
+    if bash is None:
+        pytest.skip("the step is a bash script and this machine has no bash")
+    return bash
+
+
 def _run_collect_step(
-    collect_step: dict[str, Any], tmp_path: Path, *, cli: str
-) -> tuple[int, str, Path]:
-    """Run the step's shell script with `python -m ...` replaced by `cli`.
+    collect_step: dict[str, Any],
+    tmp_path: Path,
+    *,
+    cli: str,
+    env: dict[str, str] | None = None,
+    cwd: Path | None = None,
+) -> _StepRun:
+    """Run the step's shell script with `python [-P] -m ...` replaced by `cli`.
 
     Every other `python` call (the output script) goes to the real
-    interpreter, so what is under test is the step's own logic around the CLI.
+    interpreter with its own flags, so what is under test is the step's own
+    logic around the CLI. `cli` sees the arguments after the module name, and
+    they are also recorded for the test.
     """
     import os
-    import shutil
     import stat
     import subprocess
     import sys
 
-    bash = shutil.which("bash")
-    if bash is None:
-        pytest.skip("the collect step is a bash script and this machine has no bash")
+    bash = _bash_or_skip()
     shim_dir = tmp_path / "shim"
     shim_dir.mkdir()
     shim = shim_dir / "python"
     real = Path(sys.executable).as_posix()
+    recorded = tmp_path / "cli_args.txt"
     shim.write_text(
-        f'#!/usr/bin/env bash\nif [ "$1" = "-m" ]; then\n{cli}\nfi\nexec "{real}" "$@"\n',
+        "#!/usr/bin/env bash\n"
+        'all=("$@")\n'
+        'if [ "${1:-}" = "-P" ]; then shift; fi\n'
+        'if [ "${1:-}" = "-m" ]; then\n'
+        "shift 2\n"
+        f'printf "%s\\n" "$@" > "{recorded.as_posix()}"\n'
+        f"{cli}\n"
+        "fi\n"
+        f'exec "{real}" "${{all[@]}}"\n',
         encoding="utf-8",
         newline="\n",
     )
@@ -337,18 +383,48 @@ def _run_collect_step(
     outputs = tmp_path / "github_output"
     outputs.write_text("", encoding="utf-8")
     summary = tmp_path / "step_summary.md"
-    env = dict(os.environ)
-    env.update(dict.fromkeys(_STEP_ENV, ""))
-    env.update(
-        PATH=f"{shim_dir}{os.pathsep}{env['PATH']}",
+    step_env = dict(os.environ)
+    step_env.update(dict.fromkeys(_STEP_ENV, ""))
+    step_env.update(
+        PATH=f"{shim_dir}{os.pathsep}{step_env['PATH']}",
         OUTPUT_DIR=str(tmp_path / "out"),
         GITHUB_OUTPUT=str(outputs),
         GITHUB_STEP_SUMMARY=str(summary),
+        FAIL_ON="not_ready",
     )
+    step_env.update(env or {})
     completed = subprocess.run(
-        [bash, "-c", collect_step["run"]], env=env, capture_output=True, text=True
+        [bash, "-c", collect_step["run"]],
+        env=step_env,
+        capture_output=True,
+        text=True,
+        cwd=cwd,
     )
-    return completed.returncode, outputs.read_text(encoding="utf-8"), summary
+    cli_args = recorded.read_text(encoding="utf-8").splitlines() if recorded.exists() else []
+    return _StepRun(
+        completed.returncode,
+        outputs.read_text(encoding="utf-8"),
+        summary,
+        completed.stdout,
+        cli_args,
+    )
+
+
+def _not_ready_copy(sample_bundle: Path, tmp_path: Path) -> Path:
+    import json
+
+    data = json.loads(sample_bundle.read_text(encoding="utf-8"))
+    data["summary"]["release_status"] = "not_ready"
+    fresh = tmp_path / "not_ready.json"
+    fresh.write_text(json.dumps(data), encoding="utf-8")
+    return fresh
+
+
+def _writes_bundle_then_exits(bundle: Path, code: int) -> str:
+    return (
+        f'mkdir -p "$OUTPUT_DIR"; sleep 0.1; cp "{bundle.as_posix()}" '
+        f'"$OUTPUT_DIR/bundle.json"; exit {code}'
+    )
 
 
 def test_a_bundle_left_by_an_earlier_run_is_not_reported(
@@ -363,11 +439,11 @@ def test_a_bundle_left_by_an_earlier_run_is_not_reported(
     out.mkdir()
     (out / "bundle.json").write_bytes(sample_bundle.read_bytes())
 
-    code, outputs, summary = _run_collect_step(collect_step, tmp_path, cli="exit 3")
+    run = _run_collect_step(collect_step, tmp_path, cli="exit 3")
 
-    assert code == 3
-    assert "release-status=" not in outputs
-    assert not summary.exists()
+    assert run.code == 3
+    assert "release-status=" not in run.outputs
+    assert not run.summary.exists()
 
 
 def test_a_bundle_written_by_a_failing_run_is_still_reported(
@@ -380,12 +456,338 @@ def test_a_bundle_written_by_a_failing_run_is_still_reported(
     fresh = tmp_path / "fresh.json"
     fresh.write_bytes(sample_bundle.read_bytes())
 
-    code, outputs, summary = _run_collect_step(
+    run = _run_collect_step(collect_step, tmp_path, cli=_writes_bundle_then_exits(fresh, 2))
+
+    assert run.code == 2
+    assert "release-status=ready" in run.outputs
+    assert run.summary.is_file()
+
+
+# --- python -P (SEC-06) -----------------------------------------------------
+
+
+def _run_scripts(path: Path) -> list[str]:
+    document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if "runs" in document:
+        steps = document["runs"]["steps"]
+    else:
+        steps = [step for job in document["jobs"].values() for step in job.get("steps", [])]
+    return [step["run"] for step in steps if "run" in step]
+
+
+@pytest.mark.parametrize(
+    "path", [_ACTION, Path(".github/workflows/reusable-evidence-collection.yml")]
+)
+def test_every_python_call_keeps_the_working_directory_off_sys_path(path: Path) -> None:
+    """The working directory is the caller's checkout, which may be untrusted.
+
+    `python -m`, `python -c` and `python -` put it first on sys.path, so a
+    json.py or typer.py committed there runs inside the step, with the job
+    token in the environment, and can write the step outputs.
+    """
+    import re
+
+    calls = [
+        match.group(0)
+        for script in _run_scripts(path)
+        for line in script.splitlines()
+        if not line.lstrip().startswith("#")
+        for match in re.finditer(r"\bpython3?\s+-\S*", line)
+    ]
+    assert calls, f"{path} runs no python; the check would pass vacuously"
+    unsafe = [call for call in calls if not call.endswith(" -P")]
+    assert not unsafe, f"{path}: python calls without -P: {unsafe}"
+
+
+def test_a_module_planted_in_the_workspace_cannot_forge_the_outputs(
+    collect_step: dict[str, Any], sample_bundle: Path, tmp_path: Path
+) -> None:
+    """A planted json.py used to be imported by the output script."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    marker = tmp_path / "planted-module-ran"
+    (workspace / "json.py").write_text(
+        "import pathlib\n"
+        f"pathlib.Path({str(marker)!r}).write_text('imported')\n"
+        "print('release-status=ready')\n"
+        "raise SystemExit(0)\n",
+        encoding="utf-8",
+    )
+    fresh = _not_ready_copy(sample_bundle, tmp_path)
+
+    run = _run_collect_step(
         collect_step,
         tmp_path,
-        cli=f'sleep 0.1; cp "{fresh.as_posix()}" "$OUTPUT_DIR/bundle.json"; exit 2',
+        cli=_writes_bundle_then_exits(fresh, 2),
+        cwd=workspace,
     )
 
-    assert code == 2
-    assert "release-status=ready" in outputs
-    assert summary.is_file()
+    assert not marker.exists(), "the planted json.py was imported"
+    assert "release-status=not_ready" in run.outputs
+    assert "release-status=ready" not in run.outputs
+    assert run.code == 2
+
+
+# --- GITHUB_TOKEN scope (SEC-06, PIP-12) ------------------------------------
+
+
+def test_the_token_reaches_the_collector_only_for_github_api_inputs(
+    collect_step: dict[str, Any],
+) -> None:
+    """Only --pull-request and --workflow-run read GITHUB_TOKEN."""
+    token = collect_step["env"]["GITHUB_TOKEN"]
+    assert token != "${{ github.token }}"
+    assert "inputs.pull-request != ''" in token
+    assert "inputs.workflow-run != ''" in token
+    assert token.replace(" ", "").endswith("&&github.token||''}}")
+
+
+# --- observe mode (ADO-02) --------------------------------------------------
+
+
+def test_observe_mode_reports_a_not_ready_verdict_without_failing(
+    collect_step: dict[str, Any], sample_bundle: Path, tmp_path: Path
+) -> None:
+    fresh = _not_ready_copy(sample_bundle, tmp_path)
+
+    run = _run_collect_step(
+        collect_step,
+        tmp_path,
+        cli=_writes_bundle_then_exits(fresh, 2),
+        env={"FAIL_ON": "none"},
+    )
+
+    assert run.code == 0
+    assert "release-status=not_ready" in run.outputs
+    # The CLI has no `none`; the step passes its default threshold.
+    assert run.cli_args[run.cli_args.index("--fail-on") + 1] == "not_ready"
+    assert "::notice title=Observe mode::" in run.stdout
+
+
+def test_observe_mode_still_fails_when_the_collector_cannot_run(
+    collect_step: dict[str, Any], tmp_path: Path
+) -> None:
+    run = _run_collect_step(collect_step, tmp_path, cli="exit 3", env={"FAIL_ON": "NONE"})
+
+    assert run.code == 3
+    assert "release-status=" not in run.outputs
+
+
+def test_the_other_fail_on_values_reach_the_collector_unchanged(
+    collect_step: dict[str, Any], sample_bundle: Path, tmp_path: Path
+) -> None:
+    fresh = _not_ready_copy(sample_bundle, tmp_path)
+
+    run = _run_collect_step(
+        collect_step,
+        tmp_path,
+        cli=_writes_bundle_then_exits(fresh, 2),
+        env={"FAIL_ON": "conditional"},
+    )
+
+    assert run.code == 2
+    assert run.cli_args[run.cli_args.index("--fail-on") + 1] == "conditional"
+
+
+# --- missing evidence directories (ADO-09, CON-10) --------------------------
+
+
+def test_a_missing_evidence_directory_is_named_in_the_log(
+    collect_step: dict[str, Any], tmp_path: Path
+) -> None:
+    run = _run_collect_step(
+        collect_step,
+        tmp_path,
+        cli="exit 3",
+        env={"ARTIFACTS_DIR": "scan-otput", "ATTESTATIONS_DIR": "attestations"},
+        cwd=tmp_path,
+    )
+
+    lines = run.stdout.splitlines()
+    assert (
+        "::warning title=artifacts-dir not found::artifacts-dir 'scan-otput' does not exist, "
+        "so nothing was collected from it." in lines
+    )
+    # The default value gets a notice: the quick start never creates it.
+    assert (
+        "::notice title=attestations-dir not found::attestations-dir 'attestations' does not "
+        "exist, so nothing was collected from it." in lines
+    )
+    assert "--artifacts-dir" not in run.cli_args
+    assert "--attestations-dir" not in run.cli_args
+
+
+def test_a_directory_name_cannot_start_a_workflow_command(
+    collect_step: dict[str, Any], tmp_path: Path
+) -> None:
+    run = _run_collect_step(
+        collect_step,
+        tmp_path,
+        cli="exit 3",
+        env={"ARTIFACTS_DIR": "x\n::add-mask::secret %0A", "ATTESTATIONS_DIR": ""},
+        cwd=tmp_path,
+    )
+
+    assert not any(line.startswith("::add-mask::") for line in run.stdout.splitlines())
+    assert "x%0A::add-mask::secret %250A" in run.stdout
+
+
+def test_collection_errors_and_the_gap_split_reach_the_summary(
+    collect_step: dict[str, Any], sample_bundle: Path, tmp_path: Path
+) -> None:
+    import json
+
+    data = json.loads(sample_bundle.read_text(encoding="utf-8"))
+    data["summary"]["missing_critical_evidence"] = [
+        "ORG-CODE-REVIEW:code_review",
+        "SSDF-PW.7:sast_scan",
+    ]
+    data["collection_errors"] = [
+        {"path": f"artifacts/broken-{n}.sarif", "reason": "not valid JSON"} for n in range(12)
+    ]
+    crafted = tmp_path / "bundle.json"
+    crafted.write_text(json.dumps(data), encoding="utf-8")
+    summary_file = tmp_path / "summary.md"
+
+    outputs = _run_output_script(collect_step, crafted, summary_file)
+
+    assert outputs["collection-errors"] == "12"
+    text = summary_file.read_text(encoding="utf-8")
+    assert "Missing critical evidence (not_ready): `ORG-CODE-REVIEW:code_review`" in text
+    assert "Missing high evidence (conditional): `SSDF-PW.7:sast_scan`" in text
+    assert "Collection warnings, inputs that could not be read (12):" in text
+    assert "- `artifacts/broken-0.sarif`: `not valid JSON`" in text
+    assert "- `artifacts/broken-10.sarif`" not in text
+    assert "- 2 more in the report" in text
+
+
+# --- release lineage (ADO-10, CON-05) ---------------------------------------
+
+
+def test_lineage_inputs_default_to_the_github_run(action: dict[str, Any]) -> None:
+    inputs = action["inputs"]
+    assert inputs["tag"]["default"] == "${{ github.ref_type == 'tag' && github.ref_name || '' }}"
+    assert inputs["pipeline-run-id"]["default"] == "${{ github.run_id }}"
+    assert inputs["build-id"]["default"] == "${{ github.run_id }}-${{ github.run_attempt }}"
+    branch = inputs["branch"]["default"]
+    # A tag is not a branch, and `<number>/merge` is not one either.
+    assert branch.startswith("${{ github.head_ref ||")
+    assert "github.ref_type == 'branch' && github.ref_name" in branch
+    assert "github.event.repository.default_branch" in branch
+
+
+def test_lineage_reaches_the_command(collect_step: dict[str, Any], tmp_path: Path) -> None:
+    run = _run_collect_step(
+        collect_step,
+        tmp_path,
+        cli="exit 3",
+        env={
+            "BRANCH": "main",
+            "TAG": "v1.2.3",
+            "PIPELINE_RUN_ID": "4242",
+            "BUILD_ID": "4242-2",
+        },
+    )
+
+    args = run.cli_args
+    assert args[args.index("--branch") + 1] == "main"
+    assert args[args.index("--tag") + 1] == "v1.2.3"
+    assert args[args.index("--pipeline-run-id") + 1] == "4242"
+    assert args[args.index("--build-id") + 1] == "4242-2"
+
+
+def test_empty_lineage_inputs_are_left_out(collect_step: dict[str, Any], tmp_path: Path) -> None:
+    run = _run_collect_step(collect_step, tmp_path, cli="exit 3", env={"BRANCH": "main"})
+
+    for flag in ("--tag", "--pipeline-run-id", "--build-id"):
+        assert flag not in run.cli_args
+
+
+# --- installation (PIP-12, INS-12, CON-06) ----------------------------------
+
+
+def _run_install_step(
+    action: dict[str, Any], tmp_path: Path, *, version: str, locked_python: bool
+) -> tuple[str, list[list[str]]]:
+    """Run the install step with a `python` that only records its calls."""
+    import os
+    import stat
+    import subprocess
+
+    bash = _bash_or_skip()
+    step = next(s for s in action["runs"]["steps"] if s.get("name") == "Install collector")
+    shim_dir = tmp_path / "shim"
+    shim_dir.mkdir()
+    log = tmp_path / "calls.txt"
+    shim = shim_dir / "python"
+    shim.write_text(
+        "#!/usr/bin/env bash\n"
+        f'printf \'%s\\037\' "$@" >> "{log.as_posix()}"\n'
+        f"printf '\\n' >> \"{log.as_posix()}\"\n"
+        'if [ "${2:-}" = "-c" ]; then\n'
+        f"exit {0 if locked_python else 1}\n"
+        "fi\n"
+        "exit 0\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    env = dict(os.environ)
+    env.update(
+        PATH=f"{shim_dir}{os.pathsep}{env['PATH']}",
+        VERSION=version,
+        ACTION_PATH=Path.cwd().as_posix(),
+    )
+    completed = subprocess.run(
+        [bash, "-c", step["run"]], env=env, capture_output=True, text=True, check=True
+    )
+    calls = [line.split("\x1f")[:-1] for line in log.read_text(encoding="utf-8").splitlines()]
+    return completed.stdout, calls
+
+
+def test_the_action_installs_dependencies_from_its_hash_locks(
+    action: dict[str, Any], tmp_path: Path
+) -> None:
+    stdout, calls = _run_install_step(action, tmp_path, version="", locked_python=True)
+
+    root = Path.cwd().as_posix()
+    locks = f"{root}/.github/requirements"
+    assert [call[:2] for call in calls] == [["-P", "-c"]] + [["-P", "-m"]] * 3
+    assert calls[1][2:] == ["pip", "install", "--require-hashes", "-r", f"{locks}/pip.txt"]
+    assert calls[2][2:] == ["pip", "install", "--require-hashes", "-r", f"{locks}/runtime.txt"]
+    assert calls[3][2:] == ["pip", "install", "--no-deps", root]
+    assert "::notice" not in stdout
+    assert Path(".github/requirements/pip.txt").is_file()
+    assert Path(".github/requirements/runtime.txt").is_file()
+
+
+def test_other_python_versions_fall_back_to_the_ranges_with_a_notice(
+    action: dict[str, Any], tmp_path: Path
+) -> None:
+    stdout, calls = _run_install_step(action, tmp_path, version="", locked_python=False)
+
+    assert calls[-1] == ["-P", "-m", "pip", "install", Path.cwd().as_posix()]
+    assert not any("--require-hashes" in call for call in calls)
+    assert "::notice title=Dependencies not hash-locked::" in stdout
+
+
+@pytest.mark.parametrize(
+    ("version", "ref"),
+    [("4.2.0", "v4.2.0"), ("v4.2.0", "v4.2.0"), ("main", "main"), ("4.2", "4.2")],
+)
+def test_a_release_number_is_read_as_its_tag(
+    action: dict[str, Any], tmp_path: Path, version: str, ref: str
+) -> None:
+    """The reusable workflow and the component take `4.2.0`; the tag is `v4.2.0`."""
+    _, calls = _run_install_step(action, tmp_path, version=version, locked_python=True)
+
+    assert calls == [
+        [
+            "-P",
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            f"git+https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector@{ref}",
+        ]
+    ]

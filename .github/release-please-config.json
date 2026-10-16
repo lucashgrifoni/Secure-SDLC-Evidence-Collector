@@ -26,6 +26,7 @@
         "src/evidence_collector/collectors/github.py",
         "src/evidence_collector/collectors/gitlab.py",
         "docs/github_action.md",
+        "docs/reusable_workflow.md",
         { "type": "generic", "path": "examples/gitlab-ci/secure-sdlc-evidence.yml" },
         { "type": "generic", "path": "README.md" },
         { "type": "generic", "path": ".pre-commit-hooks.yaml" }
