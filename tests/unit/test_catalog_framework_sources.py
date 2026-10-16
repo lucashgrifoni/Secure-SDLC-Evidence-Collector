@@ -27,8 +27,47 @@ def test_cr26_catalog_uses_selected_actual_ids_and_explicit_partial_scope() -> N
         assert c.framework.value == "ORG_INTERNAL"
         assert "supporting evidence" in c.name.lower()
         assert "partial" in c.description.lower()
-        assert "2026.10.05.01" in c.description
-        assert "1c33385a06acf4faf50da2b9b4dc31cd826e5b91" in c.description
+        assert "2026.10.13.01" in c.description
+        assert "a89d78477ddea98dc57eca24f5007794c2b4eeb6" in c.description
+
+
+def test_cr26_pin_agrees_across_profile_catalog_and_provenance_record() -> None:
+    """One CR26 revision is cited everywhere it is named.
+
+    The profile stamps it on every record, the catalog cites it per KSI and
+    ADR 0015's provenance file records the source controls read from it.
+    """
+    from evidence_collector.application.profiles import (
+        FEDRAMP_RULESET_COMMIT,
+        FEDRAMP_RULESET_VERSION,
+    )
+
+    provenance = json.loads(
+        (ROOT / "docs/adr/data/0015-fedramp-cr26-provenance.json").read_text(encoding="utf-8")
+    )
+    assert provenance["commit"] == FEDRAMP_RULESET_COMMIT
+    assert provenance["ruleset_version"] == FEDRAMP_RULESET_VERSION
+    assert FEDRAMP_RULESET_COMMIT in provenance["source"]
+    # sha256 of fedramp-consolidated-rules.json at that commit. 2026.10.13.01
+    # changed only the 800-53 mappings (`controls`) and `updated` of the six
+    # KSIs; their statements are unchanged.
+    assert provenance["source_sha256"] == (
+        "fb48d677a85d77fb72735a325de2c1945a1e0ceab1d2e655292fe9ebe3e4e0b4"
+    )
+    assert provenance["selected_indicators"]["KSI-CMT-VTD"]["source_controls"] == [
+        "cm-3",
+        "cm-3.2",
+        "cm-4.2",
+        "cm-6.2",
+        "ir-9.4",
+        "si-2",
+    ]
+    controls = load_catalog("catalog-fedramp-cr26.yaml")
+    assert set(provenance["selected_indicators"]) == {c.control_id for c in controls}
+    for c in controls:
+        assert f"FedRAMP/rules {FEDRAMP_RULESET_VERSION}, commit {FEDRAMP_RULESET_COMMIT}" in (
+            " ".join(c.description.split())
+        )
 
 
 def test_legacy_fedramp_ids_are_preserved_without_official_id_claims() -> None:

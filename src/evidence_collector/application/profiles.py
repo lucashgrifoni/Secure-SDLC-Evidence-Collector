@@ -10,6 +10,7 @@ from __future__ import annotations
 import calendar
 import hashlib
 import json
+import logging
 import re
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -18,8 +19,11 @@ from typing import Any, Literal, Self
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from evidence_collector.application.srp_glossary import SRP_GLOSSARY
 from evidence_collector.domain.models import EvidenceBundle, NormalizedEvidence
 from evidence_collector.parsers._common import ensure_file, load_json
+
+logger = logging.getLogger(__name__)
 
 
 class ReleaseProfile(StrEnum):
@@ -35,19 +39,21 @@ CRA_REPORTING_OBLIGATION_START = "2026-09-11"
 # Art. 71(2): Article 14 applies from 11 September 2026. ENISA FAQ Q13: awareness
 # before that date carries no retrospective reporting obligation. Taken as UTC.
 _CRA_OBLIGATION_START_AT = datetime(2026, 9, 11, tzinfo=UTC)
+# Art. 24(3) applies Art. 14(1) and, for severe incidents affecting systems the
+# steward provides for development, Art. 14(3) and (8) to open-source software
+# stewards. Art. 24 is not among the early dates in Art. 71(2), so it applies
+# with the rest of the Regulation from 11 December 2027.
+STEWARD_REPORTING_OBLIGATION_START = "2027-12-11"
+_STEWARD_OBLIGATION_START_AT = datetime(2027, 12, 11, tzinfo=UTC)
+_MANUFACTURER_ARTICLES = {"vulnerability": "14(2)", "incident": "14(4)"}
+_STEWARD_ARTICLES = {
+    "vulnerability": "24(3) applying 14(1)",
+    "incident": "24(3) applying 14(3),14(8)",
+}
 _NOT_APPLICABLE = {"status": "not_applicable", "reason": "awareness_precedes_obligation_start"}
-FEDRAMP_RULESET_VERSION = "2026.10.05.01"
-FEDRAMP_RULESET_COMMIT = "1c33385a06acf4faf50da2b9b4dc31cd826e5b91"
-SRP_GLOSSARY_URL = "https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2"
-_SRP_FIELD_IDS = frozenset(
-    [str(i) for i in range(1, 19)]
-    + [f"v{i}" for i in range(19, 31)]
-    + ["v26a"]
-    + [f"i{i}" for i in range(31, 40)]
-    # 40 (AR Note) is optional reporter text. 41 (CSIRT Note) is written by the
-    # designated CSIRT, not the reporter, so it stays unknown here.
-    + ["40"]
-)
+# 2026.10.13.01 changed only the 800-53 mappings of the six catalog KSIs.
+FEDRAMP_RULESET_VERSION = "2026.10.13.01"
+FEDRAMP_RULESET_COMMIT = "a89d78477ddea98dc57eca24f5007794c2b4eeb6"
 
 
 class CraReportingContext(BaseModel):
@@ -57,6 +63,9 @@ class CraReportingContext(BaseModel):
     release_id: str = Field(min_length=1, max_length=255)
     commit_sha: str = Field(min_length=1, max_length=255)
     notification_type: Literal["vulnerability", "incident"]
+    # Unset means manufacturer, as before this field existed; it is hashed and
+    # recorded only when the operator states it.
+    operator_role: Literal["manufacturer", "open_source_steward"] | None = None
     awareness_at: AwareDatetime | None = None
     corrective_measure_available_at: AwareDatetime | None = None
     notification_72h_submitted_at: AwareDatetime | None = None
@@ -94,12 +103,12 @@ class CraReportingContext(BaseModel):
         ):
             raise ValueError("notification_72h_submitted_at cannot be earlier than awareness_at")
         for key, value in self.srp_fields.items():
-            if key == "41":
+            if key == SRP_GLOSSARY.csirt_field_id:
                 raise ValueError(
                     "SRP field '41' (CSIRT Note) is written by the designated CSIRT, "
                     "not the reporter; remove it from srp_fields"
                 )
-            if key not in _SRP_FIELD_IDS:
+            if key not in SRP_GLOSSARY.reporter_field_ids:
                 raise ValueError(
                     f"Unknown SRP field identifier {key!r}; expected one of 1-18, "
                     "v19-v30, v26a, i31-i39 or 40"
@@ -161,6 +170,8 @@ def _one_month_after(value: datetime) -> datetime:
 def _cra_metadata(context: CraReportingContext | None) -> dict[str, Any]:
     kind = context.notification_type if context else None
     awareness = context.awareness_at if context else None
+    role = context.operator_role if context else None
+    steward = role == "open_source_steward"
     deadlines: dict[str, Any] = {
         "early_warning": _iso(awareness + CRA_DISCLOSURE_WINDOW)
         if awareness
@@ -194,7 +205,8 @@ def _cra_metadata(context: CraReportingContext | None) -> dict[str, Any]:
             },
         }
     deadlines["final_report"] = final
-    if awareness and awareness < _CRA_OBLIGATION_START_AT:
+    start_at = _STEWARD_OBLIGATION_START_AT if steward else _CRA_OBLIGATION_START_AT
+    if awareness and awareness < start_at:
         deadlines = {stage: dict(_NOT_APPLICABLE) for stage in deadlines}
     metadata: dict[str, Any] = {
         "notification_type": kind,
@@ -205,18 +217,28 @@ def _cra_metadata(context: CraReportingContext | None) -> dict[str, Any]:
         "exploitation_status": "not_assessed",
         "reporting_deadlines": deadlines,
         "disclosure_deadline": deadlines["early_warning"],
-        "reporting_obligation_start": CRA_REPORTING_OBLIGATION_START,
+        "reporting_obligation_start": (
+            STEWARD_REPORTING_OBLIGATION_START if steward else CRA_REPORTING_OBLIGATION_START
+        ),
         "regulation": "EU CRA 2024/2847",
-        "article": {"vulnerability": "14(2)", "incident": "14(4)"}.get(kind or "", "14(2),14(4)"),
-        "srp_glossary_version": "1.4",
-        "srp_glossary_date": "2026-10-01",
-        "srp_glossary_url": SRP_GLOSSARY_URL,
+        "article": (_STEWARD_ARTICLES if steward else _MANUFACTURER_ARTICLES).get(
+            kind or "", "14(2),14(4)"
+        ),
+        "srp_glossary_version": SRP_GLOSSARY.version,
+        "srp_glossary_date": SRP_GLOSSARY.date,
+        "srp_glossary_url": SRP_GLOSSARY.url,
         "submission_status": "not_submitted",
     }
+    if role is not None:
+        metadata["operator_role"] = role
+    if steward and kind == "incident":
+        metadata["incident_scope"] = "steward_provided_development_systems"
     if context:
-        fingerprint = json.dumps(
-            context.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
-        ).encode()
+        fields = context.model_dump(mode="json")
+        if fields["operator_role"] is None:
+            # Contexts written before operator_role existed keep their digest.
+            del fields["operator_role"]
+        fingerprint = json.dumps(fields, sort_keys=True, separators=(",", ":")).encode()
         metadata["canonical_context_sha256"] = hashlib.sha256(fingerprint).hexdigest()
         metadata["euvd_ids"] = sorted(set(context.euvd_ids))
         provided = {key for key, value in context.srp_fields.items() if value.strip()} | {"1"}
@@ -224,27 +246,13 @@ def _cra_metadata(context: CraReportingContext | None) -> dict[str, Any]:
             provided.add("v26" if kind == "vulnerability" else "i37")
         if context.corrective_measure_available_at:
             provided.add("v22")
-        common = {str(i) for i in range(1, 8)}
-        early = common | ({"v26"} if kind == "vulnerability" else {"i31", "i37"})
-        full = early | ({"v21", "v26a"} if kind == "vulnerability" else {"i32", "i38", "i39"})
-        final_fields = (
-            (full - ({"i38"} if kind == "incident" else set()))
-            | {"16", "17"}
-            | (
-                {"v22", "v23", "v24", "v25"}
-                if kind == "vulnerability"
-                else {"i33", "i34", "i35", "i36"}
-            )
-        )
         metadata["srp_completeness"] = {
             stage: {"missing_field_ids": sorted(required - provided), "presence_only": True}
-            for stage, required in [
-                ("early_warning", early),
-                ("72h_notification", full),
-                ("final_report", final_fields),
-            ]
+            for stage, required in SRP_GLOSSARY.required[context.notification_type].items()
         }
-        metadata["srp_conditional_manual_fields"] = ["v27"] if kind == "vulnerability" else []
+        metadata["srp_conditional_manual_fields"] = list(
+            SRP_GLOSSARY.conditional_manual[context.notification_type]
+        )
         metadata["srp_declared_field_ids"] = sorted(provided)
     return metadata
 
@@ -297,6 +305,15 @@ def apply_profile(
         raise ValueError("FedRAMP class must be A, B, C or D")
     if profile == ReleaseProfile.NONE:
         return bundle
+    if profile == ReleaseProfile.FEDRAMP_20X and fedramp_class == "D":
+        # A warning, not a metadata key: CR26 defines Class D, so recording it
+        # is not wrong, but no finalized 20x Class D certification exists yet.
+        logger.warning(
+            "--fedramp-class D: fedramp.gov/20x says the full FedRAMP 20x rules are "
+            "finalized for Class A, B and C, and that Class D certifications will be "
+            "developed during 20x Phase 4. The bundle records class D as operator "
+            "context only."
+        )
     new_evidence = []
     for evidence in bundle.evidence:
         metadata = dict(evidence.metadata)
