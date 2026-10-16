@@ -87,7 +87,8 @@ is deferred from v2.0 to v2.1 because:
    v2.0 blocker.
 
 The deferral is documented in `docs/limitations.md §17 — Watch
-daemon postponed to v2.1`.
+daemon deferred, not scheduled`. (Update, October 2026: v2.1 shipped
+without the daemon, and it remains unscheduled.)
 
 ## Alternatives considered
 

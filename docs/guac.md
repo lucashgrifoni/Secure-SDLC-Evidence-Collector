@@ -173,7 +173,7 @@ helpers: <https://docs.guac.sh>.
   GUAC; it does not read a graph *back* from GUAC.
 - **Continuous ingestion is deferred.** The `sdlc-evidence watch`
   daemon — webhook receiver that would emit GUAC collections on
-  every release event — is deferred to v2.1. See
+  every release event — was planned for v2.1 and is not scheduled. See
   [`limitations.md §17`](./limitations.md). For now, generate the
   container in the same CI job that produces the bundle and ingest
   it as a follow-up step.

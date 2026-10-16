@@ -169,7 +169,7 @@ notes are not part of the public repository.
 
 | ID    | Item                                                          | Driver                                                                                              |
 |-------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| T6.C1 | OpenSSF Best Practices Badge — **passing** tier               | Free, OSS, public signal. Silver deferred to v2.1+ once governance docs have a track record.        |
+| T6.C1 | OpenSSF Best Practices Badge — **passing** tier               | Free, OSS, public signal. Passing earned in October 2026 (project 15519); silver waits until governance docs have a track record.        |
 | T6.C2 | GitHub Secure Open Source Fund application (Apr 2026 cohort)  | Apache-2.0 security tooling qualifies. $10K + Azure credits + mentoring. Backup: Alpha-Omega Tier 2. |
 | T6.C3 | Governance + contributor ladder docs                          | Prereq for Silver badge and for the Secure OSS Fund narrative. `GOVERNANCE.md`, `MAINTAINERS.md`.   |
 | T6.C4 | Reproducible wheel build (`setuptools-reproducible` or `uv --reproducible`) | Bundle output already deterministic; the wheel itself is not. Closes the last reproducibility gap.  |
