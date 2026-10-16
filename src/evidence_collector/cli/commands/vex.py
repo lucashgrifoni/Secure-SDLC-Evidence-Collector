@@ -15,6 +15,7 @@ from typing import Annotated
 
 import typer
 from pydantic import ValidationError
+from rich.markup import escape
 
 from evidence_collector.cli._errors import report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
@@ -141,10 +142,12 @@ def register(app: typer.Typer) -> None:
                     f"{s.cve_id} ({', '.join(s.products) or 'no product'})" for s in skipped[:5]
                 )
                 more = f" and {len(skipped) - 5} more" if len(skipped) > 5 else ""
+                # The identifiers come from the consumed file: escaped, so
+                # `[/x]` in one cannot raise MarkupError and abort the write.
                 console.print(
                     f"[yellow]Skipped {len(skipped)} consumed statement(s) that name no "
-                    f"product of this release:[/yellow] {listed}{more}. Pass --product "
-                    "with the release's purl to apply them."
+                    f"product of this release:[/yellow] {escape(listed)}{more}. Pass "
+                    "--product with the release's purl to apply them."
                 )
 
         write_atomic(output, json.dumps(document, indent=2, sort_keys=False))

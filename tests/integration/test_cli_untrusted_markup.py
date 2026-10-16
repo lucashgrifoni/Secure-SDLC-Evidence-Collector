@@ -134,3 +134,63 @@ def test_exceptions_list_prints_waiver_fields_verbatim(runner: CliRunner, tmp_pa
     assert "[/x]" in result.output
     assert "[temporary]" in result.output
     assert "2 active" in result.output
+
+
+@pytest.mark.integration
+def test_vex_prints_a_markup_like_skipped_product_verbatim(
+    runner: CliRunner, tmp_path: Path, sample_release_root: Path
+) -> None:
+    out = tmp_path / "out"
+    built = runner.invoke(
+        app,
+        [
+            "run",
+            "--application",
+            "a",
+            "--repository",
+            "o/r",
+            "--release-id",
+            "1.0.0",
+            "--commit-sha",
+            "abcdef1234567890",
+            "--attestations-dir",
+            str(sample_release_root / "attestations"),
+            "--output-dir",
+            str(out),
+        ],
+    )
+    assert (out / "bundle.json").is_file(), built.output
+    vendor = tmp_path / "vendor.openvex.json"
+    vendor.write_text(
+        json.dumps(
+            {
+                "@context": "https://openvex.dev/ns/v0.2.0",
+                "statements": [
+                    {
+                        "vulnerability": {"name": "CVE-2024-1111"},
+                        "products": [{"@id": "[/x]AAAA"}],
+                        "status": "not_affected",
+                        "justification": "vulnerable_code_not_present",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    result = runner.invoke(
+        app,
+        [
+            "vex",
+            str(out / "bundle.json"),
+            "--consume",
+            str(vendor),
+            "--output",
+            str(tmp_path / "out.openvex.json"),
+        ],
+        env={"COLUMNS": "200"},
+    )
+    assert result.exception is None or isinstance(result.exception, SystemExit), repr(
+        result.exception
+    )
+    assert "[/x]AAAA" in result.output
+    assert (tmp_path / "out.openvex.json").is_file()
