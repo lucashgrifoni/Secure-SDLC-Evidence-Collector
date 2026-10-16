@@ -66,6 +66,9 @@ def _env(tmp_path: Path) -> dict[str, str]:
         "EVIDENCE_ATTESTATIONS_DIR": "",
         "EVIDENCE_EXCEPTIONS_DIR": "",
         "EVIDENCE_FAIL_ON": "not_ready",
+        "EVIDENCE_PROFILE": "none",
+        "EVIDENCE_CRA_CONTEXT": "",
+        "EVIDENCE_FEDRAMP_CLASS": "",
         "CI_COMMIT_SHA": "abcdef1234567890",
         "CI_COMMIT_REF_NAME": "main",
         "CI_COMMIT_BRANCH": "main",
@@ -134,3 +137,26 @@ def test_inputs_remain_literal_quoted_arguments(tmp_path: Path) -> None:
     assert _value(argv, "--application") == env["EVIDENCE_APPLICATION"]
     assert _value(argv, "--artifacts-dir") == "scanner output"
     assert not (tmp_path / "INJECTED").exists()
+
+
+def test_profile_defaults_to_none_and_omits_the_profile_options(tmp_path: Path) -> None:
+    argv = _argv(tmp_path, _env(tmp_path))
+    assert _value(argv, "--profile") == "none"
+    assert "--cra-context" not in argv
+    assert "--fedramp-class" not in argv
+
+
+def test_regulatory_profile_inputs_reach_the_command(tmp_path: Path) -> None:
+    fedramp = _argv(
+        tmp_path,
+        _env(tmp_path) | {"EVIDENCE_PROFILE": "fedramp-20x", "EVIDENCE_FEDRAMP_CLASS": "B"},
+    )
+    assert _value(fedramp, "--profile") == "fedramp-20x"
+    assert _value(fedramp, "--fedramp-class") == "B"
+    cra = _argv(
+        tmp_path,
+        _env(tmp_path)
+        | {"EVIDENCE_PROFILE": "cra-2026", "EVIDENCE_CRA_CONTEXT": "cra context.json"},
+    )
+    assert _value(cra, "--profile") == "cra-2026"
+    assert _value(cra, "--cra-context") == "cra context.json"

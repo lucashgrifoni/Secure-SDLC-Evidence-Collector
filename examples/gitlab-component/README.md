@@ -11,7 +11,7 @@ GitLab downloads artifacts from earlier stages into the collector job.
 
 ```yaml
 include:
-  - component: gitlab.com/lucas.henriquegrifoni/secure-sdlc-evidence-component/collect@1.0.0
+  - component: gitlab.com/lucas.henriquegrifoni/secure-sdlc-evidence-component/collect@1.1.0
     inputs:
       application: my-application
       artifacts-dir: scanner-output
@@ -34,13 +34,17 @@ Use an exact component version or reviewed commit SHA in production.
 | attestations-dir | empty | Release attestations |
 | exceptions-dir | empty | Approved waiver files |
 | catalog | empty | Custom control catalog path |
-| collector-version | 3.2.0 | Exact package version |
+| profile | none | Regulatory profile: `none`, `cra-2026` or `fedramp-20x` |
+| cra-context | empty | CRA operator context JSON; needs profile `cra-2026` |
+| fedramp-class | empty | CR26 class A, B, C or D, metadata only; needs profile `fedramp-20x` |
+| collector-version | 4.1.4 | Exact package version |
 | fail-on | conditional | Failure threshold |
 
-Version 1.0.0 has no `profile`, CRA context or FedRAMP class input, and its
-pinned collector 3.2.0 has no `--cra-context` or `--fedramp-class` option.
-The repository's `examples/gitlab-ci` template forwards `CRA_CONTEXT` and
-`FEDRAMP_CLASS` for collector releases that provide those options.
+The profile inputs map to the collector's `--profile`, `--cra-context` and
+`--fedramp-class` options. The collector rejects a CRA context without the
+`cra-2026` profile, a FedRAMP class without the `fedramp-20x` profile, and a CRA
+context whose release ID or commit does not match the pipeline. Version 1.0.0
+pinned collector 3.2.0, which has neither option and none of the 4.x fixes.
 
 The job records the pipeline commit SHA, the pipeline ID as the pipeline run
 and the job ID as the build. On a tag pipeline the tag is recorded as the
@@ -70,7 +74,7 @@ own dependency and third-party notices.
 
 ## Version updates and rollback
 
-Version 1.0.0 installs collector 3.2.0 and pip 26.2.1. Python and the release
+Version 1.1.0 installs collector 4.1.4 and pip 26.2.1. Python and the release
 CLI images are pinned by digest. The collector's transitive dependencies are
 resolved by PyPI at installation time; an exact collector version alone does
 not lock the full dependency tree.

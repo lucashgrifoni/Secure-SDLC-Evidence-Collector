@@ -27,8 +27,19 @@ spec:
     catalog:
       default: ""
       description: Optional path to a control catalog YAML.
+    profile:
+      default: none
+      options: [none, cra-2026, fedramp-20x]
+      description: Regulatory profile recorded in the bundle.
+    cra-context:
+      default: ""
+      description: Optional CRA operator context JSON; requires profile cra-2026.
+    fedramp-class:
+      default: ""
+      regex: '^[ABCD]?$'
+      description: Optional FedRAMP CR26 class A, B, C or D (metadata only); requires profile fedramp-20x.
     collector-version:
-      default: "3.2.0"
+      default: "4.1.4"
       regex: '^\d+\.\d+\.\d+$'
       description: Exact published collector version.
     fail-on:
@@ -50,6 +61,9 @@ spec:
     EVIDENCE_ATTESTATIONS_DIR: $[[ inputs.attestations-dir ]]
     EVIDENCE_EXCEPTIONS_DIR: $[[ inputs.exceptions-dir ]]
     EVIDENCE_CATALOG: $[[ inputs.catalog ]]
+    EVIDENCE_PROFILE: $[[ inputs.profile ]]
+    EVIDENCE_CRA_CONTEXT: $[[ inputs.cra-context ]]
+    EVIDENCE_FEDRAMP_CLASS: $[[ inputs.fedramp-class ]]
     EVIDENCE_COLLECTOR_VERSION: $[[ inputs.collector-version ]]
     EVIDENCE_FAIL_ON: $[[ inputs.fail-on ]]
   before_script:
@@ -65,7 +79,7 @@ spec:
         --output-dir release-evidence \
         --artifact-root "$CI_PROJECT_DIR" \
         --artifacts-dir "$EVIDENCE_ARTIFACTS_DIR" \
-        --fail-on "$EVIDENCE_FAIL_ON"
+        --fail-on "$EVIDENCE_FAIL_ON"         --profile "$EVIDENCE_PROFILE"
       # Tag pipelines carry no branch: the tag goes to --tag, not --branch.
       branch="${CI_COMMIT_BRANCH:-${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-${CI_DEFAULT_BRANCH:-}}}"
       if [ -n "$branch" ]; then
@@ -88,6 +102,12 @@ spec:
       fi
       if [ -n "$EVIDENCE_CATALOG" ]; then
         set -- "$@" --catalog "$EVIDENCE_CATALOG"
+      fi
+      if [ -n "$EVIDENCE_CRA_CONTEXT" ]; then
+        set -- "$@" --cra-context "$EVIDENCE_CRA_CONTEXT"
+      fi
+      if [ -n "$EVIDENCE_FEDRAMP_CLASS" ]; then
+        set -- "$@" --fedramp-class "$EVIDENCE_FEDRAMP_CLASS"
       fi
       sdlc-evidence run "$@"
   artifacts:
