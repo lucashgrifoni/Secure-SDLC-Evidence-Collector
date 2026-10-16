@@ -91,7 +91,7 @@ def register(app: typer.Typer) -> None:
         payload = {
             "evidence": EVIDENCE_ADAPTER.dump_python(report.evidence, mode="json"),
             "collection_errors": [
-                CollectionError.clipped(str(error.path), error.reason).model_dump()
+                CollectionError.clipped(error.path.as_posix(), error.reason).model_dump()
                 for error in report.errors
             ],
         }

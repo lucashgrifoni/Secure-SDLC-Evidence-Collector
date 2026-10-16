@@ -74,7 +74,7 @@ def _release() -> ReleaseContext:
         ("hostile.xml", _XXE_JUNIT, "Unsafe XML construct rejected"),
         ("deep.json", _DEEPLY_NESTED_JSON, "nested too deeply"),
         ("bigint.json", _OVERLONG_INT_JSON, "Invalid JSON value"),
-        ("long.sarif", _OVERLONG_DRIVER_SARIF, "validation error"),
+        ("long.sarif", _OVERLONG_DRIVER_SARIF, "driver_name: String should have at most"),
     ],
     ids=[
         "xxe-entity",

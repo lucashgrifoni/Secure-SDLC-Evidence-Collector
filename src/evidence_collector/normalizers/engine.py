@@ -251,7 +251,7 @@ def _strip_absolute(value: str, root: str) -> str | None:
 
 def _raw_ref(artifact: ParsedArtifact, root: str | None = None) -> RawEvidenceRef:
     return RawEvidenceRef(
-        artifact_path=str(relative_to_root(artifact.path, root)),
+        artifact_path=relative_to_root(artifact.path, root).as_posix(),
         integrity_hash=artifact.integrity_hash,
         content_type=artifact.content_type,
         size_bytes=artifact.size_bytes,

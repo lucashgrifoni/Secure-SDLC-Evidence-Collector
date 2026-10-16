@@ -12,14 +12,13 @@ A new top-level or nested key counts as volatile only when it varies
 across runs that should be considered structurally equivalent. Anything
 else MUST be part of the hash so drift is surfaced.
 
-Cross-OS note: ``evidence[*].raw[*].artifact_path`` carries the host's
-native path separator (``\\`` on Windows, ``/`` on POSIX). The collector
-should record what the runtime saw, but the structural hash must agree
-across operating systems — otherwise a CI matrix that builds the same
-inputs on Linux and Windows would always report drift. We therefore
-POSIX-normalize ``artifact_path`` (and ``artifact_uri`` when it is a
-relative ``file://``-style path) only at hash time; the bundle written
-to disk is untouched.
+Cross-OS note: the collector writes ``evidence[*].raw[*].artifact_path``
+and ``collection_errors[*].path`` with forward slashes on every platform.
+Bundles written on Windows before that recorded backslashes in
+``artifact_path``, so it (and ``artifact_uri`` when it is a relative
+``file://``-style path) is still POSIX-normalized at hash time; otherwise a
+CI matrix that builds the same inputs on Linux and Windows would report
+drift against those older bundles.
 """
 
 from __future__ import annotations

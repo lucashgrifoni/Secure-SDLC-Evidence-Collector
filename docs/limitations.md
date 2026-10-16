@@ -693,3 +693,14 @@ when it carries one, and `medium` otherwise. A purely v2-rated advisory can
 therefore land in a different severity bucket than its v2 base score would
 suggest. When an advisory also carries a v3 or v4 vector, the highest
 scored vector wins and the v2 entry is ignored.
+
+## 26 · Evidence from another commit lowers the verdict, it does not block it
+
+`evaluate --evidence` accepts records collected for another release or
+commit. Each mismatch is recorded in `collection_errors` (as
+`evidence[<release>@<commit>]`) and a `ready` verdict becomes
+`conditional`; a `conditional` or `not_ready` verdict is left as it is. With
+the default `--fail-on not_ready` the run exits `0`. Carrying part of an
+evidence set forward can be deliberate, so the tool reports it instead of
+refusing it; pass `--fail-on conditional` when evidence must come from the
+commit being released.

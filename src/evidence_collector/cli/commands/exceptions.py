@@ -67,10 +67,18 @@ def register(app: typer.Typer) -> None:
     exceptions_app = typer.Typer(
         name="exceptions",
         help="Inspect and validate Secure SDLC exception (waiver) files.",
-        no_args_is_help=True,
         add_completion=False,
     )
     app.add_typer(exceptions_app)
+
+    @exceptions_app.callback(invoke_without_command=True)
+    def exceptions_callback(ctx: typer.Context) -> None:
+        # Same as the bare `sdlc-evidence`: help on stdout, exit 0.
+        # `no_args_is_help` printed the same help but went through the
+        # usage-error path, so the group exited 3 where the root exits 0.
+        if ctx.invoked_subcommand is None:
+            typer.echo(ctx.get_help())
+            raise typer.Exit(code=0)
 
     @exceptions_app.command("validate")
     def cmd_exceptions_validate(

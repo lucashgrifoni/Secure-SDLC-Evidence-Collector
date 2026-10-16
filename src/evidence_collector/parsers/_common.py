@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import IO, Any
 
 import yaml
+from pydantic import ValidationError
 
 MAX_INPUT_BYTES = 25 * 1024 * 1024  # 25 MB; protects against accidental huge inputs
 
@@ -26,6 +27,33 @@ MAX_YAML_ALIAS_EXPANSION = 1_000_000
 
 class ParseError(ValueError):
     """Raised when a raw evidence file cannot be parsed into our schema."""
+
+
+def validation_detail(exc: ValidationError) -> str:
+    """Describe a pydantic error on one line, without URLs or input dumps.
+
+    ``str(ValidationError)`` spans several lines, quotes the rejected input
+    and links to a documentation page named after the installed pydantic
+    version. That text reached ``collection_errors`` and so the structural
+    digest: the same broken waiver hashed differently under pydantic 2.13
+    and 2.14. Generated titles such as ``list[function-after[...]]`` are
+    dropped, and so is the ``Value error,`` prefix of a validator message.
+    """
+    title = exc.title if exc.title.isidentifier() else ""
+    parts = []
+    for error in exc.errors(include_url=False, include_input=False):
+        loc = ".".join(str(part) for part in error["loc"])
+        where = ".".join(part for part in (title, loc) if part)
+        message = error["msg"].removeprefix("Value error, ")
+        parts.append(f"{where}: {message}" if where else message)
+    return "; ".join(parts)
+
+
+def describe_failure(exc: BaseException) -> str:
+    """One-line reason for a failed input: pydantic errors compacted."""
+    if isinstance(exc, ValidationError):
+        return validation_detail(exc)
+    return " ".join(str(exc).splitlines()).strip() or exc.__class__.__name__
 
 
 @dataclass(frozen=True)

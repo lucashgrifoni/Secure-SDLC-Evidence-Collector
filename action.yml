@@ -290,7 +290,7 @@ runs:
                 f"| {summary['controls_missing']} | {summary['controls_waived']} "
                 f"| {summary['total_controls']} |",
                 "",
-                "Missing critical evidence: "
+                "Missing critical/high evidence: "
                 + (", ".join(code(item) for item in missing) if missing else "none"),
                 "",
             ]

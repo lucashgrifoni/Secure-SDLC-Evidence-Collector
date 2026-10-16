@@ -121,7 +121,7 @@ def evaluate(
         exceptions = waiver_report.exceptions
         for waiver_error in waiver_report.errors:
             collection_errors.append(
-                CollectionError.clipped(str(waiver_error.path), waiver_error.reason)
+                CollectionError.clipped(waiver_error.path.as_posix(), waiver_error.reason)
             )
 
     bundle, _ = build_bundle(

@@ -120,6 +120,19 @@
     <div class="value status-{{ bundle.summary.release_status.value }}">
       {{ bundle.summary.release_status.value | upper }}
     </div>
+    {% if bundle.summary.risk_assessment %}
+    {% set risk = bundle.summary.risk_assessment %}
+    <div class="meta">
+      risk-weighted (<code>{{ risk.mode }}</code>): presence-based
+      <code>{{ risk.base_release_status.value }}</code>. {{ risk.rationale }}
+    </div>
+    {% endif %}
+    {% if bundle.summary.missing_critical_evidence %}
+    <div class="meta">
+      missing critical/high evidence:
+      {% for item in bundle.summary.missing_critical_evidence %}<code>{{ item }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+    </div>
+    {% endif %}
   </div>
   <div class="card">
     <div class="label">Evidence coverage</div>

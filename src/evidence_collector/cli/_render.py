@@ -21,6 +21,7 @@ from evidence_collector.paths import relative_to_root
 def render_summary(result: BundleBuildResult) -> None:
     """Render the release-readiness summary as a Rich table or NDJSON event."""
     summary = result.bundle.summary
+    risk = summary.risk_assessment
 
     if is_json_logs():
         emit_event(
@@ -37,6 +38,7 @@ def render_summary(result: BundleBuildResult) -> None:
             evidence_count=len(result.bundle.evidence),
             collection_error_count=len(result.bundle.collection_errors),
             missing_critical_evidence=list(summary.missing_critical_evidence),
+            risk_rationale=risk.rationale if risk else None,
             bundle_json=str(result.json_path) if result.json_path else None,
             report_md=str(result.markdown_path) if result.markdown_path else None,
             summary_html=str(result.html_path) if result.html_path else None,
@@ -62,8 +64,18 @@ def render_summary(result: BundleBuildResult) -> None:
     )
     if summary.missing_critical_evidence:
         table.add_row(
-            "Missing critical",
-            ", ".join(summary.missing_critical_evidence),
+            "Missing critical/high",
+            escape(", ".join(summary.missing_critical_evidence)),
+        )
+    if risk:
+        table.add_row(
+            "Risk-weighted",
+            # No arrow to the final status: evidence anchored to another
+            # commit can lower it too, and the rationale says which applied.
+            escape(
+                f"{risk.mode}: presence-based verdict {risk.base_release_status.value}. "
+                f"{risk.rationale}"
+            ),
         )
     console.print(table)
     if result.json_path:
