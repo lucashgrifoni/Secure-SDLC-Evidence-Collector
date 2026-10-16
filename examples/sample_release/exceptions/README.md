@@ -48,8 +48,9 @@ python -m evidence_collector.cli.main exceptions list \
 ```
 
 You should see one row per valid exception with the columns
-`exception_id`, `control_id`, `approver`, `approved_at`, `expires_at`
-and `scope`.
+`Exception ID`, `Control`, `Approver`, `Expires at` and `Scope`. A waiver
+outside its approval window is marked on its expiry date. The command exits
+`3` when a file cannot be parsed or an exception id is defined twice.
 
 ## Try the waiver against a release that **does** match its scope
 

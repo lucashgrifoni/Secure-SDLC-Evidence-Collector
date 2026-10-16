@@ -11,7 +11,7 @@ from rich.markup import escape
 
 from evidence_collector.cli._builders import build_release
 from evidence_collector.cli._logging import emit_event
-from evidence_collector.cli._render import render_ignored_artifacts
+from evidence_collector.cli._render import render_ignored_artifacts, warn_outside_artifact_root
 from evidence_collector.cli._state import EVIDENCE_ADAPTER, console, is_json_logs
 from evidence_collector.domain.models import CollectionError
 from evidence_collector.exporters._atomic import write_atomic
@@ -57,6 +57,9 @@ def register(app: typer.Typer) -> None:
     ) -> None:
         """Collect evidence from local directories and write the normalized list.
 
+        Pass the result to `evaluate --evidence` to build the bundle.
+
+        \f
         `--artifact-root` exists here as well as on `run` because this is where
         the paths are recorded. Without it the documented `collect` → `evaluate`
         split had no way to strip them at all: the flag was on `run` only, so
@@ -67,6 +70,9 @@ def register(app: typer.Typer) -> None:
         release = build_release(release_id, commit_sha, branch)
         from evidence_collector.collectors.local import LocalArtifactCollector
 
+        warn_outside_artifact_root(
+            [*(artifacts_dir or []), *(attestations_dir or [])], artifact_root
+        )
         collector = LocalArtifactCollector(
             release=release,
             artifacts_dirs=list(artifacts_dir) if artifacts_dir else [],

@@ -9,14 +9,17 @@ and bundle outputs are intentionally ignored instead of committed.
 
 | Metric | Value |
 |--------|-------|
-| Release status | `ready` |
-| Evidence coverage | **100 / 100** |
+| Release status | `ready` once a release approval attestation is added |
+| Evidence coverage | **100 / 100** with that approval |
 | Confidence | depends on the generated evidence set |
-| Controls | 13 met · 0 partial · 0 missing |
+| Controls | 13 met · 0 partial · 0 missing with that approval |
 | Evidence count | depends on the generated scanner outputs |
 
 Regenerate scanner outputs first, then run `make run-self-release`. The
-bundle is written under ignored `output/self_release/`.
+bundle is written under ignored `output/self_release/`. The release
+approval is not committed (see below), so a run from a fresh checkout
+reports `not_ready` with `ORG-RELEASE-APPROVAL` missing until you add one
+under `examples/self_release/attestations/`.
 
 ## How it was generated
 

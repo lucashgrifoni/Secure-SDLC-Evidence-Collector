@@ -58,8 +58,8 @@ def register(app: typer.Typer) -> None:
     ) -> None:
         """Recompute the structural SHA-256 of a bundle.json.
 
-        Without ``--expected``, prints the digest and exits 0.
-        With ``--expected``, exits 0 on match and 2 on drift.
+        Without `--expected`, prints the digest and exits 0.
+        With `--expected`, exits 0 on match and 2 on drift.
         Malformed JSON or unreadable files exit with code 3.
         """
         expected_norm = expected.strip().lower() if expected is not None else None

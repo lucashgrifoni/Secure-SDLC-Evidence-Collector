@@ -46,13 +46,13 @@ This collector reframes the question around **evidence, not findings**:
 | Capability | Implementation |
 |-----------|----------------|
 | Evidence ingestion | SARIF (Semgrep, CodeQL, SonarQube, Snyk Code, Trivy, Grype, Gitleaks, Bandit, pip-audit, …), **native Trivy JSON (SchemaVersion 2) — one report yields separate dependency, secret and IaC evidences**, CycloneDX & SPDX SBOMs, OSV / OSV-Scanner, JUnit XML, OWASP ZAP JSON (DAST), in-toto SLSA VSA (Verification Summary Attestation — build and source tracks, SLSA v1.2), SLSA build provenance / GitHub Artifact Attestations (raw in-toto, DSSE, or Sigstore bundle), in-toto release attestations (`release/v0.1` and `/v0.2`, as GitHub immutable releases publish them), in-toto SVR / test-result / vulns predicates, **any other in-toto Statement as a generic attestation rather than silently dropping it**, package-registry attestations (PyPI PEP 740 provenance and npm), YAML/JSON attestations and exceptions |
-| SCM integrations | GitHub (PR approvals counted only when given on the head commit, Actions runs) and GitLab (MR approvals, pipeline runs) |
+| SCM integrations | GitHub (PR approvals counted only when given on the head commit, Actions runs) through `run --pull-request` / `--workflow-run`; GitLab (MR approvals, pipeline runs) through the `GitLabCollector` Python API only, with no CLI option yet |
 | Controls catalog | 13 controls mapped to NIST SSDF, OWASP SAMM and org-internal IDs; override via `--catalog` |
 | Scoring | Deterministic coverage + confidence scores with per-control rationale |
 | Release verdict | `ready` / `conditional` / `not_ready` driven by gap criticality, never by the score alone |
 | Waivers | Time-bound exceptions with scope (application/release) and expiry — plain YAML/JSON, auditable |
 | Outputs | Deterministic `bundle.json`, Jinja2 `report.md`, and `summary.html` |
-| CLI | `run` · `collect` · `evaluate` · `bundle` · `controls` · `compare` · `oscal` · `plugins` · `schema` · `doctor` · `verify` · `enrich` · `vex` · `statement` · `guac` · `exceptions list/validate` |
+| CLI | `run` · `collect` · `evaluate` · `bundle` · `controls` · `compare` · `oscal` · `plugins` · `schema` · `doctor` · `verify` · `enrich` · `vex` · `statement` · `guac` · `sarif` · `exceptions list/validate` |
 | Packaging | Reusable GitHub Action (`action.yml`), non-root Docker image, wheel + sdist build verified locally; published to PyPI as [`secure-sdlc-evidence-collector`](https://pypi.org/project/secure-sdlc-evidence-collector/) via OIDC Trusted Publisher. |
 | Release integrity | `publish-pypi.yml` is configured to perform cosign keyless signing + Sigstore Rekor transparency log + SLSA Build Level 3 provenance on tag push. `2.0.0` was the first public release; the current published version is shown by the PyPI badge above (the v1.1.0 cut prepared in code stayed internal, and the Tier 5/Tier 6 work landed on top, so SemVer required the 2.0 line). |
 | Quality bar | `ruff`, `mypy --strict`, `pytest` with coverage gate, GitHub Actions CI, Dependabot |

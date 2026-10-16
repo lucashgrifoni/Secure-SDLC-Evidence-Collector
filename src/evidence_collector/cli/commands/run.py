@@ -20,6 +20,7 @@ from evidence_collector.cli._render import (
     render_collection_errors,
     render_ignored_artifacts,
     render_summary,
+    warn_outside_artifact_root,
 )
 from evidence_collector.collectors.github import GitHubCollector, GitHubCollectorConfig
 from evidence_collector.domain.models import NormalizedEvidence
@@ -111,8 +112,10 @@ def register(app: typer.Typer) -> None:
             typer.Option(
                 "--fail-on",
                 help=(
-                    "Exit non-zero when release_status reaches this severity: "
-                    "ready|conditional|not_ready"
+                    "Verdict from which the exit code is non-zero: not_ready (default; a "
+                    "conditional release exits 0) or conditional (it exits 1). 'ready' is "
+                    "accepted and behaves like conditional. A ready release always exits 0, "
+                    "a not_ready one always exits 2."
                 ),
             ),
         ] = "not_ready",
@@ -241,6 +244,7 @@ def register(app: typer.Typer) -> None:
                 if workflow_run is not None:
                     extra_evidence.append(gh.collect_workflow_run(workflow_run))
 
+        warn_outside_artifact_root([Path(d) for d in input_dirs], artifact_root)
         result = run_pipeline(
             application=app_,
             release=release,

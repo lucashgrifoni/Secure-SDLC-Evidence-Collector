@@ -121,10 +121,17 @@ def _report_command_failure(exc: BaseException) -> None:
     completely empty, breaking the NDJSON contract on the error path.
     """
     report_error(exc.__class__.__name__, exc, error_type=exc.__class__.__name__)
-    if not is_json_logs():
-        error_console.print("Re-run with --verbose for the full traceback.", soft_wrap=True)
-    if any(flag in sys.argv for flag in ("-v", "--verbose")):
+    verbose = any(flag in sys.argv for flag in ("-v", "--verbose"))
+    if verbose:
         error_console.print_exception()
+    elif not is_json_logs():
+        # `--verbose` is a global option: placed after the command name it is
+        # rejected as unknown, so the hint spells out where it goes.
+        error_console.print(
+            "Re-run as `sdlc-evidence --verbose <command> ...` for the full traceback.",
+            soft_wrap=True,
+            markup=False,
+        )
 
 
 def main() -> None:

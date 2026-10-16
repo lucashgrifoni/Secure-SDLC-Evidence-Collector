@@ -81,12 +81,12 @@ def register(app: typer.Typer) -> None:
     ) -> None:
         """Validate one or more exception files against the canonical schema.
 
-        Accepts multiple paths so it can be wired as a ``pre-commit`` hook:
-        pre-commit passes every matched, staged file in a single
-        invocation. Each file is reported individually; the command exits
-        ``EXIT_INPUT_ERROR`` if *any* file is missing or invalid, 0 when all
-        are valid.
+        Accepts multiple paths so it can be wired as a pre-commit hook. Each
+        file is reported on its own line. Exits 3 if any file is missing or
+        invalid, 0 when all are valid. To check a whole directory, use
+        `exceptions list`.
 
+        \f
         It used to exit 1 here, which the README reserves for the
         ``conditional`` verdict and nothing else — and a waiver file that
         does not exist is a bad input, not a softer release outcome. It also
@@ -99,6 +99,14 @@ def register(app: typer.Typer) -> None:
             raise typer.Exit(code=EXIT_INPUT_ERROR)
         invalid = 0
         for path in paths:
+            if path.is_dir():
+                invalid += 1
+                report_error(
+                    f"{path} is a directory; use `sdlc-evidence exceptions list {path}`",
+                    event="exception_invalid",
+                    path=str(path),
+                )
+                continue
             try:
                 exception = parse_exception(path)
             except (ParseError, FileNotFoundError) as exc:
@@ -142,14 +150,17 @@ def register(app: typer.Typer) -> None:
             Path, typer.Argument(help="Directory containing exception YAML/JSON files")
         ],
     ) -> None:
-        """Walk a directory and list every exception, flagging the dormant ones.
+        """List every exception in a directory, flagging the dormant ones.
 
-        "Active" here means only that the waiver is inside its approval
-        window. Scope is not decidable without an application and a release
-        to check against, so a waiver scoped to a different application is
-        still counted active — `run` and `evaluate` are where scope is
-        applied. The footer says so rather than leaving the reader to infer
-        a stronger claim than the command can make.
+        "Active" means only that the waiver is inside its approval window;
+        scope is applied by `run` and `evaluate`. Exits 3 when a file cannot
+        be parsed or an exception id is defined twice, 0 otherwise.
+
+        \f
+        Scope is not decidable without an application and a release to check
+        against, so a waiver scoped to a different application is still
+        counted active. The footer says so rather than leaving the reader to
+        infer a stronger claim than the command can make.
         """
         if not directory.is_dir():
             report_error(f"Not a directory: {directory}", event="exceptions_failed")
@@ -164,6 +175,8 @@ def register(app: typer.Typer) -> None:
         parseable = 0
         dormant = 0
         invalid = 0
+        first_seen: dict[str, Path] = {}
+        duplicates = 0
         for path in sorted(directory.rglob("*")):
             if path.suffix.lower() not in {".yaml", ".yml", ".json"} or not path.is_file():
                 continue
@@ -178,6 +191,17 @@ def register(app: typer.Typer) -> None:
                     path=str(path),
                 )
                 continue
+            # `run` applies only the first of two waivers sharing an id and
+            # records the clash as a collection error; say so here as well.
+            earlier = first_seen.setdefault(exc.exception_id, path)
+            if earlier != path:
+                duplicates += 1
+                report_error(
+                    f"Duplicate exception id {exc.exception_id} in {path} "
+                    f"(first defined in {earlier}); `run` applies only one of them",
+                    event="exception_duplicate",
+                    path=str(path),
+                )
             parseable += 1
             in_force = _in_force(exc, now)
             if not in_force:
@@ -220,8 +244,11 @@ def register(app: typer.Typer) -> None:
                 active=parseable - dormant,
                 not_in_force=dormant,
                 unparseable=invalid,
+                duplicate_ids=duplicates,
                 scope_evaluated=False,
             )
+            if invalid or duplicates:
+                raise typer.Exit(code=EXIT_INPUT_ERROR)
             return
         console.print(table)
         # "valid" used to mean "parsed", so an expired waiver was reported as
@@ -234,10 +261,15 @@ def register(app: typer.Typer) -> None:
         console.print(
             f"[bold]{parseable - dormant}[/bold] active · "
             f"[yellow]{dormant}[/yellow] not in force · "
-            f"[yellow]{invalid}[/yellow] unparseable"
+            f"[yellow]{invalid}[/yellow] unparseable · "
+            f"[yellow]{duplicates}[/yellow] duplicate id(s)"
         )
         console.print(
             '[dim]"Active" counts the approval window only. A waiver scoped to '
             "another application or release still shows as active here; scope is "
             "applied by `run` and `evaluate`.[/dim]"
         )
+        # Like `validate`: a file that fails to parse, or an id defined twice,
+        # is a failed validation (exit 3), so the pre-commit hook stops on it.
+        if invalid or duplicates:
+            raise typer.Exit(code=EXIT_INPUT_ERROR)

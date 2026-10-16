@@ -20,9 +20,34 @@ import typer
 from evidence_collector.cli._state import is_json_logs
 
 
+class _JsonLineFormatter(logging.Formatter):
+    """One JSON object per log record, so stderr stays NDJSON too."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        return json.dumps(
+            {
+                "event": "log",
+                "level": record.levelname.lower(),
+                "logger": record.name,
+                "message": record.getMessage(),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+
 def configure_logging(verbose: bool) -> None:
-    """Configure ``logging`` to DEBUG when verbose, otherwise INFO."""
+    """Configure ``logging`` to DEBUG when verbose, otherwise INFO.
+
+    Under JSON logs the records are JSON lines on stderr: plain-text lines
+    there broke the stream for anyone merging stderr into stdout.
+    """
     level = logging.DEBUG if verbose else logging.INFO
+    if is_json_logs():
+        handler = logging.StreamHandler()
+        handler.setFormatter(_JsonLineFormatter())
+        logging.basicConfig(level=level, handlers=[handler])
+        return
     logging.basicConfig(
         level=level,
         format="%(asctime)s %(levelname)-7s %(name)s %(message)s",
