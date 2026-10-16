@@ -39,7 +39,7 @@ spec:
       regex: '^[ABCD]?$'
       description: Optional FedRAMP CR26 class A, B, C or D (metadata only); requires profile fedramp-20x.
     collector-version:
-      default: "4.1.4"
+      default: "4.2.0"
       regex: '^\d+\.\d+\.\d+$'
       description: Exact published collector version.
     fail-on:

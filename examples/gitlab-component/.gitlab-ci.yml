@@ -41,7 +41,7 @@ verify-bundle:
   needs: [sdlc-evidence]
   before_script:
     - python -m pip install --upgrade "pip==26.2.1"
-    - python -m pip install "secure-sdlc-evidence-collector==4.1.4"
+    - python -m pip install "secure-sdlc-evidence-collector==4.2.0"
   script:
     - sdlc-evidence verify release-evidence/bundle.json
     - |
@@ -69,4 +69,4 @@ publish-component:
     - echo "Publishing component $CI_COMMIT_TAG"
   release:
     tag_name: $CI_COMMIT_TAG
-    description: "Secure SDLC evidence collection component. Collector package version 4.1.4; local artifacts only."
+    description: "Secure SDLC evidence collection component. Collector package version 4.2.0; local artifacts only."
