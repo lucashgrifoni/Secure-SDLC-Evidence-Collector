@@ -16,6 +16,12 @@
 #   - Keep .github/dependabot.yml enabled for github-actions to refresh pins.
 #
 # Secrets: none (uses the short-lived GITHUB_TOKEN via id-token: write).
+#
+# Landing page facts: the version, the sample verdict, the not_ready example
+# and the evidence-type count on gitpage/index.html are rewritten from this
+# run's CLI output, then checked; the build fails if any of them differs.
+# Pull requests that touch the landing page run the build job only, so the
+# check runs before merge and nothing is deployed.
 
 name: Deploy GitHub Pages
 
@@ -23,6 +29,12 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "gitpage/**"
+      - ".github/workflows/deploy-github-pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -31,9 +43,10 @@ permissions:
 concurrency:
   # Serialize Pages deployments. cancel-in-progress is false so an in-flight
   # production deployment is allowed to finish instead of being aborted by a
-  # newer run, per GitHub Pages guidance.
-  group: pages-${{ github.workflow }}
-  cancel-in-progress: false
+  # newer run, per GitHub Pages guidance. Pull request builds never deploy,
+  # so they get their own group per ref and a newer push cancels an older one.
+  group: pages-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   PYTHON_VERSION: "3.12"
@@ -92,6 +105,41 @@ jobs:
           cp README.md site/README.md
           cp CHANGELOG.md site/CHANGELOG.md
 
+      # The scoring example on the landing page is the sample release without
+      # its rollback plan and artifact signature. It is generated here (not
+      # published) so the page shows what the CLI really returns for it.
+      - name: Generate landing page example (not published)
+        run: |
+          example_att="$RUNNER_TEMP/example-attestations"
+          mkdir -p "$example_att"
+          cp examples/sample_release/attestations/*.yaml "$example_att/"
+          rm "$example_att/rollback_plan.yaml" "$example_att/artifact_signature.yaml"
+          status=0
+          python -m evidence_collector.cli.main run \
+            --application payments-api \
+            --repository acme/payments-api \
+            --release-id 2026.04.10 \
+            --commit-sha abc1234 \
+            --branch main \
+            --artifacts-dir examples/sample_release/artifacts \
+            --attestations-dir "$example_att" \
+            --output-dir "$RUNNER_TEMP/example" || status=$?
+          # A not_ready release exits 2; anything else but 0 is a real failure.
+          # page_facts.py checks the verdict itself.
+          if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then exit "$status"; fi
+          python -m evidence_collector.cli.main schema > "$RUNNER_TEMP/schema.json"
+          python -m evidence_collector.cli.main --version > "$RUNNER_TEMP/version.txt"
+
+      - name: Inject and check landing page facts
+        run: |
+          facts=(--page site/index.html
+                 --sample site/evidence/bundle.json
+                 --example "$RUNNER_TEMP/example/bundle.json"
+                 --schema "$RUNNER_TEMP/schema.json"
+                 --version "$(cat "$RUNNER_TEMP/version.txt")")
+          python gitpage/tools/page_facts.py inject "${facts[@]}"
+          python gitpage/tools/page_facts.py check "${facts[@]}"
+
       # Pages layout after this job:
       #   /            -> gitpage/ landing page (index.html + assets)
       #   /evidence/   -> CLI-generated evidence summary, bundle, report
@@ -108,6 +156,7 @@ jobs:
 
   deploy:
     name: Deploy GitHub Pages
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 10
