@@ -98,7 +98,11 @@ The canonical schema is documented in
 `src/evidence_collector/domain/models.py::EvidenceException`. Six
 fields are required (`exception_id`, `control_id`, `approver`,
 `approved_at`, `expires_at`, `justification`); two optional
-(`reference`, `scope`). `expires_at` must be strictly after
+(`reference`, `scope`), and `scope` takes only `application` and
+`release_id`. Any other key, at the top level or inside `scope`, is
+rejected: the file is recorded as a collection error and the waiver is
+not applied, so a misspelt `scop:` cannot turn a scoped waiver into a
+global one. `expires_at` must be strictly after
 `approved_at`; `justification` must be ≥ 10 characters. Both
 timestamps must carry a timezone — bare `2026-12-31` parses to a
 naive datetime, which has no defined instant to compare a waiver

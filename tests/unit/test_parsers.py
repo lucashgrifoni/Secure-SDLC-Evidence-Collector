@@ -270,6 +270,37 @@ def test_parse_attestation_rejects_missing_fields(tmp_path: Path) -> None:
         parse_attestation(bad_path)
 
 
+def test_parse_attestation_refuses_a_misspelt_status_instead_of_defaulting(
+    tmp_path: Path,
+) -> None:
+    """`stauts: failed` used to vanish and leave the default `completed` status."""
+    path = tmp_path / "rollback_plan.yaml"
+    path.write_text(
+        "evidence_type: rollback_plan\n"
+        "producer: SRE\n"
+        "subject_ref: payments-api:1.0\n"
+        "stauts: failed\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ParseError, match=r"unknown fields \['stauts'\].*metadata"):
+        parse_attestation(path)
+
+
+def test_parse_attestation_keeps_custom_data_under_metadata(tmp_path: Path) -> None:
+    path = tmp_path / "rollback_plan.yaml"
+    path.write_text(
+        "evidence_type: rollback_plan\n"
+        "producer: SRE\n"
+        "subject_ref: payments-api:1.0\n"
+        "link: https://example.test/runbook\n"
+        "metadata:\n"
+        "  drill: quarterly\n",
+        encoding="utf-8",
+    )
+    parsed = parse_attestation(path)
+    assert parsed.metadata == {"drill": "quarterly", "link": "https://example.test/runbook"}
+
+
 def test_parse_junit_rejects_malformed_xml(tmp_path: Path) -> None:
     bad = tmp_path / "broken.xml"
     bad.write_text("<testsuite tests='1'><testcase></testsuite>", encoding="utf-8")

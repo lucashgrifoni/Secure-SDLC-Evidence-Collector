@@ -59,6 +59,19 @@ class ParsedAttestation:
 
 
 _REQUIRED = ("evidence_type", "producer", "subject_ref")
+_METADATA_SHORTCUTS = ("approver", "ticket", "change_ticket", "link")
+_ALLOWED = frozenset(
+    (
+        *_REQUIRED,
+        "subject_type",
+        "status",
+        "confidence",
+        "generated_at",
+        "summary",
+        "metadata",
+        *_METADATA_SHORTCUTS,
+    )
+)
 
 
 def _coerce_enum(enum_cls: type[Enum], value: Any, field_name: str, source: Path) -> Any:
@@ -140,6 +153,16 @@ def parse_attestation(path: str | Path) -> ParsedAttestation:
     if missing:
         raise ParseError(f"Attestation {resolved} is missing required fields: {missing}")
 
+    # Unknown keys are refused rather than dropped: a misspelt `stauts: failed`
+    # used to vanish and leave the default status, so a failed practice read
+    # as completed. Free-form data belongs under `metadata`.
+    unknown = sorted(str(key) for key in data if key not in _ALLOWED)
+    if unknown:
+        raise ParseError(
+            f"Attestation {resolved} has unknown fields {unknown}; put custom data under "
+            f"'metadata'. Allowed fields are {sorted(_ALLOWED)}"
+        )
+
     evidence_type = _coerce_enum(EvidenceType, data["evidence_type"], "evidence_type", resolved)
     subject_type_value = data.get("subject_type") or SubjectType.RELEASE.value
     subject_type = _coerce_enum(SubjectType, subject_type_value, "subject_type", resolved)
@@ -154,7 +177,7 @@ def parse_attestation(path: str | Path) -> ParsedAttestation:
     if isinstance(raw_metadata, dict):
         _require_json_value(raw_metadata, "metadata", resolved)
         metadata.update(raw_metadata)
-    for optional_key in ("approver", "ticket", "change_ticket", "link"):
+    for optional_key in _METADATA_SHORTCUTS:
         if optional_key in data and optional_key not in metadata:
             _require_json_value(data[optional_key], optional_key, resolved)
             metadata[optional_key] = data[optional_key]
