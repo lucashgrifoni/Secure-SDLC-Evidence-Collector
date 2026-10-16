@@ -479,3 +479,19 @@ def test_cyclonedx_version_ranges_are_not_read_as_every_version(tmp_path: Path) 
         )
     )
     assert consumed[0].products == ()
+
+
+def test_a_plain_bom_ref_with_versions_names_no_product(tmp_path: Path) -> None:
+    consumed = parse_vex(
+        _cdx_file(tmp_path, [{"ref": "component-a", "versions": [{"version": "1.3"}]}])
+    )
+    assert consumed[0].products == ()
+
+
+def test_versioned_purls_match_whatever_the_qualifier_order(tmp_path: Path) -> None:
+    bundle = _bundle_with_cve("CVE-2024-1111")
+    consumed = parse_vex(_openvex_file(tmp_path, ["pkg:generic/api@1?a=x&b=y"]))
+    merged = merge_consumed_vex(
+        build_openvex(bundle), bundle, consumed, products=["pkg:generic/api@1?b=y&a=x"]
+    )
+    assert _status_of(merged, "CVE-2024-1111") == "not_affected"

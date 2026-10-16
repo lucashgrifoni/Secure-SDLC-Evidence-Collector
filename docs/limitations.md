@@ -473,7 +473,9 @@ These are explicitly out of scope for security reports (see
   same package from another repository (`?repository_url=`), does not
   apply. Other identifiers match only exactly. A CycloneDX `affects`
   entry with a `versions` array names only its explicit versions; a
-  version `range` is not evaluated, so that entry names no product. A CSAF vulnerability yields one statement per status, naming the
+  version `range` is not evaluated, and neither is `versions` on a
+  plain bom-ref, so such an entry names no product. Purls are compared
+  with their qualifiers sorted. A CSAF vulnerability yields one statement per status, naming the
   products of every bucket that maps to it. Statements
   that name no release product, including those that name no product at
   all, are skipped and listed in a warning. Matching on the CVE id alone

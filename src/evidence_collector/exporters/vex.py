@@ -439,8 +439,12 @@ def _names_release(products: tuple[str, ...], release_products: set[str]) -> boo
             return True
         if not product.startswith("pkg:"):
             continue
+        # Compared normalized, so qualifier order does not matter.
         name, version = _purl_parts(product)
-        if version is None and any(name == r_name for r_name, _ in release_parts):
+        if any(
+            name == r_name and (version is None or version == r_version)
+            for r_name, r_version in release_parts
+        ):
             return True
     return False
 
