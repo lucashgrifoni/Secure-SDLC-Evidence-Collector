@@ -502,7 +502,7 @@ The authoritative list is `EvidenceType` in
 
 | Rule | Verdict |
 |------|---------|
-| Every control has its required evidence | `ready` |
+| Every control is met, waived or not applicable: no required or recommended evidence is missing | `ready` |
 | A high control lacks required evidence | `conditional` |
 | Only recommended evidence is missing, or medium-criticality controls lack evidence | `conditional` |
 | A critical control lacks required evidence | `not_ready` |
