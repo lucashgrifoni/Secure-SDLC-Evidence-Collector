@@ -31,12 +31,14 @@ Workflow when the snapshot legitimately needs to change:
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
 from evidence_collector.application.integrity import structural_sha256
 from evidence_collector.application.orchestrator import run_pipeline
+from evidence_collector.domain.enums import ReleaseStatus
 from evidence_collector.domain.models import Application, ReleaseContext
 
 SNAPSHOT_FILE = (
@@ -107,4 +109,22 @@ def test_sample_release_bundle_sha256_snapshot(tmp_path: Path, sample_release_ro
         "Either the change is intentional — update "
         "tests/fixtures/sample_release_snapshot.sha256 and explain in the "
         "CHANGELOG — or a regression slipped in."
+    )
+
+
+@pytest.mark.integration
+def test_sample_release_bundle_is_ready(tmp_path: Path, sample_release_root: Path) -> None:
+    """The sample must stay `ready`, because the publish job gates on it.
+
+    publish-pypi.yml's release-bundle job runs this sample on every tag with
+    `--fail-on conditional`. A change that lowers it to `conditional` would
+    otherwise first fail in that job, after the tag exists, which burns the
+    version.
+    """
+    bundle_path = _produce_sample_bundle(tmp_path, sample_release_root)
+    bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+    status = bundle["summary"]["release_status"]
+    assert status == ReleaseStatus.READY.value, (
+        f"The sample release is {status!r}, not 'ready'; the publish job would fail on it.\n"
+        f"  gaps: {bundle.get('gaps')}"
     )

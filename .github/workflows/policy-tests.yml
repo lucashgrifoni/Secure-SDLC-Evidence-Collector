@@ -44,7 +44,7 @@ concurrency:
 jobs:
   rego:
     name: Rego — conftest verify + test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Harden runner
@@ -79,7 +79,7 @@ jobs:
 
   kyverno:
     name: Kyverno — policy syntax + dry-run
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Harden runner

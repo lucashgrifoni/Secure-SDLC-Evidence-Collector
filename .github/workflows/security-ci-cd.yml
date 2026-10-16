@@ -75,7 +75,7 @@ env:
 jobs:
   sast-semgrep:
     name: SAST - Semgrep
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
@@ -122,7 +122,7 @@ jobs:
 
   sast-snyk-code:
     name: SAST - Snyk Code
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     # Dependabot (and fork) PRs do not receive the SNYK_TOKEN secret, so the
     # Snyk jobs would always fail there. Skip Snyk for the dependabot actor;
@@ -187,7 +187,7 @@ jobs:
 
   sca-snyk:
     name: SCA - Snyk Open Source
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     # See sast-snyk-code: skip for dependabot, which lacks the SNYK_TOKEN secret.
     if: github.actor != 'dependabot[bot]'
@@ -273,7 +273,7 @@ jobs:
 
   sca-trivy:
     name: SCA - Trivy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -312,7 +312,7 @@ jobs:
 
   iac-and-pipeline-trivy:
     name: IaC and Pipeline - Trivy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -350,7 +350,7 @@ jobs:
 
   secrets-trivy:
     name: Secrets - Trivy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -388,7 +388,7 @@ jobs:
 
   secrets-history-gitleaks:
     name: Secrets History - Gitleaks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -416,7 +416,7 @@ jobs:
 
   dependency-review:
     name: SCA - Dependency Review (PR)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
     timeout-minutes: 15
     permissions:
@@ -441,7 +441,7 @@ jobs:
 
   workflow-lint:
     name: Workflow Lint - actionlint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
