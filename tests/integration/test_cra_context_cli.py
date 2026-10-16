@@ -170,3 +170,43 @@ def test_context_sha_case_does_not_matter(tmp_path: Path) -> None:
         commit_sha="ABCDEF1234567890",
     )
     assert bundle.is_file()
+
+
+@pytest.mark.parametrize("json_mode", [False, True])
+def test_fedramp_class_d_warns_on_the_console_and_in_ndjson(
+    tmp_path: Path, json_mode: bool
+) -> None:
+    artifacts, catalog, _ = _inputs(tmp_path)
+    output = tmp_path / "output"
+    prefix = ("--json-logs",) if json_mode else ()
+    result = _run(
+        *prefix,
+        "run",
+        "--application",
+        "demo",
+        "--repository",
+        "demo/demo",
+        "--release-id",
+        "1",
+        "--commit-sha",
+        "abcdef1234567890",
+        "--artifacts-dir",
+        str(artifacts),
+        "--catalog",
+        str(catalog),
+        "--output-dir",
+        str(output),
+        "--profile",
+        "fedramp-20x",
+        "--fedramp-class",
+        "d",
+    )
+    assert result.returncode == 0, result.stderr
+    if json_mode:
+        events = [json.loads(line) for line in result.stderr.splitlines()]
+        warnings = [e for e in events if e.get("level") == "warning"]
+        assert any("Phase 4" in e["message"] for e in warnings), result.stderr
+    else:
+        assert "Phase 4" in result.stderr
+    payload = json.loads((output / "bundle.json").read_text(encoding="utf-8"))
+    assert payload["evidence"][0]["metadata"]["fedramp"]["class"] == "D"

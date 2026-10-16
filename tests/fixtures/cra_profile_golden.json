@@ -1,0 +1,472 @@
+{
+  "awareness_before_obligation_start": {
+    "annotation_scope": "release_context_not_per_finding",
+    "article": "14(2)",
+    "awareness_at": "2026-09-10T23:59:59+00:00",
+    "awareness_source": "operator_context",
+    "canonical_context_sha256": "e990e6afb9aade8f60d19d8c727f890182a1c5da070711d9dd21c760c667d88c",
+    "disclosure_deadline": {
+      "reason": "awareness_precedes_obligation_start",
+      "status": "not_applicable"
+    },
+    "euvd_ids": [],
+    "exploitation_status": "not_assessed",
+    "global_exploitation_signal": "kev_listed",
+    "legal_applicability": "not_assessed",
+    "notification_type": "vulnerability",
+    "regulation": "EU CRA 2024/2847",
+    "reporting_deadlines": {
+      "early_warning": {
+        "reason": "awareness_precedes_obligation_start",
+        "status": "not_applicable"
+      },
+      "final_report": {
+        "reason": "awareness_precedes_obligation_start",
+        "status": "not_applicable"
+      },
+      "full_notification": {
+        "reason": "awareness_precedes_obligation_start",
+        "status": "not_applicable"
+      }
+    },
+    "reporting_obligation_start": "2026-09-11",
+    "srp_completeness": {
+      "72h_notification": {
+        "missing_field_ids": [
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "v21",
+          "v26a"
+        ],
+        "presence_only": true
+      },
+      "early_warning": {
+        "missing_field_ids": [
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "presence_only": true
+      },
+      "final_report": {
+        "missing_field_ids": [
+          "16",
+          "17",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "v21",
+          "v22",
+          "v23",
+          "v24",
+          "v25",
+          "v26a"
+        ],
+        "presence_only": true
+      }
+    },
+    "srp_conditional_manual_fields": [
+      "v27"
+    ],
+    "srp_declared_field_ids": [
+      "1",
+      "v26"
+    ],
+    "srp_glossary_date": "2026-10-15",
+    "srp_glossary_url": "https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2",
+    "srp_glossary_version": "1.5",
+    "submission_status": "not_submitted"
+  },
+  "incident_bare": {
+    "annotation_scope": "release_context_not_per_finding",
+    "article": "14(4)",
+    "awareness_at": null,
+    "awareness_source": "not_supplied",
+    "canonical_context_sha256": "93cf9b326993f947acab4d2df927e01ffaa16d3bd437bb7a5cc085ec800b2050",
+    "disclosure_deadline": {
+      "relative_to": "awareness_at",
+      "window_hours": 24
+    },
+    "euvd_ids": [],
+    "exploitation_status": "not_assessed",
+    "global_exploitation_signal": "kev_listed",
+    "legal_applicability": "not_assessed",
+    "notification_type": "incident",
+    "regulation": "EU CRA 2024/2847",
+    "reporting_deadlines": {
+      "early_warning": {
+        "relative_to": "awareness_at",
+        "window_hours": 24
+      },
+      "final_report": {
+        "relative_to": "notification_72h_submitted_at",
+        "window_calendar_months": 1
+      },
+      "full_notification": {
+        "relative_to": "awareness_at",
+        "window_hours": 72
+      }
+    },
+    "reporting_obligation_start": "2026-09-11",
+    "srp_completeness": {
+      "72h_notification": {
+        "missing_field_ids": [
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "i31",
+          "i32",
+          "i37",
+          "i38",
+          "i39"
+        ],
+        "presence_only": true
+      },
+      "early_warning": {
+        "missing_field_ids": [
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "i31",
+          "i37"
+        ],
+        "presence_only": true
+      },
+      "final_report": {
+        "missing_field_ids": [
+          "16",
+          "17",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "i31",
+          "i32",
+          "i33",
+          "i34",
+          "i35",
+          "i36",
+          "i37",
+          "i39"
+        ],
+        "presence_only": true
+      }
+    },
+    "srp_conditional_manual_fields": [],
+    "srp_declared_field_ids": [
+      "1"
+    ],
+    "srp_glossary_date": "2026-10-15",
+    "srp_glossary_url": "https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2",
+    "srp_glossary_version": "1.5",
+    "submission_status": "not_submitted"
+  },
+  "incident_full": {
+    "annotation_scope": "release_context_not_per_finding",
+    "article": "14(4)",
+    "awareness_at": "2026-12-01T08:00:00+00:00",
+    "awareness_source": "operator_context",
+    "canonical_context_sha256": "1a5cd2c99065ca19ba44f210e6766ba135094ba0458c3b11135b748b8c012940",
+    "disclosure_deadline": "2026-12-02T08:00:00+00:00",
+    "euvd_ids": [],
+    "exploitation_status": "not_assessed",
+    "global_exploitation_signal": "kev_listed",
+    "legal_applicability": "not_assessed",
+    "notification_type": "incident",
+    "regulation": "EU CRA 2024/2847",
+    "reporting_deadlines": {
+      "early_warning": "2026-12-02T08:00:00+00:00",
+      "final_report": {
+        "due_at": "2027-02-28T12:00:00+00:00",
+        "relative_to": "notification_72h_submitted_at",
+        "window_calendar_months": 1
+      },
+      "full_notification": "2026-12-04T08:00:00+00:00"
+    },
+    "reporting_obligation_start": "2026-09-11",
+    "srp_completeness": {
+      "72h_notification": {
+        "missing_field_ids": [
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "i39"
+        ],
+        "presence_only": true
+      },
+      "early_warning": {
+        "missing_field_ids": [
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "presence_only": true
+      },
+      "final_report": {
+        "missing_field_ids": [
+          "17",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "i33",
+          "i34",
+          "i35",
+          "i36",
+          "i39"
+        ],
+        "presence_only": true
+      }
+    },
+    "srp_conditional_manual_fields": [],
+    "srp_declared_field_ids": [
+      "1",
+      "16",
+      "i31",
+      "i32",
+      "i37",
+      "i38"
+    ],
+    "srp_glossary_date": "2026-10-15",
+    "srp_glossary_url": "https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2",
+    "srp_glossary_version": "1.5",
+    "submission_status": "not_submitted"
+  },
+  "no_context": {
+    "annotation_scope": "release_context_not_per_finding",
+    "article": "14(2),14(4)",
+    "awareness_at": null,
+    "awareness_source": "not_supplied",
+    "disclosure_deadline": {
+      "relative_to": "awareness_at",
+      "window_hours": 24
+    },
+    "exploitation_status": "not_assessed",
+    "global_exploitation_signal": "kev_listed",
+    "legal_applicability": "not_assessed",
+    "notification_type": null,
+    "regulation": "EU CRA 2024/2847",
+    "reporting_deadlines": {
+      "early_warning": {
+        "relative_to": "awareness_at",
+        "window_hours": 24
+      },
+      "final_report": {
+        "incident": {
+          "relative_to": "notification_72h_submitted_at",
+          "window_calendar_months": 1
+        },
+        "vulnerability": {
+          "relative_to": "corrective_or_mitigating_measure_available",
+          "window_days": 14
+        }
+      },
+      "full_notification": {
+        "relative_to": "awareness_at",
+        "window_hours": 72
+      }
+    },
+    "reporting_obligation_start": "2026-09-11",
+    "srp_glossary_date": "2026-10-15",
+    "srp_glossary_url": "https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2",
+    "srp_glossary_version": "1.5",
+    "submission_status": "not_submitted"
+  },
+  "vulnerability_bare": {
+    "annotation_scope": "release_context_not_per_finding",
+    "article": "14(2)",
+    "awareness_at": null,
+    "awareness_source": "not_supplied",
+    "canonical_context_sha256": "3fb88a790e03ea6266e5af76bf8070496b21926007f2b9d9e34a931952ff43fa",
+    "disclosure_deadline": {
+      "relative_to": "awareness_at",
+      "window_hours": 24
+    },
+    "euvd_ids": [],
+    "exploitation_status": "not_assessed",
+    "global_exploitation_signal": "kev_listed",
+    "legal_applicability": "not_assessed",
+    "notification_type": "vulnerability",
+    "regulation": "EU CRA 2024/2847",
+    "reporting_deadlines": {
+      "early_warning": {
+        "relative_to": "awareness_at",
+        "window_hours": 24
+      },
+      "final_report": {
+        "relative_to": "corrective_or_mitigating_measure_available",
+        "window_days": 14
+      },
+      "full_notification": {
+        "relative_to": "awareness_at",
+        "window_hours": 72
+      }
+    },
+    "reporting_obligation_start": "2026-09-11",
+    "srp_completeness": {
+      "72h_notification": {
+        "missing_field_ids": [
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "v21",
+          "v26",
+          "v26a"
+        ],
+        "presence_only": true
+      },
+      "early_warning": {
+        "missing_field_ids": [
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "v26"
+        ],
+        "presence_only": true
+      },
+      "final_report": {
+        "missing_field_ids": [
+          "16",
+          "17",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "v21",
+          "v22",
+          "v23",
+          "v24",
+          "v25",
+          "v26",
+          "v26a"
+        ],
+        "presence_only": true
+      }
+    },
+    "srp_conditional_manual_fields": [
+      "v27"
+    ],
+    "srp_declared_field_ids": [
+      "1"
+    ],
+    "srp_glossary_date": "2026-10-15",
+    "srp_glossary_url": "https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2",
+    "srp_glossary_version": "1.5",
+    "submission_status": "not_submitted"
+  },
+  "vulnerability_full": {
+    "annotation_scope": "release_context_not_per_finding",
+    "article": "14(2)",
+    "awareness_at": "2026-10-01T13:00:00+00:00",
+    "awareness_source": "operator_context",
+    "canonical_context_sha256": "aeac268def2edc20c846ba619fc4d3fc893dca482f838af5749de1fd6fc73cac",
+    "disclosure_deadline": "2026-10-02T13:00:00+00:00",
+    "euvd_ids": [
+      "EUVD-2026-45012",
+      "EUVD-2026-4893"
+    ],
+    "exploitation_status": "not_assessed",
+    "global_exploitation_signal": "kev_listed",
+    "legal_applicability": "not_assessed",
+    "notification_type": "vulnerability",
+    "regulation": "EU CRA 2024/2847",
+    "reporting_deadlines": {
+      "early_warning": "2026-10-02T13:00:00+00:00",
+      "final_report": {
+        "due_at": "2026-10-18T12:00:00+00:00",
+        "relative_to": "corrective_or_mitigating_measure_available",
+        "window_days": 14
+      },
+      "full_notification": "2026-10-04T13:00:00+00:00"
+    },
+    "reporting_obligation_start": "2026-09-11",
+    "srp_completeness": {
+      "72h_notification": {
+        "missing_field_ids": [
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "v26a"
+        ],
+        "presence_only": true
+      },
+      "early_warning": {
+        "missing_field_ids": [
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "presence_only": true
+      },
+      "final_report": {
+        "missing_field_ids": [
+          "16",
+          "17",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "v23",
+          "v24",
+          "v25",
+          "v26a"
+        ],
+        "presence_only": true
+      }
+    },
+    "srp_conditional_manual_fields": [
+      "v27"
+    ],
+    "srp_declared_field_ids": [
+      "1",
+      "2",
+      "40",
+      "v21",
+      "v22",
+      "v26"
+    ],
+    "srp_glossary_date": "2026-10-15",
+    "srp_glossary_url": "https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2",
+    "srp_glossary_version": "1.5",
+    "submission_status": "not_submitted"
+  }
+}

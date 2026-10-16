@@ -97,7 +97,8 @@ def test_awareness_and_remediation_anchor_vulnerability_clocks() -> None:
     assert cra["reporting_deadlines"]["early_warning"] == "2026-10-02T13:00:00+00:00"
     assert cra["reporting_deadlines"]["full_notification"] == "2026-10-04T13:00:00+00:00"
     assert cra["reporting_deadlines"]["final_report"]["due_at"] == "2026-10-18T12:00:00+00:00"
-    assert cra["srp_glossary_version"] == "1.4"
+    assert cra["srp_glossary_version"] == "1.5"
+    assert cra["srp_glossary_date"] == "2026-10-15"
     assert cra["srp_completeness"]["early_warning"]["missing_field_ids"] == [
         "3",
         "4",
@@ -170,7 +171,8 @@ def test_fedramp_does_not_invent_a_retention_policy() -> None:
         .metadata["fedramp"]
     )
     assert "retention_years" not in fedramp
-    assert fedramp["ruleset_version"] == "2026.10.05.01"
+    assert fedramp["ruleset_version"] == "2026.10.13.01"
+    assert fedramp["ruleset_commit"] == "a89d78477ddea98dc57eca24f5007794c2b4eeb6"
     assert fedramp["class"] is None
 
 
@@ -294,3 +296,86 @@ def test_context_commit_sha_matches_case_insensitively() -> None:
         bundle, profiles.ReleaseProfile.CRA_2026, cra_context=context
     )
     assert annotated.evidence[0].metadata["cra"]["notification_type"] == "vulnerability"
+
+
+# Art. 24(3) applies Art. 14(1), (3) and (8) to open-source software stewards,
+# and Art. 71(2) makes Art. 24 apply from 11 December 2027, not 11 September 2026.
+
+
+def test_steward_reporting_starts_on_11_december_2027() -> None:
+    cra = _cra(
+        notification_type="vulnerability",
+        operator_role="open_source_steward",
+        awareness_at="2027-01-10T00:00:00Z",
+    )
+    expected = {"status": "not_applicable", "reason": "awareness_precedes_obligation_start"}
+    assert cra["reporting_deadlines"]["early_warning"] == expected
+    assert cra["reporting_deadlines"]["final_report"] == expected
+    assert cra["reporting_obligation_start"] == "2027-12-11"
+    assert cra["article"] == "24(3) applying 14(1)"
+    assert cra["operator_role"] == "open_source_steward"
+    assert "incident_scope" not in cra
+
+
+def test_steward_deadlines_run_from_the_application_date() -> None:
+    cra = _cra(
+        notification_type="incident",
+        operator_role="open_source_steward",
+        awareness_at="2027-12-11T00:00:00Z",
+    )
+    assert cra["reporting_deadlines"]["early_warning"] == "2027-12-12T00:00:00+00:00"
+    assert cra["article"] == "24(3) applying 14(3),14(8)"
+    assert cra["incident_scope"] == "steward_provided_development_systems"
+
+
+def test_an_unset_operator_role_leaves_the_manufacturer_projection_unchanged() -> None:
+    values: dict[str, Any] = {
+        "notification_type": "vulnerability",
+        "awareness_at": "2026-10-01T10:00:00Z",
+    }
+    default = _cra(**values)
+    assert "operator_role" not in default
+    assert default["reporting_obligation_start"] == "2026-09-11"
+    assert default["article"] == "14(2)"
+    explicit = _cra(**values, operator_role="manufacturer")
+    assert explicit["operator_role"] == "manufacturer"
+    # Hashed only when set: an explicit role is part of the operator's input.
+    assert explicit["canonical_context_sha256"] != default["canonical_context_sha256"]
+    unchanged = {"canonical_context_sha256", "operator_role"}
+    assert {k: v for k, v in explicit.items() if k not in unchanged} == {
+        k: v for k, v in default.items() if k not in unchanged
+    }
+
+
+def test_an_unknown_operator_role_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="operator_role"):
+        profiles.CraReportingContext(
+            release_id="1",
+            commit_sha="a",
+            notification_type="vulnerability",
+            operator_role="importer",
+        )
+
+
+def test_fedramp_class_d_warns_that_20x_class_d_is_still_in_development(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import logging
+
+    bundle = _bundle([_evidence()])
+    with caplog.at_level(logging.WARNING, logger="evidence_collector"):
+        class_a = profiles.apply_profile(
+            bundle, profiles.ReleaseProfile.FEDRAMP_20X, fedramp_class="A"
+        )
+    assert caplog.text == ""
+    with caplog.at_level(logging.WARNING, logger="evidence_collector"):
+        class_d = profiles.apply_profile(
+            bundle, profiles.ReleaseProfile.FEDRAMP_20X, fedramp_class="D"
+        )
+    assert "Class D" in caplog.text
+    assert "Phase 4" in caplog.text
+    # A warning, not a new key: the record shape is the same for every class.
+    assert set(class_d.evidence[0].metadata["fedramp"]) == set(
+        class_a.evidence[0].metadata["fedramp"]
+    )
+    assert class_d.evidence[0].metadata["fedramp"]["class"] == "D"
