@@ -43,10 +43,21 @@ def configure_logging(verbose: bool) -> None:
     there broke the stream for anyone merging stderr into stdout.
     """
     level = logging.DEBUG if verbose else logging.INFO
+    # The JSON handler sits on the package logger, not the root: a host that
+    # already configured the root logger (a wrapper, an earlier in-process
+    # invocation) makes `basicConfig` a no-op, and replacing its handlers
+    # would be worse. Removed again on every call so modes do not stack.
+    package = logging.getLogger("evidence_collector")
+    for existing in [h for h in package.handlers if isinstance(h.formatter, _JsonLineFormatter)]:
+        package.removeHandler(existing)
+    package.propagate = True
+    package.setLevel(logging.NOTSET)
     if is_json_logs():
         handler = logging.StreamHandler()
         handler.setFormatter(_JsonLineFormatter())
-        logging.basicConfig(level=level, handlers=[handler])
+        package.addHandler(handler)
+        package.setLevel(level)
+        package.propagate = False
         return
     logging.basicConfig(
         level=level,
