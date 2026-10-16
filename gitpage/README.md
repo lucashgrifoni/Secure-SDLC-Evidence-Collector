@@ -2,15 +2,14 @@
 
 Static portfolio / GitHub Pages site for the **Secure SDLC Evidence Collector**.
 
-All content lives inside this folder (`gitpage/`). No file outside it is required or modified.
+All content lives inside this folder (`gitpage/`). The Pages workflow (`.github/workflows/deploy-github-pages.yml`) publishes it at the site root and rewrites its CLI facts at build time (see below).
 
 ## Stack
 
 - Semantic HTML + modern CSS (CSS variables for the palette)
 - Vanilla, modular JavaScript with no bundler
-- [Three.js 0.158](https://unpkg.com/three) via CDN for the hero's 3D scene
-- [GSAP 3.12](https://unpkg.com/gsap) via CDN (ScrollTrigger included for future evolution)
-- No backend, no required build step, no sensitive data
+- [Three.js 0.158](https://unpkg.com/three) via CDN for the hero's 3D scene, pinned with a Subresource Integrity hash (`integrity="sha384-..."`, `crossorigin="anonymous"`)
+- No backend, no sensitive data; the only build step is the facts injection described below
 
 ## Structure
 
@@ -22,15 +21,21 @@ gitpage/
     css/
       styles.css
     js/
-      main.js         # reveal, counters, meters, tilt, motion toggle, active nav
+      main.js         # reveal, counters, meters, tilt, motion toggle, active nav, small-screen menu
       scene.js        # hero 3D scene (Evidence Core + particles + streams)
-    data/
-      evidence-demo.json
+  tools/
+    page_facts.py     # injects and checks the CLI facts at Pages build time (not published)
+```
+
+To change the Three.js version, update the URL and recompute the hash, for example:
+
+```bash
+curl -sL https://unpkg.com/three@0.158.0/build/three.min.js | openssl dgst -sha384 -binary | openssl base64 -A
 ```
 
 ## Local preview
 
-Open `gitpage/index.html` directly in a browser. The page works under the `file://` protocol because every dependency loads via CDN and there are no `fetch` calls for local files.
+Open `gitpage/index.html` directly in a browser. The page works under the `file://` protocol because every dependency loads via CDN and there are no `fetch` calls for local files. The links to `evidence/` and `docs/` only resolve on the published site, where the workflow generates them.
 
 If you prefer a local server:
 
@@ -49,19 +54,24 @@ npx --yes serve gitpage -l 8080
 
 ## Publishing on GitHub Pages
 
-Two options:
+The site is published by `.github/workflows/deploy-github-pages.yml` on every push to `main` (Settings -> Pages -> Source: "GitHub Actions"). One deploy holds three surfaces:
 
-### Option A &mdash; Pages from `/docs`
+- `/` &mdash; this landing page (`index.html` and `assets/`)
+- `/evidence/` &mdash; `bundle.json`, `report.md` and `summary.html` that the CLI generates from `examples/sample_release` in the same run
+- `/docs/` &mdash; the mkdocs site
 
-1. Copy the contents of `gitpage/` into a `docs/` folder at the repository root, or configure GitPage from this folder.
-2. In the repository, go to **Settings -> Pages**, pick the branch, and select the `/docs` folder.
+### CLI facts
 
-### Option B &mdash; `gh-pages` branch
+The version badge and footer, the hero numbers, the scoring example (`payments-api 2026.04.10`, the sample release without its rollback plan and artifact signature), the `bundle.json` excerpt and the evidence-type count are elements marked `data-fact="..."` or `data-fact-attrs="..."`. The workflow runs the CLI, then:
 
-1. Publish the contents of `gitpage/` as the root of a `gh-pages` branch.
-2. In the repository, go to **Settings -> Pages** and select the `gh-pages` branch.
+```bash
+python gitpage/tools/page_facts.py inject --page site/index.html --sample site/evidence/bundle.json \
+  --example "$RUNNER_TEMP/example/bundle.json" --schema "$RUNNER_TEMP/schema.json" \
+  --version "$(cat "$RUNNER_TEMP/version.txt")"
+python gitpage/tools/page_facts.py check ...same arguments...
+```
 
-No build step is needed &mdash; the assets are already static.
+`check` fails the build when a marked fact differs from the CLI output, when a marker is missing, or when the example is no longer `not_ready` (the page text around it assumes that verdict). Pull requests that touch `gitpage/` or the workflow run this build without deploying. The values committed in `index.html` are the CLI output at the time of the last edit, so the `file://` preview stays close to the published page.
 
 ## Palette
 
@@ -89,10 +99,12 @@ Defined as CSS variables in `assets/css/styles.css`:
 
 ## Accessibility and UX
 
-- Navigation with `aria-current` based on the visible section.
+- Navigation with `aria-current` based on the visible section; below 1120px the links move into a native `<details>` menu that works without JavaScript.
 - Skip-link to jump directly to the content.
 - Visible focus on every control.
-- High contrast for text over the `#0c124c` background.
+- Content is hidden for the scroll reveal, and numbers reset for the count-up, only after JavaScript has run with motion on. Without JavaScript, in print and with reduced motion every section and every final value is visible.
+- Print uses a light stylesheet without the 3D stage or the navigation.
+- The model diagram switches to a stacked text version below 720px.
 - No horizontal overflow on mobile (tested on viewports starting at 320px).
 - No text overlapping the canvas: the hero uses `z-index: -1` on the 3D stage and content sits above it.
 
@@ -107,12 +119,7 @@ The page **never** claims that the product guarantees a secure release or delive
 - which exceptions were approved
 - how confident the evaluation is
 
-## Demo data
-
-`assets/data/evidence-demo.json` contains a sample bundle that follows the model documented in the project. It is **not** loaded via `fetch` so the page stays 100% functional under `file://`; it serves as editorial reference and future expansion point.
-
 ## Known limitations / next steps
 
-- The demo bundle is not rendered dynamically (to avoid `fetch` under `file://`). If the page is served over HTTP it is trivial to add a `fetch` that renders real evidence.
-- GSAP is loaded but only a fraction of the advanced effects (cinematic scroll timelines) are wired up. The foundation is ready to expand.
-- There is no build step. If you want minification, any static minifier handles it without breaking references.
+- The page is dark only; `prefers-color-scheme: light` renders the same dark page.
+- If you want minification, any static minifier handles it without breaking references, as long as the `data-fact` markers survive.

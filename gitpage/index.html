@@ -7,6 +7,8 @@
   <title>Secure SDLC Evidence Collector - Evidence-ready releases</title>
   <meta name="description" content="Collects, normalizes, correlates, and packages Secure SDLC evidence into auditable, traceable, release-oriented bundles." />
   <meta name="theme-color" content="#0c124c" />
+  <!-- Scroll reveals and counters only hide content once this class is set, so the page stays readable without JavaScript. -->
+  <script>document.documentElement.classList.add("js");</script>
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,7 +21,7 @@
 
   <header class="nav" role="banner">
     <div class="nav__inner">
-      <a class="nav__brand" href="#top" aria-label="Home">
+      <a class="nav__brand" href="#top">
         <span class="nav__mark" aria-hidden="true">
           <svg viewBox="0 0 32 32" width="28" height="28">
             <circle cx="16" cy="16" r="14" fill="none" stroke="#08b98b" stroke-width="1.4" />
@@ -39,8 +41,22 @@
         <a href="#flow">Flow</a>
         <a href="#scoring">Scoring</a>
         <a href="#roadmap">Roadmap</a>
+        <a href="docs/">Docs</a>
       </nav>
       <div class="nav__cta">
+        <details class="nav__menu">
+          <summary class="btn btn--ghost">Menu</summary>
+          <nav class="nav__menu-panel" aria-label="Sections">
+            <a href="#problem">Problem</a>
+            <a href="#value">Value</a>
+            <a href="#model">Model</a>
+            <a href="#flow">Flow</a>
+            <a href="#scoring">Scoring</a>
+            <a href="#roadmap">Roadmap</a>
+            <a href="docs/">Docs</a>
+            <a href="evidence/summary.html">Live evidence summary</a>
+          </nav>
+        </details>
         <button class="btn btn--ghost" type="button" data-toggle-motion aria-pressed="false" title="Toggle animations">
           <span class="btn__dot"></span>
           <span class="btn__label">Motion</span>
@@ -70,7 +86,7 @@
       <div class="hero__content">
         <div class="hero__badge">
           <span class="hero__badge-dot" aria-hidden="true"></span>
-          <span>v2.0.0 · CLI-first · Secure SDLC</span>
+          <span><span data-fact="version">v4.2.0</span> · CLI-first · Secure SDLC</span>
         </div>
         <h1 id="hero-title" class="hero__title">
           <span class="hero__line">Evidence-ready releases</span>
@@ -96,21 +112,25 @@
         <dl class="hero__stats" aria-label="Sample bundle indicators">
           <div>
             <dt>Evidence coverage</dt>
-            <dd data-counter="72" data-suffix="%">0%</dd>
+            <dd data-counter="100" data-suffix="%" data-fact="sample.coverage">100%</dd>
           </div>
           <div>
             <dt>Confidence</dt>
-            <dd data-counter="84" data-suffix="%">0%</dd>
+            <dd data-counter="59" data-suffix="%" data-fact="sample.confidence">59%</dd>
           </div>
           <div>
             <dt>Release status</dt>
-            <dd><span class="chip chip--conditional">conditional</span></dd>
+            <dd><span class="chip chip--ready" data-fact="sample.status">ready</span></dd>
           </div>
           <div>
             <dt>Evidence items</dt>
-            <dd data-counter="10" data-suffix="/10">0</dd>
+            <dd data-counter="13" data-fact="sample.evidence">13</dd>
           </div>
         </dl>
+        <p class="hero__sample">
+          Sample release from this repository, rebuilt by the CLI on every deploy.
+          <a class="text-link" href="evidence/summary.html">Open its evidence summary</a>
+        </p>
 
         <div class="hero__hint" aria-hidden="true">
           <span class="hero__hint-line"></span>
@@ -190,15 +210,15 @@
             <div class="value-card__ico" aria-hidden="true">
               <svg viewBox="0 0 32 32"><path d="M4 26l7-10 6 6 5-9 6 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
-            <h3>Measurable AppSec maturity</h3>
-            <p>Lets you measure Secure SDLC coverage, consistency, exceptions, and gaps per product, squad, or repository &mdash; with explanation, not black-box scores.</p>
+            <h3>Measurable Secure SDLC coverage</h3>
+            <p>Every release gets a coverage score, a confidence score, its exceptions and its gaps &mdash; with explanation, not black-box scores. <code>compare</code> shows what changed between two releases.</p>
           </article>
           <article class="value-card tilt" data-reveal data-reveal-delay="240">
             <div class="value-card__ico" aria-hidden="true">
               <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 9v7l5 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </div>
             <h3>Faster audits and due diligence</h3>
-            <p>One package with raw evidence, normalized records, per-control evaluation, approved exceptions, and summaries &mdash; cutting manual collection time.</p>
+            <p>One bundle with normalized records, the hash of every raw artifact, per-control evaluation, approved exceptions, and summaries &mdash; cutting manual collection time.</p>
           </article>
         </div>
       </div>
@@ -209,7 +229,7 @@
       <div class="wrap">
         <header class="section__head" data-reveal>
           <span class="eyebrow">03 &mdash; Conceptual model</span>
-          <h2 id="model-title">Raw -&gt; Normalized -&gt; Derived Assertion</h2>
+          <h2 id="model-title">Raw -&#8288;&gt; Normalized -&#8288;&gt; Derived Assertion</h2>
           <p class="section__lede">
             The heart of the project is the evidence model. Three well-separated layers preserve lineage and avoid black-box scoring: the raw artifact from the source, the canonical record, and the explainable conclusion about a control.
           </p>
@@ -247,9 +267,9 @@
                 <text class="model__title"  x="14" y="56">Raw Evidence</text>
                 <text class="model__meta"   x="14" y="90">semgrep.sarif</text>
                 <text class="model__meta"   x="14" y="110">sbom.cdx.json</text>
-                <text class="model__meta"   x="14" y="130">pr-184.json</text>
+                <text class="model__meta"   x="14" y="130">code_review.yaml</text>
                 <text class="model__meta"   x="14" y="150">junit.xml</text>
-                <text class="model__hash"   x="14" y="170">sha256:aaa...</text>
+                <text class="model__hash"   x="14" y="170">sha256:f2e5ab32...</text>
               </g>
 
               <!-- Normalized block -->
@@ -258,10 +278,10 @@
                 <text class="model__kicker" x="14" y="26">02 normalized</text>
                 <text class="model__title"  x="14" y="56">Normalized Evidence</text>
                 <text class="model__meta"   x="14" y="90">evidence_type=sast_scan</text>
-                <text class="model__meta"   x="14" y="108">tool=semgrep</text>
-                <text class="model__meta"   x="14" y="126">status=completed</text>
+                <text class="model__meta"   x="14" y="108">producer=semgrep</text>
+                <text class="model__meta"   x="14" y="126">status=passed</text>
                 <text class="model__meta"   x="14" y="144">confidence=high</text>
-                <text class="model__hash"   x="14" y="168">evidence_id=ev-001</text>
+                <text class="model__hash"   x="14" y="168">evidence_id=sast-8853dbef</text>
               </g>
 
               <!-- Assertion block -->
@@ -269,25 +289,55 @@
                 <rect class="model__block model__block--end" x="0" y="0" width="180" height="180" rx="10"/>
                 <text class="model__kicker" x="14" y="26">03 derived</text>
                 <text class="model__title"  x="14" y="56">Derived Assertion</text>
-                <text class="model__meta"   x="14" y="90">SSDF-PS.3: met</text>
-                <text class="model__meta"   x="14" y="108">SSDF-PW.7: partial</text>
-                <text class="model__meta"   x="14" y="126">ORG-ROLLBACK: missing</text>
+                <text class="model__meta"   x="14" y="90">SSDF-PW.7: met</text>
+                <text class="model__meta"   x="14" y="108">SSDF-PS.3: partial</text>
+                <text class="model__meta"   x="14" y="126">SSDF-PS.2: missing</text>
                 <text class="model__hash"   x="14" y="160">rationale required</text>
               </g>
             </svg>
+
+            <!-- Same three layers as text: replaces the diagram on narrow screens, where its labels would shrink to about 3px. -->
+            <ol class="model__stack" aria-label="Transformation from raw evidence into a derived assertion">
+              <li class="model__layer">
+                <span class="model__layer-kicker">01 raw</span>
+                <span class="model__layer-title">Raw Evidence</span>
+                <span class="model__layer-meta">semgrep.sarif</span>
+                <span class="model__layer-meta">sbom.cdx.json</span>
+                <span class="model__layer-meta">code_review.yaml</span>
+                <span class="model__layer-meta">junit.xml</span>
+                <span class="model__layer-hash">sha256:f2e5ab32...</span>
+              </li>
+              <li class="model__layer model__layer--mid">
+                <span class="model__layer-kicker">02 normalized</span>
+                <span class="model__layer-title">Normalized Evidence</span>
+                <span class="model__layer-meta">evidence_type=sast_scan</span>
+                <span class="model__layer-meta">producer=semgrep</span>
+                <span class="model__layer-meta">status=passed</span>
+                <span class="model__layer-meta">confidence=high</span>
+                <span class="model__layer-hash">evidence_id=sast-8853dbef</span>
+              </li>
+              <li class="model__layer model__layer--end">
+                <span class="model__layer-kicker">03 derived</span>
+                <span class="model__layer-title">Derived Assertion</span>
+                <span class="model__layer-meta">SSDF-PW.7: met</span>
+                <span class="model__layer-meta">SSDF-PS.3: partial</span>
+                <span class="model__layer-meta">SSDF-PS.2: missing</span>
+                <span class="model__layer-hash">rationale required</span>
+              </li>
+            </ol>
           </div>
 
           <div class="model__legend">
             <article class="legend-card" data-reveal>
-              <h4><span class="dot dot--raw"></span>Raw Evidence</h4>
+              <h3><span class="dot dot--raw"></span>Raw Evidence</h3>
               <p>Raw artifact from the original source &mdash; SARIF, CycloneDX, JUnit, PR payload, manual attestation. Integrity preserved with a hash.</p>
             </article>
             <article class="legend-card" data-reveal data-reveal-delay="80">
-              <h4><span class="dot dot--norm"></span>Normalized Evidence</h4>
+              <h3><span class="dot dot--norm"></span>Normalized Evidence</h3>
               <p>Canonical record with type, status, timestamps, lineage, evaluated subject, and confidence. A single contract for everything.</p>
             </article>
             <article class="legend-card" data-reveal data-reveal-delay="160">
-              <h4><span class="dot dot--assert"></span>Derived Assertion</h4>
+              <h3><span class="dot dot--assert"></span>Derived Assertion</h3>
               <p>Conclusion computed from the normalized evidence &mdash; always with explicit rationale. The score comes with explanation.</p>
             </article>
           </div>
@@ -300,7 +350,7 @@
       <div class="wrap">
         <header class="section__head" data-reveal>
           <span class="eyebrow">04 &mdash; Operational flow</span>
-          <h2 id="flow-title">From pipeline trigger to audit package</h2>
+          <h2 id="flow-title">From pipeline trigger to audit hand-off</h2>
           <p class="section__lede">
             Nine steps with chained lineage. Each step produces or consumes typed artifacts, and no release decision happens without traceability.
           </p>
@@ -319,8 +369,8 @@
           </li>
           <li class="flow__node" data-reveal data-reveal-delay="120">
             <span class="flow__idx">03</span>
-            <h3>Raw Evidence Store</h3>
-            <p>Storage of the raw evidence with integrity hash and provenance.</p>
+            <h3>Raw Evidence Reference</h3>
+            <p>Each raw artifact is recorded by path, size, and SHA-256 hash. The file itself stays where your pipeline keeps it.</p>
           </li>
           <li class="flow__node" data-reveal data-reveal-delay="180">
             <span class="flow__idx">04</span>
@@ -349,8 +399,8 @@
           </li>
           <li class="flow__node" data-reveal data-reveal-delay="480">
             <span class="flow__idx">09</span>
-            <h3>Audit Package</h3>
-            <p>Ready-to-ship package for GRC, internal audits, and external due diligence.</p>
+            <h3>Audit Hand-off</h3>
+            <p>The same bundle feeds <code>verify</code>, OSCAL assessment results, an in-toto Statement, OpenVEX, and SARIF for GRC and audit tools.</p>
           </li>
         </ol>
       </div>
@@ -361,23 +411,27 @@
       <div class="wrap">
         <header class="section__head" data-reveal>
           <span class="eyebrow">05 &mdash; Evidence types</span>
-          <h2 id="types-title">Ten types, one canonical contract</h2>
+          <h2 id="types-title"><span data-fact="evidence_types">21</span> evidence types, one canonical contract</h2>
           <p class="section__lede">
-            The MVP starts small but covers the classes that show up most in real gates. New sources plug in through collectors without touching the domain model.
+            The families below show up most in real release gates. New sources plug in through parsers and collectors without changing the bundle contract.
           </p>
         </header>
 
         <ul class="types-grid" role="list">
           <li class="type-chip" data-reveal><span class="type-chip__tag">SAST</span><span>Semgrep, SARIF</span></li>
-          <li class="type-chip" data-reveal data-reveal-delay="40"><span class="type-chip__tag">SCA</span><span>Trivy, Snyk</span></li>
-          <li class="type-chip" data-reveal data-reveal-delay="80"><span class="type-chip__tag">Secrets</span><span>pre-commit, pipeline</span></li>
-          <li class="type-chip" data-reveal data-reveal-delay="120"><span class="type-chip__tag">SBOM</span><span>CycloneDX / SPDX</span></li>
-          <li class="type-chip" data-reveal data-reveal-delay="160"><span class="type-chip__tag">Tests</span><span>JUnit, pytest</span></li>
-          <li class="type-chip" data-reveal data-reveal-delay="200"><span class="type-chip__tag">Code review</span><span>PR approvals</span></li>
-          <li class="type-chip" data-reveal data-reveal-delay="240"><span class="type-chip__tag">Threat model</span><span>link or attestation</span></li>
-          <li class="type-chip" data-reveal data-reveal-delay="280"><span class="type-chip__tag">Release approval</span><span>formal, with approver</span></li>
-          <li class="type-chip" data-reveal data-reveal-delay="320"><span class="type-chip__tag">Rollback plan</span><span>attestation</span></li>
-          <li class="type-chip" data-reveal data-reveal-delay="360"><span class="type-chip__tag">Artifact signature</span><span>or attestation</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="40"><span class="type-chip__tag">SCA</span><span>Trivy, OSV-Scanner</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="80"><span class="type-chip__tag">Secrets</span><span>Gitleaks, SARIF</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="120"><span class="type-chip__tag">DAST</span><span>OWASP ZAP</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="160"><span class="type-chip__tag">IaC</span><span>Trivy misconfigurations</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="200"><span class="type-chip__tag">SBOM</span><span>CycloneDX / SPDX</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="240"><span class="type-chip__tag">Tests</span><span>JUnit XML</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="280"><span class="type-chip__tag">Code review</span><span>PR approvals</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="320"><span class="type-chip__tag">Threat model</span><span>link or attestation</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="360"><span class="type-chip__tag">Release approval</span><span>formal, with approver</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="400"><span class="type-chip__tag">Rollback plan</span><span>attestation</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="440"><span class="type-chip__tag">Artifact signature</span><span>or attestation</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="480"><span class="type-chip__tag">Provenance</span><span>in-toto, SLSA, PyPI and npm</span></li>
+          <li class="type-chip" data-reveal data-reveal-delay="520"><span class="type-chip__tag">AI evidence</span><span>model cards, promptfoo, garak</span></li>
         </ul>
       </div>
     </section>
@@ -398,35 +452,36 @@
             <header>
               <span class="eyebrow">release candidate</span>
               <h3>payments-api <span class="mono">2026.04.10</span></h3>
+              <p class="scoring__note">The sample release without its rollback plan and artifact signature, as the CLI scores it.</p>
             </header>
             <div class="scoring__meters">
-              <div class="meter" data-meter="72">
-                <div class="meter__label"><span>Evidence coverage</span><span class="meter__value">72</span></div>
+              <div class="meter" data-meter="82" style="--w:82%" data-fact-attrs="example.coverage">
+                <div class="meter__label"><span>Evidence coverage</span><span class="meter__value" data-fact="example.coverage">82</span></div>
                 <div class="meter__track"><div class="meter__bar" data-bar></div></div>
               </div>
-              <div class="meter" data-meter="84">
-                <div class="meter__label"><span>Confidence</span><span class="meter__value">84</span></div>
+              <div class="meter" data-meter="63" style="--w:63%" data-fact-attrs="example.confidence">
+                <div class="meter__label"><span>Confidence</span><span class="meter__value" data-fact="example.confidence">63</span></div>
                 <div class="meter__track"><div class="meter__bar meter__bar--alt" data-bar></div></div>
               </div>
             </div>
             <footer>
-              <span class="chip chip--conditional">conditional</span>
-              <span class="scoring__missing">missing: rollback_plan, artifact_signature</span>
+              <span class="chip chip--not-ready" data-fact="example.status">not_ready</span>
+              <span class="scoring__missing" data-fact="example.missing">missing: ORG-REL-ROLLBACK:rollback_plan, SSDF-PS.2:artifact_signature</span>
             </footer>
           </article>
 
           <div class="scoring__statuses">
             <article class="status-card status-card--ready" data-reveal>
               <span class="status-card__chip">ready</span>
-              <p>Required evidence satisfied. Release cleared without exception.</p>
+              <p>Every control is met, waived, or not applicable. No required or recommended evidence is missing.</p>
             </article>
             <article class="status-card status-card--conditional" data-reveal data-reveal-delay="80">
               <span class="status-card__chip">conditional</span>
-              <p>Non-critical gaps, or the release depends on an approved exception.</p>
+              <p>A high control lacks required evidence, or only recommended or medium-criticality evidence is missing. Exits 0 unless you pass <code>--fail-on conditional</code>.</p>
             </article>
             <article class="status-card status-card--not-ready" data-reveal data-reveal-delay="160">
               <span class="status-card__chip">not_ready</span>
-              <p>Critical evidence is missing or there are serious inconsistencies.</p>
+              <p>A critical control lacks required evidence. Exits 2.</p>
             </article>
           </div>
         </div>
@@ -440,48 +495,50 @@
           <span class="eyebrow">07 &mdash; Outputs</span>
           <h2 id="outputs-title">Four outputs for four audiences</h2>
           <p class="section__lede">
-            One ingestion, four artifacts. Machines read the bundle, engineering reads the report, stakeholders read the summary, and audit receives the full package.
+            One ingestion, four outputs. Machines read the bundle, engineering reads the report, stakeholders read the summary, and audit and GRC tools read standard exports of the same bundle. The first three link to the live sample.
           </p>
         </header>
 
         <div class="outputs">
           <article class="output-card" data-reveal>
-            <div class="output-card__file">bundle.json</div>
+            <a class="output-card__file" href="evidence/bundle.json">bundle.json</a>
             <h3>Canonical evidence bundle</h3>
             <p>Versioned contract with evidence, control evaluations, exceptions, and summary. Reusable by audits and pipeline gates.</p>
           </article>
           <article class="output-card" data-reveal data-reveal-delay="80">
-            <div class="output-card__file">report.md</div>
+            <a class="output-card__file" href="evidence/report.md">report.md</a>
             <h3>Technical report</h3>
             <p>Readable Markdown for engineering review, with lineage for every piece of evidence and rationale for every evaluation.</p>
           </article>
           <article class="output-card" data-reveal data-reveal-delay="160">
-            <div class="output-card__file">summary.html</div>
+            <a class="output-card__file" href="evidence/summary.html">summary.html</a>
             <h3>Human summary</h3>
             <p>Static HTML with release status, coverage, gaps, and exceptions &mdash; ready for non-technical stakeholders.</p>
           </article>
           <article class="output-card" data-reveal data-reveal-delay="240">
-            <div class="output-card__file">audit.zip</div>
-            <h3>Audit package</h3>
-            <p>Package for GRC and due diligence: bundle + raw evidence + reports, with provenance preserved.</p>
+            <div class="output-card__file">oscal &middot; statement &middot; vex &middot; sarif</div>
+            <h3>Standard exports</h3>
+            <p>Commands that turn the bundle into OSCAL assessment results, an in-toto Statement, OpenVEX, or SARIF for GRC and audit tools.</p>
           </article>
         </div>
 
         <details class="preview" data-reveal>
           <summary>See an example <code>bundle.json</code> (excerpt)</summary>
-<pre><code>{
-  "bundle_version": "1.0.0",
-  "bundle_id": "bundle-2026-04-10-payments-api",
+<pre><code data-fact="example.excerpt">{
+  "bundle_version": "2.1.0",
   "release": {
     "release_id": "2026.04.10",
-    "commit_sha": "abc123",
-    "artifact_digest": "sha256:1234567890abcdef"
+    "commit_sha": "abc1234",
+    "branch": "main"
   },
   "summary": {
-    "evidence_coverage_score": 72,
-    "confidence_score": 84,
-    "release_status": "conditional",
-    "missing_critical_evidence": ["rollback_plan", "artifact_signature"]
+    "evidence_coverage_score": 82,
+    "confidence_score": 63,
+    "release_status": "not_ready",
+    "missing_critical_evidence": [
+      "ORG-REL-ROLLBACK:rollback_plan",
+      "SSDF-PS.2:artifact_signature"
+    ]
   }
 }</code></pre>
         </details>
@@ -501,27 +558,27 @@
 
         <ul class="sec-grid" role="list">
           <li class="sec-item" data-reveal>
-            <h4>No secrets in logs</h4>
+            <h3>No secrets in logs</h3>
             <p>Tokens, signed URLs, and sensitive artifacts are never logged.</p>
           </li>
           <li class="sec-item" data-reveal data-reveal-delay="60">
-            <h4>Input validation</h4>
+            <h3>Input validation</h3>
             <p>Ingested files are validated for format and size before parsing.</p>
           </li>
           <li class="sec-item" data-reveal data-reveal-delay="120">
-            <h4>Integrity hashing</h4>
+            <h3>Integrity hashing</h3>
             <p>Every collected artifact gets a hash and provenance to preserve lineage.</p>
           </li>
           <li class="sec-item" data-reveal data-reveal-delay="180">
-            <h4>Least privilege</h4>
+            <h3>Least privilege</h3>
             <p>Minimal access policies for external APIs and credentials isolated per collector.</p>
           </li>
           <li class="sec-item" data-reveal data-reveal-delay="240">
-            <h4>Manual attestations</h4>
+            <h3>Manual attestations</h3>
             <p>Treated as legitimate evidence, but weighted with lower confidence than automated signals.</p>
           </li>
           <li class="sec-item" data-reveal data-reveal-delay="300">
-            <h4>Reproducibility</h4>
+            <h3>Reproducibility</h3>
             <p>Same input produces the same evaluation. Score and status are deterministic and explainable.</p>
           </li>
         </ul>
@@ -535,13 +592,13 @@
           <span class="eyebrow">09 &mdash; Roadmap</span>
           <h2 id="road-title">Phased evolution, without losing the core</h2>
           <p class="section__lede">
-            The MVP is CLI-first and delivers bundle, report, and gate. Later phases expand sources, governance, and analytics without breaking the evidence contract.
+            The CLI delivers bundle, report, and gate. Each release adds sources and standards without breaking the evidence contract. Planned work lives in the <a class="text-link" href="https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/MATURITY_ROADMAP.md">maturity roadmap</a>.
           </p>
         </header>
 
         <div class="roadmap">
           <article class="phase phase--mvp" data-reveal>
-            <header><span class="phase__tag">MVP &mdash; v1.0</span><h3>Foundation</h3></header>
+            <header><span class="phase__tag">v1.0 &mdash; shipped</span><h3>Foundation</h3></header>
             <ul>
               <li>GitHub + GitHub Actions</li>
               <li>SAST / SCA / Secrets / SBOM / Tests</li>
@@ -551,7 +608,7 @@
             </ul>
           </article>
           <article class="phase" data-reveal data-reveal-delay="80">
-            <header><span class="phase__tag">v2.0</span><h3>Standards &amp; AI track</h3></header>
+            <header><span class="phase__tag">v2.x &mdash; shipped</span><h3>Standards &amp; AI track</h3></header>
             <ul>
               <li>CycloneDX 1.7, OSV, in-toto Witness predicates</li>
               <li>AI evidence track (SSDF AI Profile + OWASP LLM Top 10)</li>
@@ -561,21 +618,22 @@
             </ul>
           </article>
           <article class="phase" data-reveal data-reveal-delay="160">
-            <header><span class="phase__tag">Phase 3</span><h3>History &amp; trends</h3></header>
+            <header><span class="phase__tag">v3 &ndash; v4 &mdash; shipped</span><h3>Attestations &amp; regulation</h3></header>
             <ul>
-              <li>Historical dashboard</li>
-              <li>Trends by team / product</li>
-              <li>Per-release comparison</li>
-              <li>APIs for GRC and audit</li>
+              <li>in-toto, PyPI and npm attestations as evidence</li>
+              <li>Native Trivy JSON, IaC findings kept apart</li>
+              <li>SARIF export of unmet controls</li>
+              <li>CRA, FedRAMP 20x and CISA 2026 SBOM profiles</li>
+              <li>GitLab CI/CD Catalog component</li>
             </ul>
           </article>
           <article class="phase" data-reveal data-reveal-delay="240">
-            <header><span class="phase__tag">Phase 4</span><h3>Policy-as-code</h3></header>
+            <header><span class="phase__tag">Out of scope</span><h3>By design</h3></header>
             <ul>
-              <li>Declarative gates</li>
-              <li>Advanced provenance and attestation</li>
-              <li>AppSec maturity analytics</li>
-              <li>Policy packs per framework</li>
+              <li>Hosted dashboard or trend analytics: the bundle is the product, visualization is downstream</li>
+              <li>Multi-tenant SaaS or telemetry</li>
+              <li>Running scanners or AI agents</li>
+              <li>A custom signing format</li>
             </ul>
           </article>
         </div>
@@ -595,9 +653,15 @@
             <strong>which were not</strong>, and <strong>how confident the evaluation is</strong>.
           </p>
           <div class="close__ctas">
-            <a class="btn btn--primary" href="#top">Back to top</a>
-            <a class="btn btn--secondary" href="#model">Revisit the model</a>
+            <a class="btn btn--primary" href="evidence/summary.html">See a live evidence summary</a>
+            <a class="btn btn--secondary" href="docs/">Read the docs</a>
           </div>
+          <p class="close__install">
+            Install the CLI with <code>pip install secure-sdlc-evidence-collector</code>, or run it from
+            <a class="text-link" href="https://github.com/marketplace/actions/secure-sdlc-evidence-collector">GitHub Actions</a>,
+            the <a class="text-link" href="https://gitlab.com/explore/catalog/lucas.henriquegrifoni/secure-sdlc-evidence-component">GitLab CI/CD Catalog</a>,
+            or <a class="text-link" href="https://pypi.org/project/secure-sdlc-evidence-collector/">PyPI</a>.
+          </p>
         </div>
       </div>
     </section>
@@ -611,18 +675,16 @@
       </div>
       <div class="foot__meta foot__meta--right">
         <span>CLI-first &middot; Python &middot; open source</span>
-        <span class="mono">v2.0.0</span>
+        <span class="mono" data-fact="version">v4.2.0</span>
       </div>
     </div>
   </footer>
 
-  <!-- Libs via CDN -->
-  <script src="https://unpkg.com/three@0.158.0/build/three.min.js" defer></script>
-  <script src="https://unpkg.com/gsap@3.12.5/dist/gsap.min.js" defer></script>
-  <script src="https://unpkg.com/gsap@3.12.5/dist/ScrollTrigger.min.js" defer></script>
-
-  <!-- App -->
-  <script src="assets/js/scene.js" defer></script>
+  <!-- App UI first, so reveals and counters do not wait for the 3D library download -->
   <script src="assets/js/main.js" defer></script>
+
+  <!-- 3D library via CDN, pinned by Subresource Integrity (sha384 of three@0.158.0/build/three.min.js) -->
+  <script src="https://unpkg.com/three@0.158.0/build/three.min.js" integrity="sha384-5UGTcMIxVUKFeJH0zOS3lqMAZNBG+fCXJbi3UglUq6ABO4MQJu6rxNa+MPP+qtwq" crossorigin="anonymous" defer></script>
+  <script src="assets/js/scene.js" defer></script>
 </body>
 </html>
