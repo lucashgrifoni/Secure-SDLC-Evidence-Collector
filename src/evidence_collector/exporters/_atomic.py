@@ -198,6 +198,10 @@ def write_atomic(target: Path, content: str) -> Path:
 
 
 def _write_atomic_unlocked(target: Path, content: str) -> Path:
+    # Same check as the set writer: without it the rename failed with a bare
+    # "Access is denied" naming a scratch file the user never created.
+    if target.is_dir():
+        raise IsADirectoryError(errno.EISDIR, "Output path exists as a directory", str(target))
     target.parent.mkdir(parents=True, exist_ok=True)
     temp = _stage(target, content)
     try:

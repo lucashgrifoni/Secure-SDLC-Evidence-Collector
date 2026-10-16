@@ -254,7 +254,7 @@ def test_the_output_script_reports_every_output_and_writes_a_summary(
     assert Path(outputs["report-path"]).is_file()
     text = summary_file.read_text(encoding="utf-8")
     assert "| `ready` | 100 | 13 | 0 | 0 | 0 | 13 |" in text
-    assert "Missing critical evidence: none" in text
+    assert "Missing critical/high evidence: none" in text
 
 
 def test_caller_text_in_the_summary_cannot_break_out_of_its_code_span(

@@ -584,3 +584,86 @@ def test_engine_calls_a_waiver_expired_at_its_expiry_instant() -> None:
     assert target.exception_refs == []
     assert f"{waiver.exception_id} (expired {waiver.expires_at.isoformat()})" in target.rationale
     assert "out of scope" not in target.rationale
+
+
+_WAIVER_BODY = (
+    "exception_id: EXC-2026-009\n"
+    "control_id: SSDF-PS.2\n"
+    "approver: appsec-lead@example.com\n"
+    "approved_at: 2026-04-10T10:00:00Z\n"
+    "expires_at: 2099-07-10T10:00:00Z\n"
+    'justification: "Signing pipeline migration tracked in JIRA-77."\n'
+)
+
+
+@pytest.mark.parametrize(
+    ("extra", "unknown"),
+    [
+        ("scop:\n  application: some-other-app\n", "scop"),
+        ("scope:\n  app: some-other-app\n", "app"),
+        ("expiry: 2099-01-01T00:00:00Z\n", "expiry"),
+    ],
+)
+def test_a_misspelt_waiver_key_is_refused_instead_of_widening_the_waiver(
+    tmp_path: Path, extra: str, unknown: str
+) -> None:
+    """A dropped `scop:` or `app:` left the waiver global and covered every release."""
+    path = tmp_path / "EXC-typo.yaml"
+    path.write_text(_WAIVER_BODY + extra, encoding="utf-8")
+    with pytest.raises(ParseError, match=rf"unknown fields \['{unknown}'\]"):
+        parse_exception(path)
+
+
+def test_a_misspelt_scope_no_longer_waives_a_critical_gap_for_every_release(
+    tmp_path: Path, sample_release_root: Path
+) -> None:
+    """End to end: the typo used to flip the release from not_ready (exit 2) to conditional (0).
+
+    Run as a real process so the CLI's exit-code mapping applies.
+    """
+    import json
+    import shutil
+    import subprocess
+    import sys
+
+    attestations = tmp_path / "attestations"
+    shutil.copytree(sample_release_root / "attestations", attestations)
+    (attestations / "artifact_signature.yaml").unlink()
+    waivers = tmp_path / "exceptions"
+    waivers.mkdir()
+    (waivers / "EXC-typo.yaml").write_text(
+        _WAIVER_BODY + "scop:\n  application: some-other-app\n", encoding="utf-8"
+    )
+    out = tmp_path / "out"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "evidence_collector.cli.main",
+            "run",
+            "--application",
+            "payments-api",
+            "--repository",
+            "acme/payments-api",
+            "--release-id",
+            "2026.04.10",
+            "--commit-sha",
+            "abcdef1234567890",
+            "--artifacts-dir",
+            str(sample_release_root / "artifacts"),
+            "--attestations-dir",
+            str(attestations),
+            "--exceptions-dir",
+            str(waivers),
+            "--output-dir",
+            str(out),
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+    assert result.returncode == 2, result.stdout + result.stderr
+    bundle = json.loads((out / "bundle.json").read_text(encoding="utf-8"))
+    assert bundle["summary"]["release_status"] == "not_ready"
+    assert any("scop" in str(error) for error in bundle["collection_errors"])

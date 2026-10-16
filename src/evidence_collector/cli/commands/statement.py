@@ -77,8 +77,10 @@ def register(app: typer.Typer) -> None:
                 help=(
                     "predicateType variant: 'evidence-bundle' (default, "
                     "project-native), 'witness' (Witness-compatible custom "
-                    "attestation), 'slsa-provenance' (SLSA Provenance v1 "
-                    "URI), or 'svr' (in-toto Simple Verification Result "
+                    "attestation), 'slsa-provenance' (advertises the SLSA "
+                    "Provenance v1 URI; the predicate is still the bundle, "
+                    "without buildDefinition or runDetails), or 'svr' (in-toto "
+                    "Simple Verification Result "
                     "v0.2 — emits a verdict summary instead of the bundle)."
                 ),
             ),

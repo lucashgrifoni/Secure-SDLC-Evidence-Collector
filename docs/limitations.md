@@ -183,6 +183,28 @@ context, CR26 source versions, catalog changes and output-lock recovery.
 - If a release's DAST evidence is a screenshot or a PDF, it must be
   attested via `dast_scan` in `generic_attestation.yaml` with a link.
 
+## 6b · Native Trivy JSON
+
+- Pinned to `SchemaVersion: 2`. Trivy publishes **no JSON Schema** for
+  this format (aquasecurity/trivy discussion #7552), so the version field
+  is the only compatibility signal there is. Another version fails with a
+  diagnostic rather than being parsed under version-2 assumptions.
+- `Results[].Class` drives the mapping: `os-pkgs` and `lang-pkgs` become
+  `sca_scan`, `secret` becomes `secrets_scan`, `config` becomes
+  `iac_scan`. Note the class is literally **`config`** — "misconfiguration"
+  is what the format is called in prose, not in the report.
+- `license`, `license-file`, `custom` and `unknown` classes are read past.
+  No evidence type in the bundle means what they mean, and inventing one
+  would be worse than declining.
+- An **empty** result class produces no evidence at all, rather than a
+  passing one. "Trivy found no secrets" and "Trivy was not asked about
+  secrets" are different claims, and the report cannot tell them apart.
+- Misconfigurations whose `Status` is `PASS` (present when Trivy runs with
+  `--include-non-failures`) are not counted as findings.
+- Only the dependency lane carries `cve_ids`. Secret rule ids and
+  misconfiguration check ids are not CVEs and are never fed to EPSS/KEV
+  enrichment as if they were.
+
 ## 7 · Signing verification
 
 - The collector records `artifact_signature` **presence** (a file
@@ -221,28 +243,6 @@ context, CR26 source versions, catalog changes and output-lock recovery.
 - A DSSE-wrapped or Sigstore-bundled **VSA** also lands here rather than
   in the dedicated VSA parser, which reads raw Statements only. The
   evidence survives, but with less detail than an unwrapped VSA.
-
-## 6b · Native Trivy JSON
-
-- Pinned to `SchemaVersion: 2`. Trivy publishes **no JSON Schema** for
-  this format (aquasecurity/trivy discussion #7552), so the version field
-  is the only compatibility signal there is. Another version fails with a
-  diagnostic rather than being parsed under version-2 assumptions.
-- `Results[].Class` drives the mapping: `os-pkgs` and `lang-pkgs` become
-  `sca_scan`, `secret` becomes `secrets_scan`, `config` becomes
-  `iac_scan`. Note the class is literally **`config`** — "misconfiguration"
-  is what the format is called in prose, not in the report.
-- `license`, `license-file`, `custom` and `unknown` classes are read past.
-  No evidence type in the bundle means what they mean, and inventing one
-  would be worse than declining.
-- An **empty** result class produces no evidence at all, rather than a
-  passing one. "Trivy found no secrets" and "Trivy was not asked about
-  secrets" are different claims, and the report cannot tell them apart.
-- Misconfigurations whose `Status` is `PASS` (present when Trivy runs with
-  `--include-non-failures`) are not counted as findings.
-- Only the dependency lane carries `cve_ids`. Secret rule ids and
-  misconfiguration check ids are not CVEs and are never fed to EPSS/KEV
-  enrichment as if they were.
 
 ## 7c · Package-registry attestations
 
@@ -315,6 +315,35 @@ These are explicitly out of scope for security reports (see
 - missing security headers in the `summary.html` artifact when served
   outside the tool's default invocation.
 
+## 10b · The bundle carries the identifiers you put in it
+
+A bundle is meant to be shared — with an auditor, a customer, a regulator — and
+it repeats back whatever identifies people in the evidence you fed it. In the
+shipped sample that is five distinct values: the `approver` on a waiver, the
+`approver` on a release approval, the `author` on PR metadata, and the
+`reviewers` on a code review. The waiver approver also appears in `report.md`
+and in the `summary.html` exceptions table, so it reaches the two files a
+reviewer actually opens.
+
+None of this is accidental. A waiver without an accountable approver is not
+worth recording, and the model requires the field. But three consequences are
+worth knowing before you decide what to type into it:
+
+- **It is published.** The tool has an explicit control for keeping filesystem
+  paths out of a shared bundle (`--artifact-root`) and no equivalent for these.
+- **It is signed.** The release pipeline signs the bundle with Sigstore, which
+  binds a named person to "I approved waiving this control" in a form that is
+  tamper-evident and meant to be durable. That is the point for an audit trail;
+  it is also a stronger and more permanent link than someone writing a YAML file
+  is likely to have in mind.
+- **It is inside the structural hash.** Editing it later invalidates
+  `verify --expected`, so it is not something you remove after the fact.
+
+If your policy needs the accountability without the personal identifier, record
+a role or a ticket reference (`security-review-board`, `RISK-4471`) rather than
+an individual's address. The tool treats the field as an opaque string and does
+not care which you choose.
+
 ## 11 · Things the verdict does **not** imply
 
 - `ready` does **not** mean "legally compliant with SSDF / PCI-DSS /
@@ -359,7 +388,7 @@ These are explicitly out of scope for security reports (see
   hashes on different days when enrichment is on**. That is the
   intent: drift in the EPSS feed is meaningful, not noise.
 - If a downstream signer needs a single durable hash, sign the
-  **base bundle** (built without `--enrich`) and ship the enriched
+  **base bundle** (the one written before `enrich` runs) and ship the enriched
   view as a separate, time-bound delta. The base bundle is
   byte-stable across runs on identical inputs.
 
@@ -443,18 +472,6 @@ These are explicitly out of scope for security reports (see
   so a missing reachability tool cannot silently suppress a real
   signal.
 
-## 17 · Watch daemon deferred, not scheduled (T6.9)
-
-- The roadmap pairs the GUAC adapter with a ``sdlc-evidence watch``
-  daemon (webhook receiver, durable cursor, delta bundles for
-  continuous ATO). That subcommand was planned for v2.1 and is not
-  scheduled, because it requires an optional ``[watch]`` extra (FastAPI +
-  uvicorn + watchdog) and durable cursor persistence the
-  file-first collector deliberately avoids.
-- GUAC and regulatory profiles provide projections of supplied evidence;
-  they do not establish authorization or reporting compliance. Watch remains
-  deferred and is not part of the current delivery boundary.
-
 ## 16 · Multi-VEX consumer trusts the upstream verdict (T6.7)
 
 - `sdlc-evidence vex --consume <file>` merges external VEX
@@ -513,34 +530,17 @@ These are explicitly out of scope for security reports (see
   bundle are byte-identical and different statements (including after
   `--consume` merges) never share an id; `version` stays `1`.
 
-## 10b · The bundle carries the identifiers you put in it
+## 17 · Watch daemon deferred, not scheduled (T6.9)
 
-A bundle is meant to be shared — with an auditor, a customer, a regulator — and
-it repeats back whatever identifies people in the evidence you fed it. In the
-shipped sample that is five distinct values: the `approver` on a waiver, the
-`approver` on a release approval, the `author` on PR metadata, and the
-`reviewers` on a code review. The waiver approver also appears in `report.md`
-and in the `summary.html` exceptions table, so it reaches the two files a
-reviewer actually opens.
-
-None of this is accidental. A waiver without an accountable approver is not
-worth recording, and the model requires the field. But three consequences are
-worth knowing before you decide what to type into it:
-
-- **It is published.** The tool has an explicit control for keeping filesystem
-  paths out of a shared bundle (`--artifact-root`) and no equivalent for these.
-- **It is signed.** The release pipeline signs the bundle with Sigstore, which
-  binds a named person to "I approved waiving this control" in a form that is
-  tamper-evident and meant to be durable. That is the point for an audit trail;
-  it is also a stronger and more permanent link than someone writing a YAML file
-  is likely to have in mind.
-- **It is inside the structural hash.** Editing it later invalidates
-  `verify --expected`, so it is not something you remove after the fact.
-
-If your policy needs the accountability without the personal identifier, record
-a role or a ticket reference (`security-review-board`, `RISK-4471`) rather than
-an individual's address. The tool treats the field as an opaque string and does
-not care which you choose.
+- The roadmap pairs the GUAC adapter with a ``sdlc-evidence watch``
+  daemon (webhook receiver, durable cursor, delta bundles for
+  continuous ATO). That subcommand was planned for v2.1 and is not
+  scheduled, because it requires an optional ``[watch]`` extra (FastAPI +
+  uvicorn + watchdog) and durable cursor persistence the
+  file-first collector deliberately avoids.
+- GUAC and regulatory profiles provide projections of supplied evidence;
+  they do not establish authorization or reporting compliance. Watch remains
+  deferred and is not part of the current delivery boundary.
 
 ## 18 · The optional API has no authentication
 
@@ -717,3 +717,14 @@ when it carries one, and `medium` otherwise. A purely v2-rated advisory can
 therefore land in a different severity bucket than its v2 base score would
 suggest. When an advisory also carries a v3 or v4 vector, the highest
 scored vector wins and the v2 entry is ignored.
+
+## 26 · Evidence from another commit lowers the verdict, it does not block it
+
+`evaluate --evidence` accepts records collected for another release or
+commit. Each mismatch is recorded in `collection_errors` (as
+`evidence[<release>@<commit>]`) and a `ready` verdict becomes
+`conditional`; a `conditional` or `not_ready` verdict is left as it is. With
+the default `--fail-on not_ready` the run exits `0`. Carrying part of an
+evidence set forward can be deliberate, so the tool reports it instead of
+refusing it; pass `--fail-on conditional` when evidence must come from the
+commit being released.

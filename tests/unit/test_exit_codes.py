@@ -172,12 +172,50 @@ def test_a_real_not_ready_verdict_still_exits_two(tmp_path: Path) -> None:
             "abcdef1234567890",
             "--output-dir",
             str(tmp_path / "out"),
+            "--attestations-dir",
+            str(tmp_path),
         )
         == 2
     )
+
+
+def test_run_with_no_evidence_source_exits_three_without_a_bundle(tmp_path: Path) -> None:
+    """With no directory and no GitHub source there is nothing to evaluate.
+
+    Writing a `not_ready` bundle and exiting 2 read as a real verdict on a
+    release nobody collected anything for.
+    """
+    out = tmp_path / "out"
+    assert (
+        _run_cli(
+            "run",
+            "--application",
+            "payments-api",
+            "--repository",
+            "acme/payments-api",
+            "--release-id",
+            "1.0.0",
+            "--commit-sha",
+            "abcdef1234567890",
+            "--output-dir",
+            str(out),
+        )
+        == 3
+    )
+    assert not (out / "bundle.json").exists()
 
 
 def test_help_and_version_still_exit_zero() -> None:
     """`standalone_mode=False` means Click no longer exits 0 on our behalf."""
     assert _run_cli("--version") == 0
     assert _run_cli("--help") == 0
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [(), ("exceptions",), ("--json-logs",), ("--json-logs", "exceptions")],
+    ids=["root", "group", "root-json", "group-json"],
+)
+def test_bare_root_and_group_print_help_and_exit_zero(argv: tuple[str, ...]) -> None:
+    """The group used to exit 3 through the usage-error path; the root exited 0."""
+    assert _run_cli(*argv) == 0

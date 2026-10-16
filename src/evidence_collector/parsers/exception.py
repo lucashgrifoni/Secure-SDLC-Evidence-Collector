@@ -33,6 +33,7 @@ from typing import Any, cast
 from evidence_collector.domain.models import EvidenceException, ExceptionScope
 from evidence_collector.parsers._common import (
     ParseError,
+    describe_failure,
     ensure_file,
     load_yaml_or_json,
 )
@@ -45,6 +46,8 @@ _REQUIRED_FIELDS = (
     "expires_at",
     "justification",
 )
+_ALLOWED_FIELDS = frozenset((*_REQUIRED_FIELDS, "reference", "scope"))
+_ALLOWED_SCOPE_FIELDS = frozenset(("application", "release_id"))
 
 
 def _parse_datetime(value: Any, source: Path, field_name: str) -> datetime:
@@ -66,9 +69,26 @@ def parse_exception(path: str | Path) -> EvidenceException:
     if missing:
         raise ParseError(f"Exception file {resolved} is missing required fields: {missing}")
 
+    # Unknown keys are refused rather than dropped. A misspelt `scop:` used to
+    # vanish, leaving the waiver with no scope, which means global: it then
+    # covered the control for every application and release and could flip a
+    # release from not_ready to conditional.
+    unknown = sorted(str(key) for key in data if key not in _ALLOWED_FIELDS)
+    if unknown:
+        raise ParseError(
+            f"Exception file {resolved} has unknown fields {unknown}; "
+            f"allowed fields are {sorted(_ALLOWED_FIELDS)}"
+        )
+
     raw_scope = data.get("scope") or {}
     if not isinstance(raw_scope, dict):
         raise ParseError(f"Exception scope in {resolved} must be a mapping")
+    unknown_scope = sorted(str(key) for key in raw_scope if key not in _ALLOWED_SCOPE_FIELDS)
+    if unknown_scope:
+        raise ParseError(
+            f"Exception scope in {resolved} has unknown fields {unknown_scope}; "
+            f"allowed fields are {sorted(_ALLOWED_SCOPE_FIELDS)}"
+        )
 
     try:
         # Built inside the guard: an unquoted `release_id: 2026.04` loads as a
@@ -91,4 +111,4 @@ def parse_exception(path: str | Path) -> EvidenceException:
     except ParseError:
         raise
     except ValueError as exc:
-        raise ParseError(f"Invalid exception file {resolved}: {exc}") from exc
+        raise ParseError(f"Invalid exception file {resolved}: {describe_failure(exc)}") from exc

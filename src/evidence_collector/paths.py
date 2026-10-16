@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-__all__ = ["redact_path_in", "relative_to_root"]
+__all__ = ["posix_path_in", "redact_path_in", "relative_to_root"]
 
 
 def redact_path_in(message: str, path: Path, relative: Path) -> str:
@@ -37,6 +37,18 @@ def redact_path_in(message: str, path: Path, relative: Path) -> str:
     }
     for rendering in renderings:
         message = message.replace(rendering, replacements[rendering])
+    return message
+
+
+def posix_path_in(message: str, path: Path) -> str:
+    """Rewrite every rendering of `path` in `message` with forward slashes.
+
+    Covers the plain and the `repr()` (doubled backslash) renderings, as
+    `redact_path_in` does. A no-op on POSIX, where both are already the same.
+    """
+    posix = path.as_posix()
+    for rendering in sorted({str(path).replace("\\", "\\\\"), str(path)}, key=len, reverse=True):
+        message = message.replace(rendering, posix)
     return message
 
 

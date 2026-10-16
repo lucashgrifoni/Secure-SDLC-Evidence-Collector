@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import json
 from pathlib import Path
 from typing import Annotated
@@ -32,6 +33,10 @@ def register(app: typer.Typer) -> None:
             else:
                 typer.echo(text, nl=False)
             return
+        if output_path.is_dir():
+            raise IsADirectoryError(
+                errno.EISDIR, "Output path exists as a directory", str(output_path)
+            )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         # Force LF so the artifact is byte-identical regardless of the OS that
         # generated it (the committed contract + its freshness gate depend on

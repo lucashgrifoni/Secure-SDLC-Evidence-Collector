@@ -20,6 +20,7 @@ from evidence_collector.cli._render import (
     render_collection_errors,
     render_ignored_artifacts,
     render_summary,
+    warn_outside_artifact_root,
 )
 from evidence_collector.collectors.github import GitHubCollector, GitHubCollectorConfig
 from evidence_collector.domain.models import NormalizedEvidence
@@ -111,8 +112,10 @@ def register(app: typer.Typer) -> None:
             typer.Option(
                 "--fail-on",
                 help=(
-                    "Exit non-zero when release_status reaches this severity: "
-                    "ready|conditional|not_ready"
+                    "Verdict from which the exit code is non-zero: not_ready (default; a "
+                    "conditional release exits 0) or conditional (it exits 1). 'ready' is "
+                    "accepted and behaves like conditional. A ready release always exits 0, "
+                    "a not_ready one always exits 2."
                 ),
             ),
         ] = "not_ready",
@@ -214,20 +217,28 @@ def register(app: typer.Typer) -> None:
             )
 
         # A missing directory is a collection error while anything else can be
-        # read. When every directory passed is missing and no other source was
-        # asked for, nothing can be collected at all: exit 3 before any output.
+        # read. When no source was given, or every directory passed is missing
+        # and no other source was asked for, nothing can be collected at all:
+        # exit 3 before any output.
         input_dirs = [*(artifacts_dir or []), *(attestations_dir or []), *(exceptions_dir or [])]
         if (
-            input_dirs
-            and pull_request is None
+            pull_request is None
             and workflow_run is None
             and not any(Path(d).exists() for d in input_dirs)
         ):
-            # Same redaction as collection_errors: relative to --artifact-root.
-            listed = ", ".join(str(relative_to_root(Path(d), artifact_root)) for d in input_dirs)
+            if input_dirs:
+                # Same redaction as collection_errors: relative to --artifact-root.
+                listed = ", ".join(
+                    str(relative_to_root(Path(d), artifact_root)) for d in input_dirs
+                )
+                reason = f"none of the input directories exist ({listed})"
+            else:
+                reason = (
+                    "no evidence source was given (--artifacts-dir, --attestations-dir, "
+                    "--exceptions-dir, --pull-request or --workflow-run)"
+                )
             report_error(
-                f"none of the input directories exist ({listed}); "
-                "nothing was collected and no bundle was written",
+                f"{reason}; nothing was collected and no bundle was written",
                 event="run_failed",
             )
             raise typer.Exit(code=EXIT_INPUT_ERROR)
@@ -241,6 +252,7 @@ def register(app: typer.Typer) -> None:
                 if workflow_run is not None:
                     extra_evidence.append(gh.collect_workflow_run(workflow_run))
 
+        warn_outside_artifact_root([Path(d) for d in input_dirs], artifact_root)
         result = run_pipeline(
             application=app_,
             release=release,

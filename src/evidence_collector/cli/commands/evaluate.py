@@ -17,7 +17,11 @@ from evidence_collector.cli._exit_codes import (
     fail_on_exit_code,
     validate_fail_on,
 )
-from evidence_collector.cli._render import render_collection_errors, render_summary
+from evidence_collector.cli._render import (
+    render_collection_errors,
+    render_summary,
+    warn_outside_artifact_root,
+)
 from evidence_collector.cli._state import EVIDENCE_ADAPTER
 from evidence_collector.domain.models import CollectionError
 from evidence_collector.exporters import export_report_set
@@ -67,6 +71,13 @@ def evaluate(
         raise typer.BadParameter(
             f"--risk-mode must be 'off' or 'epss-weighted'; got '{risk_mode}'."
         )
+    if evidence_path.is_dir():
+        report_error(
+            f"Invalid evidence file {evidence_path}: it is a directory; pass the JSON file "
+            "that `collect --output` wrote",
+            event="evaluate_failed",
+        )
+        raise typer.Exit(code=EXIT_INPUT_ERROR)
     try:
         data = json.loads(evidence_path.read_text(encoding="utf-8-sig"))
         # `collect` writes an envelope carrying the evidence and the inputs it
@@ -103,13 +114,14 @@ def evaluate(
         # paths. Only the exceptions directories are handed to it.
         from evidence_collector.collectors.local import LocalArtifactCollector
 
+        warn_outside_artifact_root(list(exceptions_dir), artifact_root)
         waiver_report = LocalArtifactCollector(
             release=release, exceptions_dirs=list(exceptions_dir), artifact_root=artifact_root
         ).collect()
         exceptions = waiver_report.exceptions
         for waiver_error in waiver_report.errors:
             collection_errors.append(
-                CollectionError.clipped(str(waiver_error.path), waiver_error.reason)
+                CollectionError.clipped(waiver_error.path.as_posix(), waiver_error.reason)
             )
 
     bundle, _ = build_bundle(
@@ -171,7 +183,12 @@ def register(app: typer.Typer) -> None:
             str,
             typer.Option(
                 "--fail-on",
-                help="Exit non-zero when release_status reaches this severity: ready|conditional|not_ready",
+                help=(
+                    "Verdict from which the exit code is non-zero: not_ready (default; a "
+                    "conditional release exits 0) or conditional (it exits 1). 'ready' is "
+                    "accepted and behaves like conditional. A ready release always exits 0, "
+                    "a not_ready one always exits 2."
+                ),
             ),
         ] = "not_ready",
         exceptions_dir: Annotated[

@@ -69,14 +69,20 @@ def register(app: typer.Typer) -> None:
             raise typer.BadParameter(
                 f"--format must be one of {list(_FORMATS)}; got '{output_format}'."
             )
-        try:
-            baseline = load_bundle(before)
-            candidate = load_bundle(after)
-        except UNREADABLE_INPUT as exc:
-            report_error(
-                "Could not load bundles against the current schema", exc, event="compare_failed"
-            )
-            raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
+        loaded = []
+        for path in (before, after):
+            try:
+                loaded.append(load_bundle(path))
+            except UNREADABLE_INPUT as exc:
+                # Name the file: with two inputs, "Expecting value: line 1
+                # column 1" alone did not say which one was broken.
+                report_error(
+                    f"Could not load bundle {path} against the current schema",
+                    exc,
+                    event="compare_failed",
+                )
+                raise typer.Exit(code=EXIT_INPUT_ERROR) from exc
+        baseline, candidate = loaded
 
         comparison = compare_bundles(baseline, candidate)
         if is_json_logs():

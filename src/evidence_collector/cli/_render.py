@@ -15,11 +15,13 @@ from rich.table import Table
 from evidence_collector.application.orchestrator import BundleBuildResult
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
+from evidence_collector.paths import relative_to_root
 
 
 def render_summary(result: BundleBuildResult) -> None:
     """Render the release-readiness summary as a Rich table or NDJSON event."""
     summary = result.bundle.summary
+    risk = summary.risk_assessment
 
     if is_json_logs():
         emit_event(
@@ -36,6 +38,7 @@ def render_summary(result: BundleBuildResult) -> None:
             evidence_count=len(result.bundle.evidence),
             collection_error_count=len(result.bundle.collection_errors),
             missing_critical_evidence=list(summary.missing_critical_evidence),
+            risk_rationale=risk.rationale if risk else None,
             bundle_json=str(result.json_path) if result.json_path else None,
             report_md=str(result.markdown_path) if result.markdown_path else None,
             summary_html=str(result.html_path) if result.html_path else None,
@@ -61,8 +64,18 @@ def render_summary(result: BundleBuildResult) -> None:
     )
     if summary.missing_critical_evidence:
         table.add_row(
-            "Missing critical",
-            ", ".join(summary.missing_critical_evidence),
+            "Missing critical/high",
+            escape(", ".join(summary.missing_critical_evidence)),
+        )
+    if risk:
+        table.add_row(
+            "Risk-weighted",
+            # No arrow to the final status: evidence anchored to another
+            # commit can lower it too, and the rationale says which applied.
+            escape(
+                f"{risk.mode}: presence-based verdict {risk.base_release_status.value}. "
+                f"{risk.rationale}"
+            ),
         )
     console.print(table)
     if result.json_path:
@@ -115,3 +128,39 @@ def render_ignored_artifacts(paths: list[Path]) -> None:
         console.print(f"  - {escape(str(path))}", soft_wrap=True)
     if count > _IGNORED_SHOWN:
         console.print(f"  ... and {count - _IGNORED_SHOWN} more", soft_wrap=True)
+
+
+def warn_outside_artifact_root(directories: list[Path], root: Path | None) -> None:
+    """Say when `--artifact-root` does not contain an input directory.
+
+    Paths outside the root are recorded unchanged, so a mistyped root left
+    every absolute local path in the bundle while the operator believed the
+    flag had stripped them. Not an error: an input outside the root is
+    sometimes deliberate.
+    """
+    if root is None:
+        return
+    outside = [
+        d for d in directories if d.exists() and relative_to_root(d, root) == d and d.is_absolute()
+    ]
+    if root.exists() and not outside:
+        return
+    if is_json_logs():
+        emit_event(
+            "artifact_root_mismatch",
+            artifact_root=str(root),
+            root_exists=root.exists(),
+            outside=[str(d) for d in outside],
+        )
+        return
+    if not root.exists():
+        console.print(
+            f"[yellow]--artifact-root {escape(str(root))} does not exist.[/yellow]",
+            soft_wrap=True,
+        )
+    for directory in outside:
+        console.print(
+            f"[yellow]--artifact-root {escape(str(root))} does not contain "
+            f"{escape(str(directory))}; its paths are recorded as given.[/yellow]",
+            soft_wrap=True,
+        )

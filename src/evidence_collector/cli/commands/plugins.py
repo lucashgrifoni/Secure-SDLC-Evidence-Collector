@@ -28,5 +28,6 @@ def register(app: typer.Typer) -> None:
             table.add_row(group, ", ".join(names) if names else "[dim]<none>[/dim]")
         console.print(table)
         console.print(
-            "[dim]See docs/plugins.md for how to register custom parsers and collectors.[/dim]"
+            "[dim]See https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/plugins/ "
+            "for how to register custom parsers and collectors.[/dim]"
         )

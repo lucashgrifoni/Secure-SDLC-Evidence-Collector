@@ -173,8 +173,8 @@ must stop the job.
 ## Job summary
 
 The action appends a short table to the job summary page: release status,
-coverage, the control counts, and the critical evidence types that are
-missing. The application name and release id come from your inputs, so they
+coverage, the control counts, and the evidence types missing from critical
+and high controls. The application name and release id come from your inputs, so they
 are shown as code spans that cannot close themselves or start a new line.
 The full report stays in `report.md`.
 

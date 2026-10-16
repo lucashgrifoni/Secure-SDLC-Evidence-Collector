@@ -52,10 +52,10 @@ def register(app: typer.Typer) -> None:
                 "-k",
                 case_sensitive=False,
                 help=(
-                    "Which OSCAL model to emit. ``catalog`` (default) renders "
-                    "the control catalog. ``assessment-results`` renders the "
+                    "Which OSCAL model to emit. `catalog` (default) renders "
+                    "the control catalog. `assessment-results` renders the "
                     "per-release evaluations from a bundle.json and requires "
-                    "``--bundle``."
+                    "`--bundle`."
                 ),
             ),
         ] = OscalKind.catalog,
@@ -64,8 +64,8 @@ def register(app: typer.Typer) -> None:
             typer.Option(
                 "--bundle",
                 help=(
-                    "Path to bundle.json for the ``assessment-results`` kind. "
-                    "Ignored when ``--kind catalog``."
+                    "Path to bundle.json for the `assessment-results` kind. "
+                    "Ignored when `--kind catalog`."
                 ),
                 exists=False,
             ),
@@ -73,16 +73,14 @@ def register(app: typer.Typer) -> None:
     ) -> None:
         """Render the control catalog or assessment results as OSCAL 1.1.x JSON.
 
-        Two modes:
+        `--kind catalog` (default) emits the built-in control catalog, or the
+        file passed with `--catalog`.
 
-        * ``--kind catalog`` (default) — emits the catalog defined under
-          ``src/evidence_collector/controls/data/catalog.yaml`` (or the
-          file passed via ``--catalog``).
-        * ``--kind assessment-results --bundle bundle.json`` — emits the
-          OSCAL Assessment Results document that maps the bundle's
-          control evaluations to OSCAL findings + observations. Its
-          required ``import-ap`` resolves to a minimal assessment plan
-          generated from the same bundle, embedded as base64 in back-matter.
+        `--kind assessment-results --bundle bundle.json` emits the OSCAL
+        Assessment Results document that maps the bundle's control
+        evaluations to OSCAL findings and observations. Its required
+        `import-ap` resolves to a minimal assessment plan generated from the
+        same bundle, embedded as base64 in back-matter.
         """
         if kind is OscalKind.catalog:
             from evidence_collector.controls import default_catalog, load_catalog

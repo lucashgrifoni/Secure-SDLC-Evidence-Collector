@@ -46,13 +46,13 @@ This collector reframes the question around **evidence, not findings**:
 | Capability | Implementation |
 |-----------|----------------|
 | Evidence ingestion | SARIF (Semgrep, CodeQL, SonarQube, Snyk Code, Trivy, Grype, Gitleaks, Bandit, pip-audit, …), **native Trivy JSON (SchemaVersion 2) — one report yields separate dependency, secret and IaC evidences**, CycloneDX & SPDX SBOMs, OSV / OSV-Scanner, JUnit XML, OWASP ZAP JSON (DAST), in-toto SLSA VSA (Verification Summary Attestation — build and source tracks, SLSA v1.2), SLSA build provenance / GitHub Artifact Attestations (raw in-toto, DSSE, or Sigstore bundle), in-toto release attestations (`release/v0.1` and `/v0.2`, as GitHub immutable releases publish them), in-toto SVR / test-result / vulns predicates, **any other in-toto Statement as a generic attestation rather than silently dropping it**, package-registry attestations (PyPI PEP 740 provenance and npm), YAML/JSON attestations and exceptions |
-| SCM integrations | GitHub (PR approvals counted only when given on the head commit, Actions runs) and GitLab (MR approvals, pipeline runs) |
+| SCM integrations | GitHub (PR approvals counted only when given on the head commit, Actions runs) through `run --pull-request` / `--workflow-run`; GitLab (MR approvals, pipeline runs) through the `GitLabCollector` Python API only, with no CLI option yet |
 | Controls catalog | 13 controls mapped to NIST SSDF, OWASP SAMM and org-internal IDs; override via `--catalog` |
 | Scoring | Deterministic coverage + confidence scores with per-control rationale |
 | Release verdict | `ready` / `conditional` / `not_ready` driven by gap criticality, never by the score alone |
 | Waivers | Time-bound exceptions with scope (application/release) and expiry — plain YAML/JSON, auditable |
 | Outputs | Deterministic `bundle.json`, Jinja2 `report.md`, and `summary.html` |
-| CLI | `run` · `collect` · `evaluate` · `bundle` · `controls` · `compare` · `oscal` · `plugins` · `schema` · `doctor` · `verify` · `enrich` · `vex` · `statement` · `guac` · `exceptions list/validate` |
+| CLI | `run` · `collect` · `evaluate` · `bundle` · `controls` · `compare` · `oscal` · `plugins` · `schema` · `doctor` · `verify` · `enrich` · `vex` · `statement` · `guac` · `sarif` · `exceptions list/validate` |
 | Packaging | Reusable GitHub Action (`action.yml`), non-root Docker image, wheel + sdist build verified locally; published to PyPI as [`secure-sdlc-evidence-collector`](https://pypi.org/project/secure-sdlc-evidence-collector/) via OIDC Trusted Publisher. |
 | Release integrity | `publish-pypi.yml` is configured to perform cosign keyless signing + Sigstore Rekor transparency log + SLSA Build Level 3 provenance on tag push. `2.0.0` was the first public release; the current published version is shown by the PyPI badge above (the v1.1.0 cut prepared in code stayed internal, and the Tier 5/Tier 6 work landed on top, so SemVer required the 2.0 line). |
 | Quality bar | `ruff`, `mypy --strict`, `pytest` with coverage gate, GitHub Actions CI, Dependabot |
@@ -243,10 +243,10 @@ and the reusable workflow and the GitLab template always pass
 `--artifacts-dir`; all three rely on getting a bundle back. To stop a pipeline
 on a missing directory, fail the step when `collection_errors` is not empty.
 
-The exception is `run` with nothing readable at all: when none of the
-directories passed exists and no `--pull-request` or `--workflow-run` is
-requested, there is no evidence to evaluate, so it exits `3` and writes no
-bundle.
+The exception is `run` with nothing readable at all: when no input directory
+is passed, or none of the directories passed exists, and no `--pull-request`
+or `--workflow-run` is requested, there is no evidence to evaluate, so it
+exits `3` and writes no bundle.
 
 > Before `3.0.0` this was inconsistent: `vex`, `guac`, `statement`, `enrich`
 > and `oscal` returned `2` for a malformed input — the same code as a
@@ -262,7 +262,9 @@ rejected value such as `--fail-on banana`. The CLI replaces Click's default of
 `--json-logs`, or `SDLC_JSON_LOGS=1` in the environment, turns stdout into
 NDJSON: one JSON object per line, each with an `event` field, failures and
 usage errors included. `--version` prints a `version` event; `--help` stays
-plain text. Without JSON logs, human-readable errors go to stderr.
+plain text, and so does the help printed by `sdlc-evidence` or
+`sdlc-evidence exceptions` run without a subcommand, which exit `0`. Without
+JSON logs, human-readable errors go to stderr.
 
 Commands whose output is a document wrap it in an event under JSON logs:
 `schema` prints `schema_emitted` with the schema under `.schema`, and `oscal`
@@ -500,9 +502,20 @@ The authoritative list is `EvidenceType` in
 
 | Rule | Verdict |
 |------|---------|
-| Every critical & high control has required evidence | `ready` |
+| Every control is met, waived or not applicable: no required or recommended evidence is missing | `ready` |
+| A high control lacks required evidence | `conditional` |
 | Only recommended evidence is missing, or medium-criticality controls lack evidence | `conditional` |
 | A critical control lacks required evidence | `not_ready` |
+
+The "missing critical/high evidence" line in the report and the console lists
+the gaps from both critical and high controls; only the critical ones make the
+release `not_ready`.
+
+Evidence anchored to another release or commit (an `evaluate --evidence` file
+collected for an older build, for example) is recorded in `collection_errors`
+and lowers a `ready` verdict to `conditional`; it is not refused. Under the
+default `--fail-on not_ready` that run still exits `0`, so a pipeline that
+reuses evidence across commits should pass `--fail-on conditional`.
 
 Release status is **derived from the criticality of gaps**, never from the
 numeric score, so a cosmetic "high score" cannot override a missing

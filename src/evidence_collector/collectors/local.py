@@ -67,7 +67,7 @@ from evidence_collector.parsers import (
     parse_vsa,
     parse_zap,
 )
-from evidence_collector.parsers._common import MAX_INPUT_BYTES, ParseError
+from evidence_collector.parsers._common import MAX_INPUT_BYTES, ParseError, describe_failure
 from evidence_collector.parsers._intoto import read_records
 from evidence_collector.parsers.croissant import croissant_version
 from evidence_collector.parsers.inspect_eval import looks_like_inspect_log
@@ -79,8 +79,11 @@ from evidence_collector.parsers.registry_attestation import looks_like_registry_
 from evidence_collector.parsers.release_attestation import file_has_release_attestation
 from evidence_collector.parsers.sbom import is_spdx3
 from evidence_collector.parsers.trivy_json import looks_like_trivy_json
-from evidence_collector.paths import redact_path_in, relative_to_root
+from evidence_collector.paths import posix_path_in, redact_path_in, relative_to_root
 
+# A failure that is recorded in `collection_errors` is logged at DEBUG only:
+# the console already lists it under "Collection warnings" (and NDJSON emits a
+# `collection_error` event), so a WARNING line printed every one of them twice.
 logger = logging.getLogger(__name__)
 
 # What "this input could not be turned into evidence" looks like at the
@@ -181,7 +184,12 @@ class LocalArtifactCollector:
         had already gone wrong.
         """
         relative = relative_to_root(path, self._artifact_root)
-        error = LocalCollectionError(path=relative, reason=redact_path_in(reason, path, relative))
+        # The reason quotes the path with forward slashes on every platform,
+        # like the path field the bundle records: a Windows run otherwise
+        # recorded `a\b.yaml`, and the structural digest of the same failure
+        # differed from a Linux run's.
+        reason = posix_path_in(redact_path_in(reason, path, relative), relative)
+        error = LocalCollectionError(path=relative, reason=reason)
         # `_walk_once` de-duplicates *files* through a resolved-path set, but
         # nothing guarded the errors: passing a parent directory and one of its
         # own subdirectories — the documented-repeatable flag, trivial in a CI
@@ -283,7 +291,7 @@ class LocalArtifactCollector:
         def _on_error(exc: OSError) -> None:
             path = Path(exc.filename) if exc.filename else directory
             reason = f"Could not read directory {path}: {exc.strerror or exc}"
-            logger.warning("%s", reason)
+            logger.debug("%s", reason)
             self._record_error(report, path, reason)
 
         for root, dir_names, file_names in os.walk(directory, onerror=_on_error):
@@ -414,7 +422,7 @@ class LocalArtifactCollector:
                 "different content. Only the first was applied; fix the "
                 "duplicate id so the waiver that should apply is unambiguous."
             )
-            logger.error("%s", reason)
+            logger.debug("%s", reason)
             self._record_error(report, Path(exception.exception_id), reason)
         return [kept[key] for key in order]
 
@@ -464,7 +472,7 @@ class LocalArtifactCollector:
                 f"records ({_artifact_location(first)} and {_artifact_location(item)}); "
                 "the bundle cannot reference either one unambiguously"
             )
-            logger.error("%s", reason)
+            logger.debug("%s", reason)
             report.errors.append(
                 LocalCollectionError(path=Path(_artifact_location(item)), reason=reason)
             )
@@ -478,8 +486,8 @@ class LocalArtifactCollector:
         try:
             report.exceptions.append(parse_exception(file_path))
         except _INGEST_FAILURES as exc:
-            logger.warning("Failed to ingest exception %s: %s", file_path, exc)
-            self._record_error(report, file_path, str(exc))
+            logger.debug("Failed to ingest exception %s: %s", file_path, exc)
+            self._record_error(report, file_path, describe_failure(exc))
 
     def _ingest_artifact(self, file_path: Path, report: LocalCollectionReport) -> None:
         suffix = file_path.suffix.lower()
@@ -698,7 +706,7 @@ class LocalArtifactCollector:
             # it silently would understate coverage with no way to notice.
             encoding_error = _undecodable_text_reason(file_path)
             if encoding_error is not None:
-                logger.warning("Failed to ingest %s: %s", file_path, encoding_error)
+                logger.debug("Failed to ingest %s: %s", file_path, encoding_error)
                 self._record_error(report, file_path, encoding_error)
                 return
             # A .json/.jsonl file that is not valid JSON is a THIRD case: not
@@ -712,7 +720,7 @@ class LocalArtifactCollector:
             # worse than one that errors.
             json_error = _malformed_json_reason(file_path)
             if json_error is not None:
-                logger.warning("Failed to ingest %s: %s", file_path, json_error)
+                logger.debug("Failed to ingest %s: %s", file_path, json_error)
                 self._record_error(report, file_path, json_error)
                 return
             logger.debug("Ignoring unrecognized artifact: %s", file_path)
@@ -720,8 +728,8 @@ class LocalArtifactCollector:
             # and NDJSON logs, which --artifact-root keeps free of local paths.
             report.ignored.append(relative_to_root(file_path, self._artifact_root))
         except _INGEST_FAILURES as exc:
-            logger.warning("Failed to ingest %s: %s", file_path, exc)
-            self._record_error(report, file_path, str(exc))
+            logger.debug("Failed to ingest %s: %s", file_path, exc)
+            self._record_error(report, file_path, describe_failure(exc))
 
     def _ingest_attestation(self, file_path: Path, report: LocalCollectionReport) -> None:
         suffix = file_path.suffix.lower()
@@ -733,8 +741,8 @@ class LocalArtifactCollector:
                 normalize_attestation(parsed, self._release, artifact_root=self._artifact_root)
             )
         except _INGEST_FAILURES as exc:
-            logger.warning("Failed to ingest attestation %s: %s", file_path, exc)
-            self._record_error(report, file_path, str(exc))
+            logger.debug("Failed to ingest attestation %s: %s", file_path, exc)
+            self._record_error(report, file_path, describe_failure(exc))
 
 
 def _is_directory_link(path: Path) -> bool:

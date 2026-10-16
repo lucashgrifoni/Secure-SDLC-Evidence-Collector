@@ -7,20 +7,20 @@ from rich.console import Console
 
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import is_json_logs
+from evidence_collector.parsers._common import describe_failure
 
 error_console = Console(stderr=True)
 
 
 def error_detail(exc: BaseException) -> str:
-    """Describe validation errors without input dumps or documentation URLs."""
+    """Describe validation errors without input dumps or documentation URLs.
+
+    A parser error caused by a pydantic error is reported as that error alone;
+    callers that need the file name add it (see ``exceptions validate``).
+    """
     if isinstance(exc.__cause__, ValidationError):
         exc = exc.__cause__
-    if isinstance(exc, ValidationError):
-        return "; ".join(
-            f"{exc.title}.{'.'.join(str(part) for part in error['loc'])}: {error['msg']}"
-            for error in exc.errors(include_url=False, include_input=False)
-        )
-    return " ".join(str(exc).splitlines()).strip() or exc.__class__.__name__
+    return describe_failure(exc)
 
 
 def report_error(
