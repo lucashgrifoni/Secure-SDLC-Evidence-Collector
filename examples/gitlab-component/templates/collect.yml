@@ -79,7 +79,8 @@ spec:
         --output-dir release-evidence \
         --artifact-root "$CI_PROJECT_DIR" \
         --artifacts-dir "$EVIDENCE_ARTIFACTS_DIR" \
-        --fail-on "$EVIDENCE_FAIL_ON"         --profile "$EVIDENCE_PROFILE"
+        --fail-on "$EVIDENCE_FAIL_ON" \
+        --profile "$EVIDENCE_PROFILE"
       # Tag pipelines carry no branch: the tag goes to --tag, not --branch.
       branch="${CI_COMMIT_BRANCH:-${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-${CI_DEFAULT_BRANCH:-}}}"
       if [ -n "$branch" ]; then
