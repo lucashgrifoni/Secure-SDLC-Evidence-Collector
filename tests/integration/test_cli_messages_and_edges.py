@@ -196,15 +196,15 @@ def test_statement_help_says_slsa_provenance_keeps_the_bundle_as_predicate() -> 
 def test_json_logs_keep_stderr_as_json_lines(tmp_path: Path) -> None:
     artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
-    # Two runs, one of them unsupported: the collector logs a warning for it.
-    (artifacts / "mixed.sarif").write_text(
+    # An in-toto Statement with an unknown predicate is ingested as a generic
+    # attestation, and the collector logs a warning saying so.
+    (artifacts / "statement.json").write_text(
         json.dumps(
             {
-                "version": "2.1.0",
-                "runs": [
-                    {"tool": {"driver": {"name": "Semgrep", "rules": []}}, "results": []},
-                    {"tool": {"driver": {"name": "NotAScanner", "rules": []}}, "results": []},
-                ],
+                "_type": "https://in-toto.io/Statement/v1",
+                "subject": [{"name": "x", "digest": {"sha256": "a" * 64}}],
+                "predicateType": "https://example.com/unknown/v1",
+                "predicate": {},
             }
         ),
         encoding="utf-8",
@@ -221,9 +221,11 @@ def test_json_logs_keep_stderr_as_json_lines(tmp_path: Path) -> None:
         "--output",
         str(tmp_path / "evidence.json"),
     )
-    for line in result.stderr.splitlines():
-        if line.strip():
-            assert json.loads(line)["event"] == "log"
+    lines = [line for line in result.stderr.splitlines() if line.strip()]
+    assert lines, "the unknown predicate should have been logged"
+    records = [json.loads(line) for line in lines]
+    assert all(record["event"] == "log" for record in records)
+    assert any("unrecognized in-toto predicate" in record["message"] for record in records)
 
 
 @pytest.mark.integration
