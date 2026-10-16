@@ -4,6 +4,27 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.2.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.1.4...v4.2.0) (2026-10-16)
+
+
+### Fixed
+
+* **cli:** clearer messages, safer edge cases and accurate help and docs ([#185](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/185)) ([7c6c6f0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/7c6c6f0692bc2ee9c954121f493d401460078e02))
+* **cli:** explain risk-weighted verdicts, refuse runs with no source, write portable error paths ([#184](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/184)) ([38bab49](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/38bab49850ac9aab6f0152687c7e47d62201182f))
+* **parsers:** refuse unknown keys in waivers and attestations instead of dropping them ([#182](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/182)) ([d65e047](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/d65e04734a9a668fc27a09fcf5f55eabd844828b))
+* **vex:** apply consumed statements only to the products of this release ([#183](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/183)) ([f20b1d4](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/f20b1d48eb616c0b26709be666e54b9d15f3669a))
+
+
+### Documentation
+
+* bring the roadmap, ADR 0015 and limitations up to date with 4.x ([#180](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/180)) ([d196f3f](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/d196f3f898f874616f23d38383c2c3a993e4d823))
+* show the OpenSSF Best Practices passing badge ([#178](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/178)) ([f6f299b](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/f6f299b1d761a8b899f51c73b215c1e93361670a))
+
+
+### Chores
+
+* **release:** point the reusable workflow examples at v4.2.0 ([#186](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/186)) ([e5e7470](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/e5e7470f537e8ccb8bda54c7e1bb5036288ede84))
+
 ## [4.1.4](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.1.3...v4.1.4) (2026-10-15)
 
 
