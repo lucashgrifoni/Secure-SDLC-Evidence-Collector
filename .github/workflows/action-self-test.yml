@@ -1,10 +1,18 @@
 # Action self-test.
 #
-# Runs the composite action from this checkout (`uses: ./`) against the
-# sample release, so a change to action.yml is exercised on a real runner
-# and not only by the unit tests that execute its embedded scripts.
+# Runs the composite action from this checkout (`uses: ./`) and the reusable
+# workflow from this checkout against the sample release, so a change to
+# either is exercised on real runners and not only by the unit tests that
+# execute their embedded scripts.
 #
-#   * `run-action` checks the published outputs and renders the job summary.
+#   * `run-action` checks the published outputs, the hash-locked install and
+#     the release lineage on Linux, Windows and macOS with Python 3.12 and
+#     3.13, the versions the action's dependency locks are used for.
+#   * `observe-mode` runs a not_ready release with `fail-on: none`.
+#   * `reusable-workflow` hands scanner output from an earlier job to the
+#     reusable workflow as an artifact, with the collector installed from
+#     this checkout, and `reusable-workflow-check` reads its outputs and the
+#     uploaded bundle.
 #   * `attest-recipe` runs the attestation recipe from docs/github_action.md.
 #     It creates a public attestation, so it runs only on manual dispatch.
 
@@ -16,10 +24,16 @@ on:
     paths:
       - "action.yml"
       - ".github/workflows/action-self-test.yml"
+      - ".github/workflows/reusable-evidence-collection.yml"
+      - ".github/requirements/pip.txt"
+      - ".github/requirements/runtime.txt"
   pull_request:
     paths:
       - "action.yml"
       - ".github/workflows/action-self-test.yml"
+      - ".github/workflows/reusable-evidence-collection.yml"
+      - ".github/requirements/pip.txt"
+      - ".github/requirements/runtime.txt"
       - "src/evidence_collector/cli/**"
   workflow_dispatch:
 
@@ -32,11 +46,17 @@ concurrency:
 
 jobs:
   run-action:
-    name: Run the action on the sample release
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    name: Run the action (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-latest]
+        python-version: ["3.12", "3.13"]
     steps:
       - name: Harden runner
+        if: runner.os == 'Linux'
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2
         with:
           egress-policy: audit
@@ -56,8 +76,11 @@ jobs:
           artifacts-dir: examples/sample_release/artifacts
           attestations-dir: examples/sample_release/attestations
           output-dir: evidence-out
+          python-version: ${{ matrix.python-version }}
 
+      # Python rather than `test`, so the same checks read Windows paths.
       - name: Check the outputs
+        shell: bash
         env:
           BUNDLE_PATH: ${{ steps.evidence.outputs.bundle-path }}
           REPORT_PATH: ${{ steps.evidence.outputs.report-path }}
@@ -67,22 +90,174 @@ jobs:
           MET: ${{ steps.evidence.outputs.controls-met }}
           PARTIAL: ${{ steps.evidence.outputs.controls-partial }}
           MISSING: ${{ steps.evidence.outputs.controls-missing }}
+          WAIVED: ${{ steps.evidence.outputs.controls-waived }}
+          NOT_APPLICABLE: ${{ steps.evidence.outputs.controls-not-applicable }}
+          COLLECTION_ERRORS: ${{ steps.evidence.outputs.collection-errors }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          # This workflow never runs on a tag, so the branch is the pull
+          # request's source branch or the pushed branch, and no tag is set.
+          EXPECTED_BRANCH: ${{ github.head_ref || github.ref_name }}
+          PYTHON_VERSION: ${{ matrix.python-version }}
+        run: |
+          python -P - <<'PY'
+          import json, os, sys
+          env = os.environ
+          assert os.path.isfile(env["BUNDLE_PATH"]), env["BUNDLE_PATH"]
+          assert os.path.isfile(env["REPORT_PATH"]), env["REPORT_PATH"]
+          assert env["STATUS"] == "ready", env["STATUS"]
+          assert env["COVERAGE"] == "100", env["COVERAGE"]
+          assert int(env["TOTAL"]) > 0
+          assert env["MET"] == env["TOTAL"]
+          for name in ("PARTIAL", "MISSING", "WAIVED", "NOT_APPLICABLE", "COLLECTION_ERRORS"):
+              assert env[name] == "0", (name, env[name])
+          # The action runs under the Python version it was given.
+          assert "%d.%d" % sys.version_info[:2] == env["PYTHON_VERSION"], sys.version
+          with open(env["BUNDLE_PATH"], encoding="utf-8") as fh:
+              release = json.load(fh)["release"]
+          assert release["pipeline_run_id"] == env["RUN_ID"], release
+          assert release["build_id"] == env["RUN_ID"] + "-" + env["RUN_ATTEMPT"], release
+          assert release["branch"] == env["EXPECTED_BRANCH"], release
+          assert release.get("tag") is None, release
+          print("outputs ok:", env["STATUS"], env["COVERAGE"], env["MET"] + "/" + env["TOTAL"], release)
+          PY
+
+      # The direct dependencies must be the versions pinned in the lock the
+      # action installs from, not whatever PyPI resolved that day.
+      - name: Check the install used the hash locks
+        shell: bash
+        run: |
+          python -P - <<'PY'
+          import re
+          from importlib.metadata import version
+          from pathlib import Path
+          lock = Path(".github/requirements/runtime.txt").read_text(encoding="utf-8")
+          pins = dict(re.findall(r"^([A-Za-z0-9_.-]+)==([^\s;]+)", lock, re.MULTILINE))
+          direct = ["typer", "pydantic", "jinja2", "pyyaml", "httpx", "rich", "defusedxml"]
+          wrong = {name: (version(name), pins[name]) for name in direct if version(name) != pins[name]}
+          assert not wrong, f"installed vs locked: {wrong}"
+          print("locked versions installed:", {name: pins[name] for name in direct})
+          PY
+
+  observe-mode:
+    name: Observe mode on a not_ready release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      # No attestations, so the critical controls are missing and the
+      # collector exits 2. With fail-on none the step still passes, and the
+      # missing directory is named in a warning.
+      - name: Collect evidence
+        id: evidence
+        uses: ./
+        with:
+          application: payments-api
+          repository: acme/payments-api
+          release-id: 2026.04.10
+          artifacts-dir: examples/sample_release/artifacts
+          attestations-dir: examples/sample_release/no-attestations-here
+          output-dir: evidence-out
+          fail-on: none
+
+      - name: Check the outputs
+        env:
+          BUNDLE_PATH: ${{ steps.evidence.outputs.bundle-path }}
+          STATUS: ${{ steps.evidence.outputs.release-status }}
         run: |
           set -euo pipefail
           test -f "$BUNDLE_PATH"
-          test -f "$REPORT_PATH"
-          test "$STATUS" = ready
-          test "$COVERAGE" = 100
-          test "$TOTAL" -gt 0
-          test "$MET" = "$TOTAL"
-          test "$PARTIAL" = 0
-          test "$MISSING" = 0
-          echo "outputs ok: status=$STATUS coverage=$COVERAGE controls=$MET/$TOTAL"
+          test "$STATUS" = not_ready
+          echo "observe mode ok: status=$STATUS and the step passed"
+
+  scanner-output:
+    name: Upload scanner output for the reusable workflow
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Upload sample scanner output
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sample-scanner-output
+          path: examples/sample_release/artifacts/
+          if-no-files-found: error
+
+  reusable-workflow:
+    name: Reusable workflow
+    needs: scanner-output
+    uses: ./.github/workflows/reusable-evidence-collection.yml
+    with:
+      application: payments-api
+      repository: acme/payments-api
+      release-id: 2026.04.10
+      artifact-name: sample-scanner-output
+      artifacts-dir: scanner-output
+      fail-on: none
+      install-from-checkout: true
+
+  reusable-workflow-check:
+    name: Check the reusable workflow's outputs and artifact
+    needs: reusable-workflow
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2
+        with:
+          egress-policy: audit
+
+      - name: Download the uploaded bundle
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: secure-sdlc-evidence
+          path: evidence
+
+      # The scanner output arrived (only the attestations are missing), the
+      # not_ready verdict reached the outputs, and the bundle was uploaded
+      # although the collector exited 2.
+      - name: Check the outputs
+        env:
+          STATUS: ${{ needs.reusable-workflow.outputs.release-status }}
+          TOTAL: ${{ needs.reusable-workflow.outputs.controls-total }}
+          MET: ${{ needs.reusable-workflow.outputs.controls-met }}
+          COLLECTION_ERRORS: ${{ needs.reusable-workflow.outputs.collection-errors }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          test -f evidence/bundle.json
+          test -f evidence/report.md
+          test "$STATUS" = not_ready
+          test "$(jq -r '.summary.release_status' evidence/bundle.json)" = "$STATUS"
+          test "$MET" -gt 0
+          test "$MET" -lt "$TOTAL"
+          test "$COLLECTION_ERRORS" = 0
+          test "$(jq -r '.release.pipeline_run_id' evidence/bundle.json)" = "$RUN_ID"
+          test "$(jq '[.evidence[] | select(.evidence_type == "sast_scan")] | length' evidence/bundle.json)" -gt 0
+          echo "reusable workflow ok: status=$STATUS controls=$MET/$TOTAL"
 
   attest-recipe:
     name: Attestation recipe
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read

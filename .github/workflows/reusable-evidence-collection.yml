@@ -1,21 +1,36 @@
 # Reusable GitHub Actions workflow for Secure SDLC Evidence Collector.
 #
-# Drop the collector into any pipeline with one ``uses:`` line:
+# The job runs on a fresh runner, so scanner output produced by an earlier
+# job of the caller reaches it only as an uploaded artifact: upload it there
+# and name it in ``artifact-name``. It is downloaded into ``artifacts-dir``.
 #
 # jobs:
+#   scan:
+#     runs-on: ubuntu-24.04
+#     steps:
+#       # ... run the scanners into scanner-output/ ...
+#       - uses: actions/upload-artifact@v4
+#         with:
+#           name: scanner-output
+#           path: scanner-output/
 #   evidence:
+#     needs: scan
 #     uses: lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/reusable-evidence-collection.yml@v4.2.0
 #     with:
 #       application: my-app
 #       repository: my-org/my-app
 #       release-id: ${{ github.ref_name }}
+#       artifact-name: scanner-output
 #       artifacts-dir: scanner-output
+#       collector-version: "4.2.0"
 #
 # The workflow installs the collector from PyPI: the version given in
-# ``collector-version``, or the latest release when it is empty. The ref
-# in ``uses:`` pins this workflow file, not the package. It then collects
-# evidence and uploads bundle.json + report.md as workflow artifacts so
-# downstream jobs can read them.
+# ``collector-version``, or the latest release when it is empty (a notice
+# says so). The ref in ``uses:`` pins this workflow file, not the package.
+# It then collects evidence and uploads release-evidence/ (bundle.json,
+# report.md, summary.html) as the ``secure-sdlc-evidence`` artifact, also
+# when the release is not_ready or the run fails, so downstream jobs and
+# people can read why. The verdict is in the ``release-status`` output.
 #
 # Adopters who need the AI or FedRAMP catalog pass ``catalog`` with
 # the bundled-catalog name (``catalog-ai.yaml`` /
@@ -23,6 +38,9 @@
 # ``catalog-osps-baseline.yaml``; the older
 # ``catalog-fedramp-20x-ksi.yaml`` is deprecated). ``cra-context`` and
 # ``fedramp-class`` forward ``--cra-context`` and ``--fedramp-class``.
+#
+# Inputs, outputs and the differences from the composite Action and the
+# GitLab component: docs/reusable_workflow.md.
 name: Secure SDLC Evidence Collection (reusable)
 
 on:
@@ -48,7 +66,33 @@ on:
       branch:
         type: string
         required: false
-        default: ${{ github.ref_name }}
+        default: ${{ github.head_ref || (github.ref_type == 'branch' && github.ref_name) || github.event.repository.default_branch || github.ref_name }}
+        description: "Branch name: the pull request's source branch, the pushed branch, or on a tag the default branch."
+      tag:
+        type: string
+        required: false
+        default: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        description: "Git tag recorded for the release (default: the pushed tag, empty otherwise)."
+      pipeline-run-id:
+        type: string
+        required: false
+        default: ${{ github.run_id }}
+        description: "Pipeline run recorded for the release (default: github.run_id); empty to omit."
+      build-id:
+        type: string
+        required: false
+        default: ${{ github.run_id }}-${{ github.run_attempt }}
+        description: "Build recorded for the release (default: run id and attempt); empty to omit."
+      environment:
+        type: string
+        required: false
+        default: "production"
+        description: "Target environment recorded in the bundle. Set it when the run is not a production release."
+      artifact-name:
+        type: string
+        required: false
+        default: ""
+        description: "Name of an artifact uploaded earlier in the caller's run (scanner output). It is downloaded into artifacts-dir before collection."
       artifacts-dir:
         type: string
         required: false
@@ -94,6 +138,15 @@ on:
         required: false
         default: ""
         description: "Optional CR26 class A-D, metadata only (requires profile fedramp-20x)."
+      fail-on:
+        type: string
+        required: false
+        default: "not_ready"
+        description: >-
+          Verdict from which the job fails: 'not_ready' (default; a
+          conditional release passes) or 'conditional'. 'none' is observe
+          mode: the verdict is reported and the job passes, unless the
+          collector could not run (exit 3).
       collector-version:
         type: string
         required: false
@@ -103,6 +156,50 @@ on:
         type: string
         required: false
         default: "3.12"
+      harden-runner:
+        type: boolean
+        required: false
+        default: true
+        description: >-
+          Run StepSecurity Harden-Runner in audit mode first. It sends the
+          job's network and process telemetry to StepSecurity, and on private
+          repositories it needs a paid plan. Set to false to skip it.
+      install-from-checkout:
+        type: boolean
+        required: false
+        default: false
+        description: >-
+          Install the collector from the checked-out repository with this
+          project's hash locks instead of from PyPI. Used by this project's
+          own self-test; adopters leave it false.
+    outputs:
+      release-status:
+        description: "Final release_status computed by the collector (empty when no bundle was written)."
+        value: ${{ jobs.collect.outputs.release-status }}
+      coverage-score:
+        description: "Evidence coverage score (0-100)."
+        value: ${{ jobs.collect.outputs.coverage-score }}
+      controls-total:
+        description: "Number of controls in the catalog the bundle was evaluated against."
+        value: ${{ jobs.collect.outputs.controls-total }}
+      controls-met:
+        description: "Controls fully satisfied by the evidence."
+        value: ${{ jobs.collect.outputs.controls-met }}
+      controls-partial:
+        description: "Controls only partly satisfied."
+        value: ${{ jobs.collect.outputs.controls-partial }}
+      controls-missing:
+        description: "Controls with no satisfying evidence."
+        value: ${{ jobs.collect.outputs.controls-missing }}
+      controls-waived:
+        description: "Controls covered by an approved waiver."
+        value: ${{ jobs.collect.outputs.controls-waived }}
+      controls-not-applicable:
+        description: "Controls that do not apply to this release."
+        value: ${{ jobs.collect.outputs.controls-not-applicable }}
+      collection-errors:
+        description: "Number of supplied inputs that could not be ingested."
+        value: ${{ jobs.collect.outputs.collection-errors }}
 
 permissions:
   contents: read
@@ -110,12 +207,23 @@ permissions:
 jobs:
   collect:
     name: Collect Secure SDLC evidence
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
+    outputs:
+      release-status: ${{ steps.run.outputs.release-status }}
+      coverage-score: ${{ steps.run.outputs.coverage-score }}
+      controls-total: ${{ steps.run.outputs.controls-total }}
+      controls-met: ${{ steps.run.outputs.controls-met }}
+      controls-partial: ${{ steps.run.outputs.controls-partial }}
+      controls-missing: ${{ steps.run.outputs.controls-missing }}
+      controls-waived: ${{ steps.run.outputs.controls-waived }}
+      controls-not-applicable: ${{ steps.run.outputs.controls-not-applicable }}
+      collection-errors: ${{ steps.run.outputs.collection-errors }}
     steps:
       - name: Harden runner
+        if: ${{ inputs.harden-runner }}
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2
         with:
           egress-policy: audit
@@ -124,6 +232,13 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
+
+      - name: Download scanner output
+        if: ${{ inputs.artifact-name != '' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.artifacts-dir }}
 
       - name: Setup Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -136,19 +251,32 @@ jobs:
       # shell variables, never interpolated directly into run scripts — the
       # GitHub-recommended defense against script injection
       # (CodeQL actions/code-injection) for untrusted-derived inputs.
+      #
+      # Every interpreter call uses `python -P`, so a module planted in the
+      # caller's checkout (the working directory) is never imported.
       - name: Install secure-sdlc-evidence-collector
         env:
           COLLECTOR_VERSION: ${{ inputs.collector-version }}
+          FROM_CHECKOUT: ${{ inputs.install-from-checkout }}
         run: |
           set -euo pipefail
+          if [ "$FROM_CHECKOUT" = "true" ]; then
+            # This project's own self-test: the code under review, with
+            # third-party code from the hash locks, as in CI.
+            python -P -m pip install --require-hashes -r .github/requirements/pip.txt
+            python -P -m pip install --require-hashes -r .github/requirements/runtime.txt
+            python -P -m pip install --no-deps .
+            exit 0
+          fi
           # The pip setup-python ships is used as is. The collector install
           # below cannot be hash-pinned: it fetches whichever release the
           # caller asks for, in the caller's repository, where this
           # project's lock files do not exist.
           if [ -n "$COLLECTOR_VERSION" ]; then
-            python -m pip install "secure-sdlc-evidence-collector==${COLLECTOR_VERSION}"
+            python -P -m pip install "secure-sdlc-evidence-collector==${COLLECTOR_VERSION}"
           else
-            python -m pip install "secure-sdlc-evidence-collector"
+            echo "::notice title=Collector version not pinned::collector-version is empty, so the latest release on PyPI is installed. Pin an exact release for reproducible verdicts."
+            python -P -m pip install "secure-sdlc-evidence-collector"
           fi
 
       - name: Resolve bundled catalog path (if requested)
@@ -161,16 +289,21 @@ jobs:
             echo "catalog_path=" >>"$GITHUB_OUTPUT"
             exit 0
           fi
-          path="$(python -c "import os; from evidence_collector.controls.catalog import bundled_catalog_path; print(bundled_catalog_path(os.environ['CATALOG']))")"
+          path="$(python -P -c "import os; from evidence_collector.controls.catalog import bundled_catalog_path; print(bundled_catalog_path(os.environ['CATALOG']))")"
           echo "catalog_path=$path" >>"$GITHUB_OUTPUT"
 
       - name: Run sdlc-evidence
+        id: run
         env:
           APPLICATION: ${{ inputs.application }}
           REPOSITORY: ${{ inputs.repository }}
           RELEASE_ID: ${{ inputs.release-id }}
           COMMIT_SHA: ${{ inputs.commit-sha }}
           BRANCH: ${{ inputs.branch }}
+          TAG: ${{ inputs.tag }}
+          PIPELINE_RUN_ID: ${{ inputs.pipeline-run-id }}
+          BUILD_ID: ${{ inputs.build-id }}
+          ENVIRONMENT: ${{ inputs.environment }}
           ARTIFACTS_DIR: ${{ inputs.artifacts-dir }}
           RISK_MODE: ${{ inputs.risk-mode }}
           PROFILE: ${{ inputs.profile }}
@@ -179,20 +312,40 @@ jobs:
           CATALOG_PATH: ${{ steps.catalog.outputs.catalog_path }}
           CRA_CONTEXT: ${{ inputs.cra-context }}
           FEDRAMP_CLASS: ${{ inputs.fedramp-class }}
+          FAIL_ON: ${{ inputs.fail-on }}
         run: |
           set -euo pipefail
+          # Observe mode: with `fail-on: none` the collector runs with the
+          # default threshold and the verdict exits (1, 2) become 0 below.
+          # Exit 3, the collector could not run, still fails the job.
+          fail_on="$FAIL_ON"
+          observe=""
+          if [ "${FAIL_ON,,}" = "none" ]; then
+            observe=1
+            fail_on="not_ready"
+          fi
           args=(
             --application "$APPLICATION"
             --repository "$REPOSITORY"
             --release-id "$RELEASE_ID"
             --commit-sha "$COMMIT_SHA"
             --branch "$BRANCH"
+            --environment "$ENVIRONMENT"
             --output-dir release-evidence
             --artifacts-dir "$ARTIFACTS_DIR"
             --risk-mode "$RISK_MODE"
             --profile "$PROFILE"
-            --fail-on not_ready
+            --fail-on "$fail_on"
           )
+          if [ -n "$TAG" ]; then
+            args+=( --tag "$TAG" )
+          fi
+          if [ -n "$PIPELINE_RUN_ID" ]; then
+            args+=( --pipeline-run-id "$PIPELINE_RUN_ID" )
+          fi
+          if [ -n "$BUILD_ID" ]; then
+            args+=( --build-id "$BUILD_ID" )
+          fi
           if [ -n "$ATTESTATIONS_DIR" ]; then
             args+=( --attestations-dir "$ATTESTATIONS_DIR" )
           fi
@@ -208,11 +361,45 @@ jobs:
           if [ -n "$FEDRAMP_CLASS" ]; then
             args+=( --fedramp-class "$FEDRAMP_CLASS" )
           fi
-          sdlc-evidence run "${args[@]}"
 
+          # Outputs come only from a bundle this run wrote, not from one an
+          # earlier step left in the output directory.
+          started="$(mktemp)"
+          sdlc-evidence run "${args[@]}" || exit_code=$?
+
+          bundle="release-evidence/bundle.json"
+          if [ -f "$bundle" ] && [ "$bundle" -nt "$started" ]; then
+            BUNDLE_FILE="$bundle" python -P - <<'PY' >>"$GITHUB_OUTPUT"
+          import json, os
+          with open(os.environ["BUNDLE_FILE"], encoding="utf-8") as fh:
+              data = json.load(fh)
+          summary = data["summary"]
+          print(f"release-status={summary['release_status']}")
+          print(f"coverage-score={summary['evidence_coverage_score']}")
+          print(f"controls-total={summary['total_controls']}")
+          print(f"controls-met={summary['controls_met']}")
+          print(f"controls-partial={summary['controls_partial']}")
+          print(f"controls-missing={summary['controls_missing']}")
+          print(f"controls-waived={summary['controls_waived']}")
+          print(f"controls-not-applicable={summary['controls_not_applicable']}")
+          print(f"collection-errors={len(data.get('collection_errors') or [])}")
+          PY
+          fi
+          rm -f "$started"
+
+          if [ -n "$observe" ] && { [ "${exit_code:-0}" = 1 ] || [ "${exit_code:-0}" = 2 ]; }; then
+            echo "::notice title=Observe mode::fail-on is none, so the release status did not fail the job (the collector exited ${exit_code})."
+            exit_code=0
+          fi
+          exit "${exit_code:-0}"
+
+      # Also after a failed run: a not_ready release is exactly the one whose
+      # report someone needs to read. `warn`, because a run that could not
+      # start (exit 3) wrote nothing and has already failed the job.
       - name: Upload bundle and report
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: secure-sdlc-evidence
           path: release-evidence/
-          if-no-files-found: error
+          if-no-files-found: warn

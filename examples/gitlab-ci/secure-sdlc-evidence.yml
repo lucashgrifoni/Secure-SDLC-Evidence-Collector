@@ -1,5 +1,18 @@
 # Secure SDLC Evidence Collector — GitLab CI / CD template.
 #
+# DEPRECATED. Use the GitLab CI/CD Catalog component instead:
+#
+#   include:
+#     - component: gitlab.com/lucas.henriquegrifoni/secure-sdlc-evidence-component/collect@<version>
+#
+# Its source and documentation are in examples/gitlab-component. This
+# template only receives version bumps. Known problems that the component
+# does not have: values with spaces (an application name, a directory) are
+# split into separate arguments and the run fails with a usage error; an
+# empty RELEASE_ID (the example below on a branch pipeline) makes the next
+# option its value; tag pipelines record the tag as the branch; and an empty
+# COLLECTOR_VERSION installs the latest release.
+#
 # Include this file in your `.gitlab-ci.yml` to add an `evidence`
 # stage that runs the collector against scanner output sitting in
 # `$ARTIFACTS_DIR`:
