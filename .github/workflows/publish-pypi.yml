@@ -23,9 +23,9 @@ env:
 
 # Every job pins `ubuntu-24.04`, the image pull-request CI pins too, so a tag
 # never runs on an image no pull request ran. `ubuntu-latest` moves to Ubuntu
-# 26.04 from 2026-10-19 in a gradual rollout. Move this pin and the one in
-# github-ci-cd.yml together, and only after a run on the new image. The SLSA
-# generator's own jobs cannot be pinned from here.
+# 26.04 from 2026-10-19 in a gradual rollout. Move this pin together with the
+# Linux pins in github-ci-cd.yml and security-ci-cd.yml, and only after a run
+# on the new image. The SLSA generator's own jobs cannot be pinned from here.
 #
 # No setup-python step here asks for `cache: pip`: on a tag it would restore a
 # cache written by main-branch runs. The installs are hash-checked, but any

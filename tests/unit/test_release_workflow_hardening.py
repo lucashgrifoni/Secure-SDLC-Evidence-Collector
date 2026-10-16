@@ -112,11 +112,13 @@ def test_tag_triggered_workflows_restore_no_cache() -> None:
 
 
 def test_release_run_scripts_take_context_values_through_env() -> None:
-    """Only the workflow's own static `env.*` values may appear in a `run:` script.
+    """Only `env.*` values defined in this workflow may appear in a `run:` script.
 
     `${{ }}` is substituted before the shell parses the line, so quoting it does
     not protect it. The file's own comment on the `Resolve tag` step states
-    the rule; this holds every other step to it.
+    the rule; this holds every other step to it. An allowed `env.*` value is
+    not necessarily static: publish-container's `IMAGE_NAME` comes from
+    `github.repository`, which only the repository owner controls.
     """
     offenders = []
     for name, job in _jobs(PUBLISH).items():
