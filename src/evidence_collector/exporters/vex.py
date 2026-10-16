@@ -428,14 +428,17 @@ def _purl_parts(identifier: str) -> tuple[str, str | None]:
 def _names_release(products: tuple[str, ...], release_products: set[str]) -> bool:
     """True when a statement names one of the release's products.
 
-    An exact identifier always matches. A versionless identifier matches the
-    same package at any version, as OpenVEX allows; a statement for another
-    version of the product does not.
+    An exact identifier always matches. A versionless purl matches the same
+    package at any version, as OpenVEX allows; a statement for another
+    version of the product does not. Other identifiers (CPEs, CycloneDX refs,
+    CSAF product ids) only match exactly: an `@` in them is not a version.
     """
-    release_parts = [_purl_parts(p) for p in release_products]
+    release_parts = [_purl_parts(p) for p in release_products if p.startswith("pkg:")]
     for product in products:
         if product in release_products:
             return True
+        if not product.startswith("pkg:"):
+            continue
         name, version = _purl_parts(product)
         if version is None and any(name == r_name for r_name, _ in release_parts):
             return True

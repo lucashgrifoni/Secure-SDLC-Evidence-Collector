@@ -426,3 +426,13 @@ def test_csaf_relationship_products_resolve_through_full_product_name(tmp_path: 
         )
     )
     assert consumed[0].products == ("lib-on-platform", "pkg:pypi/acme-api@1.4.0")
+
+
+def test_an_at_sign_in_a_non_purl_identifier_is_not_a_version(tmp_path: Path) -> None:
+    """`service` must not cover a release product declared as `service@production`."""
+    bundle = _bundle_with_cve("CVE-2024-1111")
+    consumed = parse_vex(_openvex_file(tmp_path, ["service"]))
+    merged = merge_consumed_vex(
+        build_openvex(bundle), bundle, consumed, products=["service@production"]
+    )
+    assert _status_of(merged, "CVE-2024-1111") == "under_investigation"
