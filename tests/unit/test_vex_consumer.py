@@ -436,3 +436,46 @@ def test_an_at_sign_in_a_non_purl_identifier_is_not_a_version(tmp_path: Path) ->
         build_openvex(bundle), bundle, consumed, products=["service@production"]
     )
     assert _status_of(merged, "CVE-2024-1111") == "under_investigation"
+
+
+def _cdx_file(tmp_path: Path, affects: list[object]) -> Path:
+    path = tmp_path / "vendor.cdx.json"
+    path.write_text(
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.6",
+                "vulnerabilities": [
+                    {
+                        "id": "CVE-2024-1111",
+                        "affects": affects,
+                        "analysis": {"state": "not_affected", "justification": "code_not_present"},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_cyclonedx_versions_restrict_a_versionless_ref(tmp_path: Path) -> None:
+    """A verdict scoped to 1.3.0 covered every version when only the ref was read."""
+    bundle = _bundle_with_cve("CVE-2024-1111")
+    consumed = parse_vex(
+        _cdx_file(tmp_path, [{"ref": "pkg:pypi/acme-api", "versions": [{"version": "1.3.0"}]}])
+    )
+    assert consumed[0].products == ("pkg:pypi/acme-api@1.3.0",)
+    merged = merge_consumed_vex(
+        build_openvex(bundle), bundle, consumed, products=["pkg:pypi/acme-api@1.4.0"]
+    )
+    assert _status_of(merged, "CVE-2024-1111") == "under_investigation"
+
+
+def test_cyclonedx_version_ranges_are_not_read_as_every_version(tmp_path: Path) -> None:
+    consumed = parse_vex(
+        _cdx_file(
+            tmp_path, [{"ref": "pkg:pypi/acme-api", "versions": [{"range": "vers:pypi/<1.4"}]}]
+        )
+    )
+    assert consumed[0].products == ()

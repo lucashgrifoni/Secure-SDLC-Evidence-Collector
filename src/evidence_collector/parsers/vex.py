@@ -229,6 +229,36 @@ def _parse_openvex(data: dict[str, Any]) -> list[VexStatement]:
     return out
 
 
+def _cyclonedx_affected_refs(entry: dict[str, Any]) -> list[str]:
+    """The product identifiers one CycloneDX ``affects`` entry names.
+
+    A versionless purl ``ref`` restricted by a ``versions`` array stands only
+    for those versions: each explicit ``version`` becomes ``ref@version``.
+    A ``range`` is not evaluated, so it contributes nothing; read as the bare
+    ref it would have covered every version of the package.
+    """
+    ref = entry.get("ref")
+    if not isinstance(ref, str) or not ref.strip():
+        return []
+    ref = ref.strip()
+    versions = entry.get("versions")
+    if not isinstance(versions, list) or not versions:
+        return [ref]
+    if not ref.startswith("pkg:") or "@" in ref.split("?", 1)[0].split("#", 1)[0]:
+        return [ref]
+    base, sep, rest = ref.partition("?")
+    if not sep:
+        base, sep, rest = ref.partition("#")
+    suffix = f"{sep}{rest}" if sep else ""
+    return [
+        f"{base}@{item['version'].strip()}{suffix}"
+        for item in versions
+        if isinstance(item, dict)
+        and isinstance(item.get("version"), str)
+        and item["version"].strip()
+    ]
+
+
 def _parse_cyclonedx_vex(data: dict[str, Any]) -> list[VexStatement]:
     vulns = data.get("vulnerabilities")
     if not isinstance(vulns, list):
@@ -253,9 +283,10 @@ def _parse_cyclonedx_vex(data: dict[str, Any]) -> list[VexStatement]:
         detail_raw = analysis.get("detail")
         affects = vuln.get("affects")
         refs = [
-            a["ref"].strip()
+            ref
             for a in (affects if isinstance(affects, list) else [])
-            if isinstance(a, dict) and isinstance(a.get("ref"), str) and a["ref"].strip()
+            if isinstance(a, dict)
+            for ref in _cyclonedx_affected_refs(a)
         ]
         out.append(
             VexStatement(

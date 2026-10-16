@@ -471,7 +471,9 @@ These are explicitly out of scope for security reports (see
   covers every version of the package with the same
   qualifiers and subpath; a statement for another version, or for the
   same package from another repository (`?repository_url=`), does not
-  apply. Other identifiers match only exactly. A CSAF vulnerability yields one statement per status, naming the
+  apply. Other identifiers match only exactly. A CycloneDX `affects`
+  entry with a `versions` array names only its explicit versions; a
+  version `range` is not evaluated, so that entry names no product. A CSAF vulnerability yields one statement per status, naming the
   products of every bucket that maps to it. Statements
   that name no release product, including those that name no product at
   all, are skipped and listed in a warning. Matching on the CVE id alone
