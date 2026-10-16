@@ -463,7 +463,15 @@ def test_cyclonedx_versions_restrict_a_versionless_ref(tmp_path: Path) -> None:
     """A verdict scoped to 1.3.0 covered every version when only the ref was read."""
     bundle = _bundle_with_cve("CVE-2024-1111")
     consumed = parse_vex(
-        _cdx_file(tmp_path, [{"ref": "pkg:pypi/acme-api", "versions": [{"version": "1.3.0"}]}])
+        _cdx_file(
+            tmp_path,
+            [
+                {
+                    "ref": "pkg:pypi/acme-api",
+                    "versions": [{"version": "1.3.0", "status": "unaffected"}],
+                }
+            ],
+        )
     )
     assert consumed[0].products == ("pkg:pypi/acme-api@1.3.0",)
     merged = merge_consumed_vex(
@@ -483,7 +491,10 @@ def test_cyclonedx_version_ranges_are_not_read_as_every_version(tmp_path: Path) 
 
 def test_a_plain_bom_ref_with_versions_names_no_product(tmp_path: Path) -> None:
     consumed = parse_vex(
-        _cdx_file(tmp_path, [{"ref": "component-a", "versions": [{"version": "1.3"}]}])
+        _cdx_file(
+            tmp_path,
+            [{"ref": "component-a", "versions": [{"version": "1.3", "status": "unaffected"}]}],
+        )
     )
     assert consumed[0].products == ()
 
@@ -501,13 +512,25 @@ def test_a_versioned_purl_ref_must_agree_with_its_versions(tmp_path: Path) -> No
     """`ref@1.4.0` limited to `1.3.0` used to apply to 1.4.0 anyway."""
     disagreeing = parse_vex(
         _cdx_file(
-            tmp_path, [{"ref": "pkg:pypi/acme-api@1.4.0", "versions": [{"version": "1.3.0"}]}]
+            tmp_path,
+            [
+                {
+                    "ref": "pkg:pypi/acme-api@1.4.0",
+                    "versions": [{"version": "1.3.0", "status": "unaffected"}],
+                }
+            ],
         )
     )
     assert disagreeing[0].products == ()
     agreeing = parse_vex(
         _cdx_file(
-            tmp_path, [{"ref": "pkg:pypi/acme-api@1.4.0", "versions": [{"version": "1.4.0"}]}]
+            tmp_path,
+            [
+                {
+                    "ref": "pkg:pypi/acme-api@1.4.0",
+                    "versions": [{"version": "1.4.0", "status": "unaffected"}],
+                }
+            ],
         )
     )
     assert agreeing[0].products == ("pkg:pypi/acme-api@1.4.0",)
@@ -539,12 +562,26 @@ def test_local_product_ids_do_not_match_across_documents(tmp_path: Path) -> None
 def test_purl_versions_are_compared_decoded(tmp_path: Path) -> None:
     agreeing = parse_vex(
         _cdx_file(
-            tmp_path, [{"ref": "pkg:deb/acme@1.0%2Bdeb1", "versions": [{"version": "1.0+deb1"}]}]
+            tmp_path,
+            [
+                {
+                    "ref": "pkg:deb/acme@1.0%2Bdeb1",
+                    "versions": [{"version": "1.0+deb1", "status": "unaffected"}],
+                }
+            ],
         )
     )
     assert agreeing[0].products == ("pkg:deb/acme@1.0%2Bdeb1",)
     built = parse_vex(
-        _cdx_file(tmp_path, [{"ref": "pkg:deb/acme", "versions": [{"version": "1.0+deb1"}]}])
+        _cdx_file(
+            tmp_path,
+            [
+                {
+                    "ref": "pkg:deb/acme",
+                    "versions": [{"version": "1.0+deb1", "status": "unaffected"}],
+                }
+            ],
+        )
     )
     assert built[0].products == ("pkg:deb/acme@1.0%2Bdeb1",)
     bundle = _bundle_with_cve("CVE-2024-1111")
@@ -567,3 +604,23 @@ def test_a_bom_link_still_matches_across_documents(tmp_path: Path) -> None:
     ]
     merged = merge_consumed_vex(build_openvex(bundle), bundle, consumed, products=[link])
     assert _status_of(merged, "CVE-2024-1111") == "not_affected"
+
+
+def test_a_cyclonedx_version_marked_affected_is_not_called_not_affected(tmp_path: Path) -> None:
+    """`versions[].status` defaults to affected; a not_affected analysis cannot cover it."""
+    consumed = parse_vex(
+        _cdx_file(
+            tmp_path,
+            [
+                {
+                    "ref": "pkg:pypi/acme-api",
+                    "versions": [
+                        {"version": "1.3.0", "status": "unaffected"},
+                        {"version": "1.4.0", "status": "affected"},
+                        {"version": "1.5.0"},
+                    ],
+                }
+            ],
+        )
+    )
+    assert consumed[0].products == ("pkg:pypi/acme-api@1.3.0",)

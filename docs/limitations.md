@@ -489,7 +489,9 @@ not care which you choose.
   qualifiers and subpath; a statement for another version, or for the
   same package from another repository (`?repository_url=`), does not
   apply. Other identifiers match only exactly. A CycloneDX `affects`
-  entry with a `versions` array names only its explicit versions; a
+  entry with a `versions` array names only its explicit versions whose
+  own status agrees with the analysis (`unaffected` for `not_affected`
+  or a fix, `affected`, the default, for an exploitable finding); a
   version `range` is not evaluated, and neither is `versions` on a
   plain bom-ref, so such an entry names no product; a versioned purl
   ref applies only when `versions` lists that version. Purls are compared

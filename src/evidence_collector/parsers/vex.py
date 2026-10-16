@@ -230,7 +230,18 @@ def _parse_openvex(data: dict[str, Any]) -> list[VexStatement]:
     return out
 
 
-def _cyclonedx_affected_refs(entry: dict[str, Any]) -> list[str]:
+# Which `versions[].status` values agree with each OpenVEX status. CycloneDX
+# defaults a missing status to `affected`; `unknown` agrees with nothing but an
+# open investigation.
+_CDX_VERSION_STATUS_FOR: dict[str, frozenset[str]] = {
+    "affected": frozenset({"affected"}),
+    "not_affected": frozenset({"unaffected"}),
+    "fixed": frozenset({"unaffected"}),
+    "under_investigation": frozenset({"affected", "unaffected", "unknown"}),
+}
+
+
+def _cyclonedx_affected_refs(entry: dict[str, Any], status: str) -> list[str]:
     """The product identifiers one CycloneDX ``affects`` entry names.
 
     A versionless purl ``ref`` restricted by a ``versions`` array stands only
@@ -248,12 +259,16 @@ def _cyclonedx_affected_refs(entry: dict[str, Any]) -> list[str]:
     versions = entry.get("versions")
     if not isinstance(versions, list) or not versions:
         return [ref]
+    # A version whose own status contradicts the analysis (`affected` under a
+    # `not_affected` analysis) is left out rather than given the wrong verdict.
+    agreeing = _CDX_VERSION_STATUS_FOR.get(status, frozenset())
     explicit = {
         item["version"].strip()
         for item in versions
         if isinstance(item, dict)
         and isinstance(item.get("version"), str)
         and item["version"].strip()
+        and str(item.get("status") or "affected") in agreeing
     }
     if not ref.startswith("pkg:"):
         return []
@@ -297,7 +312,7 @@ def _parse_cyclonedx_vex(data: dict[str, Any]) -> list[VexStatement]:
             ref
             for a in (affects if isinstance(affects, list) else [])
             if isinstance(a, dict)
-            for ref in _cyclonedx_affected_refs(a)
+            for ref in _cyclonedx_affected_refs(a, status)
         ]
         out.append(
             VexStatement(
