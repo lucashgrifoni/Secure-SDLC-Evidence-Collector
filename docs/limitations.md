@@ -443,12 +443,12 @@ These are explicitly out of scope for security reports (see
   so a missing reachability tool cannot silently suppress a real
   signal.
 
-## 17 · Watch daemon postponed to v2.1 (T6.9)
+## 17 · Watch daemon deferred, not scheduled (T6.9)
 
 - The roadmap pairs the GUAC adapter with a ``sdlc-evidence watch``
   daemon (webhook receiver, durable cursor, delta bundles for
-  continuous ATO). That subcommand is deferred from v2.0 to v2.1
-  because it requires an optional ``[watch]`` extra (FastAPI +
+  continuous ATO). That subcommand was planned for v2.1 and is not
+  scheduled, because it requires an optional ``[watch]`` extra (FastAPI +
   uvicorn + watchdog) and durable cursor persistence the
   file-first collector deliberately avoids.
 - GUAC and regulatory profiles provide projections of supplied evidence;
@@ -466,8 +466,7 @@ These are explicitly out of scope for security reports (see
 - Conflict policy (`first-wins`, `last-wins`, `fail`) decides what
   happens when sources disagree. `fail` is the right choice when an
   unexpected disagreement is itself a finding.
-- SPDX VEX is deferred (low industry adoption). Tracked in the v2.1
-  backlog.
+- SPDX VEX is deferred (low industry adoption) and not scheduled.
 - Exceptions waive controls, not CVEs. The bundle-derived document marks a
   CVE `not_affected` only when a waiver actually applies to it: the
   exception is in force for the bundle's application, release and clock;
@@ -490,7 +489,7 @@ These are explicitly out of scope for security reports (see
   bundle are byte-identical and different statements (including after
   `--consume` merges) never share an id; `version` stays `1`.
 
-## 10 · The bundle carries the identifiers you put in it
+## 10b · The bundle carries the identifiers you put in it
 
 A bundle is meant to be shared — with an auditor, a customer, a regulator — and
 it repeats back whatever identifies people in the evidence you fed it. In the
@@ -684,3 +683,13 @@ release `not_ready`, but a `high` one, such as `AI-SAFETY-EVAL`, only
 makes it `conditional`, which the default `--fail-on not_ready` lets
 through with exit 0. For a `high` control, gate with
 `--fail-on conditional`.
+
+## 25 · OSV CVSS v2 vectors are not scored
+
+The OSV parser scores CVSS 3.0, 3.1 and 4.0 vectors. A CVSS v2 vector
+(`AV:N/AC:L/Au:N/...`, with no `CVSS:` prefix) is not scored: the finding
+takes the advisory's own qualitative rating (`database_specific.severity`)
+when it carries one, and `medium` otherwise. A purely v2-rated advisory can
+therefore land in a different severity bucket than its v2 base score would
+suggest. When an advisory also carries a v3 or v4 vector, the highest
+scored vector wins and the v2 entry is ignored.

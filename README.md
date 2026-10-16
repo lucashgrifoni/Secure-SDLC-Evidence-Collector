@@ -681,7 +681,23 @@ Tier 6 — standards-alignment cut, and the first public release line.
 - Reproducible wheel gate, reusable GitHub Actions workflow, GitLab CI
   template, devcontainer + Codespaces, comparison page, ADRs 0007–0012.
 
-### Deferred (originally planned for `2.1`, not yet scheduled)
+### Shipped after `2.0.0`
+
+Every release from `2.1.0` onward is recorded in [CHANGELOG.md](CHANGELOG.md).
+The largest additions since `2.0.0`:
+
+- In-toto release attestations, PyPI (PEP 740) and npm registry
+  attestations, and native Trivy JSON as evidence sources.
+- CVSS 4.0 scoring with the FIRST reference tables.
+- SARIF 2.1.0 export of unmet controls, Rego checks for expired waivers
+  and unmitigated KEV CVEs, and a job summary in the GitHub Action.
+- Croissant, Inspect and promptfoo as AI evidence sources.
+- A byte-reproducible sdist.
+- Complete evidence contracts and source-backed EU CRA, FedRAMP 20x CR26
+  and AI SBOM profiles (`4.0.0`), and a separately versioned GitLab CI/CD
+  Catalog component.
+
+### Deferred (planned for `2.1`, not scheduled)
 
 - `sdlc-evidence watch` daemon (see `docs/limitations.md`).
 - SPDX VEX consumer (low industry adoption today).
@@ -697,8 +713,6 @@ the direction of travel and open a Discussion if any becomes
 load-bearing for their use case.
 
 - Azure DevOps collector (PRs + Pipelines).
-- Historical analytics (coverage trend per repo/team) and a read-only
-  dashboard over saved bundles.
 - Additional exporters (SPDX provenance, CycloneDX VEX linking).
 - Policy-as-code catalog validation (e.g. Rego plug-in).
 

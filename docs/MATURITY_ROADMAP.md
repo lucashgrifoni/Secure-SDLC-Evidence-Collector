@@ -1,12 +1,12 @@
 # Maturity Roadmap
 
-## Current delivery boundary — 7 October 2026
+## Wave 4 delivery, shipped in 4.0.0 (9 October 2026)
 
 The historical tiers below retain the original planning sequence. Development
 now targets the collector's documented CLI contracts and source-backed evidence
 annotations; shipped versions are recorded in CHANGELOG.md.
 
-| Wave 4 item | Current development disposition |
+| Wave 4 item | Disposition as shipped |
 |---|---|
 | A1 | CISA 2026 (17 elements) and G7 AI (50 elements) presence states; no conformance gate |
 | B1 | Automatic BOD/SSVC engine deferred; deployed exposure and missing decisions are not inferred |
@@ -18,8 +18,8 @@ annotations; shipped versions are recorded in CHANGELOG.md.
 | F1 | Separately versioned GitLab Catalog component; published collector version independent |
 
 See [migration and limits](evidence-profile-migration.md) and
-[ADR 0015](adr/0015-source-backed-evidence-profiles.md). Changes in this branch
-await collector release gates; implemented does not mean published on PyPI.
+[ADR 0015](adr/0015-source-backed-evidence-profiles.md). These items shipped in
+4.0.0; fixes released after it are recorded in CHANGELOG.md.
 
 This document is the canonical plan for hardening the Secure SDLC Evidence
 Collector beyond a stable v1.x release. It complements `CHANGELOG.md`

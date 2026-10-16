@@ -1,6 +1,6 @@
 # ADR 0015 — Source-backed evidence annotations and bounded profiles
 
-- Status: accepted for implementation; publication of a collector release pending
+- Status: accepted; implemented and published in 4.0.0 (9 October 2026)
 - Date: 2026-10-07
 - Decider: Lucas Henrique Grifoni
 - Supersedes: ADR 0011 profile annotations; corrects ADR 0008 references

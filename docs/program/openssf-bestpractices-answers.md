@@ -1,5 +1,9 @@
 # OpenSSF Best Practices Badge — Passing tier answers
 
+> **Superseded (15 October 2026).** The project holds the OpenSSF Best Practices
+> passing badge as [project 15519](https://www.bestpractices.dev/projects/15519);
+> the answers recorded there are authoritative. This draft is kept for history.
+
 Pre-drafted answers for <https://www.bestpractices.dev/> at the
 **Passing** tier. The bestpractices.dev form has ~70 questions; the
 list below covers every one that is non-obvious from the README.

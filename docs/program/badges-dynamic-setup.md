@@ -1,5 +1,9 @@
 # Runbook: badges dinamicas de Tests e Coverage (entrega E2)
 
+> **Status (15 de outubro de 2026): não adotado.** O token de gist (`GIST_TOKEN`)
+> não foi criado e nenhum workflow depende dele; as badges dinâmicas de Tests e
+> Coverage ficam fora do escopo atual. Este runbook fica só como histórico.
+
 Data: 2026-06-16
 Origem: preparacao da entrega E2 (badges dinamicas reais de Tests e
 Coverage). Este documento e um runbook operacional. Ele NAO cria

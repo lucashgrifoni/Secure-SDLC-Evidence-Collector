@@ -91,7 +91,6 @@ examples/self_release/attestations/release_approval.yaml
 
 # Internal planning, handoff, and agent prompt material
 Ideia do projeto.md
-docs/MATURITY_STATUS.md
 docs/publication-readiness.md
 docs/program/_archive/
 docs/program/HANDOFF-*.md
