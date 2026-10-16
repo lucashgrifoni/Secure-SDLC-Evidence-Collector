@@ -428,9 +428,13 @@ def _purl_parts(identifier: str) -> tuple[str, str | None]:
 
 
 def _is_global_id(identifier: str) -> bool:
-    """Purls, CPEs and CycloneDX BOM-Links (``urn:cdx:``, which carry the BOM
-    serial number) mean the same thing in every document; local ids do not."""
-    return identifier.startswith(("pkg:", "cpe:", "urn:cdx:"))
+    """True for identifiers that mean the same thing in every document.
+
+    Purls, CPEs, URNs (CycloneDX BOM-Links carry the BOM serial number) and
+    absolute IRIs, which OpenVEX allows as product ``@id``. CSAF product ids
+    and plain CycloneDX bom-refs are local to their document.
+    """
+    return identifier.startswith(("pkg:", "cpe:", "urn:")) or "://" in identifier
 
 
 def _names_release(

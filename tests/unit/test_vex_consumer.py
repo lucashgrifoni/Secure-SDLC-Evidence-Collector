@@ -624,3 +624,58 @@ def test_a_cyclonedx_version_marked_affected_is_not_called_not_affected(tmp_path
         )
     )
     assert consumed[0].products == ("pkg:pypi/acme-api@1.3.0",)
+
+
+def test_cyclonedx_bom_refs_resolve_to_the_component_purl(tmp_path: Path) -> None:
+    """An opaque `affects[].ref` named only `component-a`, so `--product pkg:...` never matched."""
+    path = tmp_path / "vendor.cdx.json"
+    path.write_text(
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.6",
+                "components": [
+                    {
+                        "bom-ref": "component-a",
+                        "name": "acme-api",
+                        "purl": "pkg:pypi/acme-api",
+                    }
+                ],
+                "vulnerabilities": [
+                    {
+                        "id": "CVE-2024-1111",
+                        "affects": [
+                            {"ref": "component-a"},
+                            {
+                                "ref": "component-a",
+                                "versions": [{"version": "1.3.0", "status": "unaffected"}],
+                            },
+                        ],
+                        "analysis": {"state": "not_affected"},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    consumed = parse_vex(path)
+    assert consumed[0].products == (
+        "component-a",
+        "pkg:pypi/acme-api",
+        "pkg:pypi/acme-api@1.3.0",
+    )
+
+
+def test_an_absolute_iri_still_matches_across_documents(tmp_path: Path) -> None:
+    bundle = _bundle_with_cve("CVE-2024-1111")
+    iri = "https://vendor.example/products/api/1"
+    first = tmp_path / "a"
+    second = tmp_path / "b"
+    first.mkdir()
+    second.mkdir()
+    consumed = [
+        *parse_vex(_openvex_file(first, [{"@id": iri}])),
+        *parse_vex(_openvex_file(second, ["pkg:npm/unrelated@1.0.0"], cve="CVE-2024-2222")),
+    ]
+    merged = merge_consumed_vex(build_openvex(bundle), bundle, consumed, products=[iri])
+    assert _status_of(merged, "CVE-2024-1111") == "not_affected"

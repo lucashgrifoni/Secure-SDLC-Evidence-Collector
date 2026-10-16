@@ -498,7 +498,9 @@ not care which you choose.
   with their qualifiers sorted and their versions percent-decoded. With
   more than one `--consume` file, CSAF product ids and CycloneDX bom-refs
   are not matched (they are unique only inside their own document); name
-  the release by purl, CPE or CycloneDX BOM-Link (`urn:cdx:`) instead. A CSAF vulnerability yields one statement per status, naming the
+  the release by purl, CPE, URN (such as a CycloneDX BOM-Link) or
+  absolute IRI instead. CycloneDX bom-refs are resolved to the purl or
+  CPE of the component they point at. A CSAF vulnerability yields one statement per status, naming the
   products of every bucket that maps to it. Statements
   that name no release product, including those that name no product at
   all, are skipped and listed in a warning. Matching on the CVE id alone

@@ -241,24 +241,73 @@ _CDX_VERSION_STATUS_FOR: dict[str, frozenset[str]] = {
 }
 
 
-def _cyclonedx_affected_refs(entry: dict[str, Any], status: str) -> list[str]:
+def _cyclonedx_identities(data: dict[str, Any]) -> dict[str, list[str]]:
+    """Map each component or service ``bom-ref`` to its purl / CPE."""
+    identities: dict[str, list[str]] = {}
+
+    def visit(node: Any) -> None:
+        if isinstance(node, list):
+            for item in node:
+                visit(item)
+            return
+        if not isinstance(node, dict):
+            return
+        ref = node.get("bom-ref")
+        if isinstance(ref, str) and ref.strip():
+            identities.setdefault(ref.strip(), []).extend(
+                v.strip()
+                for key in ("purl", "cpe")
+                for v in [node.get(key)]
+                if isinstance(v, str) and v.strip()
+            )
+        visit(node.get("components"))
+        visit(node.get("services"))
+
+    metadata = data.get("metadata")
+    if isinstance(metadata, dict):
+        visit(metadata.get("component"))
+    visit(data.get("components"))
+    visit(data.get("services"))
+    return identities
+
+
+def _constrain_purl(purl: str, explicit: set[str]) -> list[str]:
+    """The versions of ``purl`` that a ``versions`` array leaves in scope."""
+    core = purl.split("?", 1)[0].split("#", 1)[0]
+    if "@" in core:
+        # A versioned purl keeps its meaning only when the constraint lists
+        # that same version; otherwise the two disagree and nothing is named.
+        return [purl] if unquote(core.rsplit("@", 1)[1]) in explicit else []
+    base, sep, rest = purl.partition("?")
+    if not sep:
+        base, sep, rest = purl.partition("#")
+    suffix = f"{sep}{rest}" if sep else ""
+    # Encoded as a canonical purl version: `1.0+deb1` becomes `1.0%2Bdeb1`.
+    return [f"{base}@{quote(version, safe='.-_~')}{suffix}" for version in sorted(explicit)]
+
+
+def _cyclonedx_affected_refs(
+    entry: dict[str, Any], status: str, identities: dict[str, list[str]]
+) -> list[str]:
     """The product identifiers one CycloneDX ``affects`` entry names.
 
-    A versionless purl ``ref`` restricted by a ``versions`` array stands only
-    for those versions: each explicit ``version`` becomes ``ref@version``.
-    A ``range`` is not evaluated, so it contributes nothing; read as the bare
-    ref it would have covered every version of the package. A plain bom-ref
-    with ``versions`` names nothing either: its version cannot be correlated
-    with the release, and the bare ref would drop the constraint. A purl ref
-    that already carries a version stays only when ``versions`` lists it.
+    A bom-ref is resolved to the purl / CPE of the component it points at,
+    as CSAF product ids are. A versionless purl restricted by a ``versions``
+    array stands only for those versions: each explicit ``version`` whose own
+    status agrees with the analysis becomes ``purl@version``. A ``range`` is
+    not evaluated, so it contributes nothing; read as the bare ref it would
+    have covered every version of the package. With ``versions``, only purls
+    are named: a bare bom-ref or a CPE would drop the constraint. A purl that
+    already carries a version stays only when ``versions`` lists it.
     """
     ref = entry.get("ref")
     if not isinstance(ref, str) or not ref.strip():
         return []
     ref = ref.strip()
+    names = [ref, *identities.get(ref, [])]
     versions = entry.get("versions")
     if not isinstance(versions, list) or not versions:
-        return [ref]
+        return names
     # A version whose own status contradicts the analysis (`affected` under a
     # `not_affected` analysis) is left out rather than given the wrong verdict.
     agreeing = _CDX_VERSION_STATUS_FOR.get(status, frozenset())
@@ -270,19 +319,12 @@ def _cyclonedx_affected_refs(entry: dict[str, Any], status: str) -> list[str]:
         and item["version"].strip()
         and str(item.get("status") or "affected") in agreeing
     }
-    if not ref.startswith("pkg:"):
-        return []
-    core = ref.split("?", 1)[0].split("#", 1)[0]
-    if "@" in core:
-        # A versioned ref keeps its meaning only when the constraint lists
-        # that same version; otherwise the two disagree and nothing is named.
-        return [ref] if unquote(core.rsplit("@", 1)[1]) in explicit else []
-    base, sep, rest = ref.partition("?")
-    if not sep:
-        base, sep, rest = ref.partition("#")
-    suffix = f"{sep}{rest}" if sep else ""
-    # Encoded as a canonical purl version: `1.0+deb1` becomes `1.0%2Bdeb1`.
-    return [f"{base}@{quote(version, safe='.-_~')}{suffix}" for version in sorted(explicit)]
+    return [
+        constrained
+        for name in names
+        if name.startswith("pkg:")
+        for constrained in _constrain_purl(name, explicit)
+    ]
 
 
 def _parse_cyclonedx_vex(data: dict[str, Any]) -> list[VexStatement]:
@@ -290,6 +332,7 @@ def _parse_cyclonedx_vex(data: dict[str, Any]) -> list[VexStatement]:
     if not isinstance(vulns, list):
         return []
     out: list[VexStatement] = []
+    identities = _cyclonedx_identities(data)
     for vuln in vulns:
         if not isinstance(vuln, dict):
             continue
@@ -312,7 +355,7 @@ def _parse_cyclonedx_vex(data: dict[str, Any]) -> list[VexStatement]:
             ref
             for a in (affects if isinstance(affects, list) else [])
             if isinstance(a, dict)
-            for ref in _cyclonedx_affected_refs(a, status)
+            for ref in _cyclonedx_affected_refs(a, status, identities)
         ]
         out.append(
             VexStatement(
