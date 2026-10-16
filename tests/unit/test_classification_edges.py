@@ -23,11 +23,11 @@ from evidence_collector.normalizers.engine import _classify_sarif
         ("Snyk Code", EvidenceType.SAST_SCAN),
         ("Bandit", EvidenceType.SAST_SCAN),
         ("brakeman", EvidenceType.SAST_SCAN),
-        ("Checkov", EvidenceType.SAST_SCAN),
+        ("Checkov", EvidenceType.IAC_SCAN),
         ("ESLint", EvidenceType.SAST_SCAN),
     ],
 )
-def test_known_sast_drivers(tool_name: str, expected: EvidenceType) -> None:
+def test_known_code_and_iac_drivers(tool_name: str, expected: EvidenceType) -> None:
     assert _classify_sarif(tool_name, None) is expected
 
 

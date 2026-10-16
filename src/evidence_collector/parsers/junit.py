@@ -3,6 +3,11 @@
 Reads standard JUnit XML (both a single `testsuite` root and a `testsuites`
 root containing multiple suites) and returns aggregated counters.
 
+Each count is the larger of the suite attribute (a negative value reads as
+0) and the number of matching ``<testcase>`` elements under the suite,
+nested suites included. Suite attributes are optional, and reading only
+them let a failing test case vanish when a reporter left them out.
+
 XML safety: parsing is delegated to `defusedxml`, which hardens against
 billion-laughs, quadratic-blowup, and external entity expansion. The stdlib
 `xml.etree.ElementTree` is kept only for its element API (`Element`) — it
@@ -52,6 +57,14 @@ def _parse_int(value: str | None, default: int = 0) -> int:
         return int(value)
     except ValueError:
         return default
+
+
+def _count(suite: Element, attribute: str, child: str | None) -> int:
+    """The larger of a suite attribute and the matching test cases under it."""
+    declared = max(_parse_int(suite.get(attribute)), 0)
+    cases = suite.iter("testcase")
+    observed = sum(1 for case in cases if child is None or case.find(child) is not None)
+    return max(declared, observed)
 
 
 def _parse_float(value: str | None, default: float = 0.0) -> float:
@@ -120,10 +133,11 @@ def parse_junit(path: str | Path) -> ParsedJUnit:
     skipped = 0
     time_seconds = 0.0
     for suite in suites:
-        total += _parse_int(suite.get("tests"))
-        failures += _parse_int(suite.get("failures"))
-        errors += _parse_int(suite.get("errors"))
-        skipped += _parse_int(suite.get("skipped") or suite.get("skip"))
+        total += _count(suite, "tests", None)
+        failures += _count(suite, "failures", "failure")
+        errors += _count(suite, "errors", "error")
+        skipped_attribute = "skipped" if suite.get("skipped") else "skip"
+        skipped += _count(suite, skipped_attribute, "skipped")
         time_seconds += _parse_float(suite.get("time"))
 
     if total == 0 and not suites:
