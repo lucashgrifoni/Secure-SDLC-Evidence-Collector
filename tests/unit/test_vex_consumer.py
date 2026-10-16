@@ -495,3 +495,19 @@ def test_versioned_purls_match_whatever_the_qualifier_order(tmp_path: Path) -> N
         build_openvex(bundle), bundle, consumed, products=["pkg:generic/api@1?b=y&a=x"]
     )
     assert _status_of(merged, "CVE-2024-1111") == "not_affected"
+
+
+def test_a_versioned_purl_ref_must_agree_with_its_versions(tmp_path: Path) -> None:
+    """`ref@1.4.0` limited to `1.3.0` used to apply to 1.4.0 anyway."""
+    disagreeing = parse_vex(
+        _cdx_file(
+            tmp_path, [{"ref": "pkg:pypi/acme-api@1.4.0", "versions": [{"version": "1.3.0"}]}]
+        )
+    )
+    assert disagreeing[0].products == ()
+    agreeing = parse_vex(
+        _cdx_file(
+            tmp_path, [{"ref": "pkg:pypi/acme-api@1.4.0", "versions": [{"version": "1.4.0"}]}]
+        )
+    )
+    assert agreeing[0].products == ("pkg:pypi/acme-api@1.4.0",)

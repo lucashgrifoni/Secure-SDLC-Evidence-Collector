@@ -237,7 +237,8 @@ def _cyclonedx_affected_refs(entry: dict[str, Any]) -> list[str]:
     A ``range`` is not evaluated, so it contributes nothing; read as the bare
     ref it would have covered every version of the package. A plain bom-ref
     with ``versions`` names nothing either: its version cannot be correlated
-    with the release, and the bare ref would drop the constraint.
+    with the release, and the bare ref would drop the constraint. A purl ref
+    that already carries a version stays only when ``versions`` lists it.
     """
     ref = entry.get("ref")
     if not isinstance(ref, str) or not ref.strip():
@@ -246,21 +247,25 @@ def _cyclonedx_affected_refs(entry: dict[str, Any]) -> list[str]:
     versions = entry.get("versions")
     if not isinstance(versions, list) or not versions:
         return [ref]
-    if not ref.startswith("pkg:"):
-        return []
-    if "@" in ref.split("?", 1)[0].split("#", 1)[0]:
-        return [ref]
-    base, sep, rest = ref.partition("?")
-    if not sep:
-        base, sep, rest = ref.partition("#")
-    suffix = f"{sep}{rest}" if sep else ""
-    return [
-        f"{base}@{item['version'].strip()}{suffix}"
+    explicit = {
+        item["version"].strip()
         for item in versions
         if isinstance(item, dict)
         and isinstance(item.get("version"), str)
         and item["version"].strip()
-    ]
+    }
+    if not ref.startswith("pkg:"):
+        return []
+    core = ref.split("?", 1)[0].split("#", 1)[0]
+    if "@" in core:
+        # A versioned ref keeps its meaning only when the constraint lists
+        # that same version; otherwise the two disagree and nothing is named.
+        return [ref] if core.rsplit("@", 1)[1] in explicit else []
+    base, sep, rest = ref.partition("?")
+    if not sep:
+        base, sep, rest = ref.partition("#")
+    suffix = f"{sep}{rest}" if sep else ""
+    return [f"{base}@{version}{suffix}" for version in sorted(explicit)]
 
 
 def _parse_cyclonedx_vex(data: dict[str, Any]) -> list[VexStatement]:

@@ -474,7 +474,8 @@ These are explicitly out of scope for security reports (see
   apply. Other identifiers match only exactly. A CycloneDX `affects`
   entry with a `versions` array names only its explicit versions; a
   version `range` is not evaluated, and neither is `versions` on a
-  plain bom-ref, so such an entry names no product. Purls are compared
+  plain bom-ref, so such an entry names no product; a versioned purl
+  ref applies only when `versions` lists that version. Purls are compared
   with their qualifiers sorted. A CSAF vulnerability yields one statement per status, naming the
   products of every bucket that maps to it. Statements
   that name no release product, including those that name no product at
