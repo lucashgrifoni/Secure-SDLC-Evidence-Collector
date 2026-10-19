@@ -63,7 +63,7 @@ jobs:
           persist-credentials: false
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3
+        uses: github/codeql-action/init@9f759ee644a3e7c15c1390abf49868036c00067b # v3
         with:
           languages: ${{ matrix.language }}
           queries: security-and-quality
@@ -72,9 +72,9 @@ jobs:
       # autobuild action exists so this workflow keeps working if a
       # native extension is ever introduced.
       - name: Autobuild
-        uses: github/codeql-action/autobuild@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3
+        uses: github/codeql-action/autobuild@9f759ee644a3e7c15c1390abf49868036c00067b # v3
 
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3
+        uses: github/codeql-action/analyze@9f759ee644a3e7c15c1390abf49868036c00067b # v3
         with:
           category: "/language:${{ matrix.language }}"
