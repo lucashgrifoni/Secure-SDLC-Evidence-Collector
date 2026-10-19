@@ -3,7 +3,7 @@
 # Jobs install runtime.txt with --require-hashes, then the project itself
 # with `pip install --no-deps -e .`, then run `pip check`.
 typer>=0.12,<1.0
-pydantic>=2.6,<3.0
+pydantic>=2.14.1,<3.0
 jinja2>=3.1,<4.0
 pyyaml>=6.0,<7.0
 httpx>=0.27,<1.0
