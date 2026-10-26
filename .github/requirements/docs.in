@@ -3,4 +3,4 @@
 -r runtime.in
 mkdocs>=1.6,<2.0
 mkdocs-material>=9.5,<10.0
-pymdown-extensions>=10.7,<13.0
+pymdown-extensions>=12.3,<13.0
