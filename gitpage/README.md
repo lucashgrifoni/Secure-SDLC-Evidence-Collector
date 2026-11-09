@@ -102,10 +102,11 @@ Defined as CSS variables in `assets/css/styles.css`:
 - Navigation with `aria-current` based on the visible section; below 1120px the links move into a native `<details>` menu that works without JavaScript.
 - Skip-link to jump directly to the content.
 - Visible focus on every control.
-- Content is hidden for the scroll reveal, and numbers reset for the count-up, only after JavaScript has run with motion on. Without JavaScript, in print and with reduced motion every section and every final value is visible.
+- On touch screens (`pointer: coarse`) the navigation controls are 44px high. Every other target is at least 24 by 24px (WCAG 2.2 SC 2.5.8).
+- Content is hidden for the scroll reveal, and numbers reset for the count-up, only after `main.js` has run with motion on. Without JavaScript, when `main.js` fails to load, in print and with reduced motion every section and every final value is visible. The Motion toggle stays hidden until `main.js` has run.
 - Print uses a light stylesheet without the 3D stage or the navigation.
-- The model diagram switches to a stacked text version below 720px.
-- No horizontal overflow on mobile (tested on viewports starting at 320px).
+- The model diagram switches to a stacked text version below 720px and in print.
+- No horizontal overflow on mobile (tested on viewports starting at 320px). The `bundle.json` excerpt wraps instead of scrolling sideways.
 - No text overlapping the canvas: the hero uses `z-index: -1` on the 3D stage and content sits above it.
 
 ## Editorial stance
@@ -122,4 +123,7 @@ The page **never** claims that the product guarantees a secure release or delive
 ## Known limitations / next steps
 
 - The page is dark only; `prefers-color-scheme: light` renders the same dark page.
+- Small labels in the ash color (`#7c8394`: the roadmap tags, the numbers of the problem list and the GitHub label in the nav) measure between 4.2:1 and 4.45:1 on their surfaces, under the 4.5:1 that WCAG 1.4.3 asks for. axe-core cannot resolve the gradient background and reports these as "needs review", so the figures come from a manual measurement. Fixing them means changing the palette.
+- With an empty font cache the hero text reflows once when the web fonts arrive (Lighthouse lab layout shift of about 0.13 on desktop and 0.24 on mobile).
+- `tests/integration/test_gitpage_markup.py` and `test_gitpage_facts.py` cover the heading outline, the final numbers in the HTML, the script integrity hash and the CLI facts. Contrast, focus and print still need a browser.
 - If you want minification, any static minifier handles it without breaking references, as long as the `data-fact` markers survive.

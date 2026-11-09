@@ -7,8 +7,6 @@
   <title>Secure SDLC Evidence Collector - Evidence-ready releases</title>
   <meta name="description" content="Collects, normalizes, correlates, and packages Secure SDLC evidence into auditable, traceable, release-oriented bundles." />
   <meta name="theme-color" content="#0c124c" />
-  <!-- Scroll reveals and counters only hide content once this class is set, so the page stays readable without JavaScript. -->
-  <script>document.documentElement.classList.add("js");</script>
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -365,7 +363,7 @@
           <li class="flow__node" data-reveal data-reveal-delay="60">
             <span class="flow__idx">02</span>
             <h3>Collectors</h3>
-            <p>Source-specific adapters &mdash; GitHub Actions, local artifacts, manual attestations.</p>
+            <p>Source-specific adapters &mdash; GitHub, GitLab, local artifacts, manual attestations.</p>
           </li>
           <li class="flow__node" data-reveal data-reveal-delay="120">
             <span class="flow__idx">03</span>
@@ -623,7 +621,7 @@
               <li>in-toto, PyPI and npm attestations as evidence</li>
               <li>Native Trivy JSON, IaC findings kept apart</li>
               <li>SARIF export of unmet controls</li>
-              <li>CRA, FedRAMP 20x and CISA 2026 SBOM profiles</li>
+              <li>Source-backed EU CRA, FedRAMP 20x and AI SBOM profiles</li>
               <li>GitLab CI/CD Catalog component</li>
             </ul>
           </article>
@@ -657,10 +655,10 @@
             <a class="btn btn--secondary" href="docs/">Read the docs</a>
           </div>
           <p class="close__install">
-            Install the CLI with <code>pip install secure-sdlc-evidence-collector</code>, or run it from
-            <a class="text-link" href="https://github.com/marketplace/actions/secure-sdlc-evidence-collector">GitHub Actions</a>,
-            the <a class="text-link" href="https://gitlab.com/explore/catalog/lucas.henriquegrifoni/secure-sdlc-evidence-component">GitLab CI/CD Catalog</a>,
-            or <a class="text-link" href="https://pypi.org/project/secure-sdlc-evidence-collector/">PyPI</a>.
+            Install the CLI from <a class="text-link" href="https://pypi.org/project/secure-sdlc-evidence-collector/">PyPI</a>
+            with <code>pip install secure-sdlc-evidence-collector</code>, or run it in a pipeline with the
+            <a class="text-link" href="https://github.com/marketplace/actions/secure-sdlc-evidence-collector">GitHub Action</a>
+            or the <a class="text-link" href="https://gitlab.com/explore/catalog/lucas.henriquegrifoni/secure-sdlc-evidence-component">GitLab CI/CD Catalog component</a>.
           </p>
         </div>
       </div>

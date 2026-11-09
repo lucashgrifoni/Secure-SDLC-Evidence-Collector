@@ -160,6 +160,15 @@
     meters.forEach(finishMeter);
   }
 
+  // The stylesheet hides content for its reveal only under html.js. The class
+  // is set here, once the observers that show the content again exist, so the
+  // page stays readable if this file never loads. Blocks already on screen
+  // skip the entrance instead of blinking out and back in.
+  reveals.forEach((el) => {
+    if (el.getBoundingClientRect().top < window.innerHeight) el.classList.add("is-in");
+  });
+  document.documentElement.classList.add("js");
+
   // Printing before scrolling must not leave blank sections or zeroed numbers.
   window.addEventListener("beforeprint", () => {
     reveals.forEach((el) => el.classList.add("is-in"));
