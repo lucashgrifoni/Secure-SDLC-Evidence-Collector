@@ -133,8 +133,10 @@ jq --raw-output0 '.documents[] | select(.type == "sbom" or .type == "attestation
   | sort -zu \
   | while IFS= read -r -d '' path; do guacone collect files "$path"; done
 
-# 3. Confirm the documents were stitched into the graph
-guacone query known package "pkg:pypi/secure-sdlc-evidence-collector"
+# 3. Confirm the documents were stitched into the graph. The sample SBOM
+#    lists fastapi 0.111.0, so the package is known once it is ingested;
+#    query a purl from your own SBOM for a real release.
+guacone query known package "pkg:pypi/fastapi@0.111.0"
 ```
 
 The release envelope (`application`, `repository`, `release_id`,
@@ -173,7 +175,7 @@ helpers: <https://docs.guac.sh>.
   GUAC; it does not read a graph *back* from GUAC.
 - **Continuous ingestion is deferred.** The `sdlc-evidence watch`
   daemon — webhook receiver that would emit GUAC collections on
-  every release event — was planned for v2.1 and is not scheduled. See
+  every release event — is not scheduled. See
   [`limitations.md §17`](./limitations.md). For now, generate the
   container in the same CI job that produces the bundle and ingest
   it as a follow-up step.

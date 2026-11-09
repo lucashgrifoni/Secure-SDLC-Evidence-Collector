@@ -87,14 +87,19 @@ def register(app: typer.Typer) -> None:
             list[Path] | None,
             typer.Option(
                 "--exceptions-dir",
-                help="Directory with YAML/JSON exception (waiver) files",
+                help=(
+                    "Directory with YAML/JSON exception (waiver) files"
+                    " (can be given multiple times)"
+                ),
             ),
         ] = None,
         catalog_path: Annotated[
             # str, not Path: Path drops a leading ./, which the bundled-catalog
             # fallback needs to tell an explicit local path from a bare name.
             str | None,
-            typer.Option("--catalog", help="Override the default control catalog YAML"),
+            typer.Option(
+                "--catalog", help="Control catalog: a path, or the bare name of a bundled catalog"
+            ),
         ] = None,
         pull_request: Annotated[
             int | None,

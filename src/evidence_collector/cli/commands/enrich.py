@@ -81,6 +81,7 @@ def register(app: typer.Typer) -> None:
                 # raises UsageError -> exit 2, the not_ready code. The body below
                 # already catches OSError and exits EXIT_INPUT_ERROR, which is what
                 # the README promises for every input failure.
+                metavar="BUNDLE_PATH",
                 file_okay=True,
                 dir_okay=False,
                 readable=True,

@@ -28,7 +28,8 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
-    "Operating System :: OS Independent",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -101,6 +102,7 @@ gitlab = "evidence_collector.collectors.gitlab:GitLabCollector"
 
 [project.urls]
 Homepage = "https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector"
+Documentation = "https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/"
 Issues = "https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues"
 Changelog = "https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/CHANGELOG.md"
 Source = "https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector"

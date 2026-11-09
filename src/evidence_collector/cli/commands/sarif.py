@@ -35,6 +35,7 @@ def register(app: typer.Typer) -> None:
             typer.Argument(
                 # No exists=True, for the same reason as `vex`: Click would exit 2
                 # (the not_ready code) before the body can exit EXIT_INPUT_ERROR.
+                metavar="BUNDLE_PATH",
                 file_okay=True,
                 dir_okay=False,
                 readable=True,

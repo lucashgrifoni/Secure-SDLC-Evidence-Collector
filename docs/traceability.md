@@ -1,101 +1,27 @@
 # Traceability — promise ↔ detection ↔ evidence ↔ result
 
-This document maps every public promise the collector makes (documented in
-`README.md`, `CHANGELOG.md`, `SECURITY.md`, and `docs/bundle_schema.md`) to:
+This document maps the main public promises the collector makes (documented
+in `README.md`, `CHANGELOG.md`, `SECURITY.md`, and `docs/bundle_schema.md`)
+to:
 
 1. **Where it is implemented** (module / function).
-2. **Which scenario proves it works** (fixture or recorded lab scan).
+2. **Which scenario proves it works** (fixture or test).
 3. **Expected verdict** for that scenario.
-4. **Recorded (obtained) verdict** at the last validation pass.
+4. **Obtained verdict** at the last validation pass.
 5. **Negative / edge / misuse counterpart** (where applicable).
 
-Last refreshed: **2026-05-05** (maturity/higiene rodada on top of the
-`v1.1.0` release-readiness merge in `main`, commit `17dede2`).
+How it stays current:
 
-### Refresh notes — 2026-05-17
-
-What was re-run in this rodada (post-publication hardening branch
-`chore/post-publication-hardening-v1-1-1`, evidence captured under
-[`output/publication-2026-05-17/`](../output/publication-2026-05-17/)):
-
-- **All 7 lab scenarios** (`examples/labs/01..07`) — every lab produced
-  the expected `release_status = not_ready` with `--fail-on not_ready`
-  exit `2`. Critical-missing counts: 4 for labs 01, 02, 03, 05, 06, 07
-  and 5 for lab 04 (which lacks an SBOM attestation). The §4 row for
-  `01-core-saas-lab` was updated from the previous "(6 missing
-  critical)" — a stale number inherited from before the catalog
-  consolidated `SAMM-IMPL-SB-2` and `SAMM-VERIF-ST-1` into `partial`.
-- **Sample-release positive** — `ready 13/13`, coverage 100, confidence
-  59 (matches §3, §4).
-- **Sample-release negative** (`--fail-on not_ready`) — `not_ready`,
-  4 missing critical (`ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`,
-  `ORG-REL-ROLLBACK`, `SSDF-PS.2`), exit `2`.
-- **Self-release dogfood** (`make run-self-release`) — `ready 13/13`,
-  coverage 100, confidence 54 (manual attestations). The generated
-  bundle under `output/self_release/` was regenerated locally to match
-  the v1.1.0 schema (now includes the `classification` field introduced
-  in fase 7).
-- **Cross-OS determinism** — the snapshot test now produces digest
-  `a42920b3…` on both Windows and Linux after the 2026-05-17 fix to
-  `normalize_bundle` (POSIX-normalizes `evidence[*].raw.artifact_path`
-  at hash time). See `CHANGELOG.md` *Fixed — 2026-05-17* and
-  `tests/unit/test_integrity.py`.
-
-What was **not** re-run:
-
-- Docker build (daemon not active on the validation host).
-- `trivy` and `cross-os` CI matrix (require external tooling /
-  multi-runner CI). Both still run as required checks in
-  `security-ci-cd.yml` and `github-ci-cd.yml`.
-
-### Refresh notes — 2026-05-05
-
-What was re-run from this matrix in this rodada:
-
-- **Sample-release positive fixture (`examples/sample_release/`)** —
-  `python -m evidence_collector.cli.main run` produced
-  `release_status = ready`, coverage 100, confidence 59, **13/13
-  controls met**, evidence count 13. The four output directories
-  used were `output/cursor-validation-{run,collect,evaluate,oscal,schema}`
-  and were cleaned at the end of the rodada.
-- **Sample-release negative scenario (no `--attestations-dir`)** —
-  produced `release_status = not_ready`, coverage 47, confidence 100,
-  **6 missing**, **2 partial**, **5 met**, exit code `2` by design.
-  Missing critical controls observed: `ORG-CODE-REVIEW`,
-  `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`, `SSDF-PS.2`. This
-  matches §4 row "A critical control lacks required evidence".
-- **`compare` against the generated sample** —
-  `output/sample_release/bundle.json` vs. the new
-  `output/cursor-validation-run/bundle.json` reported
-  `coverage_delta=0`, `confidence_delta=0`, all 13 controls
-  `unchanged`. The `ready -> ready` headline is preserved across the
-  rename (the canonical sample still ships under the
-  `payments-api / 2026.04.10` release context, so the bundle IDs
-  differ — that is by design, not a regression).
-- **`oscal` and `schema` exports** — both succeeded with
-  deterministic UUID/JSON output as documented in §5.
-
-What was **not** re-run in this rodada:
-
-- `examples/labs/*` — the recorded lab scans were not re-driven.
-  None of the lab fixtures changed since 2026-04-24, so the §3 lab
-  rows are reported as "matches" by inheritance from the previous
-  pass. To revalidate, run `bash scripts/scan_all_labs.sh` from a
-  shell with the original lab corpus mounted (Bash on Windows is
-  available via Git Bash; the helper script does not need to be
-  rewritten for PowerShell).
-- The GitHub / GitLab collectors against live APIs — no token was
-  set in this rodada (`doctor --json` reports both as
-  `absent (collectors will skip SCM)`). The unit and contract tests
-  for both collectors are exercised by the regular `pytest` run
-  documented in `release-readiness.md`.
-- Docker build — Docker daemon not active in this pass. The §4
-  fixture rows that depend on the container fall back to the local
-  CLI invocation.
-
-Refresh outcome: every row in §1, §2, §3 and §4 is consistent with
-what the CLI produced on 2026-05-05. No row needed an `obtained ≠
-expected` correction.
+- Every test this page names is checked by
+  `tests/unit/test_documented_security_promises.py::test_every_test_named_in_the_traceability_doc_exists`,
+  so renaming or deleting one fails the build.
+- The §4 release-status rows were re-run against the 4.2.0 code on
+  2026-10-16 from a clean checkout, with the commands shown in the
+  Fixture column; their "Obtained" values come from that run.
+- The lab rows in §4 come from the external vulnerable-app corpus, which is
+  not public. They were last recorded on 2026-05-17, on a maintainer
+  machine, and cannot be reproduced from this repository; see
+  [`examples/labs/README.md`](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/examples/labs/README.md).
 
 ---
 
@@ -109,7 +35,7 @@ expected` correction.
 | Parse JUnit XML | `parsers/junit.py` | `examples/sample_release/artifacts/junit.xml` | `tests/unit/test_parsers.py::test_parse_junit`, `tests/unit/test_parsers.py::test_parse_junit_rejects_malformed_xml` (XXE guard in `tests/unit/test_documented_security_promises.py`) | `evidence_type=test_result`, pass/fail counted | matches |
 | Parse OWASP ZAP JSON (DAST) | `parsers/zap.py` | `examples/sample_release/artifacts/zap-baseline.json` | `tests/unit/test_zap.py::test_parse_zap_rejects_document_without_site`, `tests/unit/test_zap.py::test_parse_zap_counts_severities` | `evidence_type=dast_scan`, alerts bucketed by risk | matches |
 | Parse GitLab Security Reports | `parsers/gitlab_security.py` | `tests/fixtures/real/gitlab/*.json` (real analyzer captures) | `tests/unit/test_gitlab_security_report.py` | `scan.type` decides `sast_scan`, `secrets_scan`, `sca_scan` (dependency and container scanning) or `dast_scan`; `scan.status: failure` gives `invalid` | matches |
-| Parse YAML/JSON attestations | `parsers/attestation.py` | `examples/sample_release/attestations/*.yaml` | attestation with unknown key → `extra='forbid'` raises | `evidence_type` derives from `kind` field | matches |
+| Parse YAML/JSON attestations | `parsers/attestation.py` | `examples/sample_release/attestations/*.yaml` | an attestation with an unknown key is refused and reported as a collection error | `evidence_type`, `producer` and `subject_ref` are required; custom data goes under `metadata` | matches |
 | 25 MB safety cap | `parsers/_common.py::ensure_file` (`MAX_INPUT_BYTES`) | `tests/unit/test_parser_safety.py::test_oversize_file_hits_safety_cap`, `tests/unit/test_local_collector.py::test_oversized_artifact_is_reported_not_dropped` | large SARIF → raises `ParseError`, reported as a collection error | reject > 25 MB | matches |
 
 ## 2 · Classification promises (SARIF → canonical evidence_type)
@@ -123,6 +49,22 @@ expected` correction.
 | pip-audit → `sca_scan` | driver name contains "pip-audit" | same | label=`sca_scan` | matches |
 | Grype → `sca_scan` | driver name contains "grype" | same | label=`sca_scan` | matches |
 | Unknown driver | default branch | same | label=`sast_scan` with `classification.confidence=low`, `classification.reason=fallback_sast` | matches |
+
+## 2b · Promises added after 2.0
+
+| Promise | Implementation | Test |
+|---|---|---|
+| Native Trivy JSON yields separate dependency, secret and IaC evidence | `parsers/trivy_json.py` | `tests/unit/test_trivy_json.py::test_one_report_yields_three_groups` |
+| Package-registry attestations (PyPI PEP 740) record the publisher and predicates | `parsers/registry_attestation.py` | `tests/unit/test_registry_attestation.py::test_pypi_provenance_records_publisher_and_predicates` |
+| `vex --consume` applies a statement only to a product of this release | `parsers/vex.py`, `exporters/vex.py` | `tests/unit/test_vex_consumer.py::test_a_statement_about_another_product_does_not_silence_the_release_cve`, `::test_a_statement_naming_a_declared_release_product_applies` |
+| `enrich` reads the KEV ransomware flag | `intelligence/` | `tests/unit/test_intelligence.py::test_load_kev_feed_parses_ransomware_flag` |
+| `oscal --kind assessment-results` follows OSCAL 1.1.2 | `exporters/oscal.py` | `tests/unit/test_oscal_assessment_results.py::test_assessment_results_shape_matches_oscal_1_1_2` |
+| `statement` writes an in-toto Statement v1 whose subject digest is the structural SHA-256 | `exporters/intoto.py` | `tests/unit/test_intoto_export.py::test_build_statement_shape_matches_in_toto_v1`, `::test_subject_digest_matches_structural_sha256` |
+| `sarif` writes one result per unmet control | `exporters/sarif_gaps.py` | `tests/unit/test_sarif_gap_export.py::test_each_unmet_control_is_one_result` |
+| `guac` emits one document per evidence record | `exporters/guac.py` | `tests/unit/test_profiles_and_guac.py::test_guac_adapter_emits_one_document_per_evidence` |
+
+Regulatory profiles (CRA, FedRAMP CR26) are covered in
+[evidence profile migration](evidence-profile-migration.md).
 
 ## 3 · Control evaluation promises
 
@@ -146,13 +88,14 @@ expected` correction.
 
 | Scenario | Expected verdict | Fixture | Obtained |
 |---|---|---|---|
-| Every critical + high has required evidence | `ready` | `examples/sample_release/` (full) | `ready`, 13/13 |
-| Only recommended evidence is missing | `conditional` | `examples/sample_release/` with `artifact_attestation.yaml` removed | `conditional` (reproduced in `tests/unit/test_scoring.py::test_release_conditional_when_only_medium_gap`) |
-| Only medium-criticality controls lack evidence | `conditional` | drop `threat_model.yaml` | `conditional` |
-| A critical control lacks required evidence | `not_ready` | sample_release without `--attestations-dir` | `not_ready` (4 missing critical: `ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`, `SSDF-PS.2`) |
-| Vulnerable lab scanned without attestations | `not_ready` | `examples/labs/01-core-saas-lab/` | `not_ready` (4 missing critical: `ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`, `SSDF-PS.2`) — re-validated 2026-05-17 against [`output/publication-2026-05-17/labs/01-core-saas-lab/`](../output/publication-2026-05-17/labs/01-core-saas-lab/) |
-| Vulnerable lab with weaker SBOM coverage | `not_ready` | `examples/labs/04-data-batch-lab/` | `not_ready` (5 missing critical: the same four plus `SSDF-PS.3` because no SBOM attestation is present) |
-| Vulnerable lab where `sca_scan` is present | `not_ready` | `examples/labs/06-industry-regulated-lab/` | `not_ready` (4 missing critical; one extra control met because `pip-audit` evidence raises `SSDF-PW.4` to `met`) |
+| Every control is met, waived or not applicable, with no required or recommended evidence missing | `ready` | `examples/sample_release/` (full) | `ready`, 13/13 met, exit `0` |
+| A high control lacks required evidence | `conditional` | `examples/sample_release/` with `artifacts/semgrep.sarif` removed | `conditional`, `SSDF-PW.7` and `SAMM-VERIF-ST-1` missing, exit `0` under the default `--fail-on not_ready` |
+| Only recommended evidence is missing | `conditional` | `examples/sample_release/` with `artifact_attestation.yaml` removed | `conditional`, 10 met and 3 partial, exit `0` (also `tests/unit/test_scoring.py::test_release_conditional_when_only_medium_gap`) |
+| Only medium-criticality controls lack evidence | `conditional` | drop `threat_model.yaml` | `conditional`, `SSDF-PW.1` and `SAMM-DESIGN-TA-1` missing, exit `0` |
+| A critical control lacks required evidence | `not_ready` | sample_release without `--attestations-dir` | `not_ready`, exit `2` (4 missing critical: `ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`, `SSDF-PS.2`) |
+| Vulnerable lab scanned without attestations | `not_ready` | `examples/labs/01-core-saas-lab/` | `not_ready` (4 missing critical: `ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`, `SSDF-PS.2`), maintainer-local, recorded 2026-05-17 |
+| Vulnerable lab with weaker SBOM coverage | `not_ready` | `examples/labs/04-data-batch-lab/` | `not_ready` (5 missing critical: the same four plus `SSDF-PS.3` because no SBOM attestation is present), maintainer-local, recorded 2026-05-17 |
+| Vulnerable lab where `sca_scan` is present | `not_ready` | `examples/labs/06-industry-regulated-lab/` | `not_ready` (4 missing critical; one extra control met because `pip-audit` evidence raises `SSDF-PW.4` to `met`), maintainer-local, recorded 2026-05-17 |
 
 ## 5 · Determinism & stability promise
 
@@ -162,6 +105,7 @@ expected` correction.
 | Artifact discovery order does not change the bundle | `tests/integration/test_determinism.py::test_sample_release_bundle_is_stable_across_artifact_reorder` | identical structural hash | matches |
 | The structural hash holds under every profile | `tests/integration/test_determinism.py::test_structural_hash_is_stable_under_every_profile` | identical structural hash | matches |
 | `compare` command reports zero deltas for identical bundles | `tests/integration/test_cli_more_commands.py::test_compare_emits_zero_delta_for_identical_bundles` | no improvements/regressions | matches |
+| The sample release keeps its pinned structural digest (`e859f475…` since 4.0.0) | `tests/integration/test_bundle_snapshot.py::test_sample_release_bundle_sha256_snapshot` | digest equals `tests/fixtures/sample_release_snapshot.sha256` | matches |
 
 ## 6 · Security promises
 

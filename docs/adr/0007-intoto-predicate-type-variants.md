@@ -134,3 +134,27 @@ Run `python -m pytest tests/unit/test_intoto_export.py -k predicate`
 to exercise the variants. Each variant emits the advertised
 predicateType, preserves the subject digest, and survives the DSSE
 base64 round-trip.
+
+## Amendment 2026-10-16 — what the `witness` and `slsa-provenance` URIs do not give you
+
+The decision stands; two statements above are stronger than what was
+checked, so they are qualified here instead of rewritten.
+
+- **`witness` is a namespaced URI, not tested Witness compatibility.** The
+  table and the alternatives section say Witness verifiers accept the
+  variant without bespoke parsers. That was never run end to end.
+  go-witness has no `custom` attestor (its `attestation/` directory lists
+  attestors such as `git`, `material`, `product`, `sarif`, `sbom`, `slsa`
+  and `vex`, and its factory returns `ErrAttestorNotFound` for an unknown
+  type), and `witness verify` evaluates signed attestation collections
+  from trusted functionaries rather than a standalone Statement. Read the
+  variant as "a predicate URI under the `witness.dev` namespace". Anyone
+  who needs `witness verify` to consume the bundle has to test a recipe
+  first; the `statement --help` text says the same.
+- **`slsa-provenance` changes the label, not the body.** A policy that
+  keys only on `predicateType == https://slsa.dev/provenance/v1` accepts
+  the statement as build provenance although the predicate is the bundle,
+  with no `buildDefinition` or `runDetails`. Tools that read those fields
+  reject it. Use the variant only where the consumer is known to accept
+  the bundle under that URI, never as a substitute for real SLSA
+  provenance in a provenance-gated deployment.

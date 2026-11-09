@@ -47,7 +47,9 @@ In scope (canonical list lives in
 - evidence export (JSON, Markdown, HTML, OSCAL, OpenVEX, in-toto),
 - evidence enrichment (EPSS, KEV, future risk feeds),
 - determinism, reproducibility, and signing integration,
-- CLI ergonomics and an optional read-only API for ingestion.
+- CLI ergonomics and an optional read-only API for ingestion (as
+  shipped: GET endpoints for the schema, the catalog, plugins, the version
+  and health; it does not accept bundles).
 
 Out of scope:
 
@@ -124,7 +126,10 @@ container tag on GHCR).
 
 ## License
 
-Apache-2.0 across the whole project. Contributions are covered by
+The project is licensed under Apache-2.0. Since 4.0.0 the package also
+includes a BSD-2-Clause port of the FIRST CVSS reference implementation
+(see [`THIRD_PARTY_LICENSES.md`](./THIRD_PARTY_LICENSES.md)), so the package
+license expression is `Apache-2.0 AND BSD-2-Clause`. Contributions are covered by
 [`CONTRIBUTING.md`](./CONTRIBUTING.md)'s license clause; no separate
 CLA is required, since Apache-2.0 already includes the inbound license
 grant.

@@ -1,21 +1,26 @@
 # Release readiness checklist
 
-Formal go/no-go criteria for tagging a new public release of the Secure
-SDLC Evidence Collector. The project does **not** ship until every
-criterion is ticked and the evidence linked below is current.
+Go/no-go criteria the maintainer works through before merging the
+release-please pull request of the Secure SDLC Evidence Collector. Gates
+marked **maintainer-local** need material that is not in this repository
+(the private lab corpus, a release approval); a reader cannot reproduce
+them from a clone.
 
 Public repository readiness is handled through the maintainer issue queue
 and release approvals, not through committed private runbooks.
 
-**Validation is re-run on every release; the checklist below is the
-authoritative gate.** Current published line: `4.x` (the live version is
-shown by the PyPI badge in the README). Latest verified pass: the full
-test suite is green with coverage above the `pyproject.toml` gate; the
-sample release returns `ready` (coverage 100, 13/13 controls met), and
-the sample release without `--attestations-dir` returns `not_ready` with the four expected missing critical controls
+Current published line: `4.x` (the live version is shown by the PyPI
+badge in the README). Last recorded pass: **4.2.0, 2026-10-16**. On the
+release commit `3108f61`, GitHub CI/CD (run `38938135052`), Security CI/CD
+(run `38938135161`), CodeQL (run `38938134989`) and Publish to PyPI (run
+`38938185369`, on the `v4.2.0` tag) all succeeded. Those CI runs cover the
+test suite and coverage gate, the sample release returning `ready` with a
+stable structural digest across runs and operating systems, and the
+release signing. The sample release without `--attestations-dir` returns
+`not_ready` with the four expected missing critical controls
 (`ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`,
-`SSDF-PS.2`) and exit code 2; back-to-back runs produce an identical
-structural SHA. Lint and type gates (`ruff`, `mypy --strict`) run in
+`SSDF-PS.2`) and exit code 2 (re-run 2026-10-16, see
+[traceability §4](traceability.md)). Lint and type gates (`ruff`, `mypy --strict`) run in
 `github-ci-cd.yml` and `publish-pypi.yml`; secret, SAST, SCA, IaC and
 workflow gates (Semgrep, Snyk Code, Snyk Open Source, Trivy dependency /
 misconfiguration / secret scans, Gitleaks, Dependency Review, `actionlint`)
@@ -41,20 +46,28 @@ and are not committed to the public repository.
 
 - [ ] Sample release (`examples/sample_release/`) produces `release_status =
       ready`, coverage **100**, 13/13 controls met.
-- [ ] Self-release (`examples/self_release/`) produces `release_status =
-      ready` (or `conditional` with documented recommended-only gaps).
+- [ ] **Maintainer-local.** Self-release (`examples/self_release/`)
+      produces `release_status = ready` (or `conditional` with documented
+      recommended-only gaps) once the uncommitted release approval
+      attestation and the generated scanner outputs are in place. A fresh
+      checkout reports `not_ready`; see `examples/self_release/README.md`.
 - [ ] Sample release without `--attestations-dir` produces
       `release_status = not_ready` with the expected missing critical
       controls listed in `docs/traceability.md §4`.
 - [ ] `sdlc-evidence compare before.json after.json` reports zero deltas
       for two back-to-back runs on the same inputs.
 
-## External-lab evidence
+## External-lab evidence (maintainer-local)
 
-- [ ] Every lab in `examples/labs/` can regenerate its ignored
-      `artifacts/`, `logs/`, and `output/bundle.json` locally or in CI.
+The lab corpus is not public, so these gates run only on a maintainer
+machine; see [`examples/labs/README.md`](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/examples/labs/README.md).
+
+- [ ] Every lab in `examples/labs/` regenerates its ignored `artifacts/`,
+      `logs/`, and `output/bundle.json`. `scripts/scan_all_labs.sh`
+      exits `0` even when a lab is skipped or the collector fails, so
+      check its output for `[skip]` and `collector exited non-zero` lines.
 - [ ] Each lab's obtained verdict matches the expected verdict in
-      `docs/traceability.md §3–§4`.
+      `docs/traceability.md §4`.
 - [ ] Any drift (expected ≠ obtained) is triaged — either code change,
       catalog change, or documented limitation in `docs/limitations.md`.
 
@@ -116,8 +129,9 @@ and are not committed to the public repository.
 - [ ] `SECURITY.md` reporting address is active.
 - [ ] Issue / PR templates render correctly on GitHub.
 - [ ] `CODEOWNERS` resolves to an active reviewer.
-- [ ] `CONTRIBUTING.md` describes the sign-off, DCO, and test-run
-      expectations.
+- [ ] `CONTRIBUTING.md` describes the local quality gates (`ruff`,
+      `mypy`, `pytest`) and the test expectations for a change. The project
+      does not require DCO sign-off.
 - [ ] `CODE_OF_CONDUCT.md` reference is current.
 
 ## Go / no-go
@@ -137,18 +151,28 @@ make lint typecheck test
 
 # Dogfood gates
 make run-example
+# two back-to-back runs on the same inputs, then compare them
+for n in 1 2; do
+  python -m evidence_collector.cli.main run \
+    --application payments-api --repository acme/payments-api \
+    --release-id 2026.04.10 --commit-sha abcdef1234567890 \
+    --artifacts-dir examples/sample_release/artifacts \
+    --attestations-dir examples/sample_release/attestations \
+    --output-dir "output/ready-check-$n"
+done
+python -m evidence_collector.cli.main compare \
+  output/ready-check-1/bundle.json \
+  output/ready-check-2/bundle.json
+
+# not_ready case: the same inputs without --attestations-dir (exits 2)
 python -m evidence_collector.cli.main run \
   --application payments-api --repository acme/payments-api \
   --release-id 2026.04.10 --commit-sha abcdef1234567890 \
   --artifacts-dir examples/sample_release/artifacts \
-  --output-dir output/ready-check
+  --output-dir output/not-ready-check
 
-python -m evidence_collector.cli.main compare \
-  output/ready-check/bundle.json \
-  output/sample_release/bundle.json
-
-# External-lab evidence
-bash scripts/scan_all_labs.sh
+# External-lab evidence (maintainer-local, needs the lab corpus)
+LAB_ROOT=/path/to/the/lab/corpus bash scripts/scan_all_labs.sh
 
 # Publish rehearsal (on the release-please PR branch, before merging it)
 branch="$(gh pr view <release-pr-number> --json headRefName --jq .headRefName)"

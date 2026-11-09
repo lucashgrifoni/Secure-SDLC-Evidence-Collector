@@ -6,6 +6,9 @@ The historical tiers below retain the original planning sequence. Development
 now targets the collector's documented CLI contracts and source-backed evidence
 annotations; shipped versions are recorded in CHANGELOG.md.
 
+The IDs below are the labels the items had while 4.0.0 was planned; the
+second column says what each one became.
+
 | Wave 4 item | Disposition as shipped |
 |---|---|
 | A1 | CISA 2026 (17 elements) and G7 AI (50 elements) presence states; no conformance gate |
@@ -21,9 +24,11 @@ See [migration and limits](evidence-profile-migration.md) and
 [ADR 0015](adr/0015-source-backed-evidence-profiles.md). These items shipped in
 4.0.0; fixes released after it are recorded in CHANGELOG.md.
 
-This document is the canonical plan for hardening the Secure SDLC Evidence
-Collector beyond a stable v1.x release. It complements `CHANGELOG.md`
-(what shipped) with **what we still want to ship and why**.
+This document began as the plan for hardening the Secure SDLC Evidence
+Collector beyond a stable v1.x release. Most tier items below have since
+shipped: a **Status** line under each tier says which, as of 2026-10-16, and
+`CHANGELOG.md` records when. The rationale columns are kept as written at
+planning time.
 
 The roadmap is organized into four tiers, ordered by **return on
 investment per hour of work**, not by topic. Tier 1 buys the most external
@@ -31,8 +36,9 @@ trust signal for the least engineering time; Tier 4 is community and
 ecosystem polish that only matters once the lower tiers are already in
 place.
 
-Live progress against this plan is tracked through public issues,
-release notes, and the maintainer project board.
+Progress is recorded in the release notes and `CHANGELOG.md`. Items that
+are designed but not scheduled wait for a concrete request in
+[Discussion #188](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/discussions/188).
 
 ---
 
@@ -67,6 +73,10 @@ These are the items that move the project from "well engineered" to
 | T1.4 | Determinism gate in CI                   | Run `run` twice and compare SHA-256 of `bundle.json`. Determinism is promised; needs to be tested.      |
 | T1.5 | `sdlc-evidence doctor` command           | Validates Python version, optional tokens, write perms. Cuts "doesn't work on my machine" reports.     |
 
+**Status:** all five shipped (`scorecard.yml`, `codeql.yml`,
+`.pre-commit-config.yaml`, the determinism gate in `github-ci-cd.yml`,
+`sdlc-evidence doctor`).
+
 ## Tier 2 — High impact, medium effort (half a day each)
 
 | ID   | Item                                                | Why it matters                                                                                              |
@@ -76,6 +86,13 @@ These are the items that move the project from "well engineered" to
 | T2.3 | Multi-arch Docker image, signed, with SBOM          | `docker buildx` for `linux/amd64+arm64`, `cosign sign`, `cosign attest`. Enables Mac M-series and Graviton. |
 | T2.4 | Mutation testing                                    | 78% line coverage says nothing about assertion strength. `mutmut` reveals tests that pass without purpose.  |
 | T2.5 | Structured logs (`structlog`) with `--json-logs`    | Pipelines consume JSON better than Rich tables. Falls back to Rich for TTY humans.                          |
+
+**Status:** T2.1, T2.2, T2.3 and T2.5 shipped (SLSA provenance from
+`slsa-github-generator` in `publish-pypi.yml`, the signed collector SBOM,
+the signed multi-arch GHCR image, `--json-logs`). T2.4: `mutmut` is
+configured in `pyproject.toml` for local runs; its CI workflow was removed
+in May 2026. The 78% figure above is from planning time; the coverage gate
+is now 85%.
 
 ## Tier 3 — Product maturity (1-2 days each)
 
@@ -87,6 +104,8 @@ These are the items that move the project from "well engineered" to
 | T3.4 | mkdocs-material site                       | The README is past 800 lines. GitHub Pages workflow already exists; publish a real technical site.             |
 | T3.5 | Python 3.13 in CI matrix                   | `requires-python>=3.12` claims 3.12+; only 3.12 is exercised today.                                            |
 
+**Status:** all five shipped; CI now tests Python 3.12 and 3.13.
+
 ## Tier 4 — Scale and community
 
 | ID   | Item                                         | Why it matters                                                                                  |
@@ -96,6 +115,12 @@ These are the items that move the project from "well engineered" to
 | T4.3 | OSCAL exporter                               | Auditors speak OSCAL; opens the door to FedRAMP/HITRUST/StateRAMP integrations.                 |
 | T4.4 | GitHub Discussions + issue labels + stale-bot| Signals "alive project" — `good first issue`, `help wanted`, abandoned issues auto-closed.      |
 | T4.5 | Conventional-commit-driven release tooling   | `release-please` or `semantic-release` so version bumps and changelog entries are mechanical.   |
+
+**Status:** T4.3 and T4.5 shipped (OSCAL export, release-please). T4.1
+shipped as discovery and listing only; `run` and `collect` do not call
+plugins ([plugins](plugins.md)). T4.2 shipped as a read-only GET API that
+does not accept bundles. T4.4: GitHub Discussions are enabled; the label
+and stale-issue automation was removed in May 2026.
 
 ## Tier 5 — Evidence enrichment and supply-chain alignment
 
@@ -111,7 +136,7 @@ collector's evidence-first nicho without growing the public surface.
 | T5.3 | OSCAL Assessment Results export (`oscal --kind assessment-results`) | FedRAMP 20x (Sept 2026) mandates machine-readable AR. Bundle evaluations → OSCAL findings + observations.                  |
 | T5.4 | CycloneDX 1.7 parser update (lifecycle phase, TLP, VEX inline)| ECMA-424 standard since 2026; current parser tops out at 1.5.                                                                |
 | T5.5 | in-toto Statement v1 wrapper (`sdlc-evidence statement`)      | Bundle becomes natively consumable by Sigstore cosign, GUAC, Kyverno, OPA Gatekeeper. No bespoke envelope code downstream.  |
-| T5.6 | SSDF 1.2 catalog upgrade (`catalog-v1.2.yaml`)                | NIST SP 800-218r1 is in final review; current catalog tracks 1.1.                                                            |
+| T5.6 | SSDF 1.2 catalog upgrade (`catalog-ssdf-1.2.yaml`)            | NIST SP 800-218r1 is in final review; current catalog tracks 1.1.                                                            |
 | T5.7 | SSDF AI Profile (`catalog-ai.yaml`)                           | SP 800-218A enumerates AI-specific controls (training data lineage, model card, red team). Empty space in the scanner market.|
 | T5.8 | EU CRA mode (`--profile cra-2026`)                            | Records operator context and reporting clocks; no submission, applicability or retention verdict. |
 | T5.9 | FedRAMP supporting evidence (`catalog-fedramp-cr26.yaml`)     | Opt-in source-backed KSI references; no automated authorization or control-effectiveness claim. |
@@ -122,7 +147,10 @@ collector's evidence-first nicho without growing the public surface.
 | T5.14| Multi-VEX consumer (OpenVEX + CycloneDX VEX + CSAF + SPDX)    | Vendors ship different VEX formats; whoever consolidates wins.                                                              |
 | T5.15| Market-positioning page                                       | Explicit comparison with Chainguard Enforce / Kusari / Scribe so first-touch users understand the nicho.                    |
 
-**Shipped from Tier 5 (this branch, 2026-05-18):** T5.1, T5.2, T5.3, T5.5.
+**Status:** every Tier 5 item shipped except T5.11 (`watch`), which is
+deferred and not scheduled ([limitations §17](limitations.md)). T5.6 ships
+as an opt-in preview catalog, and T5.14 reads OpenVEX, CycloneDX VEX and
+CSAF; SPDX VEX is not read.
 
 ## Tier 6 — OSS-first standards alignment + AI evidence + sustainability (v2.0)
 
@@ -130,7 +158,8 @@ Added 2026-05-18 after a second market scan. Hard constraint: **100 %
 open source**, no proprietary SDKs as required deps, every upstream
 project + standard must be free and Apache-2.0 (or compatible) licensed.
 
-Items target a **single v2.0 release** after v1.2.0 publishes. The
+Items targeted a **single v2.0 release**. (A v1.2.0 was planned but never
+published; this work shipped in 2.0.0 and later releases.) The
 x.0 jump is positional (signals the OSS-first / standards-aligned
 pivot); all schema changes are additive so a v1.x consumer reading a
 v2.x bundle still parses every field it knew. Detailed private planning
@@ -175,6 +204,12 @@ notes are not part of the public repository.
 | T6.C4 | Reproducible wheel build (`setuptools-reproducible` or `uv --reproducible`) | Bundle output already deterministic; the wheel itself is not. Closes the last reproducibility gap.  |
 | T6.C5 | Rego/Kyverno policy snippets                                  | Admission controllers consuming our bundle work out of the box. Closes "what do I do with this JSON". |
 
+**Status:** T6.1 to T6.8, T6.C1, T6.C3, T6.C4 and T6.C5 shipped. T6.3 ships
+as a `witness.dev`-namespaced predicate URI that has not been tested with
+`witness verify` (ADR-0007 amendment). T6.9 shipped the GUAC adapter; the
+watch daemon is deferred and not scheduled. T6.C2 is a funding application,
+not a code change, and is not tracked here.
+
 ### Tier 6 out of scope (additions to existing OOS list)
 
 - **SPDX VEX consumer** — low real-world adoption; revisit if a major SBOM vendor commits.
@@ -182,7 +217,7 @@ notes are not part of the public repository.
 - **Paid scanner parsers** (Snyk, Veracode, Mend.io, JFrog Xray) — forbidden by the 100 %-OSS constraint.
 - **In-house EPSS-like model** — FIRST's feed is free and trusted; rolling our own is rent-seeking.
 - **OpenSSF Best Practices Badge Gold tier** — needs multi-maintainer + bug bounty; not a v2.x goal.
-- **AI agent execution** — we *ingest* AI evidence; we do not *run* prompts. The watch daemon is a webhook receiver, not an agentic loop.
+- **AI agent execution** — we *ingest* AI evidence; we do not *run* prompts. The watch daemon, if built, would be a webhook receiver, not an agentic loop.
 
 ---
 
@@ -191,8 +226,9 @@ notes are not part of the public repository.
 1. Pick the smallest unfinished tier item.
 2. Open a branch, ship the change, validate locally with the same gates
    that CI runs (`ruff`, `mypy`, `pytest`, `actionlint`).
-3. Update the relevant public issue, release note, or project-board item in
-   the same change so the roadmap and the actual repo state never drift.
+3. Update the relevant release note or Discussion, and this page's
+   **Status** line, in the same change so the roadmap and the actual repo
+   state do not drift.
 4. If the item is bigger than expected, split it. The roadmap is allowed
    to grow IDs (e.g. `T2.3a`, `T2.3b`).
 

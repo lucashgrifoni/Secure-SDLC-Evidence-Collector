@@ -21,6 +21,7 @@ where the rationale would be easy to forget and expensive to re-derive.
 - [ADR-0012 — GUAC graph integration](./0012-guac-graph-integration.md)
 - [ADR-0013 — Release versioning process](./0013-release-versioning-process.md)
 - [ADR-0014 — NIST CSF 2.0 crosswalk for the built-in catalogs](./0014-csf-2-crosswalk-for-built-in-catalogs.md)
+- [ADR-0015 — Source-backed evidence annotations and bounded profiles](./0015-source-backed-evidence-profiles.md)
 
 ## Format
 
@@ -33,5 +34,8 @@ template:
 - **Consequences** — positive and negative effects, including the
   ones we knowingly accept.
 
-ADRs are immutable. To change a decision, write a new ADR that
-supersedes the old one and update the `Status` of the original.
+ADRs are not rewritten. To change a decision, write a new ADR that
+supersedes the old one and update the `Status` of the original (ADR-0015
+supersedes the profile annotations of ADR-0011, for example). A
+correction or clarification that keeps the decision is appended as a
+dated amendment section, as in ADR-0007, ADR-0009 and ADR-0012.

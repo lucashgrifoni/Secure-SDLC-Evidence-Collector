@@ -40,6 +40,10 @@ these commands into a file gets the event line, so read the payload key:
 | `exceptions validate` | `exception_validated` per file | `.exception` |
 | `verify` without `--expected` | `verify_computed` | `.sha256`, unchanged from 3.2.0 |
 
+This table covers only the commands whose output changed in 4.0.0. Every
+event the CLI emits, with its payload keys, is in the
+[JSON logs event reference](json-logs.md).
+
 With `--output`, `schema` and `oscal` write the bare document to the file and
 emit only the event naming it. When JSON logs are off, `schema`, `oscal`,
 `compare --format json` and `doctor --json` still print the raw document.
@@ -227,18 +231,18 @@ they are not an AI-specific crosswalk or proof of control effectiveness.
 
 ## Scope decisions
 
-B1's automatic BOD/SSVC decision engine is deferred. Supplied EPSS/KEV signals
+The automatic BOD/SSVC decision engine planned for 4.0.0 is deferred. Supplied EPSS/KEV signals
 remain available. The collector does not decide deployed-asset exposure,
 agency obligations, missing decision points or SSVC outcomes. A future reader
 of published SSVC assertions needs a separate input contract and pinned schemas.
 
-E1's automatic GPAI compliance verdict is dropped from this release. Existing
+The automatic GPAI compliance verdict planned for 4.0.0 is dropped from this release. Existing
 model cards, lineage, evaluations and attestations support a manual review;
 they do not establish provider role, applicable duties, documentation
 completeness or delivery to regulators. Do not substitute an SBOM, Croissant
 manifest or generic attestation for required regulatory documents.
 
-D3 is limited to corrected official IDs and CSF traceability. Broader AI 600-1
+The NIST SP 800-218A references are limited to corrected official IDs and CSF traceability. Broader AI 600-1
 risk mappings require explicit project judgment and are not generated.
 
 ## Output locking and recovery

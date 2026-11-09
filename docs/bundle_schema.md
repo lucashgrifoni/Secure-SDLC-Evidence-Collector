@@ -23,8 +23,15 @@ produced against. Every verdict in a bundle is relative to a catalog and
 checked by whoever received it: the same evidence yields `not_ready` and exit
 `2` against the shipped catalog and `conditional` and exit `0` against one
 whose required evidence types have been moved to recommended. `verify
---expected` proves a bundle has not changed since it was generated; `catalog`
-is what says against which standard. Unlike `collection_errors` it is never
+--expected` proves the bundle's structural content has not changed: every
+field except the per-run id and timestamps (`bundle_id`, `generated_at`,
+`collected_at`, `evaluated_at`, `enriched_at`, and the CRA deadlines derived
+from the run clock), which are stripped before hashing. Those fields,
+including the `generated_at` that `vex` uses as its clock for waiver
+validity, can be edited without changing the digest. For byte integrity,
+record the file's own SHA-256 (as each release's `checksums.txt` does for its
+bundle) or sign the file; see [limitations §8](limitations.md). `catalog` is
+what says against which standard. Unlike `collection_errors` it is never
 omitted — there is no empty case worth hiding.
 
 ## Machine-readable schema
@@ -61,9 +68,13 @@ in `.vscode/settings.json`:
 }
 ```
 
-Most editors also auto-associate schemas published on
-[SchemaStore](https://www.schemastore.org/) by filename, with no per-repo
-configuration, once the contract is registered there.
+Use that explicit mapping rather than relying on
+[SchemaStore](https://www.schemastore.org/). Its catalog entry "Secure SDLC
+Evidence Bundle" matches only `**/*.evidence-bundle.json`, so the default
+output name `bundle.json` gets no association, and as of 2026-10-16 the copy
+it serves is the 1.0.0 contract, which rejects every bundle written since
+`2.1.0` added `catalog`. The Pages URL above always serves the current
+contract.
 
 ```jsonc
 {
@@ -88,7 +99,7 @@ configuration, once the contract is registered there.
   "catalog": {
     "origin": "builtin",
     "name": "catalog.yaml",
-    "sha256": "b34bf0f9f3eacef6634f01a6da267778965ef5a1d3eb45690376144f7da4ad08",
+    "sha256": "a4a7ca55c05f3327bafeb44a0a7329bd16385cfea9f41885b81eeab5be292534",
     "control_count": 13
   },
   "evidence": [ /* NormalizedEvidence[] */ ],
@@ -178,6 +189,9 @@ catalog record has been edited.
 | `epss_feed_date`, `kev_feed_date` | string? | `YYYY-MM-DD` of the feeds used. |
 | `epss_model_version` | string? | EPSS model version from the feed header. |
 | `enriched_at` | datetime? | When `enrich` ran; stripped before the structural hash. |
+| `epss_consulted`, `kev_consulted` | bool | `false` when no EPSS feed or no CISA KEV catalog was ever consulted for this record, so a zero count means "not checked", not "not listed". Default `true`. See [limitations §14](limitations.md). |
+| `kev_cve_ids` | string[] | Every CVE on the record that CISA KEV lists, sorted; kept independently of `top_risk_cves`. |
+| `kev_ransomware_cve_ids` | string[] | The subset of `kev_cve_ids` with known ransomware campaign use, sorted. |
 
 ### Reachability
 

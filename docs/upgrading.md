@@ -2,7 +2,11 @@
 
 Changes that can alter what a pipeline sees: verdicts, exit codes, outputs,
 recorded bundle content and CI surface behavior. The newest release is at the
-top. `CHANGELOG.md` lists every change.
+top. [CHANGELOG.md](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/CHANGELOG.md)
+lists every change. The 4.0.0 digest migration is in
+[evidence profile migration](evidence-profile-migration.md); the 3.0.0 changes
+are under "Migrating to 3.0.0" in the
+[README](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector#migrating-to-300).
 
 ## Unreleased
 
@@ -182,3 +186,41 @@ bundles and structural digests stay the same.
   context file that contains the field.
 - Bundles produced with these catalogs or profiles get new structural digests.
   Re-pin `verify --expected` after regenerating them.
+
+
+### CLI help text
+
+- The usage line of every command that takes a positional argument names it
+  explicitly: `BUNDLE_PATH` for `verify`, `enrich`, `vex`, `statement`, `guac`
+  and `sarif`, `BEFORE AFTER` for `compare`, `PATHS...` for
+  `exceptions validate` and `DIRECTORY` for `exceptions list`. With Typer 0.27
+  the usage line used to show the lower-case parameter name in braces
+  (`{bundle_path}`); it now shows `{BUNDLE_PATH}`, where the braces are how
+  Typer 0.27 marks a required argument. Arguments, options, exit codes and
+  outputs are unchanged. Update any test or wrapper that matches the help text.
+- `bundle --help` now says that `bundle` is a partial alias of `evaluate` and
+  names the options it does not accept. `run --help` describes
+  `--exceptions-dir` as repeatable and `--catalog` as "a path, or the bare name
+  of a bundled catalog", as `evaluate --help` already did. The behaviour of
+  both commands is unchanged.
+
+## 4.2.0
+
+Four behaviours change for pipelines that worked on 4.1.x. A run with no
+collection errors produces the same structural digest as 4.1.4; the sample
+release still hashes to `e859f475…`.
+
+| Change | Effect on an unchanged pipeline | What to do |
+|---|---|---|
+| Waiver and attestation files refuse unknown keys | A misspelt or custom key used to be dropped. It is now a parse error that names the key. A refused attestation is a collection error, so the control it backed can go missing and the verdict can drop. A refused waiver no longer applies. | Remove the extra key or move custom data under `metadata`, then rerun. `exceptions validate` reports waiver files before a release does. |
+| `vex --consume` applies a consumed statement only to a product of this release | A supplier statement used to be applied by CVE id alone. A statement that names no product of this release is now skipped, listed in a warning, and counted in `skipped` on the `vex_emitted` event. | Pass your release's purl, CPE, CycloneDX ref or CSAF product id with `--product` (repeatable). The bundle's own `pkg:generic` id always counts. Matching rules: [limitations §16](limitations.md). |
+| `run` with no evidence source exits `3` | `run` with no input directory, no `--pull-request` and no `--workflow-run` used to produce a `not_ready` bundle. It now exits `3` and writes no bundle. | Make sure the scan directories exist before `run`, or treat exit `3` as a pipeline error rather than a verdict. |
+| `exceptions list` exits `3` on a bad directory | `exceptions list` used to exit `0` when a file could not be parsed or an exception id was defined twice. It now exits `3`, as `exceptions validate` does. | Fix or remove the file it names. |
+
+Example: apply a supplier's OpenVEX to the release `pkg:pypi/requests@2.30.0`
+component instead of letting it be skipped.
+
+```bash
+sdlc-evidence vex output/bundle.json --consume supplier.vex.json \
+  --product pkg:pypi/requests@2.30.0
+```

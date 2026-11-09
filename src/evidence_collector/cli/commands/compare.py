@@ -54,8 +54,10 @@ def register(app: typer.Typer) -> None:
 
     @app.command("compare")
     def cmd_compare(
-        before: Annotated[Path, typer.Argument(help="Path to the baseline bundle.json")],
-        after: Annotated[Path, typer.Argument(help="Path to the new bundle.json")],
+        before: Annotated[
+            Path, typer.Argument(metavar="BEFORE", help="Path to the baseline bundle.json")
+        ],
+        after: Annotated[Path, typer.Argument(metavar="AFTER", help="Path to the new bundle.json")],
         output_format: Annotated[
             str, typer.Option("--format", help="Output format: table or json")
         ] = "table",

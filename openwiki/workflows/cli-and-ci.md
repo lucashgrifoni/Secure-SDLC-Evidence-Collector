@@ -26,7 +26,7 @@ verified:
 
 The console entrypoint builds a root Typer application, registers command modules and handles global `--verbose`, `--json-logs` and `--version` options ([entrypoint](../../src/evidence_collector/cli/main.py#L17-L82)). Use the existing user guides for command-specific inputs.
 
-The default verdict exits are 0 for ready, 1 for conditional and 2 for not_ready. Input/IO failures reserve exit 3; `--fail-on` can change whether a softer verdict returns zero ([exit-code rules](../../src/evidence_collector/cli/_exit_codes.py#L18-L42), [threshold handling](../../src/evidence_collector/cli/_exit_codes.py#L86-L104)). Interpret the selected threshold with the status in the bundle.
+The verdict maps to 0 for ready, 1 for conditional and 2 for not_ready, but `--fail-on` decides which of them reach the exit code. With the default `--fail-on not_ready`, a conditional release exits 0; pass `--fail-on conditional` for conditional to exit 1. A not_ready release always exits 2, and input/IO failures reserve exit 3 ([exit-code rules](../../src/evidence_collector/cli/_exit_codes.py#L18-L42), [threshold handling](../../src/evidence_collector/cli/_exit_codes.py#L86-L104)). Interpret the selected threshold with the status in the bundle.
 
 ## Missing directories are context-dependent
 

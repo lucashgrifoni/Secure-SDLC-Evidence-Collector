@@ -2,8 +2,9 @@
 #
 # The site is published as a sub-path (`/docs/`) of the GitHub Pages
 # deploy in `.github/workflows/deploy-github-pages.yml`. The root of
-# the Pages site continues to host the evidence summary HTML produced
-# by the CLI itself, so the project dogfoods its own output.
+# the Pages site hosts the gitpage/ landing page, and `/evidence/` hosts
+# the evidence summary the CLI generates from the sample release, so the
+# project dogfoods its own output.
 #
 # Local preview:
 #   pip install mkdocs-material
@@ -73,6 +74,9 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Bundle schema reference: bundle_schema.md
+  - JSON logs events: json-logs.md
+  - Upgrading: upgrading.md
+  - Evidence profile migration: evidence-profile-migration.md
   - GitHub Action: github_action.md
   - Release readiness: release-readiness.md
   - Rolling back a release: rollback.md
@@ -81,10 +85,13 @@ nav:
   - GUAC integration: guac.md
   - Control gaps as SARIF: sarif.md
   - Plugins: plugins.md
+  - Policy snippets: policies.md
   - Limitations: limitations.md
   - Traceability: traceability.md
   - Maturity:
       - Roadmap: MATURITY_ROADMAP.md
+      - OSPS Baseline self-assessment: osps-baseline-self-assessment.md
+  - Repository wiki: openwiki.md
   - Architecture decisions:
       - Index: adr/README.md
       - ADR-0001 Pydantic v2: adr/0001-pydantic-v2.md
@@ -101,11 +108,12 @@ nav:
       - ADR-0012 GUAC graph integration: adr/0012-guac-graph-integration.md
       - ADR-0013 Release versioning process: adr/0013-release-versioning-process.md
       - ADR-0014 CSF 2.0 crosswalk: adr/0014-csf-2-crosswalk-for-built-in-catalogs.md
+      - ADR-0015 Source-backed evidence profiles: adr/0015-source-backed-evidence-profiles.md
 
-# Program / runbook content is published on the Pages docs site as
-# excluded reference material (linked from doc bodies, not nav). The
-# ``exclude_docs`` block keeps mkdocs --strict happy by making it
-# clear we own the omission.
+# docs/program/ (program and runbook notes kept in the repository) and
+# output/ are left out of the build entirely: nothing under them is
+# published on the Pages site. The ``exclude_docs`` block keeps mkdocs
+# --strict happy by making it clear we own the omission.
 exclude_docs: |
   program/
   output/

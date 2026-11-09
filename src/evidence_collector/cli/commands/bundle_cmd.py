@@ -38,7 +38,12 @@ def register(app: typer.Typer) -> None:
             ),
         ] = None,
     ) -> None:
-        """Alias of `evaluate` kept for naming compatibility with the plan doc."""
+        """Partial alias of `evaluate`: no waivers, owner team, risk mode or --fail-on.
+
+        It always gates at --fail-on not_ready and does not accept --owner-team,
+        --exceptions-dir, --artifact-root, --risk-mode or --epss-percentile-threshold.
+        Use `evaluate` when you need any of them.
+        """
         evaluate(
             evidence_path=evidence_path,
             application=application,

@@ -84,7 +84,9 @@ def register(app: typer.Typer) -> None:
     def cmd_exceptions_validate(
         paths: Annotated[
             list[Path],
-            typer.Argument(help="One or more exception YAML/JSON files to validate"),
+            typer.Argument(
+                metavar="PATHS...", help="One or more exception YAML/JSON files to validate"
+            ),
         ],
     ) -> None:
         """Validate one or more exception files against the canonical schema.
@@ -155,7 +157,10 @@ def register(app: typer.Typer) -> None:
     @exceptions_app.command("list")
     def cmd_exceptions_list(
         directory: Annotated[
-            Path, typer.Argument(help="Directory containing exception YAML/JSON files")
+            Path,
+            typer.Argument(
+                metavar="DIRECTORY", help="Directory containing exception YAML/JSON files"
+            ),
         ],
     ) -> None:
         """List every exception in a directory, flagging the dormant ones.

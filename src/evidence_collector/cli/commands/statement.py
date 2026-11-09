@@ -45,6 +45,7 @@ def register(app: typer.Typer) -> None:
                 # raises UsageError -> exit 2, the not_ready code. The body below
                 # already catches OSError and exits EXIT_INPUT_ERROR, which is what
                 # the README promises for every input failure.
+                metavar="BUNDLE_PATH",
                 file_okay=True,
                 dir_okay=False,
                 readable=True,
@@ -76,8 +77,10 @@ def register(app: typer.Typer) -> None:
                 "--predicate-type",
                 help=(
                     "predicateType variant: 'evidence-bundle' (default, "
-                    "project-native), 'witness' (Witness-compatible custom "
-                    "attestation), 'slsa-provenance' (advertises the SLSA "
+                    "project-native), 'witness' (a witness.dev-namespaced "
+                    "predicate URI; the predicate is still the bundle, and "
+                    "`witness verify` has not been tested against it), "
+                    "'slsa-provenance' (advertises the SLSA "
                     "Provenance v1 URI; the predicate is still the bundle, "
                     "without buildDefinition or runDetails), or 'svr' (in-toto "
                     "Simple Verification Result "

@@ -51,16 +51,24 @@ The tool is designed with the same rules it enforces on others:
 - `publish-pypi.yml` signs releases keyless with cosign (Sigstore Rekor
   transparency log) and attaches SLSA Build Level 3 provenance. Every
   public release since `v2.0.0` (the first public release line) is signed
-  and carries provenance; verify with `cosign verify-blob` against the
-  `https://token.actions.githubusercontent.com` OIDC issuer.
+  and carries provenance, except `v3.0.0`: its pipeline failed before
+  anything was signed, so it has no release assets, PyPI upload or image.
+  Verify with `cosign verify-blob` against the
+  `https://token.actions.githubusercontent.com` OIDC issuer and the exact
+  certificate identity
+  `https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/publish-pypi.yml@refs/tags/v<version>`
+  (commands in the [docs](https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/#verifying-signatures)).
 
 ## Scope
 
-In scope for bug bounty / reports:
+In scope for vulnerability reports (the project has no paid bug bounty):
 
 - parser injection or resource-exhaustion via malformed SARIF / SBOM /
   JUnit / attestation / exception inputs,
-- escape of `--output-dir` boundaries,
+- the tool writing outside the `--output-dir` it was given, for example
+  through a crafted name inside an input file (an `--output-dir` value
+  that itself contains `..` is honoured as typed, like any CLI output
+  path, and is not a vulnerability),
 - evaluation rules that mark `ready` when a required critical control
   is genuinely missing,
 - leakage of secrets via logs, error messages, or generated bundles,

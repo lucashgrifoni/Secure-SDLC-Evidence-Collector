@@ -1,13 +1,21 @@
 # Plugin contract
 
 The Secure SDLC Evidence Collector exposes two extension points so
-third-party packages can add parsers and collectors **without forking**.
+third-party packages can register parsers and collectors **without
+forking**.
+
+> **Discovery only.** Registered plugins are found and listed by
+> `sdlc-evidence plugins` and the `discover_*` functions below, but `run`,
+> `collect`, `evaluate`, the GitHub Action, the reusable workflow and the
+> GitLab component never call a plugin parser or collector. A plugin
+> produces evidence only when your own code calls it and passes the result
+> on; see [Registering a plugin](#registering-a-plugin).
 
 ## Why this exists
 
 Adopters who use proprietary scanners (Veracode, Checkmarx One,
-Fortify, Snyk Premium, in-house tools) need to ingest those formats as
-first-class evidence. Hard-coding every possible parser into this
+Fortify, Snyk Premium, in-house tools) need a way to turn those formats
+into evidence. Hard-coding every possible parser into this
 project would create churn for everyone; a plugin system pushes that
 ownership outward.
 
@@ -68,7 +76,7 @@ After `pip install my_pkg` the names show up in
 is currently the caller's responsibility (call `discover_parsers()` and
 dispatch explicitly). Auto-wiring into `LocalArtifactCollector` is
 planned but not shipped in any release yet, the current 4.x line
-included — track it under T4.1 follow-up in
+included; it is the open follow-up to the plugin item (T4.1) in
 [`MATURITY_ROADMAP.md`](./MATURITY_ROADMAP.md).
 
 ## Versioning the contract

@@ -148,7 +148,7 @@ explicit missing critical evidence.
 sdlc-evidence run                    # full pipeline: collect + evaluate + export
 sdlc-evidence collect                # walk directories, write evidence and collection errors as JSON
 sdlc-evidence evaluate               # evaluate an existing evidence list, export bundle
-sdlc-evidence bundle                 # alias of evaluate
+sdlc-evidence bundle                 # partial alias of evaluate (no waivers, risk mode or --fail-on)
 sdlc-evidence controls               # print the active control catalog
 sdlc-evidence compare BEFORE AFTER   # diff two bundles (coverage, status, per-control)
 sdlc-evidence oscal [--output PATH]  # render the control catalog as OSCAL Catalog JSON
@@ -156,15 +156,24 @@ sdlc-evidence oscal --kind assessment-results --bundle BUNDLE  # OSCAL Assessmen
 sdlc-evidence plugins                # list parser and collector entry-point plugins
 sdlc-evidence schema [--output PATH] # emit JSON Schema for EvidenceBundle
 sdlc-evidence doctor [--json]        # run local environment health checks
-sdlc-evidence verify BUNDLE          # recompute (and optionally verify) a bundle's structural SHA-256
-sdlc-evidence enrich BUNDLE          # attach EPSS + CISA KEV intelligence; re-applies a recorded --risk-mode
-sdlc-evidence vex BUNDLE             # emit an OpenVEX document from a bundle
-sdlc-evidence statement BUNDLE       # wrap a bundle as an in-toto Statement v1
-sdlc-evidence guac BUNDLE [-o PATH]  # emit a GUAC-collector container from a bundle
-sdlc-evidence sarif BUNDLE [-o PATH] # write unmet controls as SARIF 2.1.0 for code scanning
-sdlc-evidence exceptions validate F… # validate one or more waiver files
-sdlc-evidence exceptions list DIR    # list every valid waiver in a directory
+sdlc-evidence verify BUNDLE_PATH     # recompute (and optionally verify) a bundle's structural SHA-256
+sdlc-evidence enrich BUNDLE_PATH     # attach EPSS + CISA KEV intelligence; re-applies a recorded --risk-mode
+sdlc-evidence vex BUNDLE_PATH        # emit an OpenVEX document from a bundle
+sdlc-evidence statement BUNDLE_PATH  # wrap a bundle as an in-toto Statement v1
+sdlc-evidence guac BUNDLE_PATH [-o PATH]   # emit a GUAC-collector container from a bundle
+sdlc-evidence sarif BUNDLE_PATH [-o PATH]  # write unmet controls as SARIF 2.1.0 for code scanning
+sdlc-evidence exceptions validate PATHS... # validate one or more waiver files
+sdlc-evidence exceptions list DIRECTORY    # list every valid waiver in a directory
 sdlc-evidence --version
+```
+
+To merge a supplier's VEX into `vex` output, pass the file and the identifier of
+your release; a consumed statement that names no product of this release is
+skipped with a warning (see [docs/limitations.md §16](docs/limitations.md)):
+
+```bash
+sdlc-evidence vex output/bundle.json --consume supplier.vex.json \
+  --product pkg:pypi/your-package@1.2.3
 ```
 
 `--risk-mode epss-weighted` (on `run` and `evaluate`) only weighs EPSS / CISA
@@ -195,9 +204,10 @@ a `conditional` release exits `0`.** Pass `--fail-on conditional` if a condition
 verdict must stop the pipeline.
 
 `bundle` is a partial alias of `evaluate`: it always runs with `--fail-on
-not_ready` and does not accept `--owner-team` or `--exceptions-dir`, so
-waivers cannot be applied through it. Use `evaluate` when you need any of
-them.
+not_ready` and does not accept `--owner-team`, `--exceptions-dir`,
+`--artifact-root`, `--risk-mode` or `--epss-percentile-threshold`, so waivers
+and the risk-weighted verdict cannot be applied through it. Passing any of
+those options exits `3`. Use `evaluate` when you need any of them.
 
 Every other command reports a verdict but never encodes it in the exit status —
 `compare`, `controls`, `plugins`, `schema`, `oscal` and `doctor` exit `0` on
@@ -240,13 +250,17 @@ the verdict for whatever evidence it did find. That is usually `2`
 `--exceptions-dir` next to complete evidence can still exit `0`. The GitHub
 Action passes a configured `exceptions-dir` through even when it is missing,
 and the reusable workflow and the GitLab template always pass
-`--artifacts-dir`; all three rely on getting a bundle back. To stop a pipeline
+`--artifacts-dir`; all three expect a bundle back. To stop a pipeline
 on a missing directory, fail the step when `collection_errors` is not empty.
 
 The exception is `run` with nothing readable at all: when no input directory
 is passed, or none of the directories passed exists, and no `--pull-request`
 or `--workflow-run` is requested, there is no evidence to evaluate, so it
-exits `3` and writes no bundle.
+exits `3` and writes no bundle. The wrappers hit this case too. The GitHub
+Action skips an `artifacts-dir` or `attestations-dir` that does not exist, so
+when both are missing and no pull request or workflow run is set, the step
+exits `3` with no bundle and empty outputs, unless the configured
+`exceptions-dir` exists.
 
 > Before `3.0.0` this was inconsistent: `vex`, `guac`, `statement`, `enrich`
 > and `oscal` returned `2` for a malformed input — the same code as a
@@ -271,8 +285,26 @@ Commands whose output is a document wrap it in an event under JSON logs:
 prints `oscal_emitted` with the document under `.document`. Use `--output` to
 write the bare document to a file, or leave JSON logs off for that step.
 `compare --format json` and `doctor --json` print the raw document only when
-JSON logs are off. The full list of events and payload keys is in
-[the evidence profile migration notes](docs/evidence-profile-migration.md#bundle-pins-and-cli).
+JSON logs are off. Every event, the command that emits it and its payload
+keys are listed in the [JSON logs event reference](docs/json-logs.md); the
+gate result of `run`, `evaluate` and `bundle` is the `bundle_built` event.
+
+### Upgrading to 4.2.0
+
+4.2.0 is a minor release, but four behaviours change for existing pipelines:
+
+- Waiver and attestation files with an unknown key are refused instead of
+  having the key dropped. A refused attestation becomes a collection error, so
+  its control can go missing. Move custom data under `metadata`.
+- `vex --consume` applies a consumed statement only when it names a product of
+  this release. Pass your release's purl, CPE or CycloneDX ref with
+  `--product`; other statements are skipped with a warning.
+- `run` with no evidence source exits `3` and writes no bundle.
+- `exceptions list` exits `3` when a file cannot be parsed or an exception id
+  is defined twice, as `exceptions validate` already did.
+
+Every release's changes to verdicts, exit codes and outputs, with what to do
+about each, are listed in [docs/upgrading.md](docs/upgrading.md).
 
 ### Migrating to 4.0.0
 
@@ -427,9 +459,11 @@ evidence does not claim an environment nobody asserted.
 - `--artifact-root PATH` — base directory that absolute artifact paths
   are rewritten against, so the bundle records repo-relative paths
   instead of leaking local filesystem locations. Recommended in CI.
-- `--exceptions-dir PATH` — folder with YAML/JSON waiver files.
+- `--exceptions-dir PATH` — folder with YAML/JSON waiver files
+  (repeatable).
 - `--fail-on ready|conditional|not_ready` — severity at which the exit
-  status turns non-zero. Default `not_ready`; see [Exit codes](#exit-codes).
+  status turns non-zero. Default `not_ready`; `ready` is accepted and behaves
+  like `conditional`. See [Exit codes](#exit-codes).
 
 ### GitHub integration (opt-in)
 
@@ -510,6 +544,15 @@ The authoritative list is `EvidenceType` in
 The "missing critical/high evidence" line in the report and the console lists
 the gaps from both critical and high controls; only the critical ones make the
 release `not_ready`.
+
+In the default catalog the five critical controls are SBOM, code review,
+release approval, rollback plan and artifact signature. The SAST, SCA, secrets
+and test controls are high, so a release that meets the critical controls but
+has no scanner or test evidence at all is `conditional`, and under the default
+`--fail-on not_ready` it exits `0`.
+The bundled `catalog-fedramp-cr26` has no critical control, so it can return
+`conditional` but never `not_ready`. Pass `--fail-on conditional` when those
+gaps must stop the pipeline.
 
 Evidence anchored to another release or commit (an `evaluate --evidence` file
 collected for an older build, for example) is recorded in `collection_errors`
@@ -609,8 +652,9 @@ attributed.
   Syft, ZAP, JUnit, …) and evaluates whether the evidence set satisfies
   the control catalog.
 - It does **not** replace compliance decisions. A `ready` verdict means
-  "every required critical/high control has evidence attached", not "this
-  release is legally compliant".
+  "every control in the catalog is met, waived or not applicable, with no
+  required or recommended evidence missing", not "this release is legally
+  compliant".
 - It does **not** re-run scanners or assert findings severity. Severity
   and exploitability interpretation remain a human judgement on top of
   the bundle.
@@ -651,7 +695,8 @@ The tool itself follows the security rules it enforces on others:
 
 ### Shipped in `1.0.0`
 
-- GitLab / GitLab CI collector (MRs + pipelines).
+- GitLab / GitLab CI collector (MRs + pipelines), reachable through the
+  `GitLabCollector` Python API only; no CLI option uses it.
 - OWASP SAMM secondary framework mapping.
 - OWASP ZAP DAST parser and `dast_scan` evidence type.
 - Time-bound exception (waiver) workflow with scope and expiry.
@@ -659,9 +704,10 @@ The tool itself follows the security rules it enforces on others:
 - OSS governance (CONTRIBUTING, CoC, SECURITY, CODEOWNERS, Dependabot,
   issue/PR templates).
 
-### Shipped in `1.1.0`
+### Prepared for `1.1.0` (released as `2.0.0`)
 
-Tier 1-4 maturity work. **Configured in code or workflow** — every
+Tier 1-4 maturity work. No `1.1.0` was tagged or published; this work first
+shipped in `2.0.0`. **Configured in code or workflow** — every
 externally verifiable signal (signed assets on PyPI / GHCR, public
 Scorecard score, CodeQL alerts on the Security tab) materialises only
 after a public release runs end-to-end against the configured GitHub,
@@ -675,7 +721,9 @@ PyPI, GHCR, and OpenSSF project surfaces.
   image to `ghcr.io` signed and SBOM-attested with cosign.
 - Property-based testing (Hypothesis), 5 ADRs, public threat model,
   mkdocs-material site at `/docs/`, CI matrix Python 3.12 + 3.13.
-- Plugin entry-point system, optional FastAPI read-only surface,
+- Plugin entry-point system (discovery and the `sdlc-evidence plugins`
+  listing; `run` and `collect` do not call plugin parsers, see
+  [docs/plugins.md](docs/plugins.md)), optional FastAPI read-only surface,
   OSCAL exporter, `release-please` workflow.
 
 ### Shipped in `2.0.0`
@@ -710,7 +758,10 @@ The largest additions since `2.0.0`:
   and AI SBOM profiles (`4.0.0`), and a separately versioned GitLab CI/CD
   Catalog component.
 
-### Deferred (planned for `2.1`, not scheduled)
+### Deferred (not scheduled, built on demand)
+
+Each of these is waiting for a concrete need; say what you would use it for in
+[Discussion #188](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/discussions/188).
 
 - `sdlc-evidence watch` daemon (see `docs/limitations.md`).
 - SPDX VEX consumer (low industry adoption today).
