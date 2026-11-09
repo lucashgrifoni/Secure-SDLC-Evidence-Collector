@@ -64,7 +64,7 @@ the results decide its status.
 |---|---|
 | `result.level` | Used as is: `error` is high, `warning` medium, `note` low, `none` info. |
 | No `level`, `kind` other than `fail` | Level `none` (info). |
-| No `level` | The `defaultConfiguration.level` of the rule the result references through `ruleIndex`, `rule.index`, `ruleId` or `rule.id`, in the driver or in the `tool.extensions` entry `rule.toolComponent` names; `warning` when no rule sets one. |
+| No `level` | The `defaultConfiguration.level` of the rule the result references through `ruleIndex` or `rule.index`, then `rule.guid`, then `ruleId` or `rule.id`, in the driver or in the component `rule.toolComponent` names by index, guid or name; `warning` when no rule sets one. |
 | Rule property `security-severity` | Raises the bucket to critical (9.0 and up), high (7.0) or medium (4.0) when that is above the level's bucket. It never lowers it. |
 | `invocations[].executionSuccessful: false` | The record is `invalid` at low confidence and does not satisfy a control. |
 | No `results` array | Zero findings, low confidence, `metadata.results_absent: true`, and a warning. SARIF reserves `results: []` for a run that found nothing. |

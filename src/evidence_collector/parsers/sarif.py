@@ -9,10 +9,11 @@ Each result is bucketed by its effective level, resolved the way SARIF
 2.1.0 section 3.27.10 says: the result's own ``level``; for a result whose
 ``kind`` is not ``fail``, ``none``; otherwise the ``defaultConfiguration``
 level of the rule it references (``ruleIndex``/``rule.index``, then
-``ruleId``/``rule.id``, in the driver or in the extension named by
-``rule.toolComponent``); otherwise ``warning``. A rule's numeric
-``security-severity`` property can raise that bucket, never lower it.
-Invocation overrides (``ruleConfigurationOverrides``) are not applied.
+``rule.guid``, then ``ruleId``/``rule.id``, in the driver or in the
+component ``rule.toolComponent`` names by index, guid or name); otherwise
+``warning``. A rule's numeric ``security-severity`` property can raise
+that bucket, never lower it. Invocation overrides
+(``ruleConfigurationOverrides``) are not applied.
 
 A result whose every suppression is ``accepted`` or carries no status is
 not an open finding; it is counted in ``suppressed_count`` instead. The run
@@ -90,6 +91,23 @@ def _dict_list(value: Any) -> list[dict[str, Any]]:
     return [item if isinstance(item, dict) else {} for item in value]
 
 
+def _by_guid(items: list[dict[str, Any]], guid: Any) -> dict[str, Any] | None:
+    """Return the one item whose ``guid`` is ``guid``, or ``None``.
+
+    GUID hex digits match in either case (SARIF 2.1.0 section 3.5.3). A guid
+    that no item or more than one item carries resolves nothing.
+    """
+    if not isinstance(guid, str):
+        return None
+    wanted = guid.lower()
+    matches = [
+        item
+        for item in items
+        if isinstance(item.get("guid"), str) and item["guid"].lower() == wanted
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
 def _resolve_rule(
     result: dict[str, Any], driver: dict[str, Any], extensions: list[dict[str, Any]]
 ) -> dict[str, Any] | None:
@@ -100,9 +118,12 @@ def _resolve_rule(
     tool_component = reference.get("toolComponent")
     if isinstance(tool_component, dict):
         index = _valid_index(tool_component.get("index"), len(extensions))
+        by_guid = _by_guid([driver, *extensions], tool_component.get("guid"))
         name = tool_component.get("name")
         if index is not None:
             component = extensions[index]
+        elif by_guid is not None:
+            component = by_guid
         elif isinstance(name, str):
             named = [c for c in [driver, *extensions] if c.get("name") == name]
             component = named[0] if len(named) == 1 else None
@@ -114,6 +135,9 @@ def _resolve_rule(
     index = _valid_index(reference.get("index", result.get("ruleIndex")), len(rules))
     if index is not None:
         return rules[index]
+    by_guid = _by_guid(rules, reference.get("guid"))
+    if by_guid is not None:
+        return by_guid
     rule_id = reference.get("id", result.get("ruleId"))
     if isinstance(rule_id, str):
         for rule in rules:

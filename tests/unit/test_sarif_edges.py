@@ -211,6 +211,122 @@ def test_tool_component_can_be_named(tmp_path: Path) -> None:
     assert parse_sarif(_write(tmp_path, payload)).findings_count["high"] == 1
 
 
+# ---------------------------------------------------------------------------
+# GUID references. A rule reference is valid with a guid alone (SARIF 2.1.0
+# section 3.52.6), and rule.toolComponent may identify its component by guid
+# (section 3.54.2). GUID hex digits match in either case (section 3.5.3).
+# ---------------------------------------------------------------------------
+
+_ERROR_GUID = "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+_PACK_GUID = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+_UNKNOWN_GUID = "00000000-0000-4000-8000-000000000000"
+_GUID_ERROR_RULE = {**_ERROR_RULE, "guid": _ERROR_GUID}
+
+
+@pytest.mark.parametrize(
+    ("result", "bucket"),
+    [
+        ({"rule": {"guid": _ERROR_GUID}}, "high"),
+        ({"rule": {"guid": _ERROR_GUID.upper()}}, "high"),
+        # A hierarchical id (section 3.52.4) equals no descriptor id.
+        ({"ruleId": "r-error/sub", "rule": {"guid": _ERROR_GUID}}, "high"),
+        # A guid no rule carries resolves nothing: the id, then "warning".
+        ({"ruleId": "r-note", "rule": {"guid": _UNKNOWN_GUID}}, "low"),
+        ({"rule": {"guid": _UNKNOWN_GUID}}, "medium"),
+        ({"rule": {"guid": 7}}, "medium"),
+    ],
+)
+def test_rule_referenced_by_guid_is_resolved(
+    tmp_path: Path, result: dict[str, Any], bucket: str
+) -> None:
+    parsed = parse_sarif(_write(tmp_path, _run([result], rules=[_NOTE_RULE, _GUID_ERROR_RULE])))
+    assert parsed.findings_count[bucket] == 1, parsed.findings_count
+
+
+def test_guid_tells_apart_rules_that_share_an_id(tmp_path: Path) -> None:
+    # Rule ids need not be unique (section 3.52.5); the guid is.
+    rules = [
+        {"id": "dup", "defaultConfiguration": {"level": "note"}},
+        {"id": "dup", "guid": _ERROR_GUID, "defaultConfiguration": {"level": "error"}},
+    ]
+    result = {"ruleId": "dup", "rule": {"guid": _ERROR_GUID}}
+    parsed = parse_sarif(_write(tmp_path, _run([result], rules=rules)))
+    assert parsed.findings_count["high"] == 1, parsed.findings_count
+
+
+def test_guid_shared_by_two_rules_resolves_nothing(tmp_path: Path) -> None:
+    # An ambiguous guid picks no rule; the id still does.
+    rules = [
+        {"id": "r-note", "guid": _ERROR_GUID, "defaultConfiguration": {"level": "note"}},
+        _GUID_ERROR_RULE,
+    ]
+    by_id = {"ruleId": "r-error", "rule": {"guid": _ERROR_GUID}}
+    by_guid_only = {"rule": {"guid": _ERROR_GUID}}
+    parsed = parse_sarif(_write(tmp_path, _run([by_id, by_guid_only], rules=rules)))
+    assert parsed.findings_count["high"] == 1, parsed.findings_count
+    assert parsed.findings_count["medium"] == 1, parsed.findings_count
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        {"guid": _ERROR_GUID, "toolComponent": {"index": 1}},
+        {"id": "r-error", "toolComponent": {"guid": _PACK_GUID}},
+        {"guid": _ERROR_GUID, "toolComponent": {"guid": _PACK_GUID.upper()}},
+    ],
+)
+def test_rule_in_a_tool_extension_resolves_by_guid(
+    tmp_path: Path, reference: dict[str, Any]
+) -> None:
+    payload = {
+        "runs": [
+            {
+                "tool": {
+                    "driver": {"name": "CodeQL"},
+                    "extensions": [
+                        {"name": "other", "rules": []},
+                        {"name": "pack", "guid": _PACK_GUID, "rules": [_GUID_ERROR_RULE]},
+                    ],
+                },
+                "results": [{"rule": reference}],
+            }
+        ]
+    }
+    parsed = parse_sarif(_write(tmp_path, payload))
+    assert parsed.findings_count["high"] == 1, parsed.findings_count
+
+
+def test_tool_component_guid_can_name_the_driver(tmp_path: Path) -> None:
+    payload = {
+        "runs": [
+            {
+                "tool": {
+                    "driver": {"name": "CodeQL", "guid": _PACK_GUID, "rules": [_ERROR_RULE]},
+                    "extensions": [{"name": "pack", "rules": [_NOTE_RULE]}],
+                },
+                "results": [{"rule": {"id": "r-error", "toolComponent": {"guid": _PACK_GUID}}}],
+            }
+        ]
+    }
+    parsed = parse_sarif(_write(tmp_path, payload))
+    assert parsed.findings_count["high"] == 1, parsed.findings_count
+
+
+def test_unknown_tool_component_guid_resolves_no_rule(tmp_path: Path) -> None:
+    # The reference names a component the run does not have; the driver's
+    # rule of the same id is not assumed to be the one meant.
+    payload = {
+        "runs": [
+            {
+                "tool": {"driver": {"name": "CodeQL", "rules": [_ERROR_RULE]}},
+                "results": [{"rule": {"id": "r-error", "toolComponent": {"guid": _UNKNOWN_GUID}}}],
+            }
+        ]
+    }
+    parsed = parse_sarif(_write(tmp_path, payload))
+    assert parsed.findings_count["medium"] == 1, parsed.findings_count
+
+
 @pytest.mark.parametrize(
     ("level", "security_severity", "bucket"),
     [
