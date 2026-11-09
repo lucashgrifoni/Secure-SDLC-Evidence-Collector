@@ -69,7 +69,9 @@ top. `CHANGELOG.md` lists every change.
 ### Scanner results are read as the scanner reported them
 
 Verdicts can get stricter on unchanged scanner files. The sample release
-is unaffected: its bundle digest and its `ready` verdict stay the same.
+is unaffected: its bundle digest and its `ready` verdict stay the same. A
+bundle built from a scanner file that one of these changes touches gets a
+different digest, so refresh any `verify --expected` pin for it.
 
 - SARIF results with no `level` take the level of the rule they reference
   (`defaultConfiguration.level`), then `warning`, as SARIF 2.1.0 §3.27.10
@@ -79,13 +81,16 @@ is unaffected: its bundle digest and its `ready` verdict stay the same.
   Results whose `kind` is not `fail` now count as info.
 - A SARIF run whose invocation reports `executionSuccessful: false` is
   `invalid` and no longer satisfies its control.
-- Any open result in a `secrets_scan` fails it, whatever its level. This
-  covers secret scanner SARIF (Gitleaks and others) and the secret class of
-  a native Trivy JSON report. The finding counts keep the scanner's level.
+- An open result in a `secrets_scan` fails it, whatever its level, unless
+  its SARIF `kind` is `pass`, `notApplicable` or `informational`. This
+  covers secret scanner SARIF (Gitleaks and others). Any finding of the
+  secret class in a native Trivy JSON report fails it too. The finding
+  counts keep the scanner's level.
 - Checkov, KICS, tfsec and Terrascan SARIF is `iac_scan` instead of
-  `sast_scan`. A release that relied on Checkov alone for SSDF-PW.7 now
-  shows that control as missing; add a SAST scanner. Their evidence ids
-  start with `iac-` instead of `sast-` (Checkov) or `scan-`.
+  `sast_scan`. tfsec is matched by the driver name it writes, `defsec`. A
+  release that relied on one of these alone for SSDF-PW.7 now shows that
+  control as missing; add a SAST scanner. Their evidence ids start with
+  `iac-` instead of `sast-`.
 - SARIF results with only `accepted` (or status-less) suppressions, such
   as `# nosemgrep` lines, are no longer counted as findings. The number
   is recorded in `metadata.suppressed_count` and named in the summary.
@@ -97,7 +102,10 @@ is unaffected: its bundle digest and its `ready` verdict stay the same.
   whose suite omits `failures` but holds a failing test case now fails
   `test_result`.
 - OSV-Scanner `groups` are honoured: aliases of one issue count as one
-  finding, so `total_findings` can go down. CVE ids are unchanged.
+  finding, so `total_findings` can go down. CVE ids are unchanged. A group
+  whose members carry no usable severity takes the group's `max_severity`,
+  so a finding that used to count as medium can now count as high or
+  critical and fail `sca_scan`.
 - A clean native Trivy report, which has no `Results` key, is recognised
   instead of being listed as matching no parser. It still produces no
   evidence.

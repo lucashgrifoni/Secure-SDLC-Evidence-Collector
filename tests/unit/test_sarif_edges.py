@@ -386,6 +386,26 @@ def test_suppression_status_decides_whether_a_result_is_open(
     assert parsed.suppressed_count == suppressed
 
 
+def test_problem_count_leaves_out_kinds_that_report_no_problem(tmp_path: Path) -> None:
+    # SARIF 3.27.9: pass, notApplicable and informational results say no
+    # problem was found. They stay in the totals but are not problems.
+    results: list[Any] = [
+        {"kind": "pass"},
+        {"kind": "notApplicable"},
+        {"kind": "informational"},
+        {"kind": "open"},
+        {"kind": "review"},
+        {"kind": "fail"},
+        {},
+        {"kind": ["pass"]},
+        {"kind": "fail", "suppressions": [{"kind": "inSource"}]},
+    ]
+    parsed = parse_sarif(_write(tmp_path, _run(results)))
+    assert parsed.total_findings == 8
+    assert parsed.problem_count == 5
+    assert parsed.suppressed_count == 1
+
+
 # ---------------------------------------------------------------------------
 # Run-level signals: a failed invocation, an absent results array, and
 # error notifications from the tool.

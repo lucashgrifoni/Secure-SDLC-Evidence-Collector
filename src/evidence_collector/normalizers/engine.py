@@ -10,8 +10,9 @@ Heuristics for evidence classification:
   as `sast_scan`. SARIF produced by Gitleaks, Trufflehog, or similar tools
   is classified as `secrets_scan`. SARIF produced by Trivy/Grype/Snyk
   (dependencies) is classified as `sca_scan`. SARIF produced by Checkov,
-  KICS, tfsec or Terrascan is classified as `iac_scan`. When the tool is
-  unknown, the caller can override via `evidence_type_override`.
+  KICS, tfsec (driver name `defsec`) or Terrascan is classified as
+  `iac_scan`. When the tool is unknown, the caller can override via
+  `evidence_type_override`.
 """
 
 from __future__ import annotations
@@ -76,11 +77,14 @@ _SAST_TOOLS: frozenset[str] = frozenset(
 )
 # Infrastructure-as-code scanners. Checkov sat in the SAST set, so a
 # Terraform-only scan met the SAST control at high classification confidence.
+# "defsec" is the driver name tfsec writes (v1.28.14), after the library
+# that formats its SARIF.
 _IAC_TOOLS: frozenset[str] = frozenset(
     {
         "checkov",
         "kics",
         "tfsec",
+        "defsec",
         "terrascan",
     }
 )
@@ -353,13 +357,14 @@ def _sarif_run_status(parsed: ParsedSarif, evidence_type: EvidenceType) -> Evide
 
     A run whose invocation reports ``executionSuccessful: false`` did not
     scan, so it is ``invalid`` (as a JUnit report with no executed test is)
-    and cannot satisfy a control. In a secrets scan every open result is a
-    detected secret, so any result fails it whatever its level; the counts
-    keep the level the scanner reported.
+    and cannot satisfy a control. In a secrets scan an open result is a
+    detected secret unless its kind reports no problem (``pass``,
+    ``notApplicable``, ``informational``), so one such result fails the scan
+    whatever its level; the counts keep the level the scanner reported.
     """
     if parsed.execution_failed:
         return EvidenceStatus.INVALID
-    if evidence_type == EvidenceType.SECRETS_SCAN and parsed.total_findings > 0:
+    if evidence_type == EvidenceType.SECRETS_SCAN and parsed.problem_count > 0:
         return EvidenceStatus.FAILED
     return _sarif_status(parsed.findings_count)
 
@@ -382,7 +387,7 @@ def _sarif_summary(parsed: ParsedSarif, evidence_type: EvidenceType) -> str:
         notes.append(f"{parsed.suppressed_count} suppressed result(s) not counted")
     if (
         evidence_type == EvidenceType.SECRETS_SCAN
-        and parsed.total_findings > 0
+        and parsed.problem_count > 0
         and blocking == 0
         and not parsed.execution_failed
     ):

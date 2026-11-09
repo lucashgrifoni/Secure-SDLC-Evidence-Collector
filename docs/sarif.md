@@ -73,16 +73,18 @@ the results decide its status.
 | A suppression `underReview` or `rejected` | Still an open finding. |
 
 A scan fails when it has a critical or high open finding. A
-`secrets_scan` fails on any open finding, because every result of a
-secret scanner is a detected secret; its counts keep the level the
-scanner reported. Metadata keys appear only when their condition
-occurs, so a plain run produces the same record as before.
+`secrets_scan` also fails on any open result that can be a detected
+secret, whatever its level: every result except those whose `kind` is
+`pass`, `notApplicable` or `informational`, which SARIF 2.1.0 §3.27.9
+defines as no problem found. Its counts keep the level the scanner
+reported. Metadata keys appear only when their condition occurs, so a
+plain run produces the same record as before.
 
 The parser does not apply `ruleConfigurationOverrides`, does not fetch
 external property files, and does not open the URIs a result points to.
 
 Tests run these rules against output captured from real tools: Semgrep,
-Gitleaks, KICS and Checkov SARIF, Trivy JSON and pytest JUnit. Each
+Gitleaks, KICS, Checkov and tfsec SARIF, Trivy JSON and pytest JUnit. Each
 capture sits in `tests/fixtures/real/<tool>/` with a README that records
-the tool version and the command. CodeQL, Grype, OSV-Scanner and ZAP
-output have no capture there yet.
+the tool version and the command. CodeQL, Grype, OSV-Scanner, Terrascan
+and ZAP output have no capture there yet.

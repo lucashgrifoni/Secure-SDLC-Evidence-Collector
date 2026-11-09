@@ -4,10 +4,12 @@
   scan, so it is ``invalid`` and cannot satisfy a control.
 * A run with no ``results`` array exported nothing: the status stays as
   computed, but confidence drops to low and a warning is logged.
-* Any open result in a secrets scan fails it, whatever its level; the
-  severity buckets stay as the scanner reported them.
+* An open result in a secrets scan fails it, whatever its level, unless its
+  kind reports no problem (``pass``, ``notApplicable``, ``informational``);
+  the severity buckets stay as the scanner reported them.
 * Accepted suppressions are counted apart and shown, not treated as open.
-* IaC scanners (Checkov, KICS, tfsec, Terrascan) are ``iac_scan``.
+* IaC scanners (Checkov, KICS, tfsec under its driver name ``defsec``,
+  Terrascan) are ``iac_scan``.
 
 New metadata keys appear only when their condition fires, so a plain run
 produces the same record it always did.
@@ -111,6 +113,47 @@ def test_any_secret_fails_the_secrets_scan(
     assert "any finding fails a secrets scan" in evidence.summary
 
 
+@pytest.mark.parametrize("kind", ["pass", "notApplicable", "informational"])
+def test_a_result_that_reports_no_problem_does_not_fail_the_secrets_scan(
+    tmp_path: Path, sample_release: ReleaseContext, kind: str
+) -> None:
+    # SARIF 3.27.9: these kinds say the rule passed, did not apply, or only
+    # informs. None of them is a detected secret.
+    evidence = _evidence(
+        tmp_path, _run("gitleaks", [{"ruleId": "jwt", "kind": kind}]), sample_release
+    )
+    assert evidence.evidence_type == EvidenceType.SECRETS_SCAN
+    assert evidence.status == EvidenceStatus.PASSED
+    assert evidence.findings_count["info"] == 1
+    assert evidence.summary == "gitleaks reported 1 findings (high/critical=0)"
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        {"ruleId": "jwt", "kind": "fail", "level": "none"},
+        {"ruleId": "jwt", "kind": "open"},
+        {"ruleId": "jwt", "kind": "review"},
+        {"ruleId": "jwt", "kind": ["pass"]},
+    ],
+    ids=["fail-level-none", "open", "review", "kind-not-a-string"],
+)
+def test_a_result_that_may_be_a_secret_fails_the_secrets_scan(
+    tmp_path: Path, sample_release: ReleaseContext, result: dict[str, Any]
+) -> None:
+    evidence = _evidence(tmp_path, _run("gitleaks", [result]), sample_release)
+    assert evidence.status == EvidenceStatus.FAILED
+    assert "any finding fails a secrets scan" in evidence.summary
+
+
+def test_one_secret_among_passing_results_fails_the_secrets_scan(
+    tmp_path: Path, sample_release: ReleaseContext
+) -> None:
+    results = [{"ruleId": "aws", "kind": "pass"}, {"ruleId": "jwt"}]
+    evidence = _evidence(tmp_path, _run("gitleaks", results), sample_release)
+    assert evidence.status == EvidenceStatus.FAILED
+
+
 def test_secrets_scan_with_only_accepted_suppressions_passes(
     tmp_path: Path, sample_release: ReleaseContext
 ) -> None:
@@ -149,7 +192,7 @@ def test_accepted_suppression_of_an_error_does_not_fail_sast(
     )
 
 
-@pytest.mark.parametrize("driver", ["Checkov", "KICS v2.1.20", "tfsec", "terrascan"])
+@pytest.mark.parametrize("driver", ["Checkov", "KICS v2.1.20", "tfsec", "defsec", "terrascan"])
 def test_iac_scanners_are_iac_evidence(
     tmp_path: Path, sample_release: ReleaseContext, driver: str
 ) -> None:

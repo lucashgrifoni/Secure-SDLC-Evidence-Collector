@@ -209,14 +209,19 @@ _BUCKET_ORDER = ("info", "low", "medium", "high", "critical")
 
 
 def _package_buckets(entry: dict[str, Any], vulns: list[dict[str, Any]]) -> list[str]:
-    """One bucket per finding in a package, folding alias groups into one."""
+    """One bucket per finding in a package, folding alias groups into one.
+
+    Only string ids take part in the grouping. A record whose id is anything
+    else counts alone, as it does when the package has no groups.
+    """
     groups = entry.get("groups")
     by_id = {v["id"]: v for v in vulns if isinstance(v.get("id"), str)}
     grouped: set[str] = set()
     buckets: list[str] = []
     for group in groups if isinstance(groups, list) else []:
         ids = group.get("ids") if isinstance(group, dict) else None
-        members = [by_id[i] for i in ids if i in by_id] if isinstance(ids, list) else []
+        candidates = ids if isinstance(ids, list) else []
+        members = [by_id[i] for i in candidates if isinstance(i, str) and i in by_id]
         if not members:
             continue
         grouped.update(str(m["id"]) for m in members)
@@ -227,7 +232,8 @@ def _package_buckets(entry: dict[str, Any], vulns: list[dict[str, Any]]) -> list
         score = _extract_cvss_score({"score": group.get("max_severity")})
         buckets.append("medium" if score is None else _severity_bucket_from_cvss(score))
     for vuln in vulns:
-        if vuln.get("id") not in grouped:
+        vuln_id = vuln.get("id")
+        if not isinstance(vuln_id, str) or vuln_id not in grouped:
             buckets.append(_bucket_for_vulnerability(vuln))
     return buckets
 

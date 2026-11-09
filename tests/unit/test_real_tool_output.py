@@ -141,6 +141,22 @@ def test_kics_sarif_resolves_rule_index_and_informational_kind(
     assert evidence.status == EvidenceStatus.FAILED
 
 
+def test_tfsec_sarif_is_iac_evidence_under_its_driver_name(
+    sample_release: ReleaseContext,
+) -> None:
+    # tfsec v1.28.14 names its SARIF driver "defsec", after the library that
+    # formats the report, and sets the level on each result.
+    parsed = parse_sarif(REAL / "tfsec" / "tfsec.sarif")
+    assert parsed.tool_name == "defsec"
+    assert parsed.findings_count == {"critical": 0, "high": 7, "medium": 2, "low": 3, "info": 0}
+
+    evidence = normalize_sarif(parsed, sample_release)
+    assert evidence.evidence_type == EvidenceType.IAC_SCAN
+    assert evidence.classification is not None
+    assert evidence.classification.reason == "driver_match"
+    assert evidence.status == EvidenceStatus.FAILED
+
+
 def test_pytest_junit_counts(sample_release: ReleaseContext) -> None:
     parsed = parse_junit(REAL / "pytest" / "junit.xml")
     assert (parsed.total, parsed.failures, parsed.errors, parsed.skipped) == (4, 1, 1, 1)

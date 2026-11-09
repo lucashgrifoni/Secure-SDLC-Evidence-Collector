@@ -16,7 +16,9 @@ that bucket, never lower it. Invocation overrides
 (``ruleConfigurationOverrides``) are not applied.
 
 A result whose every suppression is ``accepted`` or carries no status is
-not an open finding; it is counted in ``suppressed_count`` instead. The run
+not an open finding; it is counted in ``suppressed_count`` instead. Of the
+open results, ``problem_count`` leaves out those whose ``kind`` reports no
+problem (``pass``, ``notApplicable``, ``informational``). The run
 also records whether an invocation reported ``executionSuccessful: false``,
 how many error-level tool notifications it carried, and whether it had no
 ``results`` array at all, which SARIF distinguishes from an empty one.
@@ -47,6 +49,9 @@ _SEVERITY_MAP: dict[str, str] = {
 _BUCKET_RANK: dict[str, int] = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
 # Result kinds other than "fail" (SARIF 3.27.9); their level defaults to none.
 _NON_FAIL_KINDS = frozenset({"pass", "open", "informational", "notApplicable", "review"})
+# The kinds among them that report no problem: the rule passed, did not
+# apply, or only informs. "open" and "review" leave the question unanswered.
+_NO_PROBLEM_KINDS = frozenset({"pass", "notApplicable", "informational"})
 
 # CVE identifiers follow CVE-YYYY-NNNN+. We accept years 1999..2099 and
 # 4+-digit sequence numbers because some scanners emit padded values.
@@ -65,6 +70,9 @@ class ParsedSarif:
     # file carries one run per tool, and each is its own evidence.
     run_index: int = 0
     raw: dict[str, Any] = field(default_factory=dict)
+    # Open results that can be a problem: every kind but pass, notApplicable
+    # and informational. Never above ``total_findings``.
+    problem_count: int = 0
     # Results whose suppressions are all accepted: reported, not open.
     suppressed_count: int = 0
     # An invocation said ``executionSuccessful: false``.
@@ -187,6 +195,12 @@ def _severity_bucket(
     return bucket
 
 
+def _reports_no_problem(result: dict[str, Any]) -> bool:
+    """True when the result's kind says no problem was found (SARIF 3.27.9)."""
+    kind = result.get("kind")
+    return isinstance(kind, str) and kind in _NO_PROBLEM_KINDS
+
+
 def _is_suppressed(result: dict[str, Any]) -> bool:
     """True when every suppression is accepted or has no status."""
     suppressions = result.get("suppressions")
@@ -245,6 +259,7 @@ def parse_sarifs(path: str | Path) -> list[ParsedSarif]:
             "info": 0,
         }
         total = 0
+        problems = 0
         suppressed = 0
         cve_ids: set[str] = set()
         results = run.get("results")
@@ -255,6 +270,8 @@ def parse_sarifs(path: str | Path) -> list[ParsedSarif]:
                 suppressed += 1
                 continue
             total += 1
+            if not _reports_no_problem(result):
+                problems += 1
             findings_count[_severity_bucket(result, driver, extensions)] += 1
             _collect_cves_from_result(result, cve_ids)
 
@@ -268,6 +285,7 @@ def parse_sarifs(path: str | Path) -> list[ParsedSarif]:
                 cve_ids=sorted(cve_ids),
                 run_index=index,
                 raw=data,
+                problem_count=problems,
                 suppressed_count=suppressed,
                 execution_failed=execution_failed,
                 tool_error_count=tool_error_count,

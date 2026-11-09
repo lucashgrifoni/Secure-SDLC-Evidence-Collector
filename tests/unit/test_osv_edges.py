@@ -12,6 +12,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from evidence_collector.parsers import parse_osv
 
 
@@ -221,3 +223,37 @@ def test_osv_vulnerability_outside_every_group_still_counts(tmp_path: Path) -> N
     parsed = parse_osv(_write(tmp_path, _grouped_report(groups)))
     assert parsed.total_findings == 2
     assert parsed.findings_count["low"] == 1
+
+
+@pytest.mark.parametrize(
+    ("record_id", "groups"),
+    [
+        (["GHSA-1"], None),
+        ({"value": "GHSA-1"}, None),
+        ("GHSA-1", [{"ids": [["GHSA-1"]]}]),
+        ("GHSA-1", [{"ids": [{"value": "GHSA-1"}]}]),
+        ("GHSA-1", [{"ids": ["GHSA-unknown"]}]),
+    ],
+    ids=[
+        "record-id-list",
+        "record-id-dict",
+        "group-id-list",
+        "group-id-dict",
+        "group-matches-no-record",
+    ],
+)
+def test_osv_ids_that_are_not_strings_do_not_stop_the_parse(
+    tmp_path: Path, record_id: Any, groups: Any
+) -> None:
+    # A list or dict where an id belongs is unhashable; looking it up raised
+    # TypeError and ended the whole run. Only string ids take part in the
+    # grouping, and the record still counts once at the medium fallback.
+    package: dict[str, Any] = {
+        "package": {"name": "a", "ecosystem": "npm"},
+        "vulnerabilities": [{"id": record_id}],
+    }
+    if groups is not None:
+        package["groups"] = groups
+    parsed = parse_osv(_write(tmp_path, {"results": [{"packages": [package]}]}))
+    assert parsed.total_findings == 1
+    assert parsed.findings_count["medium"] == 1

@@ -54,14 +54,15 @@ and emits **one evidence record per run**.
   confidence, and a `fallback_sast` reason is a reliable signal that
   the underlying tool was unknown to the heuristic.
 - IaC scanners (Checkov, KICS, tfsec, Terrascan) are classified as
-  `iac_scan`. Until 4.2.0 Checkov was matched as a SAST tool, so a
+  `iac_scan`. tfsec is matched by the driver name it writes, `defsec`.
+  Until 4.2.0 Checkov was matched as a SAST tool, so a
   Terraform-only scan met SSDF-PW.7 at high classification confidence.
   Trivy's SARIF still cannot be split by finding class from its driver
   name; the native Trivy JSON route (§6b) does that.
 - Each result is bucketed by its effective SARIF level (SARIF 2.1.0
   §3.27.10): the result's `level`, then `none` for a result whose `kind`
   is not `fail`, then the `defaultConfiguration.level` of the rule it
-  references (by index or id, in the driver or a `tool.extensions`
+  references (by index, guid or id, in the driver or a `tool.extensions`
   entry), then `warning`. Semgrep, Gitleaks and KICS leave the result
   level out, so before 4.3.0 every one of their results counted as
   medium and an `ERROR` rule hit never failed the scan. A rule's numeric
@@ -78,10 +79,11 @@ and emits **one evidence record per run**.
   `# nosemgrep` line), is not an open finding. It is counted in
   `metadata.suppressed_count` and named in the summary. `underReview` and
   `rejected` suppressions leave the result open.
-- In a `secrets_scan` every open result is a detected secret, so any one
-  fails the scan whatever its level. The counts keep the level the scanner
-  reported. The secret class of a native Trivy report follows the same
-  rule.
+- In a `secrets_scan` an open result is a detected secret unless its
+  `kind` is `pass`, `notApplicable` or `informational`, which SARIF defines
+  as no problem found. One detected secret fails the scan whatever its
+  level. The counts keep the level the scanner reported. In a native Trivy
+  report any finding of the secret class fails the scan.
 
 ## 3 · Evidence quality is shallow
 
