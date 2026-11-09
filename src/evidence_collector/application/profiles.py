@@ -50,11 +50,10 @@ _STEWARD_ARTICLES = {
     "vulnerability": "24(3) applying 14(1)",
     "incident": "24(3) applying 14(3),14(8)",
 }
-# Art. 24(3) applies Art. 14(3) and (8) to a steward only "to the extent that
-# severe incidents [...] affect network and information systems provided by
-# the open-source software stewards for the development of such products". No
-# context field says whether this incident does, so the condition is recorded
-# unresolved, as legal_applicability is.
+# Art. 24(3) applies Art. 14(3) and (8) to a steward only to the extent that a
+# severe incident affects network and information systems the steward provides
+# for developing the product. No context field says whether this incident
+# does, so the condition is recorded unresolved, as legal_applicability is.
 _STEWARD_INCIDENT_SCOPE = {
     "condition": "affects_steward_provided_development_systems",
     "status": "not_assessed",
