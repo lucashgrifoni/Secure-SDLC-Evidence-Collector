@@ -113,7 +113,7 @@ automatically.
 📖 **Documentation:** the full docs site is published at
 <https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/>.
 To run the collector inside a pipeline, see
-[Using the GitHub Action](./docs/github_action.md).
+[Using the GitHub Action](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/github_action.md).
 
 ### Smoke test (one command)
 
@@ -169,7 +169,7 @@ sdlc-evidence --version
 
 To merge a supplier's VEX into `vex` output, pass the file and the identifier of
 your release; a consumed statement that names no product of this release is
-skipped with a warning (see [docs/limitations.md §16](docs/limitations.md)):
+skipped with a warning (see [docs/limitations.md §16](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/limitations.md)):
 
 ```bash
 sdlc-evidence vex output/bundle.json --consume supplier.vex.json \
@@ -184,7 +184,7 @@ The working flow is `run --risk-mode epss-weighted`, then
 default `off` keeps its verdict). `enrich` exits `0` either way, so gate on the
 enriched bundle's `summary.release_status`, or pass its evidence to
 `evaluate --risk-mode epss-weighted`. Details in
-[docs/limitations.md §14](docs/limitations.md).
+[docs/limitations.md §14](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/limitations.md).
 
 ### Exit codes
 
@@ -202,6 +202,18 @@ lowers it. The full matrix:
 Read the bold cell before wiring a gate: **with the default `--fail-on=not_ready`,
 a `conditional` release exits `0`.** Pass `--fail-on conditional` if a conditional
 verdict must stop the pipeline.
+
+The CI surfaces set their own threshold, and they do not all match the CLI
+default:
+
+- GitHub Action (`action.yml`): `fail-on` defaults to `not_ready`, so a
+  `conditional` release passes the step.
+- Reusable workflow (`reusable-evidence-collection.yml`): gates at `not_ready`
+  by default, like the Action.
+- GitLab CI/CD Catalog component (`examples/gitlab-component`): `fail-on`
+  defaults to `conditional`, so a `conditional` release fails the job.
+- Legacy GitLab template (`examples/gitlab-ci`, deprecated in favour of the
+  component): `FAIL_ON` defaults to `not_ready`.
 
 `bundle` is a partial alias of `evaluate`: it always runs with `--fail-on
 not_ready` and does not accept `--owner-team`, `--exceptions-dir`,
@@ -249,8 +261,9 @@ the verdict for whatever evidence it did find. That is usually `2`
 (`not_ready`) when the missing directory held the evidence, but a missing
 `--exceptions-dir` next to complete evidence can still exit `0`. The GitHub
 Action passes a configured `exceptions-dir` through even when it is missing,
-and the reusable workflow and the GitLab template always pass
-`--artifacts-dir`; all three expect a bundle back. To stop a pipeline
+and the reusable workflow and the
+[GitLab CI/CD Catalog component](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/examples/gitlab-component/README.md) always
+pass `--artifacts-dir`; all three expect a bundle back. To stop a pipeline
 on a missing directory, fail the step when `collection_errors` is not empty.
 
 The exception is `run` with nothing readable at all: when no input directory
@@ -286,7 +299,7 @@ prints `oscal_emitted` with the document under `.document`. Use `--output` to
 write the bare document to a file, or leave JSON logs off for that step.
 `compare --format json` and `doctor --json` print the raw document only when
 JSON logs are off. Every event, the command that emits it and its payload
-keys are listed in the [JSON logs event reference](docs/json-logs.md); the
+keys are listed in the [JSON logs event reference](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/json-logs.md); the
 gate result of `run`, `evaluate` and `bundle` is the `bundle_built` event.
 
 ### Upgrading to 4.2.0
@@ -304,7 +317,7 @@ gate result of `run`, `evaluate` and `bundle` is the `bundle_built` event.
   is defined twice, as `exceptions validate` already did.
 
 Every release's changes to verdicts, exit codes and outputs, with what to do
-about each, are listed in [docs/upgrading.md](docs/upgrading.md).
+about each, are listed in [docs/upgrading.md](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/upgrading.md).
 
 ### Migrating to 4.0.0
 
@@ -315,7 +328,7 @@ change newly generated structural digests (the sample moves to
 and pin a new digest when you regenerate evidence. `run` gains
 `--cra-context` for `--profile cra-2026` and `--fedramp-class` for
 `--profile fedramp-20x`. Details and limits are in
-[evidence profile migration](./docs/evidence-profile-migration.md).
+[evidence profile migration](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/evidence-profile-migration.md).
 
 ### Migrating to 3.0.0
 
@@ -528,7 +541,7 @@ AI evidence: `model_card`, `prompt_injection_test_result`, `ai_safety_eval`,
 
 The authoritative list is `EvidenceType` in
 `src/evidence_collector/domain/enums.py`, mirrored in the published
-[`docs/evidence-bundle.schema.json`](./docs/evidence-bundle.schema.json).
+[`docs/evidence-bundle.schema.json`](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/evidence-bundle.schema.json).
 
 ---
 
@@ -626,9 +639,9 @@ The collector is dogfooded on every push and on every release:
   for the external vulnerable-app suite. Raw scanner dumps, logs, SBOMs, and
   bundles are generated locally or in CI and intentionally not committed.
 - **Release readiness checklist** — go/no-go criteria for public releases
-  live in [`docs/release-readiness.md`](./docs/release-readiness.md).
+  live in [`docs/release-readiness.md`](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/release-readiness.md).
 - **Known limitations** — parser scope, heuristics, and classification
-  boundaries are documented in [`docs/limitations.md`](./docs/limitations.md).
+  boundaries are documented in [`docs/limitations.md`](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/limitations.md).
 
 Bundle comparison across runs is available via `sdlc-evidence compare
 before.json after.json`. It reports what changed but never fails a build, and
@@ -671,7 +684,7 @@ attributed.
 > issue. Email [lucas.henriquegrifoni@gmail.com](mailto:lucas.henriquegrifoni@gmail.com)
 > with a subject line starting `[secure-sdlc-evidence-collector]`. Full
 > policy, response SLA, and disclosure timeline live in
-> [`SECURITY.md`](./SECURITY.md).
+> [`SECURITY.md`](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/SECURITY.md).
 
 The tool itself follows the security rules it enforces on others:
 
@@ -723,7 +736,7 @@ PyPI, GHCR, and OpenSSF project surfaces.
   mkdocs-material site at `/docs/`, CI matrix Python 3.12 + 3.13.
 - Plugin entry-point system (discovery and the `sdlc-evidence plugins`
   listing; `run` and `collect` do not call plugin parsers, see
-  [docs/plugins.md](docs/plugins.md)), optional FastAPI read-only surface,
+  [docs/plugins.md](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/plugins.md)), optional FastAPI read-only surface,
   OSCAL exporter, `release-please` workflow.
 
 ### Shipped in `2.0.0`
@@ -740,11 +753,13 @@ Tier 6 — standards-alignment cut, and the first public release line.
   consumer; optional reachability field.
 - EU CRA + FedRAMP 20x profiles + FedRAMP 20x KSI catalog; GUAC adapter.
 - Reproducible wheel gate, reusable GitHub Actions workflow, GitLab CI
-  template, devcontainer + Codespaces, comparison page, ADRs 0007–0012.
+  template (now deprecated; use the
+  [GitLab CI/CD Catalog component](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/examples/gitlab-component/README.md)),
+  devcontainer + Codespaces, comparison page, ADRs 0007–0012.
 
 ### Shipped after `2.0.0`
 
-Every release from `2.1.0` onward is recorded in [CHANGELOG.md](CHANGELOG.md).
+Every release from `2.1.0` onward is recorded in [CHANGELOG.md](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/CHANGELOG.md).
 The largest additions since `2.0.0`:
 
 - In-toto release attestations, PyPI (PEP 740) and npm registry
@@ -784,13 +799,13 @@ load-bearing for their use case.
 
 ## License
 
-[Apache-2.0](./LICENSE) © Lucas Henrique Grifoni. Since 4.0.0 the package also
+[Apache-2.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/LICENSE) © Lucas Henrique Grifoni. Since 4.0.0 the package also
 includes a BSD-2-Clause FIRST CVSS reference port; see
-[third-party notices](./THIRD_PARTY_LICENSES.md).
+[third-party notices](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/THIRD_PARTY_LICENSES.md).
 
 The 4.0.0 changes and digest migration are documented in
-[evidence profile migration](./docs/evidence-profile-migration.md).
+[evidence profile migration](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/evidence-profile-migration.md).
 
 ## Repository wiki
 
-[Source-linked repository guide](openwiki/quickstart.md) · [OpenWiki setup and maintenance](docs/openwiki.md).
+[Source-linked repository guide](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/openwiki/quickstart.md) · [OpenWiki setup and maintenance](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/openwiki.md).

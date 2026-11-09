@@ -21,6 +21,7 @@ from typing import Any
 
 import pytest
 import typer
+import yaml
 from typer.testing import CliRunner
 
 from evidence_collector.cli._errors import report_error
@@ -144,12 +145,11 @@ def test_repeatable_options_say_so_in_the_help(path: str) -> None:
 def test_readme_marks_the_repeatable_run_options() -> None:
     text = _README.read_text(encoding="utf-8")
     section = text[text.index("### Ingestion options") : text.index("### GitHub integration")]
-    for param in _options(_leaf_commands()["run"]):
-        if not param.multiple:
-            continue
+    repeatable = [param for param in _options(_leaf_commands()["run"]) if param.multiple]
+    assert repeatable, "run no longer has a repeatable option"
+    for param in repeatable:
         bullet = re.search(rf"- `{re.escape(param.opts[0])} [^\n]*(?:\n  [^\n]*)*", section)
-        if bullet is None:
-            continue
+        assert bullet, f"README has no bullet for {param.opts[0]}"
         assert "repeatable" in bullet.group(0), f"README does not mark {param.opts[0]} repeatable"
 
 
@@ -218,6 +218,47 @@ def test_every_emitted_event_is_documented_and_every_documented_event_exists() -
 
 def test_readme_points_at_the_event_reference() -> None:
     assert "docs/json-logs.md" in _README.read_text(encoding="utf-8")
+
+
+_REPO_FILE_URL = "https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/"
+
+
+def _readme_link_targets() -> list[str]:
+    return re.findall(r"\]\(([^)\s]+)\)", _README.read_text(encoding="utf-8"))
+
+
+def test_readme_has_no_relative_link() -> None:
+    """README.md is the PyPI description, and PyPI does not resolve relative links."""
+    targets = _readme_link_targets()
+    assert targets, "README.md has no Markdown link"
+    assert [t for t in targets if not t.startswith(("https://", "#", "mailto:"))] == []
+
+
+def test_readme_links_into_the_repository_name_files_that_exist() -> None:
+    paths = [
+        target.removeprefix(_REPO_FILE_URL).split("#", 1)[0]
+        for target in _readme_link_targets()
+        if target.startswith(_REPO_FILE_URL)
+    ]
+    assert paths, "README.md links no repository file"
+    assert [path for path in paths if not Path(path).exists()] == []
+
+
+def test_readme_states_the_fail_on_default_of_the_action_and_the_gitlab_component() -> None:
+    action = yaml.safe_load(Path("action.yml").read_text(encoding="utf-8"))
+    component_spec = next(
+        yaml.safe_load_all(
+            Path("examples/gitlab-component/templates/collect.yml").read_text(encoding="utf-8")
+        )
+    )
+    readme = " ".join(_README.read_text(encoding="utf-8").split())
+    action_default = action["inputs"]["fail-on"]["default"]
+    component_default = component_spec["spec"]["inputs"]["fail-on"]["default"]
+    assert f"GitHub Action (`action.yml`): `fail-on` defaults to `{action_default}`" in readme
+    assert (
+        "GitLab CI/CD Catalog component (`examples/gitlab-component`): `fail-on` defaults to "
+        f"`{component_default}`" in readme
+    )
 
 
 _CATALOG_DATA = Path("src/evidence_collector/controls/data")

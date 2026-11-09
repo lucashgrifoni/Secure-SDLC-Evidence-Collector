@@ -20,7 +20,7 @@ or `null` where the text says so.
 | Event | Emitted by | When | Payload keys |
 |---|---|---|---|
 | `version` | `--version` | Version requested | `version` |
-| `command_failed` | any command | Usage error (unknown option, missing required option, rejected value), a missing required dependency, or any failure without a command-specific event below. Exits `3`. | `reason`; `error_type` on usage errors and a missing dependency |
+| `command_failed` | any command | Usage error (unknown option, missing required option, rejected value), a missing required dependency, or any failure without a command-specific event below. Exits `3`. | `reason`, `error_type` (the exception class, for example `NoSuchOption`, `MissingParameter` or `ModuleNotFoundError`) |
 | `log` | any command | A log record. Written to **stderr**, not stdout, so stdout keeps only the events below. | `level`, `logger`, `message` |
 
 ## Building a bundle: `run`, `collect`, `evaluate`, `bundle`
@@ -40,13 +40,13 @@ or `null` where the text says so.
 | Event | Emitted by | When | Payload keys |
 |---|---|---|---|
 | `vex_emitted` | `vex` | The OpenVEX document was written | `bundle`, `output`, `statements`, `consumed`, `skipped`, `policy` |
-| `vex_failed` | `vex` | Exits `3`. Either the bundle could not be read (`bundle`, `reason`), or a `--consume` source disagrees with the bundle under `--policy fail` (`bundle`, `policy`, `reason`, and no file is written). | `bundle`, `reason`; `policy` only for a merge conflict |
+| `vex_failed` | `vex` | Exits `3`. The bundle could not be read (`bundle`, `reason`), it is JSON that does not match the bundle schema (`reason` only), or a `--consume` source disagrees with the bundle under `--policy fail` (`bundle`, `policy`, `reason`, and no file is written). | `reason`; `bundle` except for a schema mismatch; `policy` only for a merge conflict |
 | `statement_emitted` | `statement` | The in-toto Statement was written | `bundle`, `statement`, `envelope`, `predicate_type`, `predicate_type_name` |
-| `statement_failed` | `statement` | Unknown `--predicate-type`, or the bundle could not be read or validated. Exits `3`. | `reason`, `bundle` |
+| `statement_failed` | `statement` | Unknown `--predicate-type`, or the bundle could not be read or does not match the bundle schema. Exits `3`. | `reason`; `bundle` except for a schema mismatch |
 | `sarif_emitted` | `sarif` | The SARIF file was written | `bundle`, `output`, `results` |
-| `sarif_failed` | `sarif` | The bundle could not be read. Exits `3`. | `reason`, `bundle` |
+| `sarif_failed` | `sarif` | The bundle could not be read or does not match the bundle schema. Exits `3`. | `reason`; `bundle` except for a schema mismatch |
 | `guac_emitted` | `guac` | The GUAC collector container was written | `bundle`, `output`, `documents` |
-| `guac_failed` | `guac` | The bundle could not be read. Exits `3`. | `reason`, `bundle` |
+| `guac_failed` | `guac` | The bundle could not be read or does not match the bundle schema. Exits `3`. | `reason`; `bundle` except for a schema mismatch |
 | `oscal_emitted` | `oscal` | The OSCAL document was produced | `kind`; `document` when printed to stdout, `output` when written with `--output` |
 | `oscal_failed` | `oscal` | `--kind assessment-results` without an existing `--bundle`, an unreadable or invalid bundle, or control ids that collide once rendered as OSCAL. Exits `3`. | `reason` |
 | `enrich_completed` | `enrich` | The bundle was enriched | `bundle`, `evidence_enriched`, `evidence_with_cves`, `distinct_cves`, `cves_in_kev`, `epss_feed_date`, `kev_feed_date`, `risk_mode`, `release_status`, `reports_regenerated`, `reports_left_alone` |
@@ -60,7 +60,7 @@ or `null` where the text says so.
 |---|---|---|---|
 | `verify_computed` | `verify` | Digest computed, no `--expected` | `bundle`, `sha256` |
 | `verify_result` | `verify --expected` | Digest compared with the pin. Exits `2` when `match` is false. | `bundle`, `sha256`, `expected`, `match` |
-| `verify_failed` | `verify` | The bundle could not be read or validated. Exits `3`. | `reason`, `bundle` |
+| `verify_failed` | `verify` | The bundle could not be read or validated, or `--expected` is not a 64-character SHA-256. Exits `3`. | `reason`, `bundle` |
 | `bundles_compared` | `compare` | Comparison done. Never fails the build. | `before_bundle_id`, `after_bundle_id`, `before_release_status`, `after_release_status`, `coverage_delta`, `confidence_delta`, `controls`, `catalog`, `epss` |
 | `compare_failed` | `compare` | A bundle could not be read. Exits `3`. | `reason` |
 | `controls_listed` | `controls` | Catalog printed | `controls` |
