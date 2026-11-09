@@ -308,7 +308,8 @@ gate result of `run`, `evaluate` and `bundle` is the `bundle_built` event.
 
 - Waiver and attestation files with an unknown key are refused instead of
   having the key dropped. A refused attestation becomes a collection error, so
-  its control can go missing. Move custom data under `metadata`.
+  its control can go missing. Remove the key; in an attestation, custom data
+  can move under `metadata`.
 - `vex --consume` applies a consumed statement only when it names a product of
   this release. Pass your release's purl, CPE or CycloneDX ref with
   `--product`; other statements are skipped with a warning.

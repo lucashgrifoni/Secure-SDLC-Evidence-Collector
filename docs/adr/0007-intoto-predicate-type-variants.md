@@ -135,7 +135,7 @@ to exercise the variants. Each variant emits the advertised
 predicateType, preserves the subject digest, and survives the DSSE
 base64 round-trip.
 
-## Amendment 2026-10-16 — what the `witness` and `slsa-provenance` URIs do not give you
+## Amendment 2026-11-09 — what the `witness` and `slsa-provenance` URIs do not give you
 
 The decision stands; two statements above are stronger than what was
 checked, so they are qualified here instead of rewritten.
@@ -154,7 +154,7 @@ checked, so they are qualified here instead of rewritten.
 - **`slsa-provenance` changes the label, not the body.** A policy that
   keys only on `predicateType == https://slsa.dev/provenance/v1` accepts
   the statement as build provenance although the predicate is the bundle,
-  with no `buildDefinition` or `runDetails`. Tools that read those fields
-  reject it. Use the variant only where the consumer is known to accept
+  with no `buildDefinition` or `runDetails`. A tool that reads those
+  fields will not find them. Use the variant only where the consumer is known to accept
   the bundle under that URI, never as a substitute for real SLSA
   provenance in a provenance-gated deployment.

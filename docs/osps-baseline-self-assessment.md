@@ -7,7 +7,7 @@ unrelated to the `catalog-osps-baseline.yaml` catalog the collector ships:
 that catalog evaluates a release's evidence, while this page looks at how the
 project itself is run.
 
-- **Assessed:** 2026-10-16, against `main` at `4c9f82f` (release 4.2.0).
+- **Assessed:** 2026-11-09, against `main` at `4c9f82f` (release 4.2.0).
 - **Method:** the repository files named in each row, the 4.2.0 release
   assets, and the repository's GitHub settings read through the GitHub REST
   API (branch protection, collaborators, security features, Actions
@@ -15,7 +15,7 @@ project itself is run.
 - **Status:** a self-assessment by the maintainer, not a certification. The
   project's [OpenSSF Best Practices entry](https://www.bestpractices.dev/projects/15519)
   has the passing badge; its Baseline levels had not been filled in there as
-  of 2026-10-16. Entering this assessment on that site is a separate step
+  of 2026-11-09. Entering this assessment on that site is a separate step
   for the maintainer.
 
 Status values: **Met**, **Partial** (part of the requirement is in place;
@@ -93,7 +93,7 @@ publication copy, not a separate codebase.
 | OSPS-SA-03.01 | Security assessment performed | Met | `THREAT_MODEL.md`, STRIDE by component. |
 | OSPS-VM-01.01 | Coordinated disclosure policy with a response timeframe | Met | `SECURITY.md`: acknowledgement within 3 business days, remediation plan within 10, disclosure no later than 90 days after the report. |
 | OSPS-VM-03.01 | Private vulnerability reporting to the security contacts | Met | Private e-mail in `SECURITY.md`. GitHub private vulnerability reporting is not enabled. |
-| OSPS-VM-04.01 | Data about discovered vulnerabilities is published | Met | `SECURITY.md` commits to a patched release, a CVE when applicable and credit in the release notes. No repository security advisory had been published as of 2026-10-16. |
+| OSPS-VM-04.01 | Data about discovered vulnerabilities is published | Met | `SECURITY.md` commits to a patched release, a CVE when applicable and credit in the release notes. No repository security advisory had been published as of 2026-11-09. |
 
 ## Level 3
 

@@ -24,7 +24,7 @@ generated: { by: "codex", at: "2026-10-14T18:37:45.397Z" }
 
 ## Collection owns filesystem discovery
 
-`LocalArtifactCollector` receives separate artifact, attestation and exception directories. Its traversal resolves file paths before deduplication, so overlapping input directories do not ingest the same file twice. Invalid input directories become explicit collection errors ([collector](../../src/evidence_collector/collectors/local.py#L153-L253)). This state differs from evidence that was never supplied.
+`LocalArtifactCollector` receives separate artifact, attestation and exception directories. Its traversal resolves file paths before deduplication, so overlapping input directories do not ingest the same file twice. Invalid input directories become explicit collection errors ([collector](../../src/evidence_collector/collectors/local.py#L156-L262)). This state differs from evidence that was never supplied.
 
 ## Orchestration owns the bundle
 

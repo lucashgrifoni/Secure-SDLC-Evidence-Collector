@@ -10,6 +10,10 @@ operate it in a real pipeline**.
 - **[Bundle schema reference](./bundle_schema.md)** — the canonical
   shape of `bundle.json` that pipelines consume and policy engines
   validate.
+- **[JSON logs event reference](./json-logs.md)** — every NDJSON event
+  the CLI emits under `--json-logs`, with its payload keys.
+- **[Upgrading](./upgrading.md)** — changes to verdicts, exit codes and
+  outputs in each release, with what to do about each.
 - **[GitHub Action documentation](./github_action.md)** — inputs,
   outputs, examples, and recipes for using the action in your release
   workflows.
@@ -23,8 +27,8 @@ operate it in a real pipeline**.
   does not do, so adopters do not assume coverage that is not there.
 - **[Traceability matrix](./traceability.md)** — control-to-evidence
   mapping with NIST SSDF and OWASP SAMM coordinates.
-- **[Maturity roadmap](./MATURITY_ROADMAP.md)** — the public roadmap for
-  future hardening and adoption work.
+- **[Maturity roadmap](./MATURITY_ROADMAP.md)** — the hardening and
+  adoption plan, with what has shipped and what is deferred.
 - **[Architecture decision records](./adr/README.md)** — the
   non-obvious decisions that shape this project and the reasoning
   behind them.

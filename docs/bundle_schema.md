@@ -71,10 +71,10 @@ in `.vscode/settings.json`:
 Use that explicit mapping rather than relying on
 [SchemaStore](https://www.schemastore.org/). Its catalog entry "Secure SDLC
 Evidence Bundle" matches only `**/*.evidence-bundle.json`, so the default
-output name `bundle.json` gets no association, and as of 2026-10-16 the copy
+output name `bundle.json` gets no association, and as of 2026-11-09 the copy
 it serves is the 1.0.0 contract, which rejects every bundle written since
-`2.1.0` added `catalog`. The Pages URL above always serves the current
-contract.
+bundle contract `2.1.0` added `catalog`. The Pages URL above always serves
+the current contract.
 
 ```jsonc
 {

@@ -14,7 +14,7 @@ second column says what each one became.
 | A1 | CISA 2026 (17 elements) and G7 AI (50 elements) presence states; no conformance gate |
 | B1 | Automatic BOD/SSVC engine deferred; deployed exposure and missing decisions are not inferred |
 | B2 | FIRST reference CVSS 4.0 scoring implemented |
-| D1 | CRA operator context and SRP 1.4 completeness; no submission or applicability verdict |
+| D1 | CRA operator context and SRP glossary completeness (glossary 1.4 when 4.0.0 shipped; the profile now pins 1.5); no submission or applicability verdict |
 | D2 | Pinned CR26 profile and six supporting-evidence controls; no authorization verdict |
 | D3 | Correct actual 218A IDs and add preserved CSF references; no invented AI 600-1 crosswalk |
 | E1 | Automatic GPAI compliance verdict dropped from this release; manual review remains |
@@ -26,9 +26,10 @@ See [migration and limits](evidence-profile-migration.md) and
 
 This document began as the plan for hardening the Secure SDLC Evidence
 Collector beyond a stable v1.x release. Most tier items below have since
-shipped: a **Status** line under each tier says which, as of 2026-10-16, and
+shipped: a **Status** line under each tier says which, as of 2026-11-09, and
 `CHANGELOG.md` records when. The rationale columns are kept as written at
-planning time.
+planning time, apart from two corrected statements about SSDF 1.2 (T5.6 and
+T6.4).
 
 The roadmap is organized into four tiers, ordered by **return on
 investment per hour of work**, not by topic. Tier 1 buys the most external
@@ -136,7 +137,7 @@ collector's evidence-first nicho without growing the public surface.
 | T5.3 | OSCAL Assessment Results export (`oscal --kind assessment-results`) | FedRAMP 20x (Sept 2026) mandates machine-readable AR. Bundle evaluations → OSCAL findings + observations.                  |
 | T5.4 | CycloneDX 1.7 parser update (lifecycle phase, TLP, VEX inline)| ECMA-424 standard since 2026; current parser tops out at 1.5.                                                                |
 | T5.5 | in-toto Statement v1 wrapper (`sdlc-evidence statement`)      | Bundle becomes natively consumable by Sigstore cosign, GUAC, Kyverno, OPA Gatekeeper. No bespoke envelope code downstream.  |
-| T5.6 | SSDF 1.2 catalog upgrade (`catalog-ssdf-1.2.yaml`)            | NIST SP 800-218r1 is in final review; current catalog tracks 1.1.                                                            |
+| T5.6 | SSDF 1.2 catalog upgrade (`catalog-ssdf-1.2.yaml`)            | NIST SP 800-218r1 (SSDF 1.2) is an initial public draft, published December 2025, with no final version; the default catalog tracks 1.1. |
 | T5.7 | SSDF AI Profile (`catalog-ai.yaml`)                           | SP 800-218A enumerates AI-specific controls (training data lineage, model card, red team). Empty space in the scanner market.|
 | T5.8 | EU CRA mode (`--profile cra-2026`)                            | Records operator context and reporting clocks; no submission, applicability or retention verdict. |
 | T5.9 | FedRAMP supporting evidence (`catalog-fedramp-cr26.yaml`)     | Opt-in source-backed KSI references; no automated authorization or control-effectiveness claim. |
@@ -172,7 +173,7 @@ notes are not part of the public repository.
 | T6.1  | CycloneDX 1.7 parser update                                   | ECMA-424 standard since 2026-03-25. Adds `lifecycles`, `tlp`, `distribution`, inline VEX.           |
 | T6.2  | OSV parser + OSV-Scanner SARIF driver row                     | OSV Schema is the OSS-only vulnerability lingua franca; OSV-Scanner v2.3.5 is what teams actually run. |
 | T6.3  | in-toto Witness predicate type                                | SBOMit + Witness expect specific predicate types; today T5.5 emits a generic project predicate.     |
-| T6.4  | SSDF 1.2 catalog (`catalog-ssdf-1.2.yaml`)                    | NIST SP 800-218 Rev. 1 finalizes 2026 with refined PS.3, PW.7, RV.* tasks.                          |
+| T6.4  | SSDF 1.2 catalog (`catalog-ssdf-1.2.yaml`)                    | NIST SP 800-218 Rev. 1 is an initial public draft (December 2025). Its change log adds practices PO.6 and PS.4 and rewords tasks RV.1.2 and RV.3.3; it lists no change to PS.3 or PW.7. |
 
 ### Phase B — AI track (~9 days)
 

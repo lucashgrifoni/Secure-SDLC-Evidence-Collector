@@ -16,8 +16,8 @@ How it stays current:
   `tests/unit/test_documented_security_promises.py::test_every_test_named_in_the_traceability_doc_exists`,
   so renaming or deleting one fails the build.
 - The §4 release-status rows were re-run against the 4.2.0 code on
-  2026-10-16 from a clean checkout, with the commands shown in the
-  Fixture column; their "Obtained" values come from that run.
+  2026-11-09, using the fixtures named in the Fixture column; their
+  "Obtained" values come from that run.
 - The lab rows in §4 come from the external vulnerable-app corpus, which is
   not public. They were last recorded on 2026-05-17, on a maintainer
   machine, and cannot be reproduced from this repository; see

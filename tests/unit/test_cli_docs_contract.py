@@ -15,7 +15,9 @@ from __future__ import annotations
 
 import ast
 import inspect
+import json
 import re
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -293,6 +295,53 @@ def test_the_cr26_catalog_has_no_critical_control() -> None:
     """The docs say catalog-fedramp-cr26 can never return not_ready."""
     levels = set().union(*_criticality_by_required_type("catalog-fedramp-cr26.yaml").values())
     assert "critical" not in levels
+
+
+def _run_without_scanner_or_test_output(tmp_path: Path, sample: Path, *extra: str) -> Any:
+    """`run` on the sample release with only its SBOM and attestations."""
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    shutil.copy(sample / "artifacts" / "sbom.cdx.json", artifacts)
+    return _RUNNER.invoke(
+        app,
+        [
+            "run",
+            "--application",
+            "payments-api",
+            "--repository",
+            "acme/payments-api",
+            "--release-id",
+            "2026.04.10",
+            "--commit-sha",
+            "abcdef1234567890",
+            "--artifacts-dir",
+            str(artifacts),
+            "--attestations-dir",
+            str(sample / "attestations"),
+            "--output-dir",
+            str(tmp_path / "out"),
+            *extra,
+        ],
+    )
+
+
+def test_a_release_with_no_scanner_or_test_evidence_passes_the_default_gate(
+    tmp_path: Path, sample_release_root: Path
+) -> None:
+    """README and limitations §4: the critical controls are met, so it is conditional."""
+    result = _run_without_scanner_or_test_output(tmp_path, sample_release_root)
+    bundle = json.loads((tmp_path / "out" / "bundle.json").read_text(encoding="utf-8"))
+    assert bundle["summary"]["release_status"] == "conditional"
+    assert result.exit_code == 0, result.output
+
+
+def test_fail_on_conditional_stops_a_release_with_no_scanner_or_test_evidence(
+    tmp_path: Path, sample_release_root: Path
+) -> None:
+    result = _run_without_scanner_or_test_output(
+        tmp_path, sample_release_root, "--fail-on", "conditional"
+    )
+    assert result.exit_code == 1, result.output
 
 
 def test_every_adr_is_in_the_adr_index_and_the_site_nav() -> None:

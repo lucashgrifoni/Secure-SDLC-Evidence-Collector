@@ -19,7 +19,7 @@ stable structural digest across runs and operating systems, and the
 release signing. The sample release without `--attestations-dir` returns
 `not_ready` with the four expected missing critical controls
 (`ORG-CODE-REVIEW`, `ORG-RELEASE-APPROVAL`, `ORG-REL-ROLLBACK`,
-`SSDF-PS.2`) and exit code 2 (re-run 2026-10-16, see
+`SSDF-PS.2`) and exit code 2 (re-run 2026-11-09, see
 [traceability §4](traceability.md)). Lint and type gates (`ruff`, `mypy --strict`) run in
 `github-ci-cd.yml` and `publish-pypi.yml`; secret, SAST, SCA, IaC and
 workflow gates (Semgrep, Snyk Code, Snyk Open Source, Trivy dependency /
