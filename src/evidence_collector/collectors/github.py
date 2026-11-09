@@ -141,6 +141,7 @@ class GitHubCollector:
             "changes_requested": changes_requested,
             "collected_at": datetime.now(tz=UTC).isoformat(),
         }
+        _note_bot_approvals(payload, approvers, reviews_payload)
         return normalize_pr_metadata(payload, self._release)
 
     def collect_workflow_run(self, run_id: int) -> NormalizedEvidence:
@@ -192,3 +193,39 @@ def _review_decisions(reviews: list[Any], head_sha: str | None) -> tuple[set[str
             else:
                 stale += 1
     return approvers, stale, changes_requested
+
+
+def _bot_logins(reviews: list[Any]) -> set[str]:
+    """Logins the API reports as GitHub App bot accounts (``user.type == "Bot"``).
+
+    A machine user is an ordinary ``User`` account, so it is not told apart
+    from a person here.
+    """
+    logins: set[str] = set()
+    for review in reviews:
+        user = review.get("user") if isinstance(review, dict) else None
+        if isinstance(user, dict) and user.get("type") == "Bot":
+            login = user.get("login")
+            if isinstance(login, str):
+                logins.add(login)
+    return logins
+
+
+def _note_bot_approvals(payload: dict[str, Any], approvers: set[str], reviews: list[Any]) -> None:
+    """Record approvals given by bot accounts next to the count, and warn.
+
+    They stay in ``reviewers_approved``, so no verdict moves. The key exists
+    only when a bot approved, so every other bundle keeps its digest.
+    """
+    bot_approvals = len(approvers & _bot_logins(reviews))
+    if not bot_approvals:
+        return
+    payload["bot_approvals"] = bot_approvals
+    logger.warning(
+        "PR #%s: %d of %d approval(s) on the head commit came from GitHub App bot "
+        "accounts. They count as approvals; a control that requires human review "
+        "needs a reviewer to confirm that an approver is a person.",
+        payload["number"],
+        bot_approvals,
+        len(approvers),
+    )

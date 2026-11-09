@@ -404,6 +404,74 @@ def test_valid_approval_on_head_passes(sample_release) -> None:
     assert evidence.metadata["last_approval_after_last_commit"] is True
 
 
+# Approvals by GitHub App bot accounts (`user.type == "Bot"` in the reviews
+# API) still count, so no verdict moves, but they are recorded and warned
+# about: OSPS QA-07.01 asks for a human approval.
+
+
+def _bot_review(login: str, state: str, commit_id: str) -> dict[str, object]:
+    return {
+        "user": {"login": login, "type": "Bot"},
+        "state": state,
+        "commit_id": commit_id,
+        "submitted_at": "2026-04-10T12:30:00Z",
+    }
+
+
+@pytest.mark.unit
+def test_bot_approval_counts_and_is_recorded_separately(
+    sample_release, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level("WARNING", logger="evidence_collector.collectors.github"):
+        evidence = _collect(
+            sample_release,
+            [
+                [
+                    _review("bob", "APPROVED", _HEAD, "2026-04-10T12:20:00Z"),
+                    _bot_review("approve-bot[bot]", "APPROVED", _HEAD),
+                ]
+            ],
+        )
+    assert evidence.status == EvidenceStatus.PASSED
+    assert evidence.metadata["reviewers_approved"] == 2
+    assert evidence.metadata.get("bot_approvals") == 1
+    assert "1 of 2 approval(s) on the head commit came from GitHub App bot" in caplog.text
+
+
+@pytest.mark.unit
+def test_bot_only_approval_keeps_its_verdict_and_says_so(
+    sample_release, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level("WARNING", logger="evidence_collector.collectors.github"):
+        evidence = _collect(sample_release, [[_bot_review("approve-bot[bot]", "APPROVED", _HEAD)]])
+    assert evidence.status == EvidenceStatus.PASSED
+    assert evidence.metadata["reviewers_approved"] == 1
+    assert evidence.metadata.get("bot_approvals") == 1
+    assert "PR #200: 1 of 1 approval(s)" in caplog.text
+
+
+@pytest.mark.unit
+def test_bot_reviews_that_are_not_head_approvals_are_not_recorded(
+    sample_release, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level("WARNING", logger="evidence_collector.collectors.github"):
+        evidence = _collect(
+            sample_release,
+            [
+                [
+                    _review("bob", "APPROVED", _HEAD, "2026-04-10T12:20:00Z"),
+                    _bot_review("stale-bot[bot]", "APPROVED", _OLD),
+                    _bot_review("lint-bot[bot]", "COMMENTED", _HEAD),
+                ]
+            ],
+        )
+    assert evidence.status == EvidenceStatus.PASSED
+    assert evidence.metadata["reviewers_approved"] == 1
+    # No key at all: bundles without a bot approval keep their digest.
+    assert "bot_approvals" not in evidence.metadata
+    assert "bot" not in caplog.text
+
+
 @pytest.mark.unit
 def test_reviews_are_read_across_pages(sample_release) -> None:
     # 30 reviews on page one (the GitHub default page size) end with the

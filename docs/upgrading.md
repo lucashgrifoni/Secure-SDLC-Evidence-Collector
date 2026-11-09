@@ -136,9 +136,20 @@ bundles and structural digests stay the same.
 - **`catalog-osps-baseline.yaml`**: re-pinned from v2025-02-25 to OSPS Baseline
   v2026.08.28. Adds `OSPS-SA-03.02` (recommended `threat_model`) and
   `OSPS-BR-02.01` (recommended `artifact_attestation`), with the same verdict
-  effect as above. `OSPS-QA-07.01` now asks for a non-author human approval
-  and says that code-review evidence does not tell bots from people.
-  `catalog.sha256` changes.
+  effect as above. `OSPS-QA-07.01` now asks for a non-author human approval.
+  Code-review evidence cannot show that an approver is a person, so the
+  control also recommends a `generic_attestation` in which a reviewer states
+  that at least one approver is a person. Without it the control is `partial`
+  (it was `met` when `code_review` and `pr_metadata` were both supplied), which
+  makes the release `conditional`, never `not_ready`. `catalog.sha256` changes.
+- **GitHub pull request evidence** (`run --pull-request`): when an
+  approval on the head commit comes from a GitHub App bot account, the
+  `code_review` record gets `metadata.bot_approvals` with the count and the
+  run logs a warning, on the console and as a JSON log event. The approval
+  still counts, so the evidence status and every verdict under the default
+  catalog are unchanged. A record with no bot approval has no such key and
+  keeps its digest. Machine user accounts are ordinary user accounts and are
+  not detected.
 - **`catalog-fedramp-cr26.yaml` and `--profile fedramp-20x`**: the CR26 pin
   moves from 2026.10.05.01 to 2026.10.13.01 (commit `a89d7847`).
   `metadata.fedramp.ruleset_version`, `metadata.fedramp.ruleset_commit`, the

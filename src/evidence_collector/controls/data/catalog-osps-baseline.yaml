@@ -15,6 +15,9 @@
 # Changes since v2025.02.25 that touch this subset: VM-05.03 and VM-06.02
 # lost the "While active" qualifier, and QA-07.01 now requires a non-author
 # *human* approval. No control used here was renumbered or removed.
+# Code-review evidence cannot show that an approver is a person, so QA-07.01
+# also recommends a generic_attestation from a reviewer and stays partial
+# without one.
 #
 # The Baseline's full control set also covers repository
 # configuration, governance, and documentation that automated release
@@ -110,14 +113,20 @@ controls:
     description: >-
       OSPS Baseline QA-07.01 — the version control system must require at
       least one non-author human approval of changes before merging.
-      Satisfied by code-review / PR-approval evidence. That evidence counts
-      approvals by reviewer login and does not tell a bot account from a
-      person, so confirm that at least one approver is human. Maps onward to
-      NIST SSDF PW.7.
+      Code-review / PR-approval evidence shows that a reviewer approved the
+      change. It counts approvals by reviewer login and cannot establish that
+      an approver is a person, so on that evidence alone this control stays
+      partial. Manual review required: the control is met only when a
+      reviewer also supplies a generic_attestation stating that at least one
+      approver is a person. Controls match by evidence type, so any generic
+      attestation counts here. The GitHub collector records approvals given
+      by App bot accounts as bot_approvals in the evidence metadata and logs
+      a warning; it cannot tell a machine user account from a person. Maps
+      onward to NIST SSDF PW.7.
       NIST CSF 2.0 informative references for SSDF 1.1 PW.7: none listed. See ADR-0014; references support traceability, not compliance.
     criticality: "high"
     required_evidence_types: ["code_review"]
-    recommended_evidence_types: ["pr_metadata"]
+    recommended_evidence_types: ["pr_metadata", "generic_attestation"]
 
   - control_id: "OSPS-QA-03.01"
     framework: "NIST_SSDF"
