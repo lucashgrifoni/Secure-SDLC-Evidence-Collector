@@ -70,7 +70,7 @@ what actually changes what new consumers get.
 
 To investigate a bad release you can rebuild its wheel and sdist from the tag
 and check them against the published files. The publish job builds both on
-`ubuntu-latest` with Python 3.12 and `SOURCE_DATE_EPOCH` set to the commit time
+`ubuntu-24.04` with Python 3.12 and `SOURCE_DATE_EPOCH` set to the commit time
 of the tag, then passes the sdist through `scripts/normalize_sdist.py`. That
 script sets every tar entry to `SOURCE_DATE_EPOCH`, sets
 modes to 0755 for directories and 0644 for regular files,

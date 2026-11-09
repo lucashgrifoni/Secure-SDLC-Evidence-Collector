@@ -26,6 +26,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
 from evidence_collector.domain.enums import EvidenceType
 
@@ -34,6 +35,7 @@ _README = Path("README.md")
 _HOOKS_MANIFEST = Path(".pre-commit-hooks.yaml")
 _ROLLBACK = Path("docs/rollback.md")
 _PUBLISH_WORKFLOW = Path(".github/workflows/publish-pypi.yml")
+_UBUNTU_RUNNER_LABEL = re.compile(r"ubuntu-[0-9a-z]+(?:[.-][0-9a-z]+)*")
 
 
 def _git(*args: str) -> subprocess.CompletedProcess[str]:
@@ -110,6 +112,12 @@ def _prose(path: Path) -> str:
     return " ".join(path.read_text(encoding="utf-8").split())
 
 
+def _release_build_runner() -> str:
+    """The `runs-on` label of the publish job that builds the wheel and the sdist."""
+    workflow = yaml.safe_load(_PUBLISH_WORKFLOW.read_text(encoding="utf-8"))
+    return str(workflow["jobs"]["build"]["runs-on"])
+
+
 def test_rollback_note_does_not_contradict_the_sdist_normalisation() -> None:
     """`docs/rollback.md` kept saying the sdist is not reproducible.
 
@@ -135,12 +143,27 @@ def test_rollback_note_says_a_matching_rebuild_needs_linux() -> None:
     matches. The page has to say so, or a verifier reads the mismatch as
     tampering.
     """
-    workflow = _PUBLISH_WORKFLOW.read_text(encoding="utf-8")
-    assert "runs-on: ubuntu-" in workflow, "precondition: releases build on Linux"
+    assert _release_build_runner().startswith("ubuntu-"), "precondition: releases build on Linux"
     doc = _prose(_ROLLBACK)
     assert "SOURCE_DATE_EPOCH" in doc
     assert "Linux" in doc
     assert "Windows" in doc
+
+
+def test_rollback_note_names_the_runner_image_the_release_builds_on() -> None:
+    """The rebuild guide names the runner label the publish job pins, and no other.
+
+    The page said `ubuntu-latest` after the build job was pinned. When
+    `ubuntu-latest` moves to a newer Ubuntu, a verifier following the page
+    rebuilds on a different image from the one that built the published files
+    and can read a byte difference as tampering. The workflow decides the
+    label: when its pin moves, this fails until the page follows.
+    """
+    runner = _release_build_runner()
+    documented = set(_UBUNTU_RUNNER_LABEL.findall(_prose(_ROLLBACK)))
+    assert documented == {runner}, (
+        f"docs/rollback.md names {sorted(documented)}, the publish job builds on {runner}"
+    )
 
 
 @pytest.mark.parametrize("path", [_README, Path("docs/evidence-profile-migration.md")])
