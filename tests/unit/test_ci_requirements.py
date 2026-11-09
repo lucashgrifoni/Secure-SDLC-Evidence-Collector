@@ -27,6 +27,7 @@ _CALLER_CHOSEN = {Path(".github/workflows/reusable-evidence-collection.yml")}
 _ADVISORY_FIXES = {
     "certifi": Version("2026.10.18"),  # GHSA-6q48-6c7w-9gw2
     "filelock": Version("4.2.1"),  # GHSA-v4x8-3wr5-3wq8 and the rest of that batch
+    "uv": Version("0.13.4"),  # GHSA-hq85-5cpj-mr62
     "virtualenv": Version("21.14.9"),  # GHSA-c978-59m8-c77v and the rest of that batch
 }
 
