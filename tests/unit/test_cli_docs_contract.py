@@ -81,10 +81,15 @@ def _readme_synopsis() -> dict[str, list[str]]:
     return synopsis
 
 
+# Typer forces terminal rendering when GITHUB_ACTIONS is set, and reads that at
+# import time, so on CI the help carries style codes whatever the runner's env says.
+_STYLE_CODE = re.compile(r"\x1b\[[0-9;]*m")
+
+
 def _help(path: str) -> str:
     result = _RUNNER.invoke(app, [*path.split(), "--help"])
     assert result.exit_code == 0, result.output
-    return result.output
+    return _STYLE_CODE.sub("", result.output)
 
 
 def _usage_placeholders(path: str) -> list[str]:
