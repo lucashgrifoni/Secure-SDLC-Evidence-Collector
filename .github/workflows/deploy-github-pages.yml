@@ -17,6 +17,9 @@
 #
 # Secrets: none (uses the short-lived GITHUB_TOKEN via id-token: write).
 #
+# Runner image: both jobs pin `ubuntu-24.04` instead of the moving
+# `ubuntu-latest` label, so a runner image change is a reviewed edit here.
+#
 # Landing page facts: the version, the sample verdict, the not_ready example
 # and the evidence-type count on gitpage/index.html are rewritten from this
 # run's CLI output, then checked; the build fails if any of them differs.
@@ -54,7 +57,7 @@ env:
 jobs:
   build:
     name: Build evidence summary site
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -90,14 +93,16 @@ jobs:
           cp gitpage/index.html site/index.html
           cp -r gitpage/assets site/assets
 
+      # The commit and ref come from the runner environment instead of being
+      # substituted into the script.
       - name: Generate evidence summary
         run: |
           python -m evidence_collector.cli.main run \
             --application payments-api \
             --repository acme/payments-api \
-            --release-id "pages-demo-${{ github.sha }}" \
-            --commit-sha "${{ github.sha }}" \
-            --branch "${{ github.ref_name }}" \
+            --release-id "pages-demo-$GITHUB_SHA" \
+            --commit-sha "$GITHUB_SHA" \
+            --branch "$GITHUB_REF_NAME" \
             --artifacts-dir examples/sample_release/artifacts \
             --attestations-dir examples/sample_release/attestations \
             --output-dir site/evidence \
@@ -157,7 +162,7 @@ jobs:
   deploy:
     name: Deploy GitHub Pages
     if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     timeout-minutes: 10
     permissions:
