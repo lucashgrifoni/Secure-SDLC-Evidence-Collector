@@ -9,7 +9,8 @@ hold the release path to rules a pull request can verify:
   26.04 from 2026-10-19 in a gradual rollout, so without a pin the first tag
   after it could be the first run on an image no pull request ran (PIP-01);
 * a tag-triggered workflow restores no cache. The pip cache it used to restore
-  was written by main-branch runs (PIP-11);
+  was written by main-branch runs (PIP-11), and `docker/setup-qemu-action`
+  reads its image cache unless `cache-image` is false;
 * values from the event or from other jobs reach a release `run:` script
   through the environment, never through the script text (PIP-14);
 * a job asks for `attestations: write` only when it runs an attest action
@@ -93,19 +94,30 @@ def _triggered_by_tag(path: Path) -> bool:
     return isinstance(push, dict) and "tags" in push
 
 
+def _restores_cache(step: dict[str, Any]) -> bool:
+    """Whether a step reads the Actions cache, by an input or by its default."""
+    uses = str(step.get("uses", ""))
+    inputs = step.get("with") or {}
+    if uses.startswith("actions/cache"):
+        return True
+    if uses.startswith("actions/setup-"):
+        return bool(inputs.get("cache"))
+    if uses.startswith("docker/setup-qemu-action"):
+        # `cache-image` defaults to true: the binfmt image comes from the cache.
+        return str(inputs.get("cache-image", True)).lower() != "false"
+    return False
+
+
 def test_tag_triggered_workflows_restore_no_cache() -> None:
     tagged = [path for path in sorted(WORKFLOW_DIR.glob("*.yml")) if _triggered_by_tag(path)]
     assert PUBLISH in tagged, "precondition: publish-pypi.yml is triggered by a tag"
-    offenders = []
-    for path in tagged:
-        for name, job in _jobs(path).items():
-            for step in _steps(job):
-                uses = str(step.get("uses", ""))
-                cached = (step.get("with") or {}).get("cache")
-                if uses.startswith("actions/cache") or (
-                    uses.startswith("actions/setup-") and cached
-                ):
-                    offenders.append(f"{path.name}:{name}:{step.get('name', uses)}")
+    offenders = [
+        f"{path.name}:{name}:{step.get('name', step.get('uses'))}"
+        for path in tagged
+        for name, job in _jobs(path).items()
+        for step in _steps(job)
+        if _restores_cache(step)
+    ]
     assert offenders == [], (
         f"tag-triggered steps restore a cache written by branch runs: {offenders}"
     )

@@ -21,7 +21,7 @@
 #
 # Runner image: the Linux jobs pin `ubuntu-24.04`, the image publish-pypi.yml
 # pins, so a release never runs on an image these jobs have not run on. Move
-# both pins together.
+# this pin together with the ones in publish-pypi.yml and security-ci-cd.yml.
 #
 # Secrets: none.
 
