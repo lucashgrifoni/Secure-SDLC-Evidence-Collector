@@ -203,10 +203,11 @@ runs:
           fi
           python -P -m pip install --upgrade "git+https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector@${VERSION}"
         elif [ -f "${ACTION_PATH}/pyproject.toml" ]; then
-          # Third-party code comes from the hash locks shipped with this
-          # action, then the collector itself with --no-deps, as in CI. The
-          # locks are tested on Python 3.12 and 3.13 (action-self-test); other
-          # versions resolve the dependency ranges in pyproject.toml.
+          # The runtime dependencies come from the hash locks shipped with
+          # this action, then the collector itself with --no-deps, as in CI
+          # (pip fetches the build backend for that source build unhashed).
+          # The locks are tested on Python 3.12 and 3.13 (action-self-test);
+          # other versions resolve the dependency ranges in pyproject.toml.
           locks="${ACTION_PATH}/.github/requirements"
           if python -P -c 'import sys; sys.exit(sys.version_info[:2] not in ((3, 12), (3, 13)))'; then
             python -P -m pip install --require-hashes -r "${locks}/pip.txt"

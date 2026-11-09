@@ -72,7 +72,8 @@ checked-out repository, so those files have to be committed; only
 
 All outputs are empty when the collector wrote no bundle, for example when
 none of the input directories exists (exit `3`). The bundle, `report.md` and
-`summary.html` are uploaded as the `secure-sdlc-evidence` artifact.
+`summary.html` are uploaded as the `secure-sdlc-evidence` artifact; a run
+that wrote no bundle uploads nothing.
 
 ## Failure behavior
 
@@ -84,8 +85,11 @@ none of the input directories exists (exit `3`). The bundle, `report.md` and
   collector could not run at all (exit `3`). Use it for the first runs, while
   the evidence is incomplete and a `not_ready` verdict is expected.
 - The bundle and report are uploaded also when the job fails, so a
-  `not_ready` release leaves its report behind. When the collector wrote
-  nothing, the upload step only warns.
+  `not_ready` release leaves its report behind. Only a bundle this run wrote
+  is uploaded. When the collector wrote nothing (exit `3`, or an earlier step
+  such as the artifact download failed), the upload step is skipped, and a
+  `release-evidence/` directory already in your checkout is not published as
+  this run's artifact.
 
 ## Harden-Runner and telemetry
 

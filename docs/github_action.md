@@ -278,7 +278,10 @@ Python 3.12 and 3.13 the third-party dependencies come from the hash-locked
 files shipped with the Action (`.github/requirements/pip.txt` and
 `runtime.txt`, installed with `--require-hashes`), and the collector itself is
 installed from the Action's source with `--no-deps`, so two runs of the same
-Action tag use the same dependency versions. On other Python versions the
+Action tag use the same dependency versions. The locks cover what the
+collector imports at run time; pip still fetches the build backend named in
+`pyproject.toml` (setuptools and wheel) for that source build without a hash
+check. On other Python versions the
 Action prints a notice and resolves the version ranges from `pyproject.toml`.
 The packages go into the Python that the Action's `setup-python` step selects,
 which later steps of the job also use.

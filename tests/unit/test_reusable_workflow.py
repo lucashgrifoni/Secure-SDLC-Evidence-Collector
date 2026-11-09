@@ -66,10 +66,11 @@ def _step(job: dict[str, Any], name: str) -> dict[str, Any]:
 
 
 def test_the_bundle_is_uploaded_when_the_run_fails(job: dict[str, Any]) -> None:
+    """Not the default `success()`: a not_ready run fails and still sets `release-status`."""
     upload = _step(job, "Upload bundle and report")
-    assert upload.get("if") == "${{ !cancelled() }}"
-    # A run that could not start wrote nothing and already failed the job.
-    assert upload["with"]["if-no-files-found"] == "warn"
+    assert upload.get("if") == "${{ !cancelled() && steps.run.outputs.release-status != '' }}"
+    # The step runs only after this run wrote a bundle, so no files is an error.
+    assert upload["with"]["if-no-files-found"] == "error"
 
 
 def test_fail_on_is_an_input_that_keeps_the_old_default(
@@ -325,9 +326,10 @@ def test_observe_mode_still_fails_when_the_collector_cannot_run(
     assert run.outputs == {}
 
 
-def test_a_stale_bundle_is_not_reported(
+def test_a_stale_bundle_is_not_reported_or_uploaded(
     job: dict[str, Any], not_ready_bundle: Path, tmp_path: Path
 ) -> None:
+    """A release-evidence/ directory from the checkout is not this run's evidence."""
     stale = tmp_path / "workspace" / "release-evidence"
     stale.mkdir(parents=True)
     (stale / "bundle.json").write_bytes(not_ready_bundle.read_bytes())
@@ -336,6 +338,11 @@ def test_a_stale_bundle_is_not_reported(
 
     assert run.code == 3
     assert run.outputs == {}
+    # The directory is still there, and the upload step is skipped because
+    # its condition needs the `release-status` this run did not set.
+    assert (stale / "bundle.json").is_file()
+    condition = _step(job, "Upload bundle and report")["if"]
+    assert "steps.run.outputs.release-status != ''" in condition
 
 
 def test_environment_and_lineage_reach_the_command(job: dict[str, Any], tmp_path: Path) -> None:

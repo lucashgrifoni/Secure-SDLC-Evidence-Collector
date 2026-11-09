@@ -29,8 +29,9 @@
 # says so). The ref in ``uses:`` pins this workflow file, not the package.
 # It then collects evidence and uploads release-evidence/ (bundle.json,
 # report.md, summary.html) as the ``secure-sdlc-evidence`` artifact, also
-# when the release is not_ready or the run fails, so downstream jobs and
-# people can read why. The verdict is in the ``release-status`` output.
+# when the release is not_ready and the job fails, so downstream jobs and
+# people can read why. Nothing is uploaded when the run wrote no bundle. The
+# verdict is in the ``release-status`` output.
 #
 # Adopters who need the AI or FedRAMP catalog pass ``catalog`` with
 # the bundled-catalog name (``catalog-ai.yaml`` /
@@ -394,12 +395,14 @@ jobs:
           exit "${exit_code:-0}"
 
       # Also after a failed run: a not_ready release is exactly the one whose
-      # report someone needs to read. `warn`, because a run that could not
-      # start (exit 3) wrote nothing and has already failed the job.
+      # report someone needs to read. Only a bundle this run wrote is
+      # uploaded. `release-status` is set for nothing else, so after exit 3 or
+      # a failed earlier step a release-evidence/ directory that was already
+      # in the caller's checkout is not published as this run's evidence.
       - name: Upload bundle and report
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.run.outputs.release-status != '' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: secure-sdlc-evidence
           path: release-evidence/
-          if-no-files-found: warn
+          if-no-files-found: error

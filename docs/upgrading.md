@@ -41,8 +41,8 @@ top. `CHANGELOG.md` lists every change.
 ### Reusable workflow
 
 - The bundle and report are uploaded also when the run fails, including a
-  `not_ready` release; with no bundle the upload step warns instead of
-  failing.
+  `not_ready` release. Nothing is uploaded when the run wrote no bundle
+  (exit `3`, or a failed earlier step); the job has already failed by then.
 - New inputs: `fail-on` (default `not_ready`, the value that was hard-coded,
   plus `none`), `environment` (default `production`, the value recorded
   before), `artifact-name` to download scanner output from an earlier job,
@@ -53,6 +53,8 @@ top. `CHANGELOG.md` lists every change.
   `collection-errors`.
 - An empty `collector-version` prints a notice; it still installs the latest
   release.
+- Python runs with `-P` here too, so modules in the caller's checkout are no
+  longer importable from the workflow's steps.
 - The job runs on `ubuntu-24.04` instead of `ubuntu-latest`.
 
 ### GitLab
