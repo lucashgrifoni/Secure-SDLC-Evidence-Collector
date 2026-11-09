@@ -9,8 +9,8 @@ hold the release path to rules a pull request can verify:
   26.04 from 2026-10-19 in a gradual rollout, so without a pin the first tag
   after it could be the first run on an image no pull request ran (PIP-01);
 * a tag-triggered workflow restores no cache. The pip cache it used to restore
-  was written by main-branch runs (PIP-11), and `docker/setup-qemu-action`
-  reads its image cache unless `cache-image` is false;
+  was written by main-branch runs (PIP-11), and the Docker QEMU and buildx
+  setup actions use the cache unless their cache input is false;
 * values from the event or from other jobs reach a release `run:` script
   through the environment, never through the script text (PIP-14);
 * a job asks for `attestations: write` only when it runs an attest action
@@ -94,17 +94,25 @@ def _triggered_by_tag(path: Path) -> bool:
     return isinstance(push, dict) and "tags" in push
 
 
-def _restores_cache(step: dict[str, Any]) -> bool:
-    """Whether a step reads the Actions cache, by an input or by its default."""
+# Docker setup actions that use the Actions cache by default, and the input
+# that turns it off: the binfmt image for QEMU, the downloaded binary for buildx.
+_CACHE_SWITCH = {
+    "docker/setup-qemu-action": "cache-image",
+    "docker/setup-buildx-action": "cache-binary",
+}
+
+
+def _can_restore_cache(step: dict[str, Any]) -> bool:
+    """Whether a step can read the Actions cache, by an input or by its default."""
     uses = str(step.get("uses", ""))
     inputs = step.get("with") or {}
     if uses.startswith("actions/cache"):
         return True
     if uses.startswith("actions/setup-"):
         return bool(inputs.get("cache"))
-    if uses.startswith("docker/setup-qemu-action"):
-        # `cache-image` defaults to true: the binfmt image comes from the cache.
-        return str(inputs.get("cache-image", True)).lower() != "false"
+    for action, switch in _CACHE_SWITCH.items():
+        if uses.startswith(action):
+            return str(inputs.get(switch, True)).lower() != "false"
     return False
 
 
@@ -116,10 +124,10 @@ def test_tag_triggered_workflows_restore_no_cache() -> None:
         for path in tagged
         for name, job in _jobs(path).items()
         for step in _steps(job)
-        if _restores_cache(step)
+        if _can_restore_cache(step)
     ]
     assert offenders == [], (
-        f"tag-triggered steps restore a cache written by branch runs: {offenders}"
+        f"tag-triggered steps can restore a cache written by branch runs: {offenders}"
     )
 
 
