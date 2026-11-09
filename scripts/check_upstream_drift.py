@@ -15,6 +15,10 @@ the code is also a re-pin here.
 
 Exit 0 when every source matches its pin, 1 when one drifted or could not
 be read (a source nobody could read is not a source that matched).
+
+Only https URLs on the hosts in ``ALLOWED_HOSTS`` are requested, and
+redirects are not followed, so a pin cannot point the job at a local file,
+another scheme or another host.
 """
 
 from __future__ import annotations
@@ -23,11 +27,11 @@ import json
 import os
 import re
 import sys
-import urllib.error
-import urllib.request
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
+
+import httpx
 
 from evidence_collector.application import profiles
 from evidence_collector.application.srp_glossary import SRP_GLOSSARY
@@ -37,6 +41,16 @@ OSPS_URL = "https://baseline.openssf.org/"
 SSDF_FINAL_URL = "https://csrc.nist.gov/pubs/sp/800/218/r1/final"
 _CR26_RAW = "https://raw.githubusercontent.com/FedRAMP/rules/{ref}/fedramp-consolidated-rules.json"
 _USER_AGENT = "secure-sdlc-evidence-collector upstream-drift-check"
+# The only hosts this script reads. A re-pin to a source on another host adds
+# the host here, in review, before the weekly job can reach it.
+ALLOWED_HOSTS = frozenset(
+    {
+        "baseline.openssf.org",
+        "csrc.nist.gov",
+        "raw.githubusercontent.com",
+        "www.enisa.europa.eu",
+    }
+)
 
 Fetch = Callable[[str], tuple[int, bytes]]
 Status = Literal["ok", "notice", "drift"]
@@ -49,14 +63,36 @@ class Result:
     detail: str
 
 
+def allowed_url(url: str) -> httpx.URL:
+    """Parse ``url``; refuse anything but https on a host in ``ALLOWED_HOSTS``."""
+    parsed = httpx.URL(url)
+    if (
+        parsed.scheme != "https"
+        or parsed.host not in ALLOWED_HOSTS
+        or parsed.port is not None  # httpx reports the default port as None
+        or parsed.userinfo
+    ):
+        raise ValueError(
+            f"refusing to read {url!r}: only https URLs on "
+            f"{', '.join(sorted(ALLOWED_HOSTS))} are read"
+        )
+    return parsed
+
+
 def fetch(url: str) -> tuple[int, bytes]:
-    """GET ``url``; an HTTP error status is returned, not raised."""
-    request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})  # noqa: S310
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
-            return response.status, response.read()
-    except urllib.error.HTTPError as exc:
-        return exc.code, b""
+    """GET an allowlisted URL; an HTTP error status is returned, not raised.
+
+    The request is made with the URL object that passed the allowlist, and a
+    redirect is returned as its 3xx status instead of being followed, so the
+    body never comes from a host the allowlist did not name.
+    """
+    response = httpx.get(
+        allowed_url(url),
+        headers={"User-Agent": _USER_AGENT},
+        timeout=30,
+        follow_redirects=False,
+    )
+    return response.status_code, response.content
 
 
 def cr26_url(ref: str) -> str:
