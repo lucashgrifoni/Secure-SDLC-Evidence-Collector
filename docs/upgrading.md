@@ -37,6 +37,10 @@ top. `CHANGELOG.md` lists every change.
   warnings, and the path of `report.md`.
 - Python runs with `-P`, so modules in the working directory are no longer
   importable from the Action's steps.
+- On macOS runners the outputs are set on every run that wrote a bundle.
+  They used to be empty when the collector finished within the second it
+  started in, because the bash that macOS ships compares file times in whole
+  seconds.
 
 ### Reusable workflow
 

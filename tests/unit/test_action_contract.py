@@ -463,6 +463,47 @@ def test_a_bundle_written_by_a_failing_run_is_still_reported(
     assert run.summary.is_file()
 
 
+def test_the_shell_does_not_date_the_bundle(collect_step: dict[str, Any]) -> None:
+    """macOS runs the step with bash 3.2, whose `-nt` reads whole seconds.
+
+    A run that ends in the second it started in then looks stale and the step
+    reports no outputs, so `-nt` and `-ot` stay out of the step.
+    """
+    import re
+
+    code = [line for line in collect_step["run"].splitlines() if not line.lstrip().startswith("#")]
+    assert not [line for line in code if re.search(r"\s-(nt|ot)\s", line)]
+    assert any("st_mtime_ns" in line for line in code)
+
+
+def test_a_bundle_written_in_the_second_the_run_started_is_fresh(
+    collect_step: dict[str, Any], tmp_path: Path
+) -> None:
+    import os
+    import re
+    import subprocess
+    import sys
+
+    check = re.search(r"is_newer='([^']+)'", collect_step["run"])
+    assert check is not None, "the collect step no longer carries its freshness check"
+    marker = tmp_path / "marker"
+    bundle = tmp_path / "bundle.json"
+    marker.write_text("", encoding="utf-8")
+    bundle.write_text("{}", encoding="utf-8")
+    second = 1_800_000_000 * 10**9
+    started = second + 200_000_000
+
+    def is_newer(written: int) -> bool:
+        os.utime(marker, ns=(started, started))
+        os.utime(bundle, ns=(written, written))
+        command = [sys.executable, "-P", "-c", check.group(1), str(bundle), str(marker)]
+        return subprocess.run(command, check=False).returncode == 0
+
+    assert is_newer(started + 300_000_000)
+    assert not is_newer(started)
+    assert not is_newer(started - 10**9)
+
+
 # --- python -P (SEC-06) -----------------------------------------------------
 
 

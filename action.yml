@@ -355,8 +355,12 @@ runs:
           --fail-on "$fail_on" \
           "${extra_args[@]}" || exit_code=$?
 
+        # The two timestamps are compared in Python, in nanoseconds. macOS
+        # runs this step with bash 3.2, whose `-nt` reads whole seconds, and a
+        # run usually ends in the second it started in.
         bundle="${OUTPUT_DIR}/bundle.json"
-        if [ -f "$bundle" ] && [ "$bundle" -nt "$started" ]; then
+        is_newer='import os, sys; sys.exit(os.stat(sys.argv[1]).st_mtime_ns <= os.stat(sys.argv[2]).st_mtime_ns)'
+        if [ -f "$bundle" ] && python -P -c "$is_newer" "$bundle" "$started"; then
           BUNDLE_FILE="$bundle" python -P - <<'PY' >>"$GITHUB_OUTPUT"
         import json, os
         bundle = os.environ["BUNDLE_FILE"]
