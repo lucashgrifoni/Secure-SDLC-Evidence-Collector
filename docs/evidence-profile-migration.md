@@ -141,11 +141,14 @@ and (8) only for severe incidents that affect network and information systems
 the steward provides for development. Article 24 applies with the rest of the
 Regulation from 11 December 2027 (Article 71(2)). A steward context therefore
 records `reporting_obligation_start` `2027-12-11`, records awareness before
-that date as `not_applicable`, cites `24(3) applying 14(1)` or
-`24(3) applying 14(3),14(8)`, and adds `incident_scope`
-`steward_provided_development_systems` to an incident context. The deadline
-windows are computed as for a manufacturer; `legal_applicability` stays
-`not_assessed`. `"operator_role": "manufacturer"` keeps the manufacturer
+that date as `not_applicable`, and cites `24(3) applying 14(1)` or
+`24(3) applying 14(3),14(8)`. An incident context also gets `incident_scope`
+`{"condition": "affects_steward_provided_development_systems", "status":
+"not_assessed"}`: the context has no field that says whether the incident
+affects such systems, so the profile names the Article 24(3) condition and
+leaves it for you to establish. The deadline windows are computed as for a
+manufacturer and hold only if that condition is met; `legal_applicability`
+stays `not_assessed`. `"operator_role": "manufacturer"` keeps the manufacturer
 dates. The role is recorded as `operator_role`, and included in
 `canonical_context_sha256`, only when the context sets it: a context without
 it produces the same metadata and digest as before the field existed.

@@ -151,7 +151,10 @@ bundles and structural digests stay the same.
   required SRP fields per stage are unchanged.
 - **CRA context**: a new optional field, `operator_role` (`manufacturer` or
   `open_source_steward`). A steward context uses 11 December 2027 as the start
-  of reporting obligations and cites Article 24(3); see
+  of reporting obligations and cites Article 24(3). A steward incident context
+  names the Article 24(3) condition (the incident affects systems the steward
+  provides for development) in `metadata.cra.incident_scope` with status
+  `not_assessed`; the profile does not decide it. See
   [the profile page](evidence-profile-migration.md#cra-operator-context). A
   context without `operator_role` gives the same metadata and the same
   `canonical_context_sha256` as before. Collector 4.2.0 and earlier reject a

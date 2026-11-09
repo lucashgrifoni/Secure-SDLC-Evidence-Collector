@@ -50,6 +50,15 @@ _STEWARD_ARTICLES = {
     "vulnerability": "24(3) applying 14(1)",
     "incident": "24(3) applying 14(3),14(8)",
 }
+# Art. 24(3) applies Art. 14(3) and (8) to a steward only "to the extent that
+# severe incidents [...] affect network and information systems provided by
+# the open-source software stewards for the development of such products". No
+# context field says whether this incident does, so the condition is recorded
+# unresolved, as legal_applicability is.
+_STEWARD_INCIDENT_SCOPE = {
+    "condition": "affects_steward_provided_development_systems",
+    "status": "not_assessed",
+}
 _NOT_APPLICABLE = {"status": "not_applicable", "reason": "awareness_precedes_obligation_start"}
 # 2026.10.13.01 changed only the 800-53 mappings of the six catalog KSIs.
 FEDRAMP_RULESET_VERSION = "2026.10.13.01"
@@ -232,7 +241,7 @@ def _cra_metadata(context: CraReportingContext | None) -> dict[str, Any]:
     if role is not None:
         metadata["operator_role"] = role
     if steward and kind == "incident":
-        metadata["incident_scope"] = "steward_provided_development_systems"
+        metadata["incident_scope"] = dict(_STEWARD_INCIDENT_SCOPE)
     if context:
         fields = context.model_dump(mode="json")
         if fields["operator_role"] is None:

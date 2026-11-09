@@ -325,7 +325,25 @@ def test_steward_deadlines_run_from_the_application_date() -> None:
     )
     assert cra["reporting_deadlines"]["early_warning"] == "2027-12-12T00:00:00+00:00"
     assert cra["article"] == "24(3) applying 14(3),14(8)"
-    assert cra["incident_scope"] == "steward_provided_development_systems"
+
+
+def test_a_steward_incident_scope_is_a_condition_the_profile_does_not_resolve() -> None:
+    """Art. 24(3) applies Art. 14(3) and (8) only when the incident affects
+    systems the steward provides for development. The context has no field
+    that says it does, so the metadata names the condition and leaves it
+    unassessed instead of recording the scope as a fact."""
+    cra = _cra(
+        notification_type="incident",
+        operator_role="open_source_steward",
+        awareness_at="2027-12-11T00:00:00Z",
+    )
+    assert cra["incident_scope"] == {
+        "condition": "affects_steward_provided_development_systems",
+        "status": "not_assessed",
+    }
+    assert cra["legal_applicability"] == "not_assessed"
+    manufacturer = _cra(notification_type="incident", awareness_at="2027-12-11T00:00:00Z")
+    assert "incident_scope" not in manufacturer
 
 
 def test_an_unset_operator_role_leaves_the_manufacturer_projection_unchanged() -> None:
