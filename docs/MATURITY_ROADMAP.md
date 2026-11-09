@@ -14,7 +14,7 @@ second column says what each one became.
 | A1 | CISA 2026 (17 elements) and G7 AI (50 elements) presence states; no conformance gate |
 | B1 | Automatic BOD/SSVC engine deferred; deployed exposure and missing decisions are not inferred |
 | B2 | FIRST reference CVSS 4.0 scoring implemented |
-| D1 | CRA operator context and SRP glossary completeness (glossary 1.4 when 4.0.0 shipped; the profile now pins 1.5); no submission or applicability verdict |
+| D1 | CRA operator context and SRP glossary completeness (glossary 1.4 in 4.0.0; the profile pins 1.5 from 4.3.0); no submission or applicability verdict |
 | D2 | Pinned CR26 profile and six supporting-evidence controls; no authorization verdict |
 | D3 | Correct actual 218A IDs and add preserved CSF references; no invented AI 600-1 crosswalk |
 | E1 | Automatic GPAI compliance verdict dropped from this release; manual review remains |

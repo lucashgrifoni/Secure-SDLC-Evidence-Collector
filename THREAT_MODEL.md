@@ -82,12 +82,13 @@ itself.
 
 Residual risk: a file that satisfies the formal schema but states
 something false is accepted, for example a JUnit report that declares
-more passing tests than ran. The parsers correct only what cannot be
-true: a negative JUnit count is read as 0, and each count is the larger
-of the suite attribute and the matching `<testcase>` elements, so a
-suite that omits `failures` but holds a failing test case still fails.
-Beyond that we treat the content as the operator's responsibility; the
-bundle records the artifact's SHA-256 so tampering after the fact is
+more passing tests than ran. From 4.3.0 the JUnit parser corrects what
+cannot be true: a negative count is read as 0, and each count is the
+larger of the suite attribute and the matching `<testcase>` elements, so
+a suite that omits `failures` but holds a failing test case fails. Up to
+4.2.0 only the suite attributes were read, so that suite passed. Beyond
+that we treat the content as the operator's responsibility; the bundle
+records the artifact's SHA-256 so tampering after the fact is
 detectable.
 
 Residual risk: **file** links are followed by design. A symbolic link

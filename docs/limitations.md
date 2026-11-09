@@ -97,14 +97,15 @@ The collector checks **presence**, not correctness.
   fields is not audited. A `release_approval.yaml` naming `Approver:
   joe@example.com` is accepted at face value.
 - Suppressions are visible only when the scanner writes them into its
-  SARIF. A result whose suppressions are all `accepted`, or carry no
-  status (a `# nosemgrep` line), is not counted as an open finding; the
-  number of such results is recorded in `metadata.suppressed_count` and
-  named in the evidence summary. `underReview` and `rejected` suppressions
-  leave the result open. Code excluded before the scan (a
-  `.semgrepignore` entry, for example) never reaches the SARIF, so the
-  collector cannot see it. A scan in which every result was suppressed
-  still passes; the count is the only signal.
+  SARIF. From 4.3.0, a result whose suppressions are all `accepted`, or
+  carry no status (a `# nosemgrep` line), is not counted as an open
+  finding; the number of such results is recorded in
+  `metadata.suppressed_count` and named in the evidence summary.
+  `underReview` and `rejected` suppressions leave the result open. Up to
+  4.2.0 a suppressed result was counted like any other. Code excluded
+  before the scan (a `.semgrepignore` entry, for example) never reaches
+  the SARIF, so the collector cannot see it. A scan in which every result
+  was suppressed still passes; the count is the only signal.
 - SBOM evidence carries a `metadata.cisa_2025_minimum_elements`
   presence map and a `metadata.cisa_2025_conformant` flag, checked
   against CISA's 2025 Minimum Elements for an SBOM (author, timestamp,
@@ -245,13 +246,15 @@ context, CR26 source versions, catalog changes and output-lock recovery.
 - An **empty** result class produces no evidence at all, rather than a
   passing one. "Trivy found no secrets" and "Trivy was not asked about
   secrets" are different claims, and the report cannot tell them apart.
-- A clean report, which Trivy writes without a `Results` key, is
-  recognised as a Trivy report instead of being listed among the files
-  that matched no parser. It produces no evidence, for the same reason.
-- The `secret` class fails on any finding, whatever its severity: every
-  entry is a detected secret. The counts keep the severity Trivy
-  reported. The dependency and `config` classes fail on a critical or
-  high finding.
+- A clean report, which Trivy writes without a `Results` key, produces no
+  evidence, for the same reason. From 4.3.0 it is recognised as a Trivy
+  report; up to 4.2.0 it was listed among the files that matched no
+  parser.
+- The dependency and `config` classes fail on a critical or high
+  finding. From 4.3.0 the `secret` class fails on any finding, whatever
+  its severity, because every entry is a detected secret; the counts keep
+  the severity Trivy reported. Up to 4.2.0 a report holding only medium,
+  low or unknown-severity secrets passed.
 - Misconfigurations whose `Status` is `PASS` (present when Trivy runs with
   `--include-non-failures`) are not counted as findings.
 - Only the dependency lane carries `cve_ids`. Secret rule ids and
