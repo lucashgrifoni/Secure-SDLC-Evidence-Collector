@@ -18,7 +18,10 @@ hold the release path to rules a pull request can verify:
 * the pull-request sample gate uses the same `--fail-on` as the publish job.
   Publish runs the sample with `--fail-on conditional`; CI used `not_ready`,
   so a change that dropped the sample to `conditional` passed CI and then
-  failed the tag.
+  failed the tag;
+* a dispatch on a branch is a rehearsal that writes nothing outside its run:
+  every step that creates an attestation, a release asset, a PyPI version or
+  an image runs only on a tag (PIP-03, PIP-07).
 """
 
 from __future__ import annotations
@@ -174,3 +177,68 @@ def test_pull_request_sample_gate_matches_the_publish_gate() -> None:
         f"sample-bundle gates on {ci_gates}; publish runs the same sample with "
         "--fail-on conditional, so a weaker CI gate lets a tag fail on it"
     )
+
+
+_ON_TAG = "github.ref_type == 'tag'"
+# Actions whose only job is to write outside the run: GitHub attestations, the
+# GitHub Release, the GHCR login that a push needs, and the PyPI upload.
+_PUBLISHING_ACTIONS = (
+    "actions/attest",
+    "softprops/action-gh-release",
+    "docker/login-action",
+    "pypa/gh-action-pypi-publish",
+)
+# Steps that sign, attest or read pushed images in the registry.
+_REGISTRY_STEPS = (
+    "Sign image with cosign (keyless)",
+    "Generate SBOM for image",
+    "Attach SBOM as cosign attestation",
+    "Upload image SBOM as workflow artifact",
+)
+
+
+def _runs_only_on_tag_push(job: dict[str, Any]) -> bool:
+    condition = str(job.get("if", ""))
+    return (
+        "github.event_name == 'push'" in condition
+        and "'refs/tags/v'" in condition
+        and "||" not in condition
+    )
+
+
+def test_rehearsal_runs_no_publishing_step() -> None:
+    """A dispatch on a branch must create no tag, asset, version, image or attestation."""
+    offenders = []
+    for name, job in _jobs(PUBLISH).items():
+        if _runs_only_on_tag_push(job):
+            continue
+        for step in _steps(job):
+            publishes = str(step.get("uses", "")).startswith(_PUBLISHING_ACTIONS)
+            if (publishes or step.get("name") in _REGISTRY_STEPS) and step.get("if") != _ON_TAG:
+                offenders.append(f"{name}:{step.get('name')}")
+    assert offenders == [], f"steps that would publish from a branch rehearsal: {offenders}"
+
+
+def test_pypi_upload_runs_only_on_a_tag_push() -> None:
+    assert _runs_only_on_tag_push(_jobs(PUBLISH)["publish-pypi"])
+
+
+def test_rehearsal_builds_the_image_without_pushing_it() -> None:
+    job = _jobs(PUBLISH)["publish-container"]
+    assert "github.ref_type == 'branch'" in str(job["if"]), "the rehearsal skips the image build"
+    build = next(
+        step
+        for step in _steps(job)
+        if str(step.get("uses", "")).startswith("docker/build-push-action")
+    )
+    assert build["with"]["push"] == "${{ " + _ON_TAG + " }}"
+
+
+def test_rehearsal_file_check_covers_every_attached_file() -> None:
+    """The check stands in for the attach step, so both must name the same files."""
+    steps = {step.get("name"): step for step in _steps(_jobs(PUBLISH)["sign-and-publish"])}
+    attach = steps["Attach signed artifacts to the GitHub Release"]
+    check = steps["Check every release file exists (rehearsal)"]
+    assert attach["with"]["fail_on_unmatched_files"] is True
+    assert check["if"] == "github.ref_type != 'tag'"
+    assert check["env"]["FILES"].split() == attach["with"]["files"].split()

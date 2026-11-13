@@ -57,30 +57,114 @@ def test_every_release_checkout_uses_the_event_commit() -> None:
     assert all(step["with"].get("ref") == "${{ github.sha }}" for step in checkouts)
 
 
+def _resolve_tag(
+    tmp_path: Path, event: str, ref: str, requested: str
+) -> subprocess.CompletedProcess[str]:
+    return _shell(
+        _step("Resolve tag")["run"],
+        tmp_path,
+        INPUT_TAG=requested,
+        EVENT_NAME=event,
+        GITHUB_REF=ref,
+        GITHUB_REF_NAME=ref.split("/", 2)[-1],
+        GITHUB_OUTPUT=str(tmp_path / "outputs"),
+    )
+
+
 @pytest.mark.parametrize(
     ("event", "ref", "requested", "allowed"),
     [
-        ("workflow_dispatch", "refs/heads/main", "v3.2.0", False),
         ("workflow_dispatch", "refs/tags/v3.2.0", "v3.2.1", False),
         ("workflow_dispatch", "refs/tags/v3.2.0", "v3.2.0", True),
         ("workflow_dispatch", "refs/tags/v3.2.0", 'v3.2.0"; exit 0; #', False),
+        ("workflow_dispatch", "refs/pull/7/merge", "v3.2.0", False),
         ("push", "refs/tags/v3.2.0", "", True),
+        ("push", "refs/heads/main", "", False),
     ],
 )
 def test_requested_tag_and_provenance_ref_must_agree(
     event: str, ref: str, requested: str, allowed: bool, tmp_path: Path
 ) -> None:
-    script = _step("Resolve tag")["run"].replace("${{ github.event_name }}", event)
-    result = _shell(
-        script,
-        tmp_path,
-        INPUT_TAG=requested,
-        EVENT_NAME=event,
-        GITHUB_REF=ref,
-        GITHUB_REF_NAME=ref.rsplit("/", 1)[-1],
-        GITHUB_OUTPUT=str(tmp_path / "outputs"),
-    )
+    result = _resolve_tag(tmp_path, event, ref, requested)
     assert (result.returncode == 0) is allowed, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("requested", ["", "v1.0.0"])
+def test_branch_dispatch_rehearses_the_pyproject_version(requested: str, tmp_path: Path) -> None:
+    """PIP-03: a dispatch on a branch rehearses the version release-please will tag.
+
+    It used to be refused, so a changed publish-pypi.yml first ran on a real
+    tag. The input is ignored: the bundle and signatures of a rehearsal must
+    describe the version that will ship, not one typed by hand.
+    """
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "x"\nversion = "9.8.7" # x-release-please-version\n', encoding="utf-8"
+    )
+    result = _resolve_tag(
+        tmp_path, "workflow_dispatch", "refs/heads/ci/publish-rehearsal", requested
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (tmp_path / "outputs").read_text(encoding="utf-8") == "tag=v9.8.7\n"
+    assert "::notice::Rehearsal of v9.8.7" in result.stdout
+
+
+def test_branch_dispatch_refuses_a_pyproject_without_a_version(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n', encoding="utf-8")
+    result = _resolve_tag(tmp_path, "workflow_dispatch", "refs/heads/main", "")
+    assert result.returncode != 0, result.stdout
+    assert not (tmp_path / "outputs").exists()
+
+
+@pytest.mark.parametrize(
+    ("gh_body", "allowed"),
+    [
+        ("echo 0", True),
+        ("echo 3", False),
+        ("echo 'release not found' >&2; return 1", False),
+    ],
+)
+def test_tag_dispatch_is_refused_once_the_release_has_assets(
+    gh_body: str, allowed: bool, tmp_path: Path
+) -> None:
+    """PIP-07: re-running a tag re-signed and overwrote the published assets.
+
+    `gh` is replaced by a shell function, so the guard's own script runs
+    against a release with no assets, some assets, or no release at all.
+    """
+    script = (
+        f"gh() {{ {gh_body}; }}\n" + _step("Refuse a re-run over published release assets")["run"]
+    )
+    result = _shell(script, tmp_path, TAG="v3.2.0")
+    assert (result.returncode == 0) is allowed, result.stdout + result.stderr
+
+
+_RELEASE_FILES = (
+    "dist/pkg.whl",
+    "dist/pkg.tar.gz",
+    "release-evidence/bundle.json",
+    "release-evidence/report.md",
+    "release-evidence/summary.html",
+    "sbom/pkg.cdx.json",
+    "provenance/pkg.intoto.jsonl",
+    "signatures/pkg.whl.sig",
+    "signatures/pkg.whl.pem",
+    "checksums.txt",
+)
+
+
+@pytest.mark.parametrize("absent", [None, *_RELEASE_FILES])
+def test_rehearsal_file_check_fails_when_a_release_file_is_missing(
+    absent: str | None, tmp_path: Path
+) -> None:
+    step = _step("Check every release file exists (rehearsal)")
+    for name in _RELEASE_FILES:
+        if name != absent:
+            (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+            (tmp_path / name).write_text("x", encoding="utf-8")
+    result = _shell(step["run"], tmp_path, FILES=step["env"]["FILES"])
+    assert (result.returncode == 0) is (absent is None), result.stdout + result.stderr
+    if absent is not None:
+        assert "::error::No file matches" in result.stdout
 
 
 @pytest.mark.parametrize(

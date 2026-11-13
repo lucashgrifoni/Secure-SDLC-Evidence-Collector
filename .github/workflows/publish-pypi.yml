@@ -4,11 +4,14 @@ on:
   push:
     tags:
       - "v*.*.*"
+  # A dispatch on a branch is a rehearsal: it runs this file as the branch has
+  # it, builds, tests, bundles and signs, and publishes nothing. A dispatch on
+  # a tag re-runs a release and is refused once that release has assets.
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to release (e.g. v1.0.1). Dispatch --ref must select this same tag."
-        required: true
+        description: "Tag to re-run (e.g. v1.0.1), only when --ref is that tag. Leave empty on a branch to rehearse."
+        required: false
         type: string
 
 permissions:
@@ -57,6 +60,16 @@ jobs:
       # because the step feeds the `python-dist` artifact that is later signed
       # with Sigstore and pushed to PyPI, so it stops being harmless the moment
       # a second collaborator or an automation account can dispatch.
+      #
+      # A rehearsal (dispatch on refs/heads/*) takes its tag from the version
+      # in pyproject.toml, the version release-please will tag, and ignores
+      # the input. That is why the checkout comes first in this job.
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
       - name: Resolve tag
         id: resolve
         env:
@@ -64,11 +77,24 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            tag="$INPUT_TAG"
-          else
-            tag="${GITHUB_REF_NAME}"
-          fi
+          rehearsal=false
+          case "$EVENT_NAME:$GITHUB_REF" in
+            push:refs/tags/*)
+              tag="${GITHUB_REF_NAME}"
+              ;;
+            workflow_dispatch:refs/tags/*)
+              tag="$INPUT_TAG"
+              ;;
+            workflow_dispatch:refs/heads/*)
+              version="$(sed -n -E 's/^version = "([^"]+)".*$/\1/p' pyproject.toml)"
+              tag="v${version}"
+              rehearsal=true
+              ;;
+            *)
+              echo "Refusing $EVENT_NAME on $GITHUB_REF: publish runs on a tag, rehearsal on a branch" >&2
+              exit 1
+              ;;
+          esac
           if [ -z "$tag" ]; then
             echo "Could not resolve tag" >&2
             exit 1
@@ -87,17 +113,33 @@ jobs:
           fi
           # Provenance uses the event ref/commit. Building another ref would
           # sign an artifact whose recorded source does not describe its code.
-          if [ "$GITHUB_REF" != "refs/tags/$tag" ]; then
+          # A rehearsal publishes nothing, so its tag names no ref.
+          if [ "$rehearsal" = false ] && [ "$GITHUB_REF" != "refs/tags/$tag" ]; then
             echo "Run this workflow on refs/tags/$tag (gh workflow run --ref $tag --field tag=$tag)." >&2
             exit 1
           fi
+          if [ "$rehearsal" = true ]; then
+            echo "::notice::Rehearsal of $tag on $GITHUB_REF: no tag, release asset, PyPI upload, image push or attestation."
+          fi
           echo "tag=$tag" >>"$GITHUB_OUTPUT"
 
-      - name: Checkout
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-        with:
-          persist-credentials: false
-          ref: ${{ github.sha }}
+      # PIP-07: a dispatch on a tag whose release already has assets would
+      # rebuild the bundle (new bundle_id and generated_at), re-sign it and
+      # overwrite the published files. Only a release whose run attached
+      # nothing may be re-run. A missing release fails `gh` and the step.
+      - name: Refuse a re-run over published release assets
+        if: github.event_name == 'workflow_dispatch' && github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.resolve.outputs.tag }}
+        run: |
+          set -euo pipefail
+          assets="$(gh release view "$TAG" --json assets --jq '.assets | length')"
+          if [ "$assets" != "0" ]; then
+            echo "::error::Release $TAG already has $assets assets; a dispatch on a tag only completes a release that has none."
+            exit 1
+          fi
 
       - name: Setup Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -515,7 +557,11 @@ jobs:
           cd ../release-evidence && sha256sum bundle.json >> ../checksums.txt
           cd ../sbom && sha256sum -- *.json >> ../checksums.txt
 
+      # Every step that writes outside this run (attestation store, GitHub
+      # Release) runs only on a tag. A rehearsal on a branch signs into
+      # signatures/ above and keeps the files in this runner.
       - name: Generate build provenance attestations (GitHub-native)
+        if: github.ref_type == 'tag'
         uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018 # v1.4.4
         with:
           subject-path: |
@@ -533,6 +579,7 @@ jobs:
       # release is never published with placeholder text. To add an editorial
       # narrative, edit the release body by hand after publishing.
       - name: Attach signed artifacts to the GitHub Release
+        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ needs.build.outputs.tag }}
@@ -548,6 +595,35 @@ jobs:
             signatures/*.sig
             signatures/*.pem
             checksums.txt
+
+      # The rehearsal stand-in for the attach step: the same patterns, each of
+      # which must match a file, as `fail_on_unmatched_files` demands. A test
+      # keeps this list equal to the attach step's `files`.
+      - name: Check every release file exists (rehearsal)
+        if: github.ref_type != 'tag'
+        env:
+          FILES: |
+            dist/*.whl
+            dist/*.tar.gz
+            release-evidence/bundle.json
+            release-evidence/report.md
+            release-evidence/summary.html
+            sbom/*.json
+            provenance/*.intoto.jsonl
+            signatures/*.sig
+            signatures/*.pem
+            checksums.txt
+        run: |
+          set -euo pipefail
+          missing=0
+          while IFS= read -r pattern; do
+            [ -n "$pattern" ] || continue
+            if ! compgen -G "$pattern"; then
+              echo "::error::No file matches $pattern"
+              missing=1
+            fi
+          done <<<"$FILES"
+          exit "$missing"
 
   publish-pypi:
     # Publishes the wheel + sdist to PyPI using OIDC (Trusted Publisher).
@@ -609,10 +685,14 @@ jobs:
     # The image references the just-built tag from this run. We do
     # NOT rebuild from source inside this job — the build context is
     # the same wheel we already produced and signed.
+    #
+    # A rehearsal on a branch runs the same build with `push: false` and
+    # skips the registry login, the push, the signature, the registry SBOM
+    # and the attestation.
     name: Build and sign multi-arch container
     runs-on: ubuntu-24.04
     needs: [build, sign-and-publish]
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: github.ref_type == 'branch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
     timeout-minutes: 30
     permissions:
       contents: read
@@ -652,6 +732,7 @@ jobs:
           cache-binary: false
 
       - name: Log in to GHCR
+        if: github.ref_type == 'tag'
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ${{ env.REGISTRY }}
@@ -676,7 +757,7 @@ jobs:
           context: .
           file: Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: true
+          push: ${{ github.ref_type == 'tag' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           provenance: true
@@ -688,6 +769,7 @@ jobs:
           cosign-release: "v2.4.1"
 
       - name: Sign image with cosign (keyless)
+        if: github.ref_type == 'tag'
         env:
           COSIGN_YES: "true"
           DIGEST: ${{ steps.build.outputs.digest }}
@@ -711,6 +793,7 @@ jobs:
       # ``github.repository`` preserves the original case
       # ("Secure-SDLC-Evidence-Collector") which syft rejects.
       - name: Generate SBOM for image
+        if: github.ref_type == 'tag'
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
           SYFT_REGISTRY_AUTH_AUTHORITY: ${{ env.REGISTRY }}
@@ -725,6 +808,7 @@ jobs:
             -o cyclonedx-json=image-sbom.cdx.json
 
       - name: Attach SBOM as cosign attestation
+        if: github.ref_type == 'tag'
         env:
           COSIGN_YES: "true"
           DIGEST: ${{ steps.build.outputs.digest }}
@@ -739,6 +823,7 @@ jobs:
           done
 
       - name: Upload image SBOM as workflow artifact
+        if: github.ref_type == 'tag'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: image-sbom

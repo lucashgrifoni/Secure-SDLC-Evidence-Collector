@@ -97,6 +97,19 @@ and are not committed to the public repository.
       ... --certificate-oidc-issuer https://token.actions.githubusercontent.com`).
 - [ ] `checksums.txt` (SHA-256 of wheel, sdist, `bundle.json` and SBOMs)
       published alongside release assets.
+- [ ] A rehearsal of `publish-pypi.yml` is green on the release-please PR
+      branch, dispatched right before that PR is merged (commands below).
+      A dispatch on a branch takes the tag from the version in
+      `pyproject.toml`, runs the quality gates, the reproducible build, the
+      SLSA provenance, the SBOM and the release bundle, signs into the
+      runner, checks that every file the release would attach exists, and
+      builds the image with `push: false`. It creates no tag, release asset,
+      PyPI version, GHCR tag or GitHub attestation. A pull request that
+      changes the publish workflow needs its own green rehearsal on its
+      branch before merge.
+- [ ] A dispatch on a tag is only used to finish a release whose run
+      attached nothing: the workflow refuses it once that release has
+      assets, because a re-run would re-sign and replace them.
 
 ## Governance gates
 
@@ -136,6 +149,12 @@ python -m evidence_collector.cli.main compare \
 
 # External-lab evidence
 bash scripts/scan_all_labs.sh
+
+# Publish rehearsal (on the release-please PR branch, before merging it)
+branch="$(gh pr view <release-pr-number> --json headRefName --jq .headRefName)"
+gh workflow run publish-pypi.yml --ref "$branch"
+gh run watch "$(gh run list --workflow publish-pypi.yml --branch "$branch" \
+  --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
 
 # Security gates (locally, before tagging)
 gitleaks detect --source . --redact
