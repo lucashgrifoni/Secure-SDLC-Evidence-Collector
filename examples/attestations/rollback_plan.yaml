@@ -1,0 +1,15 @@
+# Rollback plan: required by ORG-REL-ROLLBACK (critical) in the default
+# catalog.
+#
+# Replace every value below and point `link` at the runbook people would
+# actually follow. `status: unknown` satisfies no control; set it to `passed`
+# once the plan exists for this release.
+evidence_type: rollback_plan
+producer: "Example Release Manager"
+subject_type: release
+subject_ref: "example-app:1.0.0"
+status: unknown
+confidence: medium
+generated_at: "2026-01-01T00:00:00Z"
+summary: "Rollback: redeploy the previous image tag; no data migration in this release"
+link: "https://runbooks.example.com/example-app/rollback"

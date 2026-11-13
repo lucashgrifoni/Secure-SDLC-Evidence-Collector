@@ -1,0 +1,24 @@
+# Code review: required by ORG-CODE-REVIEW (critical) in the default catalog.
+#
+# Prefer `sdlc-evidence run --pull-request <number>` (or the GitHub Action's
+# `pull-request` input): it reads the approvals from GitHub. Use this file for
+# a review the collector cannot read itself.
+#
+# Replace every value below. The collector checks the shape of this file, not
+# whether the review happened. `status: unknown` satisfies no control; set it
+# to `passed` only once the review described here took place for this release.
+evidence_type: code_review
+producer: "Example Review Team"
+subject_type: pull_request
+subject_ref: "PR-0000"
+status: unknown
+confidence: medium
+generated_at: "2026-01-01T00:00:00Z"
+summary: "PR-0000 approved by two reviewers after its last commit"
+metadata:
+  reviewers_required: 2
+  reviewers_approved: 2
+  last_approval_after_last_commit: true
+  reviewers:
+    - reviewer-one@example.com
+    - reviewer-two@example.com

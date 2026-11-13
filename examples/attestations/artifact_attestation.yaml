@@ -1,0 +1,18 @@
+# Artifact attestation (build provenance): recommended by SSDF-PS.2,
+# SSDF-PS.3 and SAMM-IMPL-SB-2 in the default catalog.
+#
+# If you have the provenance file itself (SLSA provenance, a GitHub artifact
+# attestation or a Sigstore bundle), put it in --artifacts-dir instead: the
+# collector reads it as an `artifact_attestation`. Use this file only when you
+# cannot. Replace every value below; `status: unknown` satisfies no control.
+evidence_type: artifact_attestation
+producer: "Example Build System"
+subject_type: artifact
+subject_ref: "example-app:1.0.0"
+status: unknown
+confidence: medium
+generated_at: "2026-01-01T00:00:00Z"
+summary: "SLSA build provenance generated for the release artifact"
+metadata:
+  predicate_type: "https://slsa.dev/provenance/v1"
+  builder_id: "https://ci.example.com/example-org/example-app/release"
