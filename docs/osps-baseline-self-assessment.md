@@ -8,6 +8,8 @@ that catalog evaluates a release's evidence, while this page looks at how the
 project itself is run.
 
 - **Assessed:** 2026-11-09, against `main` at `4c9f82f` (release 4.2.0).
+  The workflows and branch protection were read again on 2026-11-13, against
+  `main` at `171b1e5`.
 - **Method:** the repository files named in each row, the 4.2.0 release
   assets, and the repository's GitHub settings read through the GitHub REST
   API (branch protection, collaborators, security features, Actions
@@ -28,7 +30,7 @@ not check it).
 |---|---|---|---|---|---|
 | 1 | 24 | 21 | 2 | 0 | 1 |
 | 2 | 19 | 17 | 1 | 1 | 0 |
-| 3 | 21 | 9 | 8 | 3 | 1 |
+| 3 | 21 | 10 | 7 | 3 | 1 |
 
 OSPS-BR-01.02 is retired in v2026.08.28 and not counted. A requirement
 first applies at the level shown and stays required at the levels above it.
@@ -50,7 +52,7 @@ publication copy, not a separate codebase.
 | OSPS-AC-02.01 | New collaborators get least privilege by default | Partial | On a repository owned by a personal account, GitHub gives every collaborator write access, so there is no lower default to choose. The owner is the only collaborator (admin). |
 | OSPS-AC-03.01 | Direct commits to the primary branch are prevented | Partial | Branch protection on `main` requires 15 status checks, applies to administrators and requires conversation resolution. It does not require a pull request, so it does not by itself stop every direct commit. |
 | OSPS-AC-03.02 | Deleting the primary branch needs explicit confirmation | Met | Branch protection on `main` disallows deletion and force pushes. |
-| OSPS-BR-01.01 | Untrusted CI metadata is sanitized | Met | No workflow uses `pull_request_target` or `workflow_run`, and pull request titles, bodies and branch names never reach a `run:` script. The `workflow_dispatch` tag input of `publish-pypi.yml` passes through an environment variable and an anchored version pattern. Two scripts still expand `github.ref_name` inline, only on pushes to `main` and to release tags. |
+| OSPS-BR-01.01 | Untrusted CI metadata is sanitized | Met | No workflow uses `pull_request_target` or `workflow_run`, and pull request titles, bodies and branch names never reach a `run:` script. The `workflow_dispatch` tag input of `publish-pypi.yml` passes through an environment variable and an anchored version pattern. One script (`deploy-github-pages.yml`) still expands `github.ref_name` inline; it runs only on pushes to `main` and on manual dispatch. |
 | OSPS-BR-01.03 | Untrusted code snapshots get no privileged credentials | Met | Pull requests run on `pull_request`, so fork code gets no secrets. The default `GITHUB_TOKEN` permission is read-only and every workflow declares a read-only top-level `permissions` block. |
 | OSPS-BR-03.01 | Official project channels use encrypted transport | Met | The repository, the documentation site, PyPI and GHCR are served over HTTPS. |
 | OSPS-BR-03.02 | Distribution channels are authenticated | Met | GitHub Releases, PyPI and GHCR are HTTPS endpoints; release files and the container image are signed with cosign keyless ([verifying signatures](index.md#verifying-signatures)). |
@@ -99,8 +101,8 @@ publication copy, not a separate codebase.
 
 | ID | Requirement (short) | Status | Evidence |
 |---|---|---|---|
-| OSPS-AC-04.02 | Each CI job gets only the privileges it needs | Partial | Jobs grant their own write scopes on top of a read-only default. The container image job in `publish-pypi.yml` grants `attestations: write` although it attests the SBOM with cosign rather than through GitHub's attestation API. |
-| OSPS-BR-01.04 | Trusted collaborator input is sanitized in CI | Partial | The dispatch tag is validated as above; two scripts still expand `github.ref_name` inline instead of through an environment variable. |
+| OSPS-AC-04.02 | Each CI job gets only the privileges it needs | Met | Jobs grant their own write scopes on top of a read-only default, and each scope is used by a step of that job: `attestations: write` only in jobs that call GitHub's attestation actions, `packages: write` only in the container image job, `security-events: write` only in jobs that upload SARIF. |
+| OSPS-BR-01.04 | Trusted collaborator input is sanitized in CI | Partial | The dispatch tag is validated as above; one script (`deploy-github-pages.yml`) still expands `github.ref_name` inline instead of through an environment variable. |
 | OSPS-BR-02.02 | Every release asset is tied to the release identifier | Partial | The wheel and sdist names carry the version. `bundle.json`, `report.md`, `summary.html`, `multiple.intoto.jsonl` and the SBOM do not; they are tied to the version only by the tagged release they are attached to. |
 | OSPS-BR-07.02 | Policy for managing the project's secrets | Not met | No written policy for storing, accessing and rotating the project's own secrets. |
 | OSPS-DO-03.01 | Instructions to verify release integrity and authenticity | Met | [Verifying signatures](index.md#verifying-signatures). |

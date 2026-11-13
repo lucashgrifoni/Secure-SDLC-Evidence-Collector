@@ -78,6 +78,7 @@ nav:
   - Upgrading: upgrading.md
   - Evidence profile migration: evidence-profile-migration.md
   - GitHub Action: github_action.md
+  - Reusable workflow: reusable_workflow.md
   - Release readiness: release-readiness.md
   - Rolling back a release: rollback.md
   - AI evidence: ai-evidence.md

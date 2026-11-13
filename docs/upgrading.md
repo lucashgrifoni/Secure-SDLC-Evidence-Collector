@@ -187,7 +187,6 @@ bundles and structural digests stay the same.
 - Bundles produced with these catalogs or profiles get new structural digests.
   Re-pin `verify --expected` after regenerating them.
 
-
 ### CLI help text
 
 Only the `--help` output changes. Arguments, options, exit codes and outputs
