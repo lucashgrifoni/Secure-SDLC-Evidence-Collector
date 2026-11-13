@@ -34,7 +34,7 @@ jobs:
 
   evidence:
     needs: scan
-    uses: lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/reusable-evidence-collection.yml@v4.2.0 # x-release-please-version
+    uses: lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/reusable-evidence-collection.yml@v4.3.0 # x-release-please-version
     with:
       application: my-app
       repository: ${{ github.repository }}
@@ -42,7 +42,7 @@ jobs:
       artifact-name: scanner-output
       artifacts-dir: scanner-output
       attestations-dir: attestations
-      collector-version: "4.2.0" # x-release-please-version
+      collector-version: "4.3.0" # x-release-please-version
 
   after:
     needs: evidence
