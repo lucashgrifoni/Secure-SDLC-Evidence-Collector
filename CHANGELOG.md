@@ -4,6 +4,35 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.3.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.2.0...v4.3.0) (2026-11-13)
+
+
+### Added
+
+* **parsers:** read GitLab Security Reports as scan evidence ([#212](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/212)) ([ea252ee](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/ea252eeb9eb05449d0e134ea3f7ecf27d18f8446))
+* **report:** give summary.html, the docs site and the CLI the project page identity ([#214](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/214)) ([4dd5350](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/4dd5350f061be47a0975f91d58ebdab0e887cc2d))
+
+
+### Fixed
+
+* **action:** harden the Action and reusable workflow and keep failed-run bundles ([#193](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/193)) ([171b1e5](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/171b1e584b58e1bfb9039d6299edf875397422bd))
+* **catalogs:** match opt-in catalogs and profiles to current upstream sources ([#194](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/194)) ([cce87a4](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/cce87a4270a7b77d5af38118d4dc83d98e271643))
+* **deps:** refresh the hash locks past the certifi, uv, virtualenv, filelock and opentelemetry-api advisories ([#205](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/205)) ([e9303f5](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/e9303f5d99d93e8e40d66d3a841ec6b9c57941b4))
+* **oscal:** drop the uuid from catalog controls so the export validates ([#210](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/210)) ([2b0adb5](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/2b0adb510661cc6b30d8f4186db783568f6e6a81))
+* **parsers:** judge scanner results by what the scanner reported ([#192](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/192)) ([90e14d6](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/90e14d6acd98660e5f9b844f2028250e16779be4))
+
+
+### Documentation
+
+* **gitpage:** correct the landing page facts and fix no-JS, print, mobile and accessibility ([#207](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/207)) ([d13cc29](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/d13cc297b63bb25283114342a8993270060b6fe6))
+* make the reference docs and CLI help say what the tool does today ([#206](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/206)) ([2a69924](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/2a6992457fa32f2278d96a7003cf34a374e55c32))
+
+
+### CI
+
+* pin ubuntu-24.04 and gate the PR sample like the publish job ([#191](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/191)) ([6a6001d](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/6a6001dacf157870ec3f37062151b1656d0a341e))
+* **publish:** rehearse the publish workflow on a branch dispatch ([#213](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/213)) ([9152945](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/9152945fb76aa666d1c3a893e7d8819526691515))
+
 ## [4.2.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.1.4...v4.2.0) (2026-10-16)
 
 
