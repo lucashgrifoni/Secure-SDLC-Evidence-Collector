@@ -95,7 +95,8 @@ def looks_like_gitlab_security_report(data: Any) -> bool:
     version = _optional_str(data.get("version"))
     if version is None or version.split(".", 1)[0] != SUPPORTED_SCHEMA_MAJOR:
         return False
-    return _section(data, "scan").get("type") in SUPPORTED_SCAN_TYPES
+    scan_type = _section(data, "scan").get("type")
+    return isinstance(scan_type, str) and scan_type in SUPPORTED_SCAN_TYPES
 
 
 def _bucket(value: Any) -> str:

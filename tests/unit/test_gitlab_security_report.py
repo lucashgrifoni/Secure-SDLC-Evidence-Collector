@@ -77,6 +77,14 @@ def test_an_unsupported_scan_type_is_not_claimed() -> None:
     assert not looks_like_gitlab_security_report(report)
 
 
+@pytest.mark.parametrize("scan_type", [["sast"], {"type": "sast"}])
+def test_a_scan_type_that_is_not_a_string_is_not_claimed(scan_type: Any) -> None:
+    # A list or an object is unhashable; the membership test must not raise.
+    report = _load("gl-sast-report.json")
+    report["scan"]["type"] = scan_type
+    assert not looks_like_gitlab_security_report(report)
+
+
 def test_a_schema_major_other_than_15_is_not_claimed() -> None:
     report = _load("gl-sast-report.json")
     report["version"] = "14.1.2"
@@ -270,3 +278,18 @@ def test_collector_still_ignores_an_unsupported_scan_type(tmp_path: Path) -> Non
     collected = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
     assert collected.evidence == []
     assert len(collected.ignored) == 1
+
+
+def test_collector_ignores_a_malformed_scan_type_and_keeps_the_valid_report(
+    tmp_path: Path,
+) -> None:
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "gl-sast-report.json").write_bytes((REAL / "gl-sast-report.json").read_bytes())
+    report = _load("gl-sast-report.json")
+    report["scan"]["type"] = ["sast"]
+    _write(artifacts, report, "gl-malformed-report.json")
+    collected = LocalArtifactCollector(_release(), artifacts_dirs=[artifacts]).collect()
+    assert collected.errors == []
+    assert [e.evidence_type.value for e in collected.evidence] == ["sast_scan"]
+    assert [Path(p).name for p in collected.ignored] == ["gl-malformed-report.json"]
