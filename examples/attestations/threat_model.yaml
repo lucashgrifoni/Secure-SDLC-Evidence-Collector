@@ -1,0 +1,17 @@
+# Threat model: required by SSDF-PW.1 and SAMM-DESIGN-TA-1 (both medium) in
+# the default catalog. Without it the release is at best conditional.
+#
+# Replace every value below and point `link` at the threat model itself.
+# `status: unknown` satisfies no control; set it to `completed` (or `passed`)
+# once the model covers this release.
+evidence_type: threat_model
+producer: "Example AppSec Team"
+subject_type: application
+subject_ref: "example-app"
+status: unknown
+confidence: medium
+generated_at: "2026-01-01T00:00:00Z"
+summary: "Threat model reviewed for the changes in this release"
+link: "https://wiki.example.com/example-app/threat-model"
+metadata:
+  scope: "release 1.0.0"

@@ -1,0 +1,16 @@
+# Release approval: required by ORG-RELEASE-APPROVAL (critical) in the
+# default catalog.
+#
+# Replace every value below. The approver and the ticket are recorded as
+# written; nothing checks them against your change system. `status: unknown`
+# satisfies no control; set it to `passed` once the release was approved.
+evidence_type: release_approval
+producer: "Example Change Board"
+subject_type: release
+subject_ref: "example-app:1.0.0"
+status: unknown
+confidence: high
+generated_at: "2026-01-01T00:00:00Z"
+approver: "release-manager@example.com"
+change_ticket: "CHG-0000"
+summary: "Release 1.0.0 approved by the change board"

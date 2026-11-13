@@ -1,0 +1,20 @@
+# Pull request metadata: recommended by ORG-CODE-REVIEW. Without it the
+# control is partial and the release is at best conditional.
+#
+# `run --pull-request <number>` records this from GitHub as well. Replace every
+# value below; `status: unknown` satisfies no control.
+evidence_type: pr_metadata
+producer: "Example PR Export"
+subject_type: pull_request
+subject_ref: "PR-0000"
+status: unknown
+confidence: medium
+generated_at: "2026-01-01T00:00:00Z"
+summary: "PR-0000 merged into main with CI green"
+metadata:
+  number: 0
+  title: "Example change"
+  base: "main"
+  head: "feature/example"
+  merged: true
+  html_url: "https://git.example.com/example-org/example-app/pull/0"
