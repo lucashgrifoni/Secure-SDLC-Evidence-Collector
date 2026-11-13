@@ -12,6 +12,7 @@ from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescap
 from evidence_collector.controls.engine import exception_not_in_force_reason
 from evidence_collector.domain.enums import ControlEvaluationStatus
 from evidence_collector.domain.models import EvidenceBundle, EvidenceException
+from evidence_collector.scoring.risk import risk_weighted_status
 
 # `select_autoescape` matches on the *suffix* of the template name, and every
 # template here ends in `.j2`. `select_autoescape(["html", "xml"])` therefore
@@ -53,6 +54,7 @@ def get_environment() -> Environment:
     env.filters["md"] = md_escape
     env.filters["md_code"] = md_code
     env.globals["split_exceptions"] = split_exceptions
+    env.globals["risk_weighted_status"] = risk_weighted_status
     return env
 
 

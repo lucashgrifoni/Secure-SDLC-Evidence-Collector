@@ -154,6 +154,33 @@ def _count_exploitable(
     return counters
 
 
+def _weighted_status(
+    base: ReleaseStatus, *, kev_ransomware: int, exploitable: int, kev_blocks: bool
+) -> ReleaseStatus:
+    """Return the verdict the risk-weighted rules give for these counts."""
+    if kev_ransomware > 0 and kev_blocks:
+        return ReleaseStatus.NOT_READY
+    if exploitable > 0:
+        return _worse(base, ReleaseStatus.CONDITIONAL)
+    return base
+
+
+def risk_weighted_status(assessment: RiskAssessment) -> ReleaseStatus:
+    """Return the verdict the risk-weighted rules gave, read from a recorded assessment.
+
+    The summary's ``release_status`` is not always that verdict: the
+    release-anchor drift check runs after the risk mode and can degrade a
+    ``ready`` on its own. Comparing this value with ``base_release_status``
+    tells whether the risk mode itself changed the verdict.
+    """
+    return _weighted_status(
+        assessment.base_release_status,
+        kev_ransomware=assessment.kev_ransomware_cve_count,
+        exploitable=assessment.exploitable_cve_count,
+        kev_blocks=assessment.kev_blocks,
+    )
+
+
 def _decide_risk_weighted_status(
     base: ReleaseStatus,
     counters: dict[str, int],
@@ -166,13 +193,18 @@ def _decide_risk_weighted_status(
     keep it precise.
     """
     gaps = _unconsulted_sources(counters)
+    new_status = _weighted_status(
+        base,
+        kev_ransomware=counters["kev_ransomware"],
+        exploitable=counters["exploitable"],
+        kev_blocks=thresholds.kev_blocks,
+    )
     if counters["kev_ransomware"] > 0 and thresholds.kev_blocks:
-        return ReleaseStatus.NOT_READY, (
+        return new_status, (
             f"{counters['kev_ransomware']} CVE(s) in CISA KEV with known "
             "ransomware use; release blocked under epss-weighted mode." + gaps
         )
     if counters["exploitable"] > 0:
-        new_status = _worse(base, ReleaseStatus.CONDITIONAL)
         return new_status, (
             f"{counters['exploitable']} exploitable CVE(s) "
             f"(KEV={counters['kev']}, EPSS>={thresholds.epss_percentile_threshold:.2f}: "

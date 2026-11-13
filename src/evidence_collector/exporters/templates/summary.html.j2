@@ -27,7 +27,9 @@
 {% set errors = bundle.collection_errors or [] %}
 {% set exceptions_in_force, exceptions_not_in_force = split_exceptions(bundle) %}
 {% set levels = ["critical", "high", "medium", "low"] %}
-{% set risk_moved = (risk.base_release_status.value != verdict) if risk else false %}
+{#- The release-anchor drift check can degrade the verdict after the risk mode
+    ran, so the final verdict alone does not say the risk mode moved it. -#}
+{% set risk_moved = (risk_weighted_status(risk) != risk.base_release_status) if risk else false %}
 {% set custom_catalog = (bundle.catalog.origin == "custom") if bundle.catalog else false %}
 {#- Row positions for the cross-links, and the controls each record supports. -#}
 {% set control_row = {} %}

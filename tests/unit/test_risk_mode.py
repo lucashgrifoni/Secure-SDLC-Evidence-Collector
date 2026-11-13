@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
+
 from evidence_collector.domain.enums import (
     ConfidenceLevel,
     EvidenceStatus,
@@ -32,6 +34,7 @@ from evidence_collector.scoring import (
     RiskThresholds,
     apply_risk_mode,
 )
+from evidence_collector.scoring.risk import risk_weighted_status
 
 
 def _summary(status: ReleaseStatus) -> Summary:
@@ -449,3 +452,37 @@ def test_rationale_says_epss_was_not_consulted_when_kev_still_blocks() -> None:
     assert out.release_status == ReleaseStatus.NOT_READY
     assert out.risk_assessment is not None
     assert "EPSS was not consulted" in out.risk_assessment.rationale
+
+
+_RANSOMWARE = TopRiskCve(
+    cve_id="CVE-2024-9999", epss_score=0.1, epss_percentile=0.1, in_kev=True, known_ransomware=True
+)
+_HIGH_EPSS = TopRiskCve(
+    cve_id="CVE-2024-1111",
+    epss_score=0.85,
+    epss_percentile=0.95,
+    in_kev=False,
+    known_ransomware=False,
+)
+_LOW_EPSS = TopRiskCve(
+    cve_id="CVE-2024-2222",
+    epss_score=0.01,
+    epss_percentile=0.05,
+    in_kev=False,
+    known_ransomware=False,
+)
+
+
+@pytest.mark.parametrize("base", list(ReleaseStatus))
+@pytest.mark.parametrize(
+    "evidence",
+    [[], [_evidence([_RANSOMWARE])], [_evidence([_HIGH_EPSS])], [_evidence([_LOW_EPSS])]],
+    ids=["no-intelligence", "kev-ransomware", "high-epss", "nothing-exploitable"],
+)
+def test_the_recorded_assessment_gives_back_the_risk_weighted_verdict(
+    base: ReleaseStatus, evidence: list[NormalizedEvidence]
+) -> None:
+    """Reports read the risk verdict back from the bundle, where only the counts survive."""
+    out = apply_risk_mode(_summary(base), evidence, mode=RiskMode.EPSS_WEIGHTED)
+    assert out.risk_assessment is not None
+    assert risk_weighted_status(out.risk_assessment) == out.release_status

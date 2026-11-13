@@ -23,6 +23,7 @@ from evidence_collector.domain.models import (
     EvidenceBundle,
     EvidenceException,
     ReleaseContext,
+    RiskAssessment,
 )
 from evidence_collector.exporters._jinja import get_environment
 from evidence_collector.exporters.html import bundle_to_html
@@ -231,3 +232,51 @@ def test_optional_footer_values_render_escaped_when_given(ready_bundle: Evidence
     assert f"sdlc-evidence verify bundle.json --expected {DIGEST}" in html
     assert "2 file(s) in the artifact directories matched no parser" in html
     assert "a.txt" not in html
+
+
+def _with_risk(
+    bundle: EvidenceBundle, *, verdict: ReleaseStatus, exploitable: int, rationale: str
+) -> EvidenceBundle:
+    assessment = RiskAssessment(
+        mode="epss-weighted",
+        epss_percentile_threshold=0.7,
+        exploitable_cve_count=exploitable,
+        kev_cve_count=0,
+        kev_ransomware_cve_count=0,
+        high_epss_cve_count=exploitable,
+        base_release_status=ReleaseStatus.READY,
+        rationale=rationale,
+    )
+    summary = bundle.summary.model_copy(
+        update={"release_status": verdict, "risk_assessment": assessment}
+    )
+    return bundle.model_copy(update={"summary": summary})
+
+
+def test_anchor_drift_after_a_neutral_risk_mode_is_not_credited_to_risk(
+    ready_bundle: EvidenceBundle,
+) -> None:
+    """Risk mode kept `ready`; the anchor-drift check made it `conditional`."""
+    html = bundle_to_html(
+        _with_risk(
+            ready_bundle,
+            verdict=ReleaseStatus.CONDITIONAL,
+            exploitable=0,
+            rationale="Risk mode requested but no vulnerability intelligence was present.",
+        )
+    )
+    assert "The risk-weighted rule set this verdict" not in html
+    assert "decides the verdict" not in html
+
+
+def test_a_risk_downgrade_is_credited_to_risk(ready_bundle: EvidenceBundle) -> None:
+    html = bundle_to_html(
+        _with_risk(
+            ready_bundle,
+            verdict=ReleaseStatus.CONDITIONAL,
+            exploitable=1,
+            rationale="1 exploitable CVE(s); release downgraded to conditional.",
+        )
+    )
+    assert "The risk-weighted rule set this verdict" in html
+    assert "decides the verdict" in html
