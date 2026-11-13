@@ -51,8 +51,8 @@ def discover_parsers() -> dict[str, Callable[..., Any]]:
 
     Keys come from the entry-point name. Built-in parsers register under
     stable names: ``sarif``, ``sbom``, ``junit``, ``zap``, ``attestation``,
-    ``exception``, ``vsa`` and ``provenance`` — the last two were added to
-    ``pyproject.toml`` without reaching this list.
+    ``exception``, ``vsa``, ``provenance`` and ``gitlab`` (GitLab Security
+    Reports).
 
     Third-party plugins can register additional names, or shadow a built-in
     by declaring the same name; last load wins and load order is

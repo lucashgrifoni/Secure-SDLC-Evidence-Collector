@@ -92,6 +92,7 @@ attestation = "evidence_collector.parsers:parse_attestation"
 exception = "evidence_collector.parsers:parse_exception"
 vsa = "evidence_collector.parsers:parse_vsa"
 provenance = "evidence_collector.parsers:parse_provenance"
+gitlab = "evidence_collector.parsers:parse_gitlab_security_report"
 
 [project.entry-points."evidence_collector.collectors"]
 local = "evidence_collector.collectors.local:LocalArtifactCollector"

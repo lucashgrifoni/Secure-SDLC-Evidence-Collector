@@ -41,6 +41,7 @@ from evidence_collector.parsers._common import ParsedArtifact
 from evidence_collector.parsers.attestation import ParsedAttestation
 from evidence_collector.parsers.croissant import ParsedCroissant
 from evidence_collector.parsers.garak import ParsedGarak
+from evidence_collector.parsers.gitlab_security import ParsedGitLabSecurityReport
 from evidence_collector.parsers.inspect_eval import ParsedInspectEval
 from evidence_collector.parsers.intoto_provenance import ParsedProvenance
 from evidence_collector.parsers.intoto_statement import (
@@ -1683,4 +1684,100 @@ def normalize_workflow_run(
         generated_at=None,
         summary=f"workflow {payload.get('workflow_name')} run {payload.get('run_id')} {outcome}",
         metadata={**payload, "release_commit_match": match},
+    )
+
+
+_GITLAB_SCAN_TYPES: dict[str, tuple[EvidenceType, str]] = {
+    "sast": (EvidenceType.SAST_SCAN, "sast"),
+    "secret_detection": (EvidenceType.SECRETS_SCAN, "secrets"),
+    "dependency_scanning": (EvidenceType.SCA_SCAN, "sca"),
+    "container_scanning": (EvidenceType.SCA_SCAN, "sca"),
+    "dast": (EvidenceType.DAST_SCAN, "dast"),
+}
+
+
+def _gitlab_status(
+    parsed: ParsedGitLabSecurityReport, evidence_type: EvidenceType
+) -> EvidenceStatus:
+    """Status of one GitLab scan, read the way the SARIF and Trivy routes read theirs.
+
+    A scan whose ``scan.status`` is ``failure`` did not complete, so it is
+    ``invalid`` and cannot satisfy a control. In a secrets scan every
+    vulnerability is a detected secret, so any one fails it; the counts keep
+    the severity GitLab reported. Otherwise a critical or high finding fails.
+    """
+    if parsed.scan_failed:
+        return EvidenceStatus.INVALID
+    if evidence_type == EvidenceType.SECRETS_SCAN and parsed.total_findings > 0:
+        return EvidenceStatus.FAILED
+    blocking = parsed.findings_count.get("critical", 0) + parsed.findings_count.get("high", 0)
+    return EvidenceStatus.FAILED if blocking > 0 else EvidenceStatus.PASSED
+
+
+def _gitlab_summary(parsed: ParsedGitLabSecurityReport, evidence_type: EvidenceType) -> str:
+    who = f"GitLab {parsed.scan_type} ({parsed.scanner_id})"
+    if parsed.scan_failed:
+        return (
+            f"{who} reported that its scan did not complete (scan.status=failure), "
+            "so this file does not show that a scan ran"
+        )
+    blocking = parsed.findings_count.get("critical", 0) + parsed.findings_count.get("high", 0)
+    summary = f"{who} reported {parsed.total_findings} findings (high/critical={blocking})"
+    if evidence_type == EvidenceType.SECRETS_SCAN and parsed.total_findings > 0 and blocking == 0:
+        summary += "; any finding fails a secrets scan"
+    return summary
+
+
+def normalize_gitlab_security_report(
+    parsed: ParsedGitLabSecurityReport,
+    release: ReleaseContext,
+    *,
+    artifact_root: str | None = None,
+) -> NormalizedEvidence:
+    """Build one scan evidence from a GitLab Security Report.
+
+    SAST and secret detection describe the source tree, so their subject is
+    the release commit, as for SARIF. Dependency, container and DAST scans
+    describe what was built or deployed, so their subject is the artifact,
+    as for OSV and ZAP. The scanned image is kept in metadata when the
+    report names one.
+    """
+    evidence_type, source_kind = _GITLAB_SCAN_TYPES[parsed.scan_type]
+    on_commit = evidence_type in {EvidenceType.SAST_SCAN, EvidenceType.SECRETS_SCAN}
+    metadata: dict[str, Any] = {
+        "gitlab_report_version": parsed.report_version,
+        "gitlab_scan_type": parsed.scan_type,
+        "gitlab_scan_status": parsed.scan_status,
+        "gitlab_analyzer": {"id": parsed.analyzer_id, "version": parsed.analyzer_version},
+    }
+    if parsed.image:
+        metadata["image"] = parsed.image
+    return NormalizedEvidence(
+        evidence_id=_new_evidence_id(
+            "gitlab", parsed.artifact.integrity_hash, parsed.scan_type, release.release_id
+        ),
+        evidence_type=evidence_type,
+        source=EvidenceSource(
+            name=parsed.scanner_id, kind=source_kind, version=parsed.scanner_version
+        ),
+        producer=parsed.scanner_id,
+        subject_type=SubjectType.COMMIT if on_commit else SubjectType.ARTIFACT,
+        subject_ref=release.commit_sha
+        if on_commit
+        else (release.artifact_digest or release.release_id),
+        status=_gitlab_status(parsed, evidence_type),
+        confidence=ConfidenceLevel.LOW if parsed.scan_failed else ConfidenceLevel.HIGH,
+        classification=EvidenceClassification(
+            confidence=ConfidenceLevel.HIGH,
+            reason="driver_match",
+            driver_name=parsed.scanner_id,
+        ),
+        release_id=release.release_id,
+        commit_sha=release.commit_sha,
+        generated_at=None,
+        raw=_raw_ref(parsed.artifact, artifact_root),
+        findings_count=dict(parsed.findings_count),
+        cve_ids=list(parsed.cve_ids),
+        summary=_gitlab_summary(parsed, evidence_type),
+        metadata=metadata,
     )

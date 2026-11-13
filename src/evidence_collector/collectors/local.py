@@ -26,6 +26,7 @@ from evidence_collector.normalizers import (
     normalize_attestation,
     normalize_croissant,
     normalize_garak,
+    normalize_gitlab_security_report,
     normalize_inspect_eval,
     normalize_intoto_statement,
     normalize_junit,
@@ -51,6 +52,7 @@ from evidence_collector.parsers import (
     parse_croissant,
     parse_exception,
     parse_garak,
+    parse_gitlab_security_report,
     parse_inspect_eval,
     parse_intoto_statements,
     parse_junit,
@@ -70,6 +72,7 @@ from evidence_collector.parsers import (
 from evidence_collector.parsers._common import MAX_INPUT_BYTES, ParseError, describe_failure
 from evidence_collector.parsers._intoto import read_records
 from evidence_collector.parsers.croissant import croissant_version
+from evidence_collector.parsers.gitlab_security import looks_like_gitlab_security_report
 from evidence_collector.parsers.inspect_eval import looks_like_inspect_log
 from evidence_collector.parsers.intoto_provenance import file_has_provenance
 from evidence_collector.parsers.intoto_statement import file_has_ingestable_statement
@@ -541,6 +544,16 @@ class LocalArtifactCollector:
                     )
                 )
                 return
+            # GitLab Security Report: typed by its `scan.type`, never by the
+            # file name, as GitLab itself does. One report is one scan.
+            if _looks_like_gitlab_security_report(file_path):
+                parsed_gitlab = parse_gitlab_security_report(file_path)
+                report.evidence.append(
+                    normalize_gitlab_security_report(
+                        parsed_gitlab, self._release, artifact_root=self._artifact_root
+                    )
+                )
+                return
             # in-toto SLSA VSA detection runs before SBOM/OSV: a VSA is a
             # JSON Statement keyed by its ``predicateType``, with none of the
             # SBOM/OSV discriminators, so the explicit predicate check is the
@@ -804,6 +817,13 @@ def _looks_like_trivy_json(path: Path) -> bool:
     if path.suffix.lower() != ".json":
         return False
     return looks_like_trivy_json(_peek_json(path))
+
+
+def _looks_like_gitlab_security_report(path: Path) -> bool:
+    """Detect a GitLab Security Report. Reuses the memoized peek."""
+    if path.suffix.lower() != ".json":
+        return False
+    return looks_like_gitlab_security_report(_peek_json(path))
 
 
 def _looks_like_registry_attestation(path: Path) -> bool:

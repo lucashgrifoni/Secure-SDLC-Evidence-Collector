@@ -1,0 +1,1722 @@
+{
+  "version": "15.2.2",
+  "vulnerabilities": [
+    {
+      "id": "aeda078c61323076eb6e439020f2cfbe88fdfb83e9f5f44095bdf49f1e9b68a4",
+      "name": "Improper Input Validation",
+      "description": "PyYAML is susceptible to arbitrary code execution when it processes untrusted YAML files through the `full_load` method or with the `FullLoader` loader. Applications that use the library to process untrusted input may be vulnerable to this flaw. An attacker could use this flaw to execute arbitrary code on the system by abusing the `python/object/new` constructor.",
+      "severity": "Critical",
+      "solution": "Upgrade to version 5.3.1 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "PyYAML"
+          },
+          "version": "5.3"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-46fe8935-2d20-43f9-8204-b1ccfeab8a0b",
+          "value": "46fe8935-2d20-43f9-8204-b1ccfeab8a0b",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/PyYAML/CVE-2020-1747.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2020-1747",
+          "value": "CVE-2020-1747",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-1747"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+        },
+        {
+          "vendor": "NVD",
+          "vector": "AV:N/AC:L/Au:N/C:C/I:C/A:C"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://bugzilla.redhat.com/show_bug.cgi?id=CVE-2020-1747"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2020-1747"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "PyYAML:5.3"
+        }
+      }
+    },
+    {
+      "id": "242d1f4f6c4874bc9043bad5acf39ae153e9a595a844a3c9d43d29804b5ba1c0",
+      "name": "Improper Input Validation in PyYAML",
+      "description": "A vulnerability was discovered in the PyYAML library in versions before 5.4, where it is susceptible to arbitrary code execution when it processes untrusted YAML files through the full_load method or with the FullLoader loader. Applications that use the library to process untrusted input may be vulnerable to this flaw. This flaw allows an attacker to execute arbitrary code on the system by abusing the python/object/new constructor. This flaw is due to an incomplete fix for CVE-2020-1747.",
+      "severity": "Critical",
+      "solution": "Upgrade to version 5.4 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "PyYAML"
+          },
+          "version": "5.3"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-ef6843ae-ccfb-4ba7-9c9b-65310b620cd2",
+          "value": "ef6843ae-ccfb-4ba7-9c9b-65310b620cd2",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/PyYAML/CVE-2020-14343.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2020-14343",
+          "value": "CVE-2020-14343",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-14343"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-8q59-q68h-6hv4",
+          "value": "GHSA-8q59-q68h-6hv4",
+          "url": "https://github.com/advisories/GHSA-8q59-q68h-6hv4"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+        },
+        {
+          "vendor": "NVD",
+          "vector": "AV:N/AC:L/Au:N/C:C/I:C/A:C"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://bugzilla.redhat.com/show_bug.cgi?id=1860466"
+        },
+        {
+          "url": "https://github.com/SeldonIO/seldon-core/issues/2252"
+        },
+        {
+          "url": "https://github.com/advisories/GHSA-8q59-q68h-6hv4"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/pyyaml/PYSEC-2021-142.yaml"
+        },
+        {
+          "url": "https://github.com/yaml/pyyaml"
+        },
+        {
+          "url": "https://github.com/yaml/pyyaml/commit/a001f2782501ad2d24986959f0239a354675f9dc"
+        },
+        {
+          "url": "https://github.com/yaml/pyyaml/issues/420"
+        },
+        {
+          "url": "https://github.com/yaml/pyyaml/issues/420#issuecomment-663673966"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2020-14343"
+        },
+        {
+          "url": "https://pypi.org/project/PyYAML"
+        },
+        {
+          "url": "https://www.oracle.com/security-alerts/cpuapr2022.html"
+        },
+        {
+          "url": "https://www.oracle.com/security-alerts/cpujul2022.html"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "PyYAML:5.3"
+        }
+      }
+    },
+    {
+      "id": "8f93a82d0af411c7e6f022ab7f5b92a89d01542648dc7b965550a812e2d0b3e1",
+      "name": "Internationalized Domain Names in Applications (IDNA) vulnerable to denial of service from specially crafted inputs to idna.encode",
+      "description": "A specially crafted argument to the `idna.encode()` function could consume significant resources. This may lead to a denial-of-service.",
+      "severity": "High",
+      "solution": "Upgrade to version 3.7 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "idna"
+          },
+          "version": "2.7"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-766b6e5d-ba01-45bd-8566-4fc1cb48e9f8",
+          "value": "766b6e5d-ba01-45bd-8566-4fc1cb48e9f8",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/idna/CVE-2024-3651.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2024-3651",
+          "value": "CVE-2024-3651",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-3651"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-jjg7-2v4v-x38h",
+          "value": "GHSA-jjg7-2v4v-x38h",
+          "url": "https://github.com/advisories/GHSA-jjg7-2v4v-x38h"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-jjg7-2v4v-x38h"
+        },
+        {
+          "url": "https://github.com/kjd/idna"
+        },
+        {
+          "url": "https://github.com/kjd/idna/commit/1d365e17e10d72d0b7876316fc7b9ca0eebdd38d"
+        },
+        {
+          "url": "https://github.com/kjd/idna/security/advisories/GHSA-jjg7-2v4v-x38h"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/idna/PYSEC-2024-60.yaml"
+        },
+        {
+          "url": "https://huntr.com/bounties/93d78d07-d791-4b39-a845-cbfabc44aadb"
+        },
+        {
+          "url": "https://lists.debian.org/debian-lts-announce/2024/05/msg00006.html"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/4YQUPYH3SVZ5GFF2CDQ55FCM575AZTF2"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/F2S5E23N6E52S46KGNYTDFB75LOC4N4D"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/S5IDLLD2IKSIVRBSLB34WTSYGLMWUFWF"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/ULSC7HBJKXB3BZV367WM5BR6DFEC4Z43"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-3651"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "idna:2.7"
+        }
+      }
+    },
+    {
+      "id": "afb82c97341fea9854ddcf0a1ed115664566667c86b060570fde0a7f9227ac94",
+      "name": "Insufficiently Protected Credentials in Requests",
+      "description": "The Requests package through 2.19.1 before 2018-09-14 for Python sends an HTTP Authorization header to an http URI upon receiving a same-hostname https-to-http redirect, which makes it easier for remote attackers to discover credentials by sniffing the network.",
+      "severity": "High",
+      "solution": "Upgrade to version 2.20.0 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "requests"
+          },
+          "version": "2.19.0"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-2d0dd26c-c781-40e1-b126-7f20b21de048",
+          "value": "2d0dd26c-c781-40e1-b126-7f20b21de048",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/requests/CVE-2018-18074.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2018-18074",
+          "value": "CVE-2018-18074",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-18074"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-x84v-xcm2-53pg",
+          "value": "GHSA-x84v-xcm2-53pg",
+          "url": "https://github.com/advisories/GHSA-x84v-xcm2-53pg"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+        },
+        {
+          "vendor": "NVD",
+          "vector": "AV:N/AC:L/Au:N/C:P/I:N/A:N"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://access.redhat.com/errata/RHSA-2019:2035"
+        },
+        {
+          "url": "https://bugs.debian.org/910766"
+        },
+        {
+          "url": "https://github.com/advisories/GHSA-x84v-xcm2-53pg"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/requests/PYSEC-2018-28.yaml"
+        },
+        {
+          "url": "https://github.com/requests/requests"
+        },
+        {
+          "url": "https://github.com/requests/requests/commit/c45d7c49ea75133e52ab22a8e9e13173938e36ff"
+        },
+        {
+          "url": "https://github.com/requests/requests/issues/4716"
+        },
+        {
+          "url": "https://github.com/requests/requests/pull/4718"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2018-18074"
+        },
+        {
+          "url": "https://usn.ubuntu.com/3790-1"
+        },
+        {
+          "url": "https://usn.ubuntu.com/3790-2"
+        },
+        {
+          "url": "https://www.oracle.com/security-alerts/cpujul2022.html"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "requests:2.19.0"
+        }
+      }
+    },
+    {
+      "id": "aac238c390545df084caf968eaff030084d6854cd739d64dbc18da12996c3daf",
+      "name": "Decompression-bomb safeguards bypassed when following HTTP redirects (streaming API)",
+      "description": "urllib3's [streaming API](https://urllib3.readthedocs.io/en/2.6.2/advanced-usage.html#streaming-and-i-o) is designed for the efficient handling of large HTTP responses by reading the content in chunks, rather than loading the entire response body into memory at once.\n\nurllib3 can perform decoding or decompression based on the HTTP `Content-Encoding` header (e.g., `gzip`, `deflate`, `br`, or `zstd`). When using the streaming API, the library decompresses only the necessary bytes, enabling partial content consumption.\n\nHowever, for HTTP redirect responses, the library would read the entire response body to drain the connection and decompress the content unnecessarily. This decompression occurred even before any read methods were called, and configured read limits did not restrict the amount of decompressed data. As a result, there was no safeguard against decompression bombs. A malicious server could exploit this to trigger excessive resource consumption on the client (high CPU usage and large memory allocations for decompressed data; CWE-409).",
+      "severity": "High",
+      "solution": "Upgrade to version 2.6.3 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "urllib3"
+          },
+          "version": "1.23"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-114409f5-295d-45b8-87a7-00cc87d3d374",
+          "value": "114409f5-295d-45b8-87a7-00cc87d3d374",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/urllib3/CVE-2026-21441.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2026-21441",
+          "value": "CVE-2026-21441",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-21441"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-38jv-5279-wg99",
+          "value": "GHSA-38jv-5279-wg99",
+          "url": "https://github.com/advisories/GHSA-38jv-5279-wg99"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-38jv-5279-wg99"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/8864ac407bba8607950025e0979c4c69bc7abc7b"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/security/advisories/GHSA-38jv-5279-wg99"
+        },
+        {
+          "url": "https://lists.debian.org/debian-lts-announce/2026/01/msg00017.html"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-21441"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "urllib3:1.23"
+        }
+      }
+    },
+    {
+      "id": "7a9914c716a929b4fad3ce821c6d5951e569373fda1882f0f6c9be25cd451a79",
+      "name": "Improper Certificate Validation in urllib3",
+      "description": "The urllib3 library before 1.24.2 for Python mishandles certain cases where the desired set of CA certificates is different from the OS store of CA certificates, which results in SSL connections succeeding in situations where a verification failure is the correct outcome. This is related to use of the `ssl_context`, `ca_certs`, or `ca_certs_dir` argument.",
+      "severity": "High",
+      "solution": "Upgrade to version 1.24.2 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "urllib3"
+          },
+          "version": "1.23"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-37bd3208-7f9f-4d23-86bd-a422d455fd45",
+          "value": "37bd3208-7f9f-4d23-86bd-a422d455fd45",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/urllib3/CVE-2019-11324.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2019-11324",
+          "value": "CVE-2019-11324",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-11324"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-mh33-7rrq-662w",
+          "value": "GHSA-mh33-7rrq-662w",
+          "url": "https://github.com/advisories/GHSA-mh33-7rrq-662w"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+        },
+        {
+          "vendor": "NVD",
+          "vector": "AV:N/AC:L/Au:N/C:N/I:P/A:N"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://access.redhat.com/errata/RHSA-2019:3335"
+        },
+        {
+          "url": "https://access.redhat.com/errata/RHSA-2019:3590"
+        },
+        {
+          "url": "https://github.com/advisories/GHSA-mh33-7rrq-662w"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/urllib3/PYSEC-2019-133.yaml"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/1efadf43dc63317cd9eaa3e0fdb9e05ab07254b1"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/compare/a6ec68a...1efadf4"
+        },
+        {
+          "url": "https://lists.debian.org/debian-lts-announce/2021/06/msg00015.html"
+        },
+        {
+          "url": "https://lists.debian.org/debian-lts-announce/2023/10/msg00012.html"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/NKGPJLVLVYCL4L4B4G5TIOTVK4BKPG72"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/XOSA2NT4DUQDBEIWE6O7KKD24XND7TE2"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2019-11324"
+        },
+        {
+          "url": "https://pypi.org/project/urllib3/1.24.2"
+        },
+        {
+          "url": "https://usn.ubuntu.com/3990-1"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "urllib3:1.23"
+        }
+      }
+    },
+    {
+      "id": "9fd70f2045a8be7128c1d1238b97e3bc868f7f6ecb7d013b7c49e3a6841e4f05",
+      "name": "urllib3: HTTPResponse.stream()/read_chunked() buffers an unbounded chunk-size line into memory",
+      "description": "urllib3's [streaming API](https://urllib3.readthedocs.io/en/2.7.0/advanced-usage.html#streaming-and-i-o) is designed for efficiently handling large HTTP responses by reading the content in chunks, rather than loading the entire response body into memory at once. When decoding a [chunked-transfer-encoded response](https://httpwg.org/specs/rfc9112.html#chunked.encoding), this API reads each chunk's size field by buffering until it sees `\\n` or EOF.\n\nA malicious HTTP server can return `Transfer-Encoding: chunked` and then send a very long run of bytes without any newline, causing the streaming client to buffer that entire run before urllib3 can reject the chunk size as invalid and allocate more memory than intended.\n\nTo fix the issue, we'll reject chunk-size fields larger than 65536 bytes, as already done in the non-streaming case, which is currently handled by the Python standard library. Note that this only applies to reading the chunk-size field, not the chunk data, which is already handled correctly. Thus, there shouldn't be any impact for non-malicious servers.",
+      "severity": "High",
+      "solution": "Upgrade to version 2.8.0 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "urllib3"
+          },
+          "version": "1.23"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-4791504d-515d-47c9-b659-b55affffb2e4",
+          "value": "4791504d-515d-47c9-b659-b55affffb2e4",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/urllib3/CVE-2026-97689.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2026-97689",
+          "value": "CVE-2026-97689",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-97689"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-vxq7-64xx-v4gw",
+          "value": "GHSA-vxq7-64xx-v4gw",
+          "url": "https://github.com/advisories/GHSA-vxq7-64xx-v4gw"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:N/A:H"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-vxq7-64xx-v4gw"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/cd770b059b543be29298ea5c52afb0b1b090f5ed"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/releases/tag/2.8.0"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/security/advisories/GHSA-vxq7-64xx-v4gw"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-97689"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "urllib3:1.23"
+        }
+      }
+    },
+    {
+      "id": "7e25672ebd3b12eb5c954384ecdc4236f0cf02022c6809b29abf416965cdd0fe",
+      "name": "urllib3 streaming API improperly handles highly compressed data",
+      "description": "urllib3's [streaming API](https://urllib3.readthedocs.io/en/2.5.0/advanced-usage.html#streaming-and-i-o) is designed for the efficient handling of large HTTP responses by reading the content in chunks, rather than loading the entire response body into memory at once.\n\nWhen streaming a compressed response, urllib3 can perform decoding or decompression based on the HTTP `Content-Encoding` header (e.g., `gzip`, `deflate`, `br`, or `zstd`). The library must read compressed data from the network and decompress it until the requested chunk size is met. Any resulting decompressed data that exceeds the requested amount is held in an internal buffer for the next read operation.\n\nThe decompression logic could cause urllib3 to fully decode a small amount of highly compressed data in a single operation. This can result in excessive resource consumption (high CPU usage and massive memory allocation for the decompressed data; CWE-409) on the client side, even if the application only requested a small chunk of data.",
+      "severity": "High",
+      "solution": "Upgrade to version 2.6.0 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "urllib3"
+          },
+          "version": "1.23"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-89d4059b-44e8-4ce9-852c-0696cfbdab7b",
+          "value": "89d4059b-44e8-4ce9-852c-0696cfbdab7b",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/urllib3/CVE-2025-66471.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2025-66471",
+          "value": "CVE-2025-66471",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-66471"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-2xpw-w6gg-jr37",
+          "value": "GHSA-2xpw-w6gg-jr37",
+          "url": "https://github.com/advisories/GHSA-2xpw-w6gg-jr37"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:N/A:H"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-2xpw-w6gg-jr37"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/urllib3/PYSEC-2026-1994.yaml"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/c19571de34c47de3a766541b041637ba5f716ed7"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/d0fde3672e4a4093f7587858dccfc298eb66e46c"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/security/advisories/GHSA-2xpw-w6gg-jr37"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2025-66471"
+        },
+        {
+          "url": "https://pypi.org/project/urllib3"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "urllib3:1.23"
+        }
+      }
+    },
+    {
+      "id": "378141aabbbcb13a264c8dc0a6bea2225db08240256e68d282537fe779e03c18",
+      "name": "Internationalized Domain Names in Applications (IDNA): Specially crafted inputs to idna.encode() can bypass CVE-2024-3651 fix",
+      "description": "This is the same issue as CVE-2024-3651, however the original remediation in 2024 was not a complete fix. Payloads such as `\"\\u0660\" * N` or `\"\\u30fb\" * N + \"\\u6f22\"` utilize the `valid_contexto` function prior to length rejection, and for high values of `N` will take a long time to process.",
+      "severity": "Medium",
+      "solution": "Upgrade to version 3.15.0 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "idna"
+          },
+          "version": "2.7"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-6499a8b8-f120-48c7-be38-2667234fcdc9",
+          "value": "6499a8b8-f120-48c7-be38-2667234fcdc9",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/idna/CVE-2026-45409.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2026-45409",
+          "value": "CVE-2026-45409",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-45409"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-65pc-fj4g-8rjx",
+          "value": "GHSA-65pc-fj4g-8rjx",
+          "url": "https://github.com/advisories/GHSA-65pc-fj4g-8rjx"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-65pc-fj4g-8rjx"
+        },
+        {
+          "url": "https://github.com/kjd/idna/security/advisories/GHSA-65pc-fj4g-8rjx"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/idna/PYSEC-2026-215.yaml"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-45409"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "idna:2.7"
+        }
+      }
+    },
+    {
+      "id": "ec6807061703ca05b2b1c87ffa7ac5e49f102e387a79cc7ee98046569b0f797c",
+      "name": "Unintended leak of Proxy-Authorization header in requests",
+      "description": "Since Requests v2.3.0, Requests has been vulnerable to potentially leaking `Proxy-Authorization` headers to destination servers, specifically during redirects to an HTTPS origin. This is a product of how `rebuild_proxies` is used to recompute and [reattach the `Proxy-Authorization` header](https://github.com/psf/requests/blob/f2629e9e3c7ce3c3c8c025bcd8db551101cbc773/requests/sessions.py#L319-L328) to requests when redirected. Note this behavior has _only_ been observed to affect proxied requests when credentials are supplied in the URL user information component (e.g. `https://username:password@proxy:8080`).\n\n**Current vulnerable behavior(s):**\n\n1. HTTP → HTTPS: **leak**\n2. HTTPS → HTTP: **no leak**\n3. HTTPS → HTTPS: **leak**\n4. HTTP → HTTP: **no leak**\n\nFor HTTP connections sent through the proxy, the proxy will identify the header in the request itself and remove it prior to forwarding to the destination server. However when sent over HTTPS, the `Proxy-Authorization` header must be sent in the CONNECT request as the proxy has no visibility into further tunneled requests. This results in Requests forwarding the header to the destination server unintentionally, allowing a malicious actor to potentially exfiltrate those credentials.\n\nThe reason this currently works for HTTPS connections in Requests is the `Proxy-Authorization` header is also handled by urllib3 with our usage of the ProxyManager in adapters.py with [`proxy_manager_for`](https://github.com/psf/requests/blob/f2629e9e3c7ce3c3c8c025bcd8db551101cbc773/requests/adapters.py#L199-L235). This will compute the required proxy headers in `proxy_headers` and pass them to the Proxy Manager, avoiding attaching them directly to the Request object. This will be our preferred option going forward for default usage.",
+      "severity": "Medium",
+      "solution": "Upgrade to version 2.31.0 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "requests"
+          },
+          "version": "2.19.0"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-3336763b-c21a-4bc3-888d-4339dc241346",
+          "value": "3336763b-c21a-4bc3-888d-4339dc241346",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/requests/CVE-2023-32681.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2023-32681",
+          "value": "CVE-2023-32681",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2023-32681"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-j8r2-6x86-q33q",
+          "value": "GHSA-j8r2-6x86-q33q",
+          "url": "https://github.com/advisories/GHSA-j8r2-6x86-q33q"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:N/A:N"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-j8r2-6x86-q33q"
+        },
+        {
+          "url": "https://github.com/psf/requests"
+        },
+        {
+          "url": "https://github.com/psf/requests/commit/74ea7cf7a6a27a4eeb2ae24e162bcc942a6706d5"
+        },
+        {
+          "url": "https://github.com/psf/requests/releases/tag/v2.31.0"
+        },
+        {
+          "url": "https://github.com/psf/requests/security/advisories/GHSA-j8r2-6x86-q33q"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/requests/PYSEC-2023-74.yaml"
+        },
+        {
+          "url": "https://lists.debian.org/debian-lts-announce/2023/06/msg00018.html"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/AW7HNFGYP44RT3DUDQXG2QT3OEV2PJ7Y"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/KOYASTZDGQG2BWLSNBPL3TQRL2G7QYNZ"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2023-32681"
+        },
+        {
+          "url": "https://security.gentoo.org/glsa/202309-08"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "requests:2.19.0"
+        }
+      }
+    },
+    {
+      "id": "f4709378e46cbb057783b04fc35d2ce69d36baa4fec16d96ddf4345543a26403",
+      "name": "Requests has Insecure Temp File Reuse in its extract_zipped_paths() utility function",
+      "description": "The `requests.utils.extract_zipped_paths()` utility function uses a predictable filename when extracting files from zip archives into the system temporary directory. If the target file already exists, it is reused without validation. A local attacker with write access to the temp directory could pre-create a malicious file that would be loaded in place of the legitimate one.",
+      "severity": "Medium",
+      "solution": "Upgrade to version 2.33.0 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "requests"
+          },
+          "version": "2.19.0"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-415b23f4-57da-41f7-8a5f-88e96b748174",
+          "value": "415b23f4-57da-41f7-8a5f-88e96b748174",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/requests/CVE-2026-25645.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2026-25645",
+          "value": "CVE-2026-25645",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25645"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-gc5v-m9x4-r6x2",
+          "value": "GHSA-gc5v-m9x4-r6x2",
+          "url": "https://github.com/advisories/GHSA-gc5v-m9x4-r6x2"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:R/S:U/C:N/I:H/A:N"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-gc5v-m9x4-r6x2"
+        },
+        {
+          "url": "https://github.com/psf/requests"
+        },
+        {
+          "url": "https://github.com/psf/requests/commit/66d21cb07bd6255b1280291c4fafb71803cdb3b7"
+        },
+        {
+          "url": "https://github.com/psf/requests/releases/tag/v2.33.0"
+        },
+        {
+          "url": "https://github.com/psf/requests/security/advisories/GHSA-gc5v-m9x4-r6x2"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-25645"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "requests:2.19.0"
+        }
+      }
+    },
+    {
+      "id": "3358d562117fd1e92c72203866a671e22785e2ca93509f8e3a13e062fc725e74",
+      "name": "Requests `Session` object does not verify requests after making first request with verify=False",
+      "description": "When using a `requests.Session`, if the first request to a given origin is made with `verify=False`, TLS certificate verification may remain disabled for all subsequent requests to that origin, even if `verify=True` is explicitly specified later.\n\nThis occurs because the underlying connection is reused from the session's connection pool, causing the initial TLS verification setting to persist for the lifetime of the pooled connection. As a result, applications may unintentionally send requests without certificate verification, leading to potential man-in-the-middle attacks and compromised confidentiality or integrity.\n\nThis behavior affects versions of `requests` prior to 2.32.0.",
+      "severity": "Medium",
+      "solution": "Upgrade to version 2.32.0 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "requests"
+          },
+          "version": "2.19.0"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-93074462-280e-43b5-b601-ed4c96df379e",
+          "value": "93074462-280e-43b5-b601-ed4c96df379e",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/requests/CVE-2024-35195.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2024-35195",
+          "value": "CVE-2024-35195",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-35195"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-9wx4-h78v-vm56",
+          "value": "GHSA-9wx4-h78v-vm56",
+          "url": "https://github.com/advisories/GHSA-9wx4-h78v-vm56"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:U/C:H/I:H/A:N"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-9wx4-h78v-vm56"
+        },
+        {
+          "url": "https://github.com/psf/requests"
+        },
+        {
+          "url": "https://github.com/psf/requests/commit/a58d7f2ffb4d00b46dca2d70a3932a0b37e22fac"
+        },
+        {
+          "url": "https://github.com/psf/requests/pull/6655"
+        },
+        {
+          "url": "https://github.com/psf/requests/security/advisories/GHSA-9wx4-h78v-vm56"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/IYLSNK5TL46Q6XPRVMHVWS63MVJQOK4Q"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/N7WP6EYDSUOCOJYHDK5NX43PYZ4SNHGZ"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-35195"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "requests:2.19.0"
+        }
+      }
+    },
+    {
+      "id": "e8eb6fe989bf19aee62b410636207bb09841cd3d48b83fd47bb4e923c9b0af80",
+      "name": "Requests vulnerable to .netrc credentials leak via malicious URLs",
+      "description": "Due to a URL parsing issue, Requests releases prior to 2.32.4 may leak .netrc credentials to third parties for specific maliciously-crafted URLs.",
+      "severity": "Medium",
+      "solution": "Upgrade to version 2.32.4 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "requests"
+          },
+          "version": "2.19.0"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-9b5245f2-765b-4c0d-b63e-ed5dcd0f5944",
+          "value": "9b5245f2-765b-4c0d-b63e-ed5dcd0f5944",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/requests/CVE-2024-47081.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2024-47081",
+          "value": "CVE-2024-47081",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-47081"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-9hjg-9r4m-mvj7",
+          "value": "GHSA-9hjg-9r4m-mvj7",
+          "url": "https://github.com/advisories/GHSA-9hjg-9r4m-mvj7"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-9hjg-9r4m-mvj7"
+        },
+        {
+          "url": "https://github.com/psf/requests"
+        },
+        {
+          "url": "https://github.com/psf/requests/commit/96ba401c1296ab1dda74a2365ef36d88f7d144ef"
+        },
+        {
+          "url": "https://github.com/psf/requests/pull/6965"
+        },
+        {
+          "url": "https://github.com/psf/requests/releases/tag/v2.32.4"
+        },
+        {
+          "url": "https://github.com/psf/requests/security/advisories/GHSA-9hjg-9r4m-mvj7"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/requests/PYSEC-2026-1872.yaml"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-47081"
+        },
+        {
+          "url": "https://pypi.org/project/requests"
+        },
+        {
+          "url": "https://requests.readthedocs.io/en/latest/api/#requests.Session.trust_env"
+        },
+        {
+          "url": "https://seclists.org/fulldisclosure/2025/Jun/2"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "requests:2.19.0"
+        }
+      }
+    },
+    {
+      "id": "5f986d9dd994549837d1bbc7ee7321b71d29bbd640d5cbda1028d966f42c23af",
+      "name": "urllib3's Proxy-Authorization request header isn't stripped during cross-origin redirects",
+      "description": "When using urllib3's proxy support with `ProxyManager`, the `Proxy-Authorization` header is only sent to the configured proxy, as expected.\n\nHowever, when sending HTTP requests *without* using urllib3's proxy support, it's possible to accidentally configure the `Proxy-Authorization` header even though it won't have any effect as the request is not using a forwarding proxy or a tunneling proxy. In those cases, urllib3 doesn't treat the `Proxy-Authorization` HTTP header as one carrying authentication material and thus doesn't strip the header on cross-origin redirects.\n\nBecause this is a highly unlikely scenario, we believe the severity of this vulnerability is low for almost all users. Out of an abundance of caution urllib3 will automatically strip the `Proxy-Authorization` header during cross-origin redirects to avoid the small chance that users are doing this on accident.\n\nUsers should use urllib3's proxy support or disable automatic redirects to achieve safe processing of the `Proxy-Authorization` header, but we still decided to strip the header by default in order to further protect users who aren't using the correct approach.",
+      "severity": "Medium",
+      "solution": "Upgrade to versions 1.26.19, 2.2.2 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "urllib3"
+          },
+          "version": "1.23"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-021e191e-ce29-479c-9402-31794dcd0855",
+          "value": "021e191e-ce29-479c-9402-31794dcd0855",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/urllib3/CVE-2024-37891.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2024-37891",
+          "value": "CVE-2024-37891",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-37891"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-34jh-p97f-mpxf",
+          "value": "GHSA-34jh-p97f-mpxf",
+          "url": "https://github.com/advisories/GHSA-34jh-p97f-mpxf"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:U/C:H/I:N/A:N"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-34jh-p97f-mpxf"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/40b6d1605814dd1db0a46e202d6e56f2e4c9a468"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/accff72ecc2f6cf5a76d9570198a93ac7c90270e"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/security/advisories/GHSA-34jh-p97f-mpxf"
+        },
+        {
+          "url": "https://lists.debian.org/debian-lts-announce/2024/12/msg00020.html"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-37891"
+        },
+        {
+          "url": "https://security.netapp.com/advisory/ntap-20240822-0003"
+        },
+        {
+          "url": "https://www.vicarius.io/vsociety/posts/proxy-authorization-header-handling-vulnerability-in-urllib3-cve-2024-37891"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "urllib3:1.23"
+        }
+      }
+    },
+    {
+      "id": "e206826fa5ad5efdcefbcd8225af1afe108d0f113a471ca17afba7552926d586",
+      "name": "urllib3 redirects are not disabled when retries are disabled on PoolManager instantiation",
+      "description": "urllib3 handles redirects and retries using the same mechanism, which is controlled by the `Retry` object. The most common way to disable redirects is at the request level, as follows:\n\n```python\nresp = urllib3.request(\"GET\", \"https://httpbin.org/redirect/1\", redirect=False)\nprint(resp.status)",
+      "severity": "Medium",
+      "solution": "Upgrade to version 2.5.0 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "urllib3"
+          },
+          "version": "1.23"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-20d0c868-2326-4eea-bad7-fa7503e2deb8",
+          "value": "20d0c868-2326-4eea-bad7-fa7503e2deb8",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/urllib3/CVE-2025-50181.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2025-50181",
+          "value": "CVE-2025-50181",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-50181"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-pq67-6m6q-mj2v",
+          "value": "GHSA-pq67-6m6q-mj2v",
+          "url": "https://github.com/advisories/GHSA-pq67-6m6q-mj2v"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-pq67-6m6q-mj2v"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/f05b1329126d5be6de501f9d1e3e36738bc08857"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/releases/tag/2.5.0"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/security/advisories/GHSA-pq67-6m6q-mj2v"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2025-50181"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "urllib3:1.23"
+        }
+      }
+    },
+    {
+      "id": "48494d1f6c7f5e38de8196d84f07db95089d36f89977c8d235d916e38192505a",
+      "name": "urllib3's request body not stripped after redirect from 303 status changes request method to GET",
+      "description": "urllib3 previously wouldn't remove the HTTP request body when an HTTP redirect response using status 303 \"See Other\" after the request had its method changed from one that could accept a request body (like `POST`) to `GET` as is required by HTTP RFCs. Although the behavior of removing the request body is not specified in the section for redirects, it can be inferred by piecing together information from different sections and we have observed the behavior in other major HTTP client implementations like curl and web browsers.\n\nFrom [RFC 9110 Section 9.3.1](https://www.rfc-editor.org/rfc/rfc9110.html#name-get):\n\n\u003e A client SHOULD NOT generate content in a GET request unless it is made directly to an origin server that has previously indicated, in or out of band, that such a request has a purpose and will be adequately supported.",
+      "severity": "Medium",
+      "solution": "Upgrade to versions 1.26.18, 2.0.7 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "urllib3"
+          },
+          "version": "1.23"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-3fe209b0-ac65-404f-a4da-95db68934b89",
+          "value": "3fe209b0-ac65-404f-a4da-95db68934b89",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/urllib3/CVE-2023-45803.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2023-45803",
+          "value": "CVE-2023-45803",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2023-45803"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-g4mx-q9vg-27p4",
+          "value": "GHSA-g4mx-q9vg-27p4",
+          "url": "https://github.com/advisories/GHSA-g4mx-q9vg-27p4"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:A/AC:H/PR:H/UI:N/S:U/C:H/I:N/A:N"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-g4mx-q9vg-27p4"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/urllib3/PYSEC-2023-212.yaml"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/4e50fbc5db74e32cabd5ccc1ab81fc103adfe0b3"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/4e98d57809dacab1cbe625fddeec1a290c478ea9"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/b594c5ceaca38e1ac215f916538fb128e3526a36"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/releases/tag/1.26.18"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/releases/tag/2.0.7"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/security/advisories/GHSA-g4mx-q9vg-27p4"
+        },
+        {
+          "url": "https://lists.debian.org/debian-lts-announce/2024/12/msg00020.html"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/4R2Y5XK3WALSR3FNAGN7JBYV2B343ZKB"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/5F5CUBAN5XMEBVBZPHFITBLMJV5FIJJ5"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/PPDPLM6UUMN55ESPQWJFLLIZY4ZKCNRX"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2023-45803"
+        },
+        {
+          "url": "https://www.rfc-editor.org/rfc/rfc9110.html#name-get"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "urllib3:1.23"
+        }
+      }
+    },
+    {
+      "id": "b87e07cf87af69978d5aa6bb6041f1ace4debedbb3a2d9f86200db925ece346d",
+      "name": "urllib3: Sensitive headers forwarded across origins in proxied low-level redirects",
+      "description": "When following cross-origin redirects for requests made using urllib3’s high-level APIs, such as `urllib3.request()`, `PoolManager.request()`, and `ProxyManager.request()`, sensitive headers — `Authorization`, `Cookie`, and `Proxy-Authorization` (defined in `Retry.DEFAULT_REMOVE_HEADERS_ON_REDIRECT`) — are stripped by default, as expected.\n\nHowever, cross-origin redirects followed from the low-level API via `ProxyManager.connection_from_url().urlopen(..., assert_same_host=False)` still forward these sensitive headers.",
+      "severity": "Medium",
+      "solution": "Upgrade to version 2.7.0 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "urllib3"
+          },
+          "version": "1.23"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-5ceba92a-b551-45a2-9fe3-69436111459a",
+          "value": "5ceba92a-b551-45a2-9fe3-69436111459a",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/urllib3/CVE-2026-44431.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2026-44431",
+          "value": "CVE-2026-44431",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-44431"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-qccp-gfcp-xxvc",
+          "value": "GHSA-qccp-gfcp-xxvc",
+          "url": "https://github.com/advisories/GHSA-qccp-gfcp-xxvc"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-qccp-gfcp-xxvc"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/security/advisories/GHSA-qccp-gfcp-xxvc"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-44431"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "urllib3:1.23"
+        }
+      }
+    },
+    {
+      "id": "e07298149b3c99a9b752ce30514f60bbf05169d365d8d1fee3688385802279fa",
+      "name": "Improper Neutralization of CRLF Sequences in urllib3 library for Python",
+      "description": "In the urllib3 library through 1.24.2 for Python, CRLF injection is possible if the attacker controls the request parameter.",
+      "severity": "Medium",
+      "solution": "Upgrade to version 1.24.3 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "urllib3"
+          },
+          "version": "1.23"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-5d1a08b6-fd29-409c-bf1a-7ce769714a8e",
+          "value": "5d1a08b6-fd29-409c-bf1a-7ce769714a8e",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/urllib3/CVE-2019-11236.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2019-11236",
+          "value": "CVE-2019-11236",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-11236"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-r64q-w8jr-g9qp",
+          "value": "GHSA-r64q-w8jr-g9qp",
+          "url": "https://github.com/advisories/GHSA-r64q-w8jr-g9qp"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.0/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+        },
+        {
+          "vendor": "NVD",
+          "vector": "AV:N/AC:M/Au:N/C:N/I:P/A:N"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://access.redhat.com/errata/RHSA-2019:2272"
+        },
+        {
+          "url": "https://access.redhat.com/errata/RHSA-2019:3335"
+        },
+        {
+          "url": "https://access.redhat.com/errata/RHSA-2019:3590"
+        },
+        {
+          "url": "https://github.com/advisories/GHSA-r64q-w8jr-g9qp"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/urllib3/PYSEC-2019-132.yaml"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/issues/1553"
+        },
+        {
+          "url": "https://lists.debian.org/debian-lts-announce/2019/06/msg00016.html"
+        },
+        {
+          "url": "https://lists.debian.org/debian-lts-announce/2021/06/msg00015.html"
+        },
+        {
+          "url": "https://lists.debian.org/debian-lts-announce/2023/10/msg00012.html"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/NKGPJLVLVYCL4L4B4G5TIOTVK4BKPG72"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/R62XGEYPUTXMRHGX5I37EBCGQ5COHGKR"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/TBI45HO533KYHNB5YRO43TBYKA3E3VRL"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/XOSA2NT4DUQDBEIWE6O7KKD24XND7TE2"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2019-11236"
+        },
+        {
+          "url": "https://usn.ubuntu.com/3990-1"
+        },
+        {
+          "url": "https://usn.ubuntu.com/3990-2"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "urllib3:1.23"
+        }
+      }
+    },
+    {
+      "id": "9762fd2c332c11d6f35149f278da0994a7526f4c421e57c5ca48deaaea8d0cdb",
+      "name": "CRLF injection in urllib3",
+      "description": "urllib3 before 1.25.9 allows CRLF injection if the attacker controls the HTTP request method, as demonstrated by inserting CR and LF control characters in the first argument of `putrequest()`. NOTE: this is similar to CVE-2020-26116.",
+      "severity": "Medium",
+      "solution": "Upgrade to version 1.25.9 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "urllib3"
+          },
+          "version": "1.23"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-6801dbac-c618-4270-84f5-c8d5e7b7542e",
+          "value": "6801dbac-c618-4270-84f5-c8d5e7b7542e",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/urllib3/CVE-2020-26137.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2020-26137",
+          "value": "CVE-2020-26137",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-26137"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-wqvq-5m8c-6g24",
+          "value": "GHSA-wqvq-5m8c-6g24",
+          "url": "https://github.com/advisories/GHSA-wqvq-5m8c-6g24"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N"
+        },
+        {
+          "vendor": "NVD",
+          "vector": "AV:N/AC:L/Au:N/C:P/I:P/A:N"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://bugs.python.org/issue39603"
+        },
+        {
+          "url": "https://github.com/advisories/GHSA-wqvq-5m8c-6g24"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/urllib3/PYSEC-2020-148.yaml"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/1dd69c5c5982fae7c87a620d487c2ebf7a6b436b"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/pull/1800"
+        },
+        {
+          "url": "https://lists.debian.org/debian-lts-announce/2021/06/msg00015.html"
+        },
+        {
+          "url": "https://lists.debian.org/debian-lts-announce/2023/10/msg00012.html"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2020-26137"
+        },
+        {
+          "url": "https://usn.ubuntu.com/4570-1"
+        },
+        {
+          "url": "https://www.oracle.com/security-alerts/cpujul2022.html"
+        },
+        {
+          "url": "https://www.oracle.com/security-alerts/cpuoct2021.html"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "urllib3:1.23"
+        }
+      }
+    },
+    {
+      "id": "dfc4933580a049a9833bd617723908eebe0308a57b9e1b2b42ebd3ce3603cabb",
+      "name": "Authorization Header forwarded on redirect",
+      "description": "urllib3 before 1.24.2 does not remove the authorization HTTP header when following a cross-origin redirect (i.e., a redirect that differs in host, port, or scheme). This can allow for credentials in the authorization header to be exposed to unintended hosts or transmitted in cleartext. NOTE: this issue exists because of an incomplete fix for CVE-2018-20060 (which was case-sensitive).",
+      "severity": "Medium",
+      "solution": "Upgrade to version 1.24.2 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "urllib3"
+          },
+          "version": "1.23"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-b7564068-826f-4ca0-887d-8fe0f7787e5b",
+          "value": "b7564068-826f-4ca0-887d-8fe0f7787e5b",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/urllib3/CVE-2018-25091.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2018-25091",
+          "value": "CVE-2018-25091",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-25091"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-gwvm-45gx-3cf8",
+          "value": "GHSA-gwvm-45gx-3cf8",
+          "url": "https://github.com/advisories/GHSA-gwvm-45gx-3cf8"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-gwvm-45gx-3cf8"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/urllib3/PYSEC-2023-207.yaml"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/adb358f8e06865406d1f05e581a16cbea2136fbc"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/compare/1.24.1...1.24.2"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/issues/1510"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2018-25091"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "urllib3:1.23"
+        }
+      }
+    },
+    {
+      "id": "3390ec154728b67c977377dd19894fdf755ff9edbad794ac1bfebfe9ca9e93b9",
+      "name": "`Cookie` HTTP header isn't stripped on cross-origin redirects",
+      "description": "urllib3 doesn't treat the `Cookie` HTTP header special or provide any helpers for managing cookies over HTTP, that is the responsibility of the user. However, it is possible for a user to specify a `Cookie` header and unknowingly leak information via HTTP redirects to a different origin if that user doesn't disable redirects explicitly.\n\nUsers **must** handle redirects themselves instead of relying on urllib3's automatic redirects to achieve safe processing of the `Cookie` header, thus we decided to strip the header by default in order to further protect users who aren't using the correct approach.",
+      "severity": "Medium",
+      "solution": "Upgrade to versions 1.26.17, 2.0.6 or above.",
+      "location": {
+        "file": "requirements.txt",
+        "dependency": {
+          "package": {
+            "name": "urllib3"
+          },
+          "version": "1.23"
+        }
+      },
+      "identifiers": [
+        {
+          "type": "gemnasium",
+          "name": "Gemnasium-d636f01f-accc-4622-824c-8b31b894a280",
+          "value": "d636f01f-accc-4622-824c-8b31b894a280",
+          "url": "https://gitlab.com/gitlab-org/security-products/gemnasium-db/-/blob/master/pypi/urllib3/CVE-2023-43804.yml"
+        },
+        {
+          "type": "cve",
+          "name": "CVE-2023-43804",
+          "value": "CVE-2023-43804",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2023-43804"
+        },
+        {
+          "type": "ghsa",
+          "name": "GHSA-v845-jxx5-vc9f",
+          "value": "GHSA-v845-jxx5-vc9f",
+          "url": "https://github.com/advisories/GHSA-v845-jxx5-vc9f"
+        }
+      ],
+      "cvss_vectors": [
+        {
+          "vendor": "NVD",
+          "vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:U/C:H/I:H/A:N"
+        }
+      ],
+      "links": [
+        {
+          "url": "https://github.com/advisories/GHSA-v845-jxx5-vc9f"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/urllib3/PYSEC-2023-192.yaml"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/01220354d389cd05474713f8c982d05c9b17aafb"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/commit/644124ecd0b6e417c527191f866daa05a5a2056d"
+        },
+        {
+          "url": "https://github.com/urllib3/urllib3/security/advisories/GHSA-v845-jxx5-vc9f"
+        },
+        {
+          "url": "https://lists.debian.org/debian-lts-announce/2023/10/msg00012.html"
+        },
+        {
+          "url": "https://lists.debian.org/debian-lts-announce/2024/12/msg00020.html"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/5F5CUBAN5XMEBVBZPHFITBLMJV5FIJJ5"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/I3PR7C6RJ6JUBQKIJ644DMIJSUP36VDY"
+        },
+        {
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/NDAGZXYJ7H2G3SB47M453VQVNAWKAEJJ"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2023-43804"
+        },
+        {
+          "url": "https://security.netapp.com/advisory/ntap-20241213-0007"
+        },
+        {
+          "url": "https://www.vicarius.io/vsociety/posts/cve-2023-43804-urllib3-vulnerability-3"
+        }
+      ],
+      "details": {
+        "vulnerable_package": {
+          "type": "text",
+          "name": "Vulnerable Package",
+          "value": "urllib3:1.23"
+        }
+      }
+    }
+  ],
+  "scan": {
+    "analyzer": {
+      "id": "gemnasium-python",
+      "name": "gemnasium-python",
+      "url": "https://gitlab.com/gitlab-org/security-products/analyzers/gemnasium",
+      "vendor": {
+        "name": "GitLab"
+      },
+      "version": "6.6.5"
+    },
+    "scanner": {
+      "id": "gemnasium-python",
+      "name": "gemnasium-python",
+      "url": "https://gitlab.com/gitlab-org/security-products/analyzers/gemnasium",
+      "vendor": {
+        "name": "GitLab"
+      },
+      "version": "6.6.5"
+    },
+    "type": "dependency_scanning",
+    "start_time": "2026-11-13T19:57:33",
+    "end_time": "2026-11-13T19:57:41",
+    "status": "success",
+    "observability": {
+      "events": [
+        {
+          "event": "collect_gemnasium_python_scan_metrics_from_pipeline",
+          "property": "eb7e65aa-d80b-4ec4-bf55-22ca8227fc61",
+          "label": "6.6.5",
+          "value": 21
+        },
+        {
+          "event": "collect_gemnasium_python_scan_performance_metrics_from_pipeline",
+          "property": "eb7e65aa-d80b-4ec4-bf55-22ca8227fc61",
+          "value": 7
+        },
+        {
+          "event": "collect_gemnasium_python_scan_sbom_metrics_from_pipeline",
+          "property": "eb7e65aa-d80b-4ec4-bf55-22ca8227fc61",
+          "label": "pypi",
+          "value": 6,
+          "input_file_path": "requirements.txt"
+        }
+      ]
+    }
+  }
+}
