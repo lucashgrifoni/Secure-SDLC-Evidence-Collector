@@ -15,7 +15,9 @@ References
 
 * OSCAL Catalog Model — https://pages.nist.gov/OSCAL/learn/concepts/layer/control/catalog/
 * OSCAL Assessment Results Model — https://pages.nist.gov/OSCAL/learn/concepts/layer/assessment/assessment-results/
-* FedRAMP CR26 rules 2026.10.05.01 — https://github.com/FedRAMP/rules/blob/1c33385a06acf4faf50da2b9b4dc31cd826e5b91/fedramp-consolidated-rules.json
+* FedRAMP CR26 rules — https://github.com/FedRAMP/rules, at the revision
+  pinned by FEDRAMP_RULESET_VERSION and FEDRAMP_RULESET_COMMIT in
+  evidence_collector.application.profiles
 """
 
 from __future__ import annotations
@@ -46,19 +48,16 @@ from evidence_collector.domain.models import (
 )
 from evidence_collector.exporters._uri import is_absolute_uri
 
-# Stable, project-scoped namespace for synthesizing OSCAL UUIDs from
-# control IDs. Generated once and frozen so the same control_id always
-# maps to the same OSCAL uuid across runs (required for stable diffs).
+# Stable, project-scoped namespace for synthesizing OSCAL UUIDs. Generated
+# once and frozen so the same input always maps to the same OSCAL uuid
+# across runs (required for stable diffs). OSCAL catalog controls carry no
+# uuid; they are identified by their `id` token.
 _OSCAL_NAMESPACE = uuid.UUID("c5f8d34a-2c4b-4f8c-9e07-21f1f9e2a4c1")
 
 # `ns` for props this project defines that OSCAL does not.
 EVIDENCE_COLLECTOR_OSCAL_NS = (
     "https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/ns/oscal"
 )
-
-
-def _control_uuid(control_id: str) -> str:
-    return str(uuid.uuid5(_OSCAL_NAMESPACE, f"control:{control_id}"))
 
 
 def _group_for_framework(framework: ControlFramework) -> str:
@@ -106,7 +105,6 @@ def _control_to_oscal(control: ControlDefinition, token: str) -> dict[str, Any]:
 
     return {
         "id": token,
-        "uuid": _control_uuid(control.control_id),
         "class": _criticality_to_class(control.criticality),
         "title": control.name,
         "props": properties,

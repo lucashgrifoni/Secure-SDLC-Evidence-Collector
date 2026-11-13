@@ -26,13 +26,13 @@ def test_uuids_are_stable_across_runs() -> None:
     # The catalog uuid is derived from a fixed namespace, so two runs
     # must produce identical uuids — important for diffs and signing.
     assert a["catalog"]["uuid"] == b["catalog"]["uuid"]
-    a_ids = sorted(c["uuid"] for g in a["catalog"]["groups"] for c in g["controls"])
-    b_ids = sorted(c["uuid"] for g in b["catalog"]["groups"] for c in g["controls"])
+    assert uuid.UUID(a["catalog"]["uuid"]).version == 5
+    # OSCAL 1.1.2 catalog controls allow no uuid; their stable identity is
+    # the `id` token, which must not change between runs either.
+    a_ids = [c["id"] for g in a["catalog"]["groups"] for c in g["controls"]]
+    b_ids = [c["id"] for g in b["catalog"]["groups"] for c in g["controls"]]
     assert a_ids == b_ids
-    # Spot-check that uuids are valid v5 UUIDs.
-    for uuid_str in a_ids:
-        parsed = uuid.UUID(uuid_str)
-        assert parsed.version == 5
+    assert not any("uuid" in c for g in a["catalog"]["groups"] for c in g["controls"])
 
 
 def test_controls_are_grouped_by_framework() -> None:

@@ -136,4 +136,7 @@ def test_ai_and_oscal_sources_use_accurate_titles_and_references() -> None:
     assert "SSDF 1.1 has no PW.3" in lineage.description
     oscal = (ROOT / "src/evidence_collector/exporters/oscal.py").read_text(encoding="utf-8")
     assert "workstreet" not in oscal
-    assert "1c33385a06acf4faf50da2b9b4dc31cd826e5b91" in oscal
+    # The exporter cites the CR26 pin by name instead of copying the commit,
+    # so a re-pin in profiles.py cannot leave a stale commit in it.
+    assert "FEDRAMP_RULESET_COMMIT" in oscal
+    assert not re.search(r"FedRAMP/rules/blob/[0-9a-f]{40}", oscal)

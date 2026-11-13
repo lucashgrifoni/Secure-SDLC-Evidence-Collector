@@ -109,3 +109,12 @@ different digest, so refresh any `verify --expected` pin for it.
 - A clean native Trivy report, which has no `Results` key, is recognised
   instead of being listed as matching no parser. It still produces no
   evidence.
+
+### OSCAL export
+
+- Controls in the OSCAL Catalog that `sdlc-evidence oscal` writes no longer
+  carry a `uuid`. The OSCAL 1.1.2 catalog schema does not allow one on a
+  control, so strict validators rejected every catalog the command wrote.
+  Identify a control by its `id`, or by the `control_id` property, which hold
+  the same values as before. The catalog's own `uuid` and the Assessment
+  Results export are unchanged.

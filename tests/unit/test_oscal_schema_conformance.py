@@ -130,6 +130,12 @@ def test_embedded_assessment_plan_validates_against_the_oscal_schema(
     assert _errors(_validator("oscal_assessment-plan_schema.json"), plan) == []
 
 
+@pytest.mark.parametrize("name", bundled_catalog_names())
+def test_bundled_catalog_exports_validate_against_the_oscal_catalog_schema(name: str) -> None:
+    catalog = export_oscal_catalog(load_catalog(bundled_catalog_path(name)))
+    assert _errors(_validator("oscal_catalog_schema.json"), catalog) == []
+
+
 def test_the_schema_check_rejects_a_broken_document(sample_results: dict[str, Any]) -> None:
     broken = json.loads(json.dumps(sample_results))
     del broken["assessment-results"]["metadata"]["title"]
