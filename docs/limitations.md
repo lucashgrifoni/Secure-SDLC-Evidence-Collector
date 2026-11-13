@@ -236,6 +236,35 @@ context, CR26 source versions, catalog changes and output-lock recovery.
   misconfiguration check ids are not CVEs and are never fed to EPSS/KEV
   enrichment as if they were.
 
+## 6c · GitLab Security Reports
+
+- A JSON file is read as a GitLab Security Report when its `version` has
+  major 15, it has a `vulnerabilities` array, and `scan.type` is `sast`,
+  `secret_detection`, `dependency_scanning`, `container_scanning` or
+  `dast`. The file name plays no part, as in GitLab itself. Other scan
+  types (API fuzzing, coverage fuzzing, cluster image scanning) and other
+  schema majors are listed among the files that matched no parser.
+- `sast` becomes `sast_scan`, `secret_detection` becomes `secrets_scan`,
+  `dependency_scanning` and `container_scanning` become `sca_scan`, and
+  `dast` becomes `dast_scan`. Container scanning shares `sca_scan` with
+  Trivy's `os-pkgs` results; there is no container evidence type.
+- One report is one evidence. An empty `vulnerabilities` array is a passed
+  scan: unlike a Trivy result class, `scan.type` states which scan ran.
+- `scan.status: failure` makes the evidence `invalid`. In a secrets scan any
+  finding fails it, whatever its severity; otherwise a critical or high
+  finding fails it. Severities are counted as reported, and a word outside
+  the schema's list counts as `unknown`.
+- `cve_ids` come only from identifiers typed `cve`. The top-level `cve`
+  field of a finding is a location key in SAST reports and is not used.
+- Vulnerability flags (such as GitLab's likely-false-positive flag),
+  remediations, dependency lists and `scanned_resources` are not read. A
+  flagged finding still counts.
+- Checked against reports from GitLab's `semgrep:6`, `secrets:7`,
+  `gemnasium-python:6`, `container-scanning:8` and `dast:6` analyzer images
+  (`tests/fixtures/real/gitlab/`). No capture of a failed scan exists: an
+  analyzer that cannot run usually writes no report, which leaves the
+  control missing.
+
 ## 7 · Signing verification
 
 - The collector records `artifact_signature` **presence** (a file

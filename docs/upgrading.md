@@ -65,6 +65,16 @@ top. `CHANGELOG.md` lists every change.
 
 - `examples/gitlab-ci/secure-sdlc-evidence.yml` is deprecated in favor of
   the CI/CD Catalog component. It behaves as before.
+- GitLab Security Reports (schema 15) are read as scan evidence. A
+  `sast`, `secret_detection`, `dependency_scanning`, `container_scanning`
+  or `dast` report in `--artifacts-dir` becomes one `sast_scan`,
+  `secrets_scan`, `sca_scan` or `dast_scan` record; up to 4.2.0 these files
+  were listed as matching no parser. A pipeline that already supplies them
+  gets new evidence, so its verdict can change in either direction: a
+  control that was missing can now be met, or fail on a critical or high
+  finding, on any detected secret, or on a report whose `scan.status` is
+  `failure`. Other GitLab report types are still listed as matching no
+  parser. `sdlc-evidence plugins` lists a new built-in parser, `gitlab`.
 
 ### Scanner results are read as the scanner reported them
 

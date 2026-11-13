@@ -21,6 +21,27 @@ stages: [scan, test]
 
 Use an exact component version or reviewed commit SHA in production.
 
+## Accepted inputs
+
+The collector reads every file in `artifacts-dir` and decides what each one is
+from its content, not its name. A file that matches no format below is listed
+in the job log as not collected.
+
+| Format | Evidence |
+| --- | --- |
+| GitLab Security Report, schema 15 (`gl-sast-report.json`, `gl-secret-detection-report.json`, `gl-dependency-scanning-report.json`, `gl-container-scanning-report.json`, `gl-dast-report.json`) | SAST, secrets, dependency (dependency and container scanning) and DAST scans. Needs collector 4.3.0 or later. |
+| SARIF 2.1.0 (Semgrep, CodeQL, Gitleaks, Trivy, Grype and others) | SAST, secrets or dependency scan, by tool |
+| Trivy JSON (`--format json`) | dependency, secrets and IaC scans |
+| CycloneDX or SPDX SBOM, including GitLab's `gl-sbom-*.cdx.json` | SBOM |
+| OSV-Scanner JSON | dependency scan |
+| JUnit XML | test results |
+| OWASP ZAP JSON report | DAST scan |
+| in-toto statements, SLSA provenance, VSA, Sigstore bundles | attestations |
+
+The scanner jobs must hand their reports to the collector job as job
+artifacts placed under `artifacts-dir`. The full list of formats and how each
+is read is in the collector's `README.md` and `docs/limitations.md`.
+
 ## Inputs
 
 | Input | Default | Purpose |
