@@ -15,14 +15,14 @@
 #           path: scanner-output/
 #   evidence:
 #     needs: scan
-#     uses: lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/reusable-evidence-collection.yml@v4.2.0
+#     uses: lucashgrifoni/Secure-SDLC-Evidence-Collector/.github/workflows/reusable-evidence-collection.yml@v4.3.0
 #     with:
 #       application: my-app
 #       repository: my-org/my-app
 #       release-id: ${{ github.ref_name }}
 #       artifact-name: scanner-output
 #       artifacts-dir: scanner-output
-#       collector-version: "4.2.0"
+#       collector-version: "4.3.0"
 #
 # The workflow installs the collector from PyPI: the version given in
 # ``collector-version``, or the latest release when it is empty (a notice
@@ -152,7 +152,7 @@ on:
         type: string
         required: false
         default: ""
-        description: "Pin the collector version (e.g. '4.2.0'). Leave empty to use the most recent release on PyPI. Pinning is strongly recommended for reproducible pipelines."
+        description: "Pin the collector version (e.g. '4.3.0'). Leave empty to use the most recent release on PyPI. Pinning is strongly recommended for reproducible pipelines."
       python-version:
         type: string
         required: false
