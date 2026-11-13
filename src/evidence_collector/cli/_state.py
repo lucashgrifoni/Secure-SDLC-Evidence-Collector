@@ -19,9 +19,10 @@ from typing import Final
 from pydantic import TypeAdapter
 from rich.console import Console
 
+from evidence_collector.cli._theme import install
 from evidence_collector.domain.models import NormalizedEvidence
 
-console: Final[Console] = Console()
+console: Final[Console] = install(Console())
 
 EVIDENCE_ADAPTER: Final[TypeAdapter[list[NormalizedEvidence]]] = TypeAdapter(
     list[NormalizedEvidence]

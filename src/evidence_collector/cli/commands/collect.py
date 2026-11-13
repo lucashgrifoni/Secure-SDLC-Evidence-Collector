@@ -104,10 +104,10 @@ def register(app: typer.Typer) -> None:
                 emit_event("collection_error", path=str(error.path), reason=error.reason)
         else:
             console.print(
-                f"[green]Collected[/green] {len(report.evidence)} evidence records → {output_path}"
+                f"[output]Collected[/output] {len(report.evidence)} evidence records → {output_path}"
             )
             if report.errors:
-                console.print("[yellow]Collection warnings:[/yellow]")
+                console.print("[status.warn]Collection warnings:[/status.warn]")
                 for error in report.errors:
                     console.print(
                         f"  - {escape(str(error.path))}: {escape(error.reason)}", soft_wrap=True

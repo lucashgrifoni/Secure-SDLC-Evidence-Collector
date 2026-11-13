@@ -1,338 +1,1054 @@
+{#-
+  Release evidence summary: one self-contained file, no script, no request.
+  Contracts this template keeps (tests/unit/test_exporters.py and the
+  integration tests read the page as text):
+  - every section heading is a bare <h2>, with no attribute, so a section can
+    be sliced from one heading to the next;
+  - "Approved exceptions" and "Exceptions not in force" appear only when
+    their section does, navigation entries included;
+  - the Controls score is `<div class="label">Controls</div>` followed by a
+    `<div class="meta">` that holds the breakdown as plain text;
+  - `status-<verdict>` is written once, on the verdict panel. The styles
+    select on `data-verdict`, so the other two class names are absent and the
+    assertion on the verdict class is a real one;
+  - "manual attestation" is written only for a manual evidence record.
+  Every bundle string goes through autoescape as a text node. Nothing here is
+  marked safe, no bundle string reaches an attribute that is not a text
+  attribute, and row anchors are loop positions, never identifiers.
+  Optional context, each rendered only when `bundle_to_html` passes it:
+  `collector_version`, `bundle_digest` and `ignored_inputs` (its length only).
+  Provenance shown: tag, full commit, artifact digest, pipeline run and build
+  ids. Not shown: artifact file paths, per-evidence hashes, owner_team,
+  waiver justification and approved_at (owner decision, 2026-11-13).
+-#}
+{% set summary = bundle.summary %}
+{% set verdict = summary.release_status.value %}
+{% set risk = summary.risk_assessment %}
+{% set errors = bundle.collection_errors or [] %}
+{% set exceptions_in_force, exceptions_not_in_force = split_exceptions(bundle) %}
+{% set levels = ["critical", "high", "medium", "low"] %}
+{% set risk_moved = (risk.base_release_status.value != verdict) if risk else false %}
+{% set custom_catalog = (bundle.catalog.origin == "custom") if bundle.catalog else false %}
+{#- Row positions for the cross-links, and the controls each record supports. -#}
+{% set control_row = {} %}
+{% set control_level = {} %}
+{% set evidence_row = {} %}
+{% set exception_row = {} %}
+{% set supports = {} %}
+{% for evaluation in bundle.control_evaluations %}
+  {% set _ = control_row.setdefault(evaluation.control_id, loop.index) %}
+  {% set _ = control_level.setdefault(evaluation.control_id, evaluation.criticality.value) %}
+  {% for ref in evaluation.evidence_refs %}
+    {% set _ = supports.setdefault(ref, []).append(evaluation.control_id) %}
+  {% endfor %}
+{% endfor %}
+{% for item in bundle.evidence %}
+  {% set _ = evidence_row.setdefault(item.evidence_id, loop.index) %}
+{% endfor %}
+{% for exception in exceptions_in_force %}
+  {% set _ = exception_row.setdefault(exception.exception_id, loop.index) %}
+{% endfor %}
+{% set gap_count = {} %}
+{% for level in levels %}
+  {% set _ = gap_count.update({level: bundle.gaps | selectattr("criticality", "equalto", level) | list | length}) %}
+{% endfor %}
+{% set urgent_gaps = gap_count.critical + gap_count.high %}
+{% set verdict_word = {"ready": "Ready", "conditional": "Conditional", "not_ready": "Not ready"} %}
+{% set verdict_meaning = {
+  "ready": "Every control is met, waived or not applicable.",
+  "conditional": "No critical control lacks required evidence, but at least one control is partial or missing, or supplied evidence was set aside.",
+  "not_ready": "A critical control lacks required evidence.",
+} %}
+{% set control_glyph = {"met": "met", "partial": "partial", "missing": "missing", "waived": "waived", "not_applicable": "na"} %}
+{% set evidence_tone = {"passed": "ok", "completed": "ok", "failed": "bad", "invalid": "bad", "missing": "bad"} %}
+{% set tone_glyph = {"ok": "met", "bad": "missing", "muted": "dot"} %}
+{% set level_glyph = {"critical": "c4", "high": "c3", "medium": "c2", "low": "c1"} %}
+{% macro icon(name) -%}
+<svg class="i" aria-hidden="true" focusable="false"><use href="#i-{{ name }}"/></svg>
+{%- endmacro %}
+{#- Engine text marks identifiers with backticks. Balanced pairs become <code>;
+    anything else is written as it came. Each part is escaped on its own. -#}
+{% macro ticked(text) -%}
+{%- set parts = (text or "").split("`") -%}
+{%- if parts | length is odd -%}
+{%- for part in parts -%}
+{%- if loop.index0 is odd -%}<code>{{ part }}</code>{%- else -%}{{ part }}{%- endif -%}
+{%- endfor -%}
+{%- else -%}{{ text }}{%- endif -%}
+{%- endmacro %}
+{% macro control_link(control_id) -%}
+{%- if control_id in control_row -%}
+<a class="ref" href="#ctl-{{ control_row[control_id] }}"><code>{{ control_id }}</code></a>
+{%- else -%}<code>{{ control_id }}</code>{%- endif -%}
+{%- endmacro %}
+{% macro level_mark(level) -%}
+<span class="level">{{ icon(level_glyph.get(level, "c1")) }}{{ level }}</span>
+{%- endmacro %}
+{% macro meter(value, kind) -%}
+<svg class="meter meter-{{ kind }}" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect class="track" width="100" height="4"/><rect class="fill" width="{{ value | int }}" height="4"/></svg>
+{%- endmacro %}
+{#- The missing items in flat positions [first, last), critical first, each
+    group under its own label. Called twice: the first few in the verdict
+    panel, the rest inside a disclosure, so a long list does not push the
+    next step below the first screen of a phone. -#}
+{% macro missing_chips(by_level, first, last) -%}
+{%- set position = namespace(offset=0) -%}
+{%- for label, key in [("critical, blocks the release", "critical"), ("high", "high"), ("not in the control list", "other")] -%}
+{%- set items = by_level[key] -%}
+{%- set shown = items[[first - position.offset, 0] | max : [last - position.offset, 0] | max] -%}
+{%- if shown %}
+<span class="sub">{{ label }}</span>
+{% for item in shown %}
+{% set control_id = item.rsplit(":", 1)[0] %}
+{% if control_id in control_row %}<a class="chip" href="#ctl-{{ control_row[control_id] }}"><code>{{ item }}</code></a>{% else %}<span class="chip"><code>{{ item }}</code></span>{% endif %}
+{% endfor %}
+{%- endif -%}
+{%- set position.offset = position.offset + items | length -%}
+{%- endfor -%}
+{%- endmacro %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
 <title>Secure SDLC Evidence Summary — {{ bundle.application.name }} {{ bundle.release.release_id }}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230c124c'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%2308b98b' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%2308b98b'/%3E%3C/svg%3E">
 <style>
+  /* tokens:begin (generated from tokens.json; edit that file, not this block) */
   :root {
     color-scheme: light dark;
-    --bg: #0f172a;
-    --card: #111827;
-    --muted: #94a3b8;
-    --text: #e2e8f0;
-    --accent: #38bdf8;
-    --ok: #22c55e;
-    --warn: #f59e0b;
-    --bad: #ef4444;
-    --border: #1f2937;
+    --sans: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Mono", Consolas, Menlo, monospace;
+    --r-1: 4px;
+    --r-2: 8px;
+    --r-3: 12px;
+    --r-4: 18px;
+    --ground: #eef0f3;
+    --ground-top: #e4e7ee;
+    --ground-deep: #eef0f3;
+    --glow-a: rgba(8,185,139,0);
+    --glow-b: rgba(90,104,118,0);
+    --sheet: #ffffff;
+    --sheet-head: #f5f6f8;
+    --panel-a: #ffffff;
+    --panel-b: #ffffff;
+    --line: rgba(12,18,76,0.12);
+    --line-2: rgba(12,18,76,0.22);
+    --text-hi: #0c124c;
+    --text: #262e60;
+    --text-lo: #4f5a6a;
+    --accent: #08b98b;
+    --accent-ink: #05664c;
+    --accent-line: rgba(5,102,76,0.45);
+    --focus: #05664c;
+    --code-bg: rgba(12,18,76,0.06);
+    --track: rgba(12,18,76,0.10);
+    --target: rgba(8,185,139,0.08);
+    --ok-ink: #05664c;
+    --ok-strong: #05664c;
+    --ok-tint: rgba(8,185,139,0.12);
+    --ok-line: rgba(5,102,76,0.40);
+    --ok-fill: #07936e;
+    --ok-glow: rgba(8,185,139,0.10);
+    --warn-ink: #714f00;
+    --warn-strong: #714f00;
+    --warn-tint: rgba(240,180,41,0.18);
+    --warn-line: rgba(113,79,0,0.40);
+    --warn-fill: #a06f00;
+    --warn-glow: rgba(240,180,41,0.14);
+    --bad-ink: #ab2219;
+    --bad-strong: #ab2219;
+    --bad-tint: rgba(239,92,92,0.12);
+    --bad-line: rgba(171,34,25,0.40);
+    --bad-fill: #c0392b;
+    --bad-glow: rgba(239,92,92,0.10);
+    --muted-ink: #4f5a6a;
+    --muted-tint: rgba(12,18,76,0.06);
+    --muted-line: rgba(12,18,76,0.30);
+    --muted-fill: #7c8394;
+    --meter-a: #05664c;
+    --meter-alt-a: #5a6876;
   }
-  @media (prefers-color-scheme: light) {
+  @media screen and (prefers-color-scheme: dark) {
     :root {
-      --bg: #f8fafc;
-      --card: #ffffff;
-      --muted: #475569;
-      --text: #0f172a;
-      --accent: #0284c7;
-      --border: #e2e8f0;
+      --ground: #0c124c;
+      --ground-top: #0a1048;
+      --ground-deep: #070b32;
+      --glow-a: rgba(8,185,139,0.07);
+      --glow-b: rgba(90,104,118,0.18);
+      --sheet: #141a52;
+      --sheet-head: #1a2056;
+      --panel-a: #0c124c;
+      --panel-b: #0a0f3f;
+      --line: rgba(213,216,221,0.10);
+      --line-2: rgba(213,216,221,0.18);
+      --text-hi: #eef0f3;
+      --text: #d5d8dd;
+      --text-lo: #aab1bd;
+      --accent: #08b98b;
+      --accent-ink: #1fd6a4;
+      --accent-line: rgba(8,185,139,0.45);
+      --focus: #1fd6a4;
+      --code-bg: rgba(213,216,221,0.07);
+      --track: rgba(213,216,221,0.10);
+      --target: rgba(8,185,139,0.06);
+      --ok-ink: #6ee7b7;
+      --ok-strong: #1fd6a4;
+      --ok-tint: rgba(8,185,139,0.14);
+      --ok-line: rgba(8,185,139,0.45);
+      --ok-fill: #08b98b;
+      --ok-glow: rgba(8,185,139,0.12);
+      --warn-ink: #f0b429;
+      --warn-strong: #f0b429;
+      --warn-tint: rgba(240,180,41,0.12);
+      --warn-line: rgba(240,180,41,0.45);
+      --warn-fill: #f0b429;
+      --warn-glow: rgba(240,180,41,0.12);
+      --bad-ink: #f47a7a;
+      --bad-strong: #ef5c5c;
+      --bad-tint: rgba(239,92,92,0.12);
+      --bad-line: rgba(239,92,92,0.45);
+      --bad-fill: #f26d6d;
+      --bad-glow: rgba(239,92,92,0.12);
+      --muted-ink: #b9bfca;
+      --muted-tint: rgba(213,216,221,0.08);
+      --muted-line: rgba(213,216,221,0.30);
+      --muted-fill: #7c8394;
+      --meter-a: #08b98b;
+      --meter-alt-a: #7c8394;
     }
   }
-  * { box-sizing: border-box; }
+  @media print {
+    :root {
+      color-scheme: light;
+      --ground: #ffffff;
+      --ground-top: #ffffff;
+      --ground-deep: #ffffff;
+      --glow-a: rgba(8,185,139,0);
+      --glow-b: rgba(90,104,118,0);
+      --sheet: #ffffff;
+      --sheet-head: #ffffff;
+      --panel-a: #ffffff;
+      --panel-b: #ffffff;
+      --line: #b9bfc9;
+      --line-2: #8a93a3;
+      --text-hi: #0c124c;
+      --text: #141a3a;
+      --text-lo: #3b4554;
+      --accent: #03593f;
+      --accent-ink: #03593f;
+      --accent-line: #03593f;
+      --focus: #03593f;
+      --code-bg: rgba(12,18,76,0);
+      --track: #dfe2e7;
+      --target: rgba(8,185,139,0);
+      --ok-ink: #03593f;
+      --ok-strong: #03593f;
+      --ok-tint: rgba(8,185,139,0);
+      --ok-line: #03593f;
+      --ok-fill: #03593f;
+      --ok-glow: rgba(8,185,139,0);
+      --warn-ink: #6b4600;
+      --warn-strong: #6b4600;
+      --warn-tint: rgba(240,180,41,0);
+      --warn-line: #6b4600;
+      --warn-fill: #6b4600;
+      --warn-glow: rgba(240,180,41,0);
+      --bad-ink: #9b1c14;
+      --bad-strong: #9b1c14;
+      --bad-tint: rgba(239,92,92,0);
+      --bad-line: #9b1c14;
+      --bad-fill: #9b1c14;
+      --bad-glow: rgba(239,92,92,0);
+      --muted-ink: #3b4554;
+      --muted-tint: rgba(12,18,76,0);
+      --muted-line: #3b4554;
+      --muted-fill: #6b7385;
+      --meter-a: #03593f;
+      --meter-alt-a: #3b4554;
+    }
+  }
+  /* tokens:end */
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
     margin: 0;
-    padding: 24px;
-    line-height: 1.5;
+    font: 400 1rem/1.55 var(--sans);
+    color: var(--text);
+    background-color: var(--ground);
+    background-image:
+      radial-gradient(900px 600px at 88% -10%, var(--glow-a), transparent 60%),
+      radial-gradient(900px 700px at -10% 14%, var(--glow-b), transparent 60%),
+      linear-gradient(180deg, var(--ground-top) 0, var(--ground) 420px, var(--ground-deep) 100%);
+    -webkit-font-smoothing: antialiased;
   }
-  h1, h2, h3 { line-height: 1.2; }
-  h1 { font-size: 1.6rem; margin: 0 0 8px; }
-  h2 { font-size: 1.2rem; margin: 24px 0 12px; }
-  header { margin-bottom: 24px; }
-  .meta { color: var(--muted); font-size: 0.9rem; }
-  .grid {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  }
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px;
-  }
-  .card .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
-  .card .value { font-size: 1.4rem; font-weight: 600; margin-top: 4px; }
-  .status-ready { color: var(--ok); }
-  .status-conditional { color: var(--warn); }
-  .status-not_ready { color: var(--bad); }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 8px;
-    font-size: 0.9rem;
-  }
-  th, td {
-    text-align: left;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: top;
-  }
-  th { color: var(--muted); font-weight: 600; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 28px 56px; }
+  h1, h2, h3, p, ul, dl, dd { margin: 0; }
+  ul { padding: 0; list-style: none; }
+  a { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px; }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
   code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    background: rgba(148, 163, 184, 0.12);
-    padding: 1px 6px;
-    border-radius: 4px;
+    font-family: var(--mono);
     font-size: 0.85em;
+    color: var(--text-hi);
+    background: var(--code-bg);
+    padding: 1px 6px;
+    border-radius: var(--r-1);
+    overflow-wrap: anywhere;
   }
-  .pill {
-    display: inline-block;
-    padding: 2px 8px;
+  /* A linked chip is a 24 px target (SC 2.5.8), not just a line of code. */
+  a code { display: inline-block; padding: 3px 7px; line-height: 18px; color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+  .i { width: 0.95em; height: 0.95em; flex: none; fill: none; stroke: currentColor; }
+
+  /* Small mono label with the green rule: the landing page's eyebrow. */
+  h1, .verdict h2, .label, dt.name {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font: 500 0.7rem/1.4 var(--mono);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-lo);
+  }
+  .verdict h2::before, .label::before, dt.name::before {
+    content: "";
+    flex: none;
+    width: 28px;
+    border-top: 1px solid var(--accent);
+  }
+
+  /* Masthead */
+  .mark { width: 28px; height: 28px; flex: none; fill: none; }
+  .mark .ring { stroke: var(--accent); stroke-width: 1.4; }
+  .mark .inner { stroke: var(--text); stroke-width: 1; opacity: 0.6; }
+  .mark .dot { fill: var(--accent); }
+  .subject { margin-top: 14px; overflow-wrap: anywhere; }
+  .subject .app {
+    font-size: clamp(1.7rem, 1.2rem + 2.2vw, 2.5rem);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--text-hi);
+  }
+  .subject .rel { margin-left: 0.5em; font: 400 0.95rem var(--mono); color: var(--text-lo); }
+  .stamp { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 10px; font-size: 0.84rem; color: var(--text-lo); }
+
+  /* Overview: the verdict panel is the one loud element on the page. */
+  .overview { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 16px; margin-top: 28px; }
+  .verdict {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 30px 30px 26px;
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-4);
+    background-color: var(--panel-a);
+    background-image:
+      radial-gradient(620px 300px at 0 0, var(--v-glow), transparent 62%),
+      linear-gradient(180deg, var(--panel-a), var(--panel-b));
+  }
+  .verdict::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: 30px;
+    width: 56px;
+    border-top: 3px solid var(--v-fill);
+  }
+  .verdict[data-verdict="ready"] { --v-ink: var(--ok-ink); --v-strong: var(--ok-strong); --v-fill: var(--ok-fill); --v-glow: var(--ok-glow); --v-tint: var(--ok-tint); --v-line: var(--ok-line); }
+  .verdict[data-verdict="conditional"] { --v-ink: var(--warn-ink); --v-strong: var(--warn-strong); --v-fill: var(--warn-fill); --v-glow: var(--warn-glow); --v-tint: var(--warn-tint); --v-line: var(--warn-line); }
+  .verdict[data-verdict="not_ready"] { --v-ink: var(--bad-ink); --v-strong: var(--bad-strong); --v-fill: var(--bad-fill); --v-glow: var(--bad-glow); --v-tint: var(--bad-tint); --v-line: var(--bad-line); }
+  .word {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 14px;
+    font-size: clamp(2.4rem, 1.5rem + 3.6vw, 3.9rem);
+    font-weight: 500;
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+    color: var(--v-strong);
+  }
+  .word .i { width: 0.8em; height: 0.8em; }
+  .literal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 14px; font-size: 0.82rem; color: var(--text-lo); }
+  .literal code {
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--v-ink);
+    background: var(--v-tint);
+    border: 1px solid var(--v-line);
     border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
   }
-  .pill-met { background: rgba(34, 197, 94, 0.15); color: var(--ok); }
-  .pill-partial { background: rgba(245, 158, 11, 0.15); color: var(--warn); }
-  .pill-missing { background: rgba(239, 68, 68, 0.15); color: var(--bad); }
-  .pill-waived { background: rgba(148, 163, 184, 0.2); color: var(--muted); }
-  .pill-not_applicable { background: rgba(148, 163, 184, 0.2); color: var(--muted); }
-  .manual { color: var(--muted); font-size: 0.85rem; }
-  footer { margin-top: 32px; color: var(--muted); font-size: 0.8rem; }
+  .meaning { margin-top: 14px; max-width: 62ch; color: var(--text); }
+  .verdict h3 { margin: 22px 0 8px; font: 500 0.7rem/1.4 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-lo); }
+  .why li { position: relative; padding: 5px 0 5px 18px; font-size: 0.93rem; }
+  .why li::before { content: ""; position: absolute; left: 0; top: 0.95em; width: 8px; border-top: 1px solid var(--accent); }
+  .why .caution { display: flex; align-items: baseline; gap: 8px; padding-left: 0; color: var(--text-hi); }
+  .why .caution::before { content: none; }
+  .why .caution .i { color: var(--warn-ink); position: relative; top: 0.12em; }
+  /* Each group label starts its own line, so the critical group, which blocks
+     the release, never shares a row with the high group. */
+  .why .sub { display: block; margin: 8px 0 0; font: 500 0.7rem var(--mono); color: var(--text-lo); }
+  .why .more { margin-top: 8px; }
+  .chip { display: inline-block; min-height: 24px; margin: 4px 4px 0 0; }
+  .ref { display: inline-block; min-height: 24px; }
+  .tag {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 8px;
+    font: 500 0.7rem/1.5 var(--mono);
+    color: var(--v-ink);
+    border: 1px solid var(--v-line);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .next { margin-top: auto; padding-top: 4px; }
+  .next p { padding: 12px 14px; font-size: 0.95rem; color: var(--text-hi); background: var(--code-bg); border: 1px solid var(--line); border-radius: var(--r-2); }
+
+  .scores { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--r-4); background: var(--sheet); }
+  .score { flex: 1; padding: 20px 24px; }
+  .score + .score { border-top: 1px solid var(--line); }
+  .value { margin-top: 6px; font-size: 1.7rem; font-weight: 500; line-height: 1.15; letter-spacing: -0.02em; color: var(--text-hi); }
+  .unit { font: 400 0.9rem var(--mono); letter-spacing: 0; color: var(--text-lo); }
+  .meta { font-size: 0.86rem; color: var(--text-lo); }
+  .hint { margin-top: 8px; font-size: 0.8rem; line-height: 1.45; color: var(--text-lo); }
+  .meter, .bar { display: block; width: 100%; height: 6px; margin-top: 10px; border-radius: 999px; overflow: hidden; }
+  .bar { height: 8px; }
+  .track { fill: var(--track); }
+  .meter-main .fill { fill: var(--meter-a); }
+  .meter-alt .fill { fill: var(--meter-alt-a); }
+  .seg-met { fill: var(--ok-fill); }
+  .seg-partial { fill: var(--warn-fill); }
+  .seg-missing { fill: var(--bad-fill); }
+  .seg-waived, .seg-not_applicable { fill: var(--muted-fill); }
+
+  /* Facts strip */
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 16px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--sheet); }
+  .fact { min-width: 0; padding: 18px 22px; box-shadow: -1px 0 0 var(--line), 0 -1px 0 var(--line); }
+  .fact .fv { margin-top: 6px; font-size: 1.15rem; font-weight: 500; letter-spacing: -0.015em; color: var(--text-hi); overflow-wrap: anywhere; }
+  .facts { overflow: hidden; }
+  .provenance { grid-column: 1 / -1; }
+  .pairs { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px 24px; margin-top: 8px; font-size: 0.86rem; color: var(--text-lo); }
+  .pairs > div { min-width: 0; }
+  .pairs dt, .kv dt { font-family: var(--mono); font-size: 0.74rem; }
+  .pairs dd { margin-top: 2px; }
+  .kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; margin-top: 8px; }
+  .absent { font-style: italic; }
+  .flag { display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; font: 500 0.74rem/1.6 var(--mono); color: var(--warn-ink); background: var(--warn-tint); border: 1px solid var(--warn-line); border-radius: 999px; }
+
+  /* Page navigation */
+  .toc { margin-top: 24px; }
+  .toc ul { display: flex; flex-wrap: wrap; gap: 8px; }
+  .toc a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    padding: 4px 14px;
+    font-size: 0.86rem;
+    color: var(--text-hi);
+    text-decoration: none;
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+  }
+  .toc a:hover { border-color: var(--accent-line); }
+  .toc .n { font: 500 0.74rem var(--mono); color: var(--text-lo); }
+
+  /* Sections */
+  .block { margin-top: 40px; }
+  .block > h2 { display: flex; align-items: center; gap: 12px; font-size: 1.3rem; font-weight: 500; line-height: 1.2; letter-spacing: -0.02em; color: var(--text-hi); }
+  .block > h2::before { content: ""; flex: none; width: 28px; border-top: 1px solid var(--accent); }
+  .lede { margin-top: 8px; max-width: 86ch; font-size: 0.93rem; color: var(--text-lo); }
+  .lede strong { color: var(--text-hi); font-weight: 600; }
+  .callout { display: flex; gap: 12px; margin-top: 12px; padding: 14px 16px; color: var(--text-hi); background: var(--warn-tint); border: 1px solid var(--warn-line); border-radius: var(--r-3); }
+  .callout .i { width: 1.2em; height: 1.2em; margin-top: 0.15em; color: var(--warn-ink); }
+  .callout p { max-width: 80ch; font-size: 0.93rem; }
+  .empty { margin-top: 12px; padding: 14px 16px; font-size: 0.93rem; color: var(--text-lo); border: 1px dashed var(--line-2); border-radius: var(--r-3); }
+
+  /* A sheet scrolls sideways instead of cutting a column off: if a table is
+     ever wider than its sheet, every column stays reachable (keyboard
+     included, through tabindex on the region). The card layout below keeps
+     the known content from needing it. */
+  .sheet { margin-top: 14px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--sheet); overflow-x: auto; }
+  .sheet:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { padding: 10px 14px; text-align: left; vertical-align: top; font-weight: 400; border-top: 1px solid var(--line); overflow-wrap: break-word; }
+  /* Cells that carry free text from the bundle wrap `anywhere`: unlike
+     `break-word`, it lowers the cell's minimum width, so one long unbroken
+     value cannot widen the whole table. Short enumerated values (framework,
+     status, dates) keep `break-word` and never split inside a word. */
+  td.wide, th.wide, .free { overflow-wrap: anywhere; }
+  thead th { font: 500 0.7rem/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-lo); background: var(--sheet-head); border-top: 0; white-space: nowrap; }
+  tbody tr:target { background: var(--target); }
+  tr { scroll-margin-top: 16px; }
+  .k { display: none; }
+  .c-main { min-width: 15rem; }
+  .c-ref { min-width: 11.5rem; }
+  /* An approver is usually an e-mail address: room for one on a line, so a long
+     reference in the same row cannot squeeze it into broken fragments. */
+  .c-who { min-width: 13rem; }
+  .c-id { min-width: 10rem; }
+  .name { display: block; margin-top: 3px; font-size: 0.86rem; color: var(--text-lo); }
+  .group th { padding: 9px 14px; font: 500 0.74rem var(--mono); color: var(--text-hi); background: var(--sheet-head); }
+  .group .n { margin-left: 8px; color: var(--text-lo); }
+  .level { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .level .i { fill: currentColor; stroke: none; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px 2px 8px;
+    font: 500 0.76rem/1.5 var(--mono);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    color: var(--p-ink);
+    background: var(--p-tint);
+    border: 1px solid var(--p-line);
+    border-radius: 999px;
+  }
+  .pill-met, .pill[data-tone="ok"] { --p-ink: var(--ok-ink); --p-tint: var(--ok-tint); --p-line: var(--ok-line); }
+  .pill-partial { --p-ink: var(--warn-ink); --p-tint: var(--warn-tint); --p-line: var(--warn-line); }
+  .pill-missing, .pill[data-tone="bad"] { --p-ink: var(--bad-ink); --p-tint: var(--bad-tint); --p-line: var(--bad-line); }
+  .pill-waived, .pill-not_applicable, .pill[data-tone="muted"] { --p-ink: var(--muted-ink); --p-tint: var(--muted-tint); --p-line: var(--muted-line); }
+  .pill-waived, .pill-not_applicable { border-style: dashed; }
+  .manual { font-size: 0.85rem; color: var(--text-lo); }
+  .supports { display: block; margin-top: 4px; font-size: 0.8rem; color: var(--text-lo); }
+  .refs .ref, .refs > code { display: inline-block; margin: 0 4px 4px 0; }
+  .waiver { display: block; font-size: 0.8rem; color: var(--text-lo); }
+
+  details { margin-top: 6px; }
+  summary { display: inline-flex; align-items: center; gap: 8px; min-height: 24px; font: 500 0.72rem var(--mono); color: var(--text-lo); cursor: pointer; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "+"; display: grid; place-items: center; width: 16px; height: 16px; font-size: 0.8rem; line-height: 1; color: var(--accent-ink); border: 1px solid var(--accent-line); border-radius: var(--r-1); }
+  details[open] > summary::before { content: "\2212"; }
+  details p { margin-top: 4px; max-width: 70ch; font-size: 0.86rem; color: var(--text-lo); }
+
+  footer { margin-top: 48px; padding-top: 20px; font-size: 0.8rem; color: var(--text-lo); border-top: 1px solid var(--line); }
+  footer p + p, footer .kv { margin-top: 6px; }
+
+  @media (max-width: 880px) {
+    .overview { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding: 24px 16px 40px; }
+    .verdict { padding: 26px 20px 20px; }
+    .verdict::before { left: 20px; }
+    .score, .fact { padding: 16px 18px; }
+    .stamp { flex-direction: column; }
+  }
+
+  /* Below the width at which the widest known table (Controls of a real
+     not_ready bundle) fits its sheet, a row becomes a card, so nothing
+     scrolls sideways on a tablet or a zoomed desktop either. The roles
+     written on the table elements keep them a table for assistive
+     technology after `display` changes. */
+  @media screen and (max-width: 1000px) {
+    table, tbody, tr, th, td { display: block; }
+    .c-main, .c-ref, .c-who, .c-id { min-width: 0; }
+    thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 16px; padding: 14px 16px; border-top: 1px solid var(--line); }
+    tbody tr:first-child { border-top: 0; }
+    tbody + tbody tr:first-child { border-top: 1px solid var(--line); }
+    tbody td, tbody th { min-width: 0; padding: 0; border: 0; }
+    .wide { grid-column: 1 / -1; }
+    .k { display: block; margin-bottom: 3px; font: 500 0.68rem/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-lo); }
+    .group { background: var(--sheet-head); }
+    .group th { padding: 0; background: none; }
+  }
+
+  @media (forced-colors: active) {
+    .verdict, .scores, .facts, .sheet, .pill, .literal code, .flag, .callout, .next p, .toc a { border-color: CanvasText; }
+    .verdict::before, .verdict h2::before, .label::before, dt.name::before, .block > h2::before, .why li::before { border-color: CanvasText; }
+    .meter, .bar, .mark { forced-color-adjust: none; }
+    .meter .track { fill: Canvas; stroke: CanvasText; stroke-width: 0.5; }
+    .meter .fill, .bar rect { fill: CanvasText; }
+    .bar .seg-partial, .bar .seg-waived, .bar .seg-not_applicable { fill: GrayText; }
+    .mark .ring, .mark .inner { stroke: CanvasText; }
+    .mark .dot { fill: CanvasText; }
+    tbody tr:target { outline: 2px solid Highlight; outline-offset: -2px; }
+  }
+
+  @page {
+    margin: 14mm 12mm 16mm;
+    @top-left { content: "Secure SDLC Evidence Summary"; font: 8pt sans-serif; }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt sans-serif; }
+  }
+  @media print {
+    html { font-size: 10pt; }
+    body { background: none; }
+    .wrap { max-width: none; padding: 0; }
+    .toc { display: none; }
+    a { color: inherit; text-decoration: none; }
+    code, a code { display: inline; padding: 0; line-height: inherit; border: 0; }
+    .overview { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 10pt; margin-top: 14pt; }
+    .verdict { padding: 16pt 16pt 14pt; background: none; border-width: 1.5pt; border-color: var(--v-fill); }
+    .verdict::before { left: 16pt; }
+    .score { padding: 10pt 14pt; }
+    .fact { padding: 10pt 14pt; }
+    .facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .pairs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .block { margin-top: 20pt; }
+    .next p, .callout, .empty { background: none; }
+    .verdict, .scores, .facts, .callout, .next, tr, details { break-inside: avoid; }
+    .block > h2, .lede, .group { break-after: avoid; }
+    thead { display: table-header-group; }
+    /* On paper a table is ruled lines, not a framed card: a frame cut by a page break reads as a missing row. */
+    .sheet { overflow: visible; border: 0; border-radius: 0; background: none; }
+    table { font-size: 8.5pt; border-bottom: 1px solid var(--line-2); }
+    thead th { border-bottom: 1px solid var(--line-2); }
+    th, td { padding: 4pt 5pt; }
+    thead th { letter-spacing: 0.08em; }
+    .c-main { min-width: 14em; }
+    .c-ref { min-width: 12.5em; }
+    details { margin-top: 3pt; }
+    summary { min-height: 0; }
+    details p { margin-top: 1pt; }
+    .meter, .bar, .track, .fill, [class^="seg-"] { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    details > summary::before, details[open] > summary::before { content: none; }
+    .why .more > summary { display: none; }
+    details::details-content { display: block; content-visibility: visible; }
+  }
 </style>
 </head>
 <body>
+<svg class="sprite" aria-hidden="true" focusable="false" width="0" height="0">
+  <symbol id="i-met" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.4" stroke-width="1.5"/><path d="M5.1 8.3l2 2 3.8-4.3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-partial" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.4" stroke-width="1.5"/><path d="M8 1.6a6.4 6.4 0 0 0 0 12.8z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-missing" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.4" stroke-width="1.5"/><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-waived" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.4" stroke-width="1.5"/><path d="M5 8h6" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-na" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.4" stroke-width="1.5" stroke-dasharray="2.4 2.2"/></symbol>
+  <symbol id="i-dot" viewBox="0 0 16 16"><circle cx="8" cy="8" r="3.2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-c1" viewBox="0 0 16 16"><rect x="1" y="10" width="2.6" height="5" rx=".6"/><rect x="5" y="7" width="2.6" height="8" rx=".6" opacity=".28"/><rect x="9" y="4" width="2.6" height="11" rx=".6" opacity=".28"/><rect x="13" y="1" width="2.6" height="14" rx=".6" opacity=".28"/></symbol>
+  <symbol id="i-c2" viewBox="0 0 16 16"><rect x="1" y="10" width="2.6" height="5" rx=".6"/><rect x="5" y="7" width="2.6" height="8" rx=".6"/><rect x="9" y="4" width="2.6" height="11" rx=".6" opacity=".28"/><rect x="13" y="1" width="2.6" height="14" rx=".6" opacity=".28"/></symbol>
+  <symbol id="i-c3" viewBox="0 0 16 16"><rect x="1" y="10" width="2.6" height="5" rx=".6"/><rect x="5" y="7" width="2.6" height="8" rx=".6"/><rect x="9" y="4" width="2.6" height="11" rx=".6"/><rect x="13" y="1" width="2.6" height="14" rx=".6" opacity=".28"/></symbol>
+  <symbol id="i-c4" viewBox="0 0 16 16"><rect x="1" y="10" width="2.6" height="5" rx=".6"/><rect x="5" y="7" width="2.6" height="8" rx=".6"/><rect x="9" y="4" width="2.6" height="11" rx=".6"/><rect x="13" y="1" width="2.6" height="14" rx=".6"/></symbol>
+  <symbol id="i-v-ready" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" stroke-width="1.8"/><path d="M7.6 12.4l3 3 5.8-6.6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-v-conditional" viewBox="0 0 24 24"><path d="M12 3.2 22 20.5H2z" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 9.6v5.2" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-v-not_ready" viewBox="0 0 24 24"><path d="M8.1 2.6h7.8l5.5 5.5v7.8l-5.5 5.5H8.1l-5.5-5.5V8.1z" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.6 8.6l6.8 6.8M15.4 8.6l-6.8 6.8" stroke-width="2" stroke-linecap="round"/></symbol>
+</svg>
+<div class="wrap">
 <header>
-  <h1>Secure SDLC Evidence Summary</h1>
-  <div class="meta">
-    <code>{{ bundle.bundle_id }}</code> · generated {{ bundle.generated_at.isoformat() }}
-  </div>
+  <h1><svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle class="ring" cx="16" cy="16" r="14"/><circle class="inner" cx="16" cy="16" r="7"/><circle class="dot" cx="16" cy="16" r="2.4"/></svg>Secure SDLC Evidence Summary</h1>
+  <p class="subject"><span class="app">{{ bundle.application.name }}</span><span class="rel">{{ bundle.release.release_id }}</span></p>
+  <p class="stamp"><span><code>{{ bundle.bundle_id }}</code></span><span>generated <time datetime="{{ bundle.generated_at.isoformat() }}">{{ bundle.generated_at.isoformat() }}</time></span></p>
 </header>
 
-<section class="grid">
-  <div class="card">
-    <div class="label">Application</div>
-    <div class="value">{{ bundle.application.name }}</div>
-    <div class="meta"><code>{{ bundle.application.repository }}</code> · {{ bundle.application.environment }}</div>
-  </div>
-  <div class="card">
-    <div class="label">Release</div>
-    <div class="value">{{ bundle.release.release_id }}</div>
-    <div class="meta">
-      commit <code>{{ bundle.release.commit_sha[:12] }}</code>
-      {% if bundle.release.branch %} · branch <code>{{ bundle.release.branch }}</code>{% endif %}
-    </div>
-  </div>
-  <div class="card">
-    <div class="label">Release status</div>
-    <div class="value status-{{ bundle.summary.release_status.value }}">
-      {{ bundle.summary.release_status.value | upper }}
-    </div>
-    {% if bundle.summary.risk_assessment %}
-    {% set risk = bundle.summary.risk_assessment %}
-    <div class="meta">
-      risk-weighted (<code>{{ risk.mode }}</code>): presence-based
-      <code>{{ risk.base_release_status.value }}</code>. {{ risk.rationale }}
-    </div>
-    {% endif %}
-    {% if bundle.summary.missing_critical_evidence %}
-    <div class="meta">
-      missing critical/high evidence:
-      {% for item in bundle.summary.missing_critical_evidence %}<code>{{ item }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
-    </div>
-    {% endif %}
-  </div>
-  <div class="card">
-    <div class="label">Evidence coverage</div>
-    <div class="value">{{ bundle.summary.evidence_coverage_score }}/100</div>
-    <div class="meta">confidence {{ bundle.summary.confidence_score }}/100</div>
-  </div>
-  <div class="card">
-    <div class="label">Controls</div>
-    <div class="value">{{ bundle.summary.total_controls }}</div>
-    <div class="meta">
-      {{ bundle.summary.controls_met }} met · {{ bundle.summary.controls_partial }} partial · {{ bundle.summary.controls_missing }} missing · {{ bundle.summary.controls_waived }} waived · {{ bundle.summary.controls_not_applicable }} n/a
-    </div>
-  </div>
-  {#- Which catalog produced the verdict belongs beside the verdict, not in an
-      appendix: the same evidence yields a different release status against a
-      different control set, and a custom catalog is the case a reader most
-      needs to notice. -#}
-  {% if bundle.catalog %}
-  <div class="card">
-    <div class="label">Control catalog</div>
-    <div class="value">{{ bundle.catalog.name }}</div>
-    <div class="meta">
-      {% if bundle.catalog.origin == "custom" %}
-      <strong class="status-not_ready">custom</strong> — not the catalog shipped with the tool
+<main>
+<div class="overview">
+  <section class="verdict status-{{ verdict }}" data-verdict="{{ verdict }}">
+    <h2>Release status</h2>
+    <p class="word">{{ icon("v-" ~ verdict) }}{{ verdict_word.get(verdict, verdict) }}</p>
+    <p class="literal"><code>{{ verdict }}</code><span>release_status in bundle.json</span></p>
+    <p class="meaning">
+      {% if risk_moved %}
+      The risk-weighted rule set this verdict. The first reason below says what it found.
       {% else %}
-      shipped with the tool
+      {{ verdict_meaning.get(verdict, "") }}
       {% endif %}
-      · {{ bundle.catalog.control_count }} controls
-      · <code>{{ bundle.catalog.sha256[:12] }}</code>
+    </p>
+
+    <h3>Why</h3>
+    <ul class="why">
+      {% if errors %}
+      <li class="caution">{{ icon("v-conditional") }}<span>{{ errors | length }} supplied input(s) failed to parse, so a gap below may not be a real one. <a href="#inputs">See the inputs</a>.</span></li>
+      {% endif %}
+      {% if risk %}
+      <li>Risk-weighted (<code>{{ risk.mode }}</code>): presence-based verdict <code>{{ risk.base_release_status.value }}</code>. {{ risk.rationale }}{% if risk_moved %}<span class="tag">decides the verdict</span>{% endif %}</li>
+      {% endif %}
+      {% if summary.missing_critical_evidence %}
+      {% set by_level = {"critical": [], "high": [], "other": []} %}
+      {% for item in summary.missing_critical_evidence %}
+        {% set level = control_level.get(item.rsplit(":", 1)[0], "other") %}
+        {% set _ = by_level[level if level in by_level else "other"].append(item) %}
+      {% endfor %}
+      {#- Every critical item stays in view (each one alone blocks the release);
+          beyond that, four items, and the rest behind the disclosure. -#}
+      {% set chip_cap = [4, by_level.critical | length] | max %}
+      {% set missing_total = summary.missing_critical_evidence | length %}
+      <li>Missing critical/high evidence:
+        {{ missing_chips(by_level, 0, chip_cap) }}
+        {% if missing_total > chip_cap %}
+        <details class="more">
+          <summary>{{ missing_total - chip_cap }} more</summary>
+          {{ missing_chips(by_level, chip_cap, missing_total) }}
+        </details>
+        {% endif %}
+      </li>
+      {% else %}
+      <li>No critical or high evidence is missing.</li>
+      {% endif %}
+      {% if bundle.gaps %}
+      <li><a href="#gaps">{{ bundle.gaps | length }} gap(s)</a>: {{ gap_count.critical }} critical · {{ gap_count.high }} high · {{ gap_count.medium }} medium · {{ gap_count.low }} low.</li>
+      {% else %}
+      <li>No gaps detected.</li>
+      {% endif %}
+      {% if exceptions_in_force %}
+      <li><a href="#approved">{{ exceptions_in_force | length }} approved exception(s)</a> applied to this release.</li>
+      {% endif %}
+      {% if custom_catalog %}
+      <li class="caution">{{ icon("v-conditional") }}<span>Evaluated against a custom catalog, not the one shipped with the tool. The same evidence can give another verdict under another catalog.</span></li>
+      {% endif %}
+    </ul>
+
+    <div class="next">
+      <h3>Next step</h3>
+      <p>
+        {% if errors %}
+        Fix the {{ errors | length }} input(s) that failed to parse and run the collector again. Until then a gap may be a parsing failure, not missing evidence.
+        {% elif risk_moved %}
+        Fix or replace the component behind the vulnerability named in the risk-weighted reason, then collect the scan again and run <code>enrich</code>. The scan record is in the evidence inventory.
+        {% elif urgent_gaps %}
+        Produce the evidence for the {{ urgent_gaps }} critical and high gap(s). They are listed first under Gaps, each with what to produce.
+        {% elif bundle.gaps %}
+        No critical or high gap is open. Review the {{ bundle.gaps | length }} remaining gap(s) under Gaps.
+        {% elif verdict != "ready" %}
+        Read the rationale of each control that is not met in the control list below.
+        {% else %}
+        This report asks for no action. Keep <code>bundle.json</code> with the release record; <code>sdlc-evidence verify bundle.json</code> prints its digest.
+        {% endif %}
+      </p>
     </div>
+  </section>
+
+  <div class="scores">
+    <div class="score">
+      <div class="label">Evidence coverage</div>
+      <div class="value">{{ summary.evidence_coverage_score }}<span class="unit">/100</span></div>
+      {{ meter(summary.evidence_coverage_score, "main") }}
+      <p class="hint">Weighted share of the required and recommended evidence that was found.</p>
+    </div>
+    <div class="score">
+      <div class="label">Confidence</div>
+      <div class="value">{{ summary.confidence_score }}<span class="unit">/100</span></div>
+      {{ meter(summary.confidence_score, "alt") }}
+      <p class="hint">Average over the met, partial and waived controls: high 100, medium 66, low 33. A control backed by manually attested evidence counts one level lower.</p>
+    </div>
+    <div class="score">
+      <div class="label">Controls</div>
+      <div class="value">{{ summary.total_controls }}</div>
+      <div class="meta">
+        {{ summary.controls_met }} met · {{ summary.controls_partial }} partial · {{ summary.controls_missing }} missing · {{ summary.controls_waived }} waived · {{ summary.controls_not_applicable }} n/a
+      </div>
+      {% set segments = [("met", summary.controls_met), ("partial", summary.controls_partial), ("missing", summary.controls_missing), ("waived", summary.controls_waived), ("not_applicable", summary.controls_not_applicable)] %}
+      {% set drawn = segments | sum(attribute=1) %}
+      {% if drawn %}
+      {% set cursor = namespace(x=0) %}
+      <svg class="bar" viewBox="0 0 {{ drawn | int }} 1" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        {%- for name, count in segments -%}
+        {%- if count -%}<rect class="seg-{{ name }}" x="{{ cursor.x | int }}" width="{{ count | int }}" height="1"/>{%- endif -%}
+        {%- set cursor.x = cursor.x + count -%}
+        {%- endfor -%}
+      </svg>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<dl class="facts">
+  <div class="fact">
+    <dt class="name">Application</dt>
+    <dd>
+      <p class="fv">{{ bundle.application.name }}</p>
+      <p class="meta"><code>{{ bundle.application.repository }}</code> · {{ bundle.application.environment }}</p>
+    </dd>
+  </div>
+  <div class="fact">
+    <dt class="name">Release</dt>
+    <dd>
+      <p class="fv">{{ bundle.release.release_id }}</p>
+      <p class="meta">commit <code>{{ bundle.release.commit_sha }}</code>{% if bundle.release.branch %} · branch <code>{{ bundle.release.branch }}</code>{% endif %}</p>
+    </dd>
+  </div>
+  {#- Which catalog produced the verdict belongs beside the verdict: the same
+      evidence yields a different release status against a different control
+      set, and a custom catalog is the case a reader most needs to notice. -#}
+  {% if bundle.catalog %}
+  <div class="fact">
+    <dt class="name">Control catalog</dt>
+    <dd>
+      <p class="fv">{{ bundle.catalog.name }}</p>
+      <p class="meta">
+        {% if custom_catalog %}
+        <strong class="flag">{{ icon("v-conditional") }}custom</strong> — not the catalog shipped with the tool
+        {% else %}
+        shipped with the tool
+        {% endif %}
+        · {{ bundle.catalog.control_count }} controls
+        · <code>{{ bundle.catalog.sha256[:12] }}</code>
+      </p>
+    </dd>
   </div>
   {% endif %}
-</section>
+  {#- What ties this verdict to one build. An absent value is said, not hidden:
+      a verdict with no artifact digest is not bound to an artifact. -#}
+  <div class="fact provenance">
+    <dt class="name">Release provenance</dt>
+    <dd>
+      <dl class="pairs">
+        {% for label, value in [("tag", bundle.release.tag), ("artifact digest", bundle.release.artifact_digest), ("pipeline run", bundle.release.pipeline_run_id), ("build", bundle.release.build_id)] %}
+        <div><dt>{{ label }}</dt><dd>{% if value %}<code>{{ value }}</code>{% else %}<span class="absent">not recorded</span>{% endif %}</dd></div>
+        {% endfor %}
+      </dl>
+    </dd>
+  </div>
+</dl>
 
-{% if bundle.collection_errors %}
+<nav class="toc" aria-label="On this page">
+  <ul>
+    {% if errors %}<li><a href="#inputs">Unreadable inputs <span class="n">{{ errors | length }}</span></a></li>{% endif %}
+    {% if ignored_inputs is defined and ignored_inputs %}<li><a href="#unrecognized">Inputs not recognized <span class="n">{{ ignored_inputs | length }}</span></a></li>{% endif %}
+    <li><a href="#gaps">Gaps <span class="n">{{ bundle.gaps | length }}</span></a></li>
+    {% if exceptions_in_force %}<li><a href="#approved">Approved exceptions <span class="n">{{ exceptions_in_force | length }}</span></a></li>{% endif %}
+    {% if exceptions_not_in_force %}<li><a href="#not-in-force">Exceptions not in force <span class="n">{{ exceptions_not_in_force | length }}</span></a></li>{% endif %}
+    <li><a href="#controls">Controls <span class="n">{{ bundle.control_evaluations | length }}</span></a></li>
+    <li><a href="#evidence">Evidence inventory <span class="n">{{ bundle.evidence | length }}</span></a></li>
+  </ul>
+</nav>
+
+{% if errors %}
+<section class="block" id="inputs">
 <h2>Inputs that could not be read</h2>
-<p>
-  <strong>{{ bundle.collection_errors | length }} supplied input(s) failed to
-  parse.</strong> A control below may read as <em>missing evidence</em> when the
-  evidence was in fact provided and could not be ingested. Fix the inputs and
-  re-run before treating any gap here as a real one.
-</p>
-<table>
-  <thead>
-    <tr>
-      <th>Input</th>
-      <th>Why it was not ingested</th>
+<div class="callout">
+  {{ icon("v-conditional") }}
+  <p>
+    <strong>{{ errors | length }} supplied input(s) failed to
+    parse.</strong> A control below may read as <em>missing evidence</em> when the
+    evidence was in fact provided and could not be ingested. Fix the inputs and
+    re-run before treating any gap here as a real one.
+  </p>
+</div>
+<div class="sheet" role="region" aria-label="Inputs that could not be read table" tabindex="0">
+<table role="table">
+  <thead role="rowgroup">
+    <tr role="row">
+      <th role="columnheader" scope="col">Input</th>
+      <th role="columnheader" scope="col">Why it was not ingested</th>
     </tr>
   </thead>
-  <tbody>
-    {% for error in bundle.collection_errors %}
-    <tr>
-      <td><code>{{ error.path }}</code></td>
-      <td>{{ error.reason }}</td>
+  <tbody role="rowgroup">
+    {% for error in errors %}
+    <tr role="row">
+      <td role="cell" class="wide"><span class="k" aria-hidden="true">Input</span><code>{{ error.path }}</code></td>
+      <td role="cell" class="wide"><span class="k" aria-hidden="true">Why it was not ingested</span>{{ error.reason }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+</div>
+</section>
 {% endif %}
 
-<h2>Controls</h2>
-<table>
-  <thead>
-    <tr>
-      <th>Control</th>
-      <th>Framework</th>
-      <th>Status</th>
-      <th>Criticality</th>
-      <th>Confidence</th>
-      <th>Evidence</th>
+{% if ignored_inputs is defined and ignored_inputs %}
+<section class="block" id="unrecognized">
+<h2>Inputs not recognized</h2>
+{#- Count only: this page does not show artifact file paths (owner decision,
+    2026-11-13). The list is in report.md and in the run's console output. -#}
+<p class="lede">{{ ignored_inputs | length }} file(s) in the artifact directories matched no parser and were not collected. They are not errors, but a control may be missing evidence that one of them was meant to carry. The file list is in <code>report.md</code> and in the console output of the run.</p>
+</section>
+{% endif %}
+
+<section class="block" id="gaps">
+<h2>Gaps</h2>
+{% if bundle.gaps %}
+<p class="lede">Most critical first. A critical gap makes the release <code>not_ready</code>; a high gap makes it <code>conditional</code> at best.</p>
+<div class="sheet" role="region" aria-label="Gaps table" tabindex="0">
+<table role="table">
+  <thead role="rowgroup">
+    <tr role="row">
+      <th role="columnheader" scope="col">Control</th>
+      <th role="columnheader" scope="col">Evidence type</th>
+      <th role="columnheader" scope="col">Description</th>
+      <th role="columnheader" scope="col">What to produce</th>
     </tr>
   </thead>
-  <tbody>
+  {% for level in levels %}
+  {% set group = bundle.gaps | selectattr("criticality", "equalto", level) | list %}
+  {% if group %}
+  <tbody role="rowgroup">
+    <tr role="row" class="group">
+      <th role="rowheader" scope="rowgroup" colspan="4" class="wide">{{ level_mark(level) }}<span class="n">{{ group | length }}</span></th>
+    </tr>
+    {% for gap in group %}
+    <tr role="row">
+      <td role="cell" class="c-ref"><span class="k" aria-hidden="true">Control</span>{{ control_link(gap.control_id) }}</td>
+      <td role="cell"><span class="k" aria-hidden="true">Evidence type</span>{{ gap.evidence_type.value if gap.evidence_type else "-" }}</td>
+      <td role="cell" class="wide"><span class="k" aria-hidden="true">Description</span>{{ ticked(gap.description) }}</td>
+      <td role="cell" class="wide"><span class="k" aria-hidden="true">What to produce</span>{{ ticked(gap.remediation) if gap.remediation else "-" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  {% endif %}
+  {% endfor %}
+</table>
+</div>
+{% else %}
+<p class="empty">No gaps detected.</p>
+{% endif %}
+</section>
+
+{% if exceptions_in_force %}
+<section class="block" id="approved">
+<h2>Approved exceptions</h2>
+<div class="sheet" role="region" aria-label="Approved exceptions table" tabindex="0">
+<table role="table">
+  <thead role="rowgroup">
+    <tr role="row">
+      <th role="columnheader" scope="col">Exception</th>
+      <th role="columnheader" scope="col">Control</th>
+      <th role="columnheader" scope="col">Approver</th>
+      <th role="columnheader" scope="col">Expires</th>
+      <th role="columnheader" scope="col">Reference</th>
+    </tr>
+  </thead>
+  <tbody role="rowgroup">
+    {% for exception in exceptions_in_force %}
+    <tr role="row" id="exc-{{ loop.index }}">
+      <th role="rowheader" scope="row" class="wide c-id"><span class="k" aria-hidden="true">Exception</span><code>{{ exception.exception_id }}</code></th>
+      <td role="cell" class="c-id"><span class="k" aria-hidden="true">Control</span>{{ control_link(exception.control_id) }}</td>
+      <td role="cell" class="free c-who"><span class="k" aria-hidden="true">Approver</span>{{ exception.approver }}</td>
+      <td role="cell"><span class="k" aria-hidden="true">Expires</span>{{ exception.expires_at.isoformat() }}</td>
+      <td role="cell" class="free"><span class="k" aria-hidden="true">Reference</span>{{ exception.reference or "-" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</section>
+{% endif %}
+
+{% if exceptions_not_in_force %}
+<section class="block" id="not-in-force">
+<h2>Exceptions not in force</h2>
+<p class="lede">Supplied with the evidence but not applied to this release.</p>
+<div class="sheet" role="region" aria-label="Exceptions not in force table" tabindex="0">
+<table role="table">
+  <thead role="rowgroup">
+    <tr role="row">
+      <th role="columnheader" scope="col">Exception</th>
+      <th role="columnheader" scope="col">Control</th>
+      <th role="columnheader" scope="col">Approver</th>
+      <th role="columnheader" scope="col">Expires</th>
+      <th role="columnheader" scope="col">Why it does not apply</th>
+    </tr>
+  </thead>
+  <tbody role="rowgroup">
+    {% for exception, reason in exceptions_not_in_force %}
+    <tr role="row">
+      <th role="rowheader" scope="row" class="wide c-id"><span class="k" aria-hidden="true">Exception</span><code>{{ exception.exception_id }}</code></th>
+      <td role="cell" class="c-id"><span class="k" aria-hidden="true">Control</span>{{ control_link(exception.control_id) }}</td>
+      <td role="cell" class="free c-who"><span class="k" aria-hidden="true">Approver</span>{{ exception.approver }}</td>
+      <td role="cell"><span class="k" aria-hidden="true">Expires</span>{{ exception.expires_at.isoformat() }}</td>
+      <td role="cell" class="wide"><span class="k" aria-hidden="true">Why it does not apply</span>{{ reason }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</section>
+{% endif %}
+
+<section class="block" id="controls">
+<h2>Controls</h2>
+<div class="sheet" role="region" aria-label="Controls table" tabindex="0">
+<table role="table">
+  <thead role="rowgroup">
+    <tr role="row">
+      <th role="columnheader" scope="col">Control</th>
+      <th role="columnheader" scope="col">Framework</th>
+      <th role="columnheader" scope="col">Status</th>
+      <th role="columnheader" scope="col">Criticality</th>
+      <th role="columnheader" scope="col">Confidence</th>
+      <th role="columnheader" scope="col">Evidence</th>
+    </tr>
+  </thead>
+  <tbody role="rowgroup">
     {% for evaluation in bundle.control_evaluations %}
-    <tr>
-      <td><code>{{ evaluation.control_id }}</code><br><span class="meta">{{ evaluation.control_name }}</span></td>
-      <td>{{ evaluation.framework.value }}</td>
-      <td><span class="pill pill-{{ evaluation.evaluation_status.value }}">{{ evaluation.evaluation_status.value }}</span></td>
-      <td>{{ evaluation.criticality.value }}</td>
-      <td>{{ evaluation.confidence.value }}</td>
-      <td>
-        {% if evaluation.evidence_refs %}
-          {% for ref in evaluation.evidence_refs %}<code>{{ ref }}</code>{% if not loop.last %} {% endif %}{% endfor %}
-        {% else %}-{% endif %}
+    {% set status = evaluation.evaluation_status.value %}
+    <tr role="row" id="ctl-{{ loop.index }}">
+      <th role="rowheader" scope="row" class="c-main wide">
+        <code>{{ evaluation.control_id }}</code>
+        <span class="name">{{ evaluation.control_name }}</span>
+        <details{% if status != "met" %} open{% endif %}>
+          <summary>Rationale</summary>
+          <p>{{ evaluation.rationale }}</p>
+        </details>
+      </th>
+      <td role="cell"><span class="k" aria-hidden="true">Framework</span>{{ evaluation.framework.value }}</td>
+      <td role="cell"><span class="k" aria-hidden="true">Status</span><span class="pill pill-{{ status }}">{{ icon(control_glyph.get(status, "dot")) }}{{ status }}</span></td>
+      <td role="cell"><span class="k" aria-hidden="true">Criticality</span>{{ level_mark(evaluation.criticality.value) }}</td>
+      <td role="cell"><span class="k" aria-hidden="true">Confidence</span>{{ evaluation.confidence.value }}</td>
+      <td role="cell" class="c-ref wide refs"><span class="k" aria-hidden="true">Evidence</span>
+        {%- if evaluation.evidence_refs -%}
+          {%- for ref in evaluation.evidence_refs -%}
+          {%- if ref in evidence_row %}<a class="ref" href="#ev-{{ evidence_row[ref] }}"><code>{{ ref }}</code></a>{% else %}<code>{{ ref }}</code>{% endif -%}
+          {%- endfor -%}
+        {%- else %}-{% endif -%}
+        {%- for ref in evaluation.exception_refs if status == "waived" %}
+        <span class="waiver">waived by {% if ref in exception_row %}<a class="ref" href="#exc-{{ exception_row[ref] }}"><code>{{ ref }}</code></a>{% else %}<code>{{ ref }}</code>{% endif %}</span>
+        {%- endfor %}
       </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+</div>
+</section>
 
-{% set exceptions_in_force, exceptions_not_in_force = split_exceptions(bundle) %}
-{% if exceptions_in_force %}
-<h2>Approved exceptions</h2>
-<table>
-  <thead>
-    <tr>
-      <th>Exception</th>
-      <th>Control</th>
-      <th>Approver</th>
-      <th>Expires</th>
-      <th>Reference</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for exception in exceptions_in_force %}
-    <tr>
-      <td><code>{{ exception.exception_id }}</code></td>
-      <td><code>{{ exception.control_id }}</code></td>
-      <td>{{ exception.approver }}</td>
-      <td>{{ exception.expires_at.isoformat() }}</td>
-      <td>{{ exception.reference or "-" }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% endif %}
-
-{% if exceptions_not_in_force %}
-<h2>Exceptions not in force</h2>
-<p class="meta">Supplied with the evidence but not applied to this release.</p>
-<table>
-  <thead>
-    <tr>
-      <th>Exception</th>
-      <th>Control</th>
-      <th>Approver</th>
-      <th>Expires</th>
-      <th>Why it does not apply</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for exception, reason in exceptions_not_in_force %}
-    <tr>
-      <td><code>{{ exception.exception_id }}</code></td>
-      <td><code>{{ exception.control_id }}</code></td>
-      <td>{{ exception.approver }}</td>
-      <td>{{ exception.expires_at.isoformat() }}</td>
-      <td>{{ reason }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% endif %}
-
-{% if bundle.gaps %}
-<h2>Gaps</h2>
-<table>
-  <thead>
-    <tr>
-      <th>Control</th>
-      <th>Evidence type</th>
-      <th>Criticality</th>
-      <th>Description</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for gap in bundle.gaps %}
-    <tr>
-      <td><code>{{ gap.control_id }}</code></td>
-      <td>{{ gap.evidence_type.value if gap.evidence_type else "-" }}</td>
-      <td>{{ gap.criticality.value }}</td>
-      <td>{{ gap.description }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% endif %}
-
+<section class="block" id="evidence">
 <h2>Evidence inventory</h2>
-<table>
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Type</th>
-      <th>Producer</th>
-      <th>Status</th>
-      <th>Confidence</th>
-      <th>Subject</th>
+<div class="sheet" role="region" aria-label="Evidence inventory table" tabindex="0">
+<table role="table">
+  <thead role="rowgroup">
+    <tr role="row">
+      <th role="columnheader" scope="col">ID</th>
+      <th role="columnheader" scope="col">Type</th>
+      <th role="columnheader" scope="col">Producer</th>
+      <th role="columnheader" scope="col">Status</th>
+      <th role="columnheader" scope="col">Confidence</th>
+      <th role="columnheader" scope="col">Subject</th>
     </tr>
   </thead>
-  <tbody>
+  <tbody role="rowgroup">
     {% for item in bundle.evidence %}
-    <tr>
-      <td><code>{{ item.evidence_id }}</code></td>
-      <td>{{ item.evidence_type.value }}</td>
+    {% set tone = evidence_tone.get(item.status.value, "muted") %}
+    <tr role="row" id="ev-{{ loop.index }}">
+      <th role="rowheader" scope="row" class="c-ref wide">
+        <code>{{ item.evidence_id }}</code>
+        {% if item.evidence_id in supports %}
+        <span class="supports">supports {% for control_id in supports[item.evidence_id] %}{{ control_link(control_id) }}{% if not loop.last %} {% endif %}{% endfor %}</span>
+        {% endif %}
+      </th>
+      <td role="cell"><span class="k" aria-hidden="true">Type</span>{{ item.evidence_type.value }}</td>
       {#- A manually attested item names the tool the operator says produced it,
-          so this column alone reads as though the tool was collected from.
-          report.md has carried the qualifier since it was written; this table
-          did not, and it is the one a reviewer skims. -#}
-      <td>{{ item.producer }}{% if item.manual %} <span class="manual">(manual attestation)</span>{% endif %}</td>
-      <td>{{ item.status.value }}</td>
-      <td>{{ item.confidence.value }}</td>
-      <td><code>{{ item.subject_ref }}</code></td>
+          so this column alone reads as though the tool was collected from. -#}
+      <td role="cell" class="free"><span class="k" aria-hidden="true">Producer</span>{{ item.producer }}{% if item.manual %} <span class="manual">(manual attestation)</span>{% endif %}</td>
+      <td role="cell"><span class="k" aria-hidden="true">Status</span><span class="pill" data-tone="{{ tone }}">{{ icon(tone_glyph.get(tone, "dot")) }}{{ item.status.value }}</span></td>
+      <td role="cell"><span class="k" aria-hidden="true">Confidence</span>{{ item.confidence.value }}</td>
+      <td role="cell" class="wide"><span class="k" aria-hidden="true">Subject</span><code>{{ item.subject_ref }}</code></td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+</div>
+</section>
+</main>
 
 <footer>
-  Produced by Secure SDLC Evidence Collector · bundle schema {{ bundle.bundle_version }}
+  <p>Produced by Secure SDLC Evidence Collector{% if collector_version is defined and collector_version %} {{ collector_version }}{% endif %} · bundle schema {{ bundle.bundle_version }}</p>
+  <p>This page is a rendering of <code>bundle.json</code>, which is the record.{% if not (bundle_digest is defined and bundle_digest) %} <code>sdlc-evidence verify bundle.json</code> prints its digest.{% endif %}</p>
+  {% if bundle_digest is defined and bundle_digest %}
+  <dl class="kv">
+    <dt>bundle digest</dt><dd><code>{{ bundle_digest }}</code></dd>
+    <dt>check it with</dt><dd><code>sdlc-evidence verify bundle.json --expected {{ bundle_digest }}</code></dd>
+  </dl>
+  {% endif %}
 </footer>
+</div>
 </body>
 </html>

@@ -140,8 +140,8 @@ def register(app: typer.Typer) -> None:
             )
         else:
             console.print(
-                f"[green]in-toto Statement[/green] · "
+                f"[output]in-toto Statement[/output] · "
                 f"predicateType={emitted_predicate_url} → {output}"
             )
             if envelope_path is not None:
-                console.print(f"[green]DSSE envelope (unsigned)[/green] → {envelope_path}")
+                console.print(f"[output]DSSE envelope (unsigned)[/output] → {envelope_path}")

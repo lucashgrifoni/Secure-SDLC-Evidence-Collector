@@ -146,8 +146,8 @@ def register(app: typer.Typer) -> None:
                 # The identifiers come from the consumed file: escaped, so
                 # `[/x]` in one cannot raise MarkupError and abort the write.
                 console.print(
-                    f"[yellow]Skipped {len(skipped)} consumed statement(s) that name no "
-                    f"product of this release:[/yellow] {escape(listed)}{more}. Pass "
+                    f"[status.warn]Skipped {len(skipped)} consumed statement(s) that name no "
+                    f"product of this release:[/status.warn] {escape(listed)}{more}. Pass "
                     "--product with the release's purl to apply them."
                 )
 
@@ -166,7 +166,7 @@ def register(app: typer.Typer) -> None:
             )
         else:
             console.print(
-                f"[green]OpenVEX[/green] · {len(statements)} statement(s)"
+                f"[output]OpenVEX[/output] · {len(statements)} statement(s)"
                 + (
                     f" (merged {consumed_count} consumed, policy={policy})"
                     if consumed_count

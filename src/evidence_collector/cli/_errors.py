@@ -7,9 +7,10 @@ from rich.console import Console
 
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import is_json_logs
+from evidence_collector.cli._theme import install
 from evidence_collector.parsers._common import describe_failure
 
-error_console = Console(stderr=True)
+error_console = install(Console(stderr=True))
 
 
 def error_detail(exc: BaseException) -> str:

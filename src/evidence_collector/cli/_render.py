@@ -47,7 +47,8 @@ def render_summary(result: BundleBuildResult) -> None:
 
     table = Table(title="Release readiness summary", show_header=False, box=None)
     table.add_row("Bundle ID", result.bundle.bundle_id)
-    table.add_row("Release status", f"[bold]{summary.release_status.value}[/bold]")
+    status = summary.release_status.value
+    table.add_row("Release status", f"[verdict.{status}]{status}[/]")
     table.add_row(
         "Scores",
         f"coverage={summary.evidence_coverage_score} confidence={summary.confidence_score}",
@@ -79,11 +80,11 @@ def render_summary(result: BundleBuildResult) -> None:
         )
     console.print(table)
     if result.json_path:
-        console.print(f"[green]bundle.json[/green]  → {result.json_path}")
+        console.print(f"[output]bundle.json[/output]  → {result.json_path}")
     if result.markdown_path:
-        console.print(f"[green]report.md[/green]    → {result.markdown_path}")
+        console.print(f"[output]report.md[/output]    → {result.markdown_path}")
     if result.html_path:
-        console.print(f"[green]summary.html[/green] → {result.html_path}")
+        console.print(f"[output]summary.html[/output] → {result.html_path}")
 
 
 def render_collection_errors(result: BundleBuildResult) -> None:
@@ -95,7 +96,7 @@ def render_collection_errors(result: BundleBuildResult) -> None:
         for error in errors:
             emit_event("collection_error", path=str(error.path), reason=error.reason)
         return
-    console.print("[yellow]Collection warnings:[/yellow]")
+    console.print("[status.warn]Collection warnings:[/status.warn]")
     for error in errors:
         # The reason quotes the input file (a scanner name, a parser message);
         # unescaped, `[/x]` in it raised MarkupError and `[tag]` vanished.
@@ -120,8 +121,8 @@ def render_ignored_artifacts(paths: list[Path]) -> None:
     count = len(paths)
     noun, verb = ("file", "was") if count == 1 else ("files", "were")
     console.print(
-        f"[yellow]{count} {noun} in --artifacts-dir matched no parser and {verb} "
-        "not collected:[/yellow]",
+        f"[status.warn]{count} {noun} in --artifacts-dir matched no parser and {verb} "
+        "not collected:[/status.warn]",
         soft_wrap=True,
     )
     for path in paths[:_IGNORED_SHOWN]:
@@ -155,12 +156,12 @@ def warn_outside_artifact_root(directories: list[Path], root: Path | None) -> No
         return
     if not root.exists():
         console.print(
-            f"[yellow]--artifact-root {escape(str(root))} does not exist.[/yellow]",
+            f"[status.warn]--artifact-root {escape(str(root))} does not exist.[/status.warn]",
             soft_wrap=True,
         )
     for directory in outside:
         console.print(
-            f"[yellow]--artifact-root {escape(str(root))} does not contain "
-            f"{escape(str(directory))}; its paths are recorded as given.[/yellow]",
+            f"[status.warn]--artifact-root {escape(str(root))} does not contain "
+            f"{escape(str(directory))}; its paths are recorded as given.[/status.warn]",
             soft_wrap=True,
         )

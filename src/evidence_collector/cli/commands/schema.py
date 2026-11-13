@@ -45,4 +45,4 @@ def register(app: typer.Typer) -> None:
         if is_json_logs():
             emit_event("schema_emitted", output=str(output_path))
         else:
-            console.print(f"[green]EvidenceBundle JSON Schema[/green] → {output_path}")
+            console.print(f"[output]EvidenceBundle JSON Schema[/output] → {output_path}")

@@ -46,13 +46,13 @@ def register(app: typer.Typer) -> None:
             table.add_column("Status")
             table.add_column("Detail", overflow="fold")
             for label, ok, detail in results:
-                status = "[green]ok[/green]" if ok else "[red]fail[/red]"
+                status = "[status.ok]ok[/status.ok]" if ok else "[status.bad]fail[/status.bad]"
                 table.add_row(label, status, detail)
             console.print(table)
             if failed:
-                console.print(f"[red]{len(failed)} required check(s) failed.[/red]")
+                console.print(f"[status.bad]{len(failed)} required check(s) failed.[/status.bad]")
             else:
-                console.print("[green]All required checks passed.[/green]")
+                console.print("[status.ok]All required checks passed.[/status.ok]")
 
         if failed:
             raise typer.Exit(code=1)

@@ -147,4 +147,4 @@ def _write_or_echo(payload: str, output_path: Path | None, *, label: str) -> Non
     if is_json_logs():
         emit_event("oscal_emitted", kind=label, output=str(output_path))
     else:
-        console.print(f"[green]{label}[/green] → {output_path}")
+        console.print(f"[output]{label}[/output] → {output_path}")

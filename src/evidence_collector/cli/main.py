@@ -141,7 +141,7 @@ def main() -> None:
     # Print banner only when stdout is a TTY, to avoid polluting pipelines.
     if sys.stdout.isatty() and not is_json_logs():
         console.print(
-            f"[bold]Secure SDLC Evidence Collector[/bold] v{__version__} · "
+            f"[brand]Secure SDLC Evidence Collector[/brand] v{__version__} · "
             f"started at {datetime.now(tz=UTC).isoformat()}"
         )
     try:

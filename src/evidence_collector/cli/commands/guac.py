@@ -80,6 +80,6 @@ def register(app: typer.Typer) -> None:
             )
         else:
             console.print(
-                f"[green]GUAC collection[/green] · {len(document.get('documents', []))} "
+                f"[output]GUAC collection[/output] · {len(document.get('documents', []))} "
                 f"document(s) → {output}"
             )

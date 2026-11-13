@@ -25,9 +25,9 @@ def register(app: typer.Typer) -> None:
         table.add_column("Group")
         table.add_column("Names", overflow="fold")
         for group, names in listing.items():
-            table.add_row(group, ", ".join(names) if names else "[dim]<none>[/dim]")
+            table.add_row(group, ", ".join(names) if names else "[muted]<none>[/muted]")
         console.print(table)
         console.print(
-            "[dim]See https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/plugins/ "
-            "for how to register custom parsers and collectors.[/dim]"
+            "[muted]See https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/plugins/ "
+            "for how to register custom parsers and collectors.[/muted]"
         )

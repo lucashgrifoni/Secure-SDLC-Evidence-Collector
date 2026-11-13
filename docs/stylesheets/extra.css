@@ -1,0 +1,339 @@
+/*
+ * Docs theme: the landing page's navy, ice and green on Material for MkDocs.
+ * Installs as docs/stylesheets/extra.css and needs `primary: custom` and
+ * `accent: custom` in mkdocs.yml, so Material leaves these variables to us.
+ *
+ * The first block is generated from the same tokens.json that feeds
+ * summary.html. Everything after it reads those tokens and holds no colour of
+ * its own.
+ */
+
+/* tokens:begin (generated from tokens.json; edit that file, not this block) */
+:root {
+  --ds-sans: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ds-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Mono", Consolas, Menlo, monospace;
+  --ds-r-1: 4px;
+  --ds-r-2: 8px;
+  --ds-r-3: 12px;
+  --ds-r-4: 18px;
+}
+[data-md-color-scheme="default"] {
+  --ds-ground: #eef0f3;
+  --ds-ground-top: #e4e7ee;
+  --ds-ground-deep: #eef0f3;
+  --ds-glow-a: rgba(8,185,139,0);
+  --ds-glow-b: rgba(90,104,118,0);
+  --ds-sheet: #ffffff;
+  --ds-sheet-head: #f5f6f8;
+  --ds-panel-a: #ffffff;
+  --ds-panel-b: #ffffff;
+  --ds-line: rgba(12,18,76,0.12);
+  --ds-line-2: rgba(12,18,76,0.22);
+  --ds-text-hi: #0c124c;
+  --ds-text: #262e60;
+  --ds-text-lo: #4f5a6a;
+  --ds-accent: #08b98b;
+  --ds-accent-ink: #05664c;
+  --ds-accent-line: rgba(5,102,76,0.45);
+  --ds-focus: #05664c;
+  --ds-code-bg: rgba(12,18,76,0.06);
+  --ds-track: rgba(12,18,76,0.10);
+  --ds-target: rgba(8,185,139,0.08);
+  --ds-ok-ink: #05664c;
+  --ds-ok-strong: #05664c;
+  --ds-ok-tint: rgba(8,185,139,0.12);
+  --ds-ok-line: rgba(5,102,76,0.40);
+  --ds-ok-fill: #07936e;
+  --ds-ok-glow: rgba(8,185,139,0.10);
+  --ds-warn-ink: #714f00;
+  --ds-warn-strong: #714f00;
+  --ds-warn-tint: rgba(240,180,41,0.18);
+  --ds-warn-line: rgba(113,79,0,0.40);
+  --ds-warn-fill: #a06f00;
+  --ds-warn-glow: rgba(240,180,41,0.14);
+  --ds-bad-ink: #ab2219;
+  --ds-bad-strong: #ab2219;
+  --ds-bad-tint: rgba(239,92,92,0.12);
+  --ds-bad-line: rgba(171,34,25,0.40);
+  --ds-bad-fill: #c0392b;
+  --ds-bad-glow: rgba(239,92,92,0.10);
+  --ds-muted-ink: #4f5a6a;
+  --ds-muted-tint: rgba(12,18,76,0.06);
+  --ds-muted-line: rgba(12,18,76,0.30);
+  --ds-muted-fill: #7c8394;
+  --ds-meter-a: #05664c;
+  --ds-meter-alt-a: #5a6876;
+}
+[data-md-color-scheme="slate"] {
+  --ds-ground: #0c124c;
+  --ds-ground-top: #0a1048;
+  --ds-ground-deep: #070b32;
+  --ds-glow-a: rgba(8,185,139,0.07);
+  --ds-glow-b: rgba(90,104,118,0.18);
+  --ds-sheet: #141a52;
+  --ds-sheet-head: #1a2056;
+  --ds-panel-a: #0c124c;
+  --ds-panel-b: #0a0f3f;
+  --ds-line: rgba(213,216,221,0.10);
+  --ds-line-2: rgba(213,216,221,0.18);
+  --ds-text-hi: #eef0f3;
+  --ds-text: #d5d8dd;
+  --ds-text-lo: #aab1bd;
+  --ds-accent: #08b98b;
+  --ds-accent-ink: #1fd6a4;
+  --ds-accent-line: rgba(8,185,139,0.45);
+  --ds-focus: #1fd6a4;
+  --ds-code-bg: rgba(213,216,221,0.07);
+  --ds-track: rgba(213,216,221,0.10);
+  --ds-target: rgba(8,185,139,0.06);
+  --ds-ok-ink: #6ee7b7;
+  --ds-ok-strong: #1fd6a4;
+  --ds-ok-tint: rgba(8,185,139,0.14);
+  --ds-ok-line: rgba(8,185,139,0.45);
+  --ds-ok-fill: #08b98b;
+  --ds-ok-glow: rgba(8,185,139,0.12);
+  --ds-warn-ink: #f0b429;
+  --ds-warn-strong: #f0b429;
+  --ds-warn-tint: rgba(240,180,41,0.12);
+  --ds-warn-line: rgba(240,180,41,0.45);
+  --ds-warn-fill: #f0b429;
+  --ds-warn-glow: rgba(240,180,41,0.12);
+  --ds-bad-ink: #f47a7a;
+  --ds-bad-strong: #ef5c5c;
+  --ds-bad-tint: rgba(239,92,92,0.12);
+  --ds-bad-line: rgba(239,92,92,0.45);
+  --ds-bad-fill: #f26d6d;
+  --ds-bad-glow: rgba(239,92,92,0.12);
+  --ds-muted-ink: #b9bfca;
+  --ds-muted-tint: rgba(213,216,221,0.08);
+  --ds-muted-line: rgba(213,216,221,0.30);
+  --ds-muted-fill: #7c8394;
+  --ds-meter-a: #08b98b;
+  --ds-meter-alt-a: #7c8394;
+}
+@media print {
+  [data-md-color-scheme] {
+    --ds-ground: #ffffff;
+    --ds-ground-top: #ffffff;
+    --ds-ground-deep: #ffffff;
+    --ds-glow-a: rgba(8,185,139,0);
+    --ds-glow-b: rgba(90,104,118,0);
+    --ds-sheet: #ffffff;
+    --ds-sheet-head: #ffffff;
+    --ds-panel-a: #ffffff;
+    --ds-panel-b: #ffffff;
+    --ds-line: #b9bfc9;
+    --ds-line-2: #8a93a3;
+    --ds-text-hi: #0c124c;
+    --ds-text: #141a3a;
+    --ds-text-lo: #3b4554;
+    --ds-accent: #03593f;
+    --ds-accent-ink: #03593f;
+    --ds-accent-line: #03593f;
+    --ds-focus: #03593f;
+    --ds-code-bg: rgba(12,18,76,0);
+    --ds-track: #dfe2e7;
+    --ds-target: rgba(8,185,139,0);
+    --ds-ok-ink: #03593f;
+    --ds-ok-strong: #03593f;
+    --ds-ok-tint: rgba(8,185,139,0);
+    --ds-ok-line: #03593f;
+    --ds-ok-fill: #03593f;
+    --ds-ok-glow: rgba(8,185,139,0);
+    --ds-warn-ink: #6b4600;
+    --ds-warn-strong: #6b4600;
+    --ds-warn-tint: rgba(240,180,41,0);
+    --ds-warn-line: #6b4600;
+    --ds-warn-fill: #6b4600;
+    --ds-warn-glow: rgba(240,180,41,0);
+    --ds-bad-ink: #9b1c14;
+    --ds-bad-strong: #9b1c14;
+    --ds-bad-tint: rgba(239,92,92,0);
+    --ds-bad-line: #9b1c14;
+    --ds-bad-fill: #9b1c14;
+    --ds-bad-glow: rgba(239,92,92,0);
+    --ds-muted-ink: #3b4554;
+    --ds-muted-tint: rgba(12,18,76,0);
+    --ds-muted-line: #3b4554;
+    --ds-muted-fill: #6b7385;
+    --ds-meter-a: #03593f;
+    --ds-meter-alt-a: #3b4554;
+  }
+}
+/* tokens:end */
+
+/* The header stays navy in both schemes, as on the landing page. */
+[data-md-color-scheme="default"] {
+  --ds-header-bg: var(--ds-text-hi);
+  --ds-header-fg: var(--ds-ground);
+  --ds-header-focus: var(--ds-accent);
+  --ds-page: var(--ds-ground);
+  --ds-code-surface: var(--ds-sheet);
+}
+[data-md-color-scheme="slate"] {
+  --ds-header-bg: var(--ds-ground-deep);
+  --ds-header-fg: var(--ds-text-hi);
+  --ds-header-focus: var(--ds-accent-ink);
+  --ds-page: var(--ds-ground);
+  --ds-code-surface: var(--ds-sheet);
+}
+
+[data-md-color-scheme="default"],
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: var(--ds-header-bg);
+  --md-primary-fg-color--light: var(--ds-header-bg);
+  --md-primary-fg-color--dark: var(--ds-header-bg);
+  --md-primary-bg-color: var(--ds-header-fg);
+  --md-primary-bg-color--light: var(--ds-header-fg);
+  --md-accent-fg-color: var(--ds-accent-ink);
+  --md-accent-fg-color--transparent: var(--ds-target);
+  --md-accent-bg-color: var(--ds-page);
+  --md-accent-bg-color--light: var(--ds-page);
+
+  --md-default-bg-color: var(--ds-page);
+  --md-default-fg-color: var(--ds-text);
+  --md-default-fg-color--light: var(--ds-text-lo);
+  --md-default-fg-color--lighter: var(--ds-line-2);
+  --md-default-fg-color--lightest: var(--ds-line);
+
+  --md-typeset-color: var(--ds-text);
+  --md-typeset-a-color: var(--ds-accent-ink);
+  --md-typeset-mark-color: var(--ds-warn-tint);
+  --md-typeset-table-color: var(--ds-line-2);
+  --md-typeset-table-color--light: var(--ds-target);
+  --md-typeset-kbd-color: var(--ds-sheet-head);
+  --md-typeset-kbd-accent-color: var(--ds-sheet);
+  --md-typeset-kbd-border-color: var(--ds-line-2);
+
+  --md-code-fg-color: var(--ds-text-hi);
+  --md-code-bg-color: var(--ds-code-surface);
+  --md-code-hl-color: var(--ds-accent-ink);
+  --md-code-hl-color--light: var(--ds-target);
+  --md-code-hl-keyword-color: var(--ds-accent-ink);
+  --md-code-hl-string-color: var(--ds-ok-ink);
+  --md-code-hl-number-color: var(--ds-warn-ink);
+  --md-code-hl-constant-color: var(--ds-warn-ink);
+  --md-code-hl-special-color: var(--ds-bad-ink);
+  --md-code-hl-function-color: var(--ds-text-hi);
+  --md-code-hl-name-color: var(--ds-text-hi);
+  --md-code-hl-operator-color: var(--ds-text);
+  --md-code-hl-punctuation-color: var(--ds-text);
+  --md-code-hl-comment-color: var(--ds-text-lo);
+  --md-code-hl-generic-color: var(--ds-text-lo);
+  --md-code-hl-variable-color: var(--ds-text);
+
+  --md-footer-bg-color: var(--ds-header-bg);
+  --md-footer-bg-color--dark: var(--ds-header-bg);
+  --md-footer-fg-color: var(--ds-header-fg);
+  --md-footer-fg-color--light: var(--ds-header-fg);
+  --md-footer-fg-color--lighter: var(--ds-header-fg);
+
+  --md-shadow-z1: 0 0 0 1px var(--ds-line);
+  --md-shadow-z2: 0 0 0 1px var(--ds-line-2);
+  --md-shadow-z3: 0 0 0 1px var(--ds-line-2);
+}
+
+/* Slate keeps the landing page's ground behind the content. */
+[data-md-color-scheme="slate"] .md-main {
+  background-image: linear-gradient(180deg, var(--ds-ground-top) 0, var(--ds-ground) 420px, var(--ds-ground-deep) 100%);
+}
+
+.md-header { box-shadow: 0 1px 0 var(--ds-line); }
+.md-header__title { font-weight: 500; letter-spacing: -0.01em; }
+
+/* Headings: ice-hi or navy, medium weight, tight tracking. */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4 {
+  color: var(--ds-text-hi);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.md-typeset h2::before {
+  content: "";
+  display: inline-block;
+  width: 28px;
+  margin-right: 12px;
+  vertical-align: middle;
+  border-top: 1px solid var(--ds-accent);
+}
+
+/* A link is underlined, so it never depends on colour alone (SC 1.4.1). */
+.md-typeset a { text-decoration: underline; text-underline-offset: 2px; }
+.md-typeset a:hover { color: var(--ds-text-hi); }
+.md-typeset a.headerlink,
+.md-typeset .md-button { text-decoration: none; }
+
+/* Inline code is the summary page's code chip; blocks get a hairline. */
+.md-typeset code {
+  font-size: 0.84em;
+  border-radius: var(--ds-r-1);
+}
+.md-typeset :not(pre) > code {
+  color: var(--ds-text-hi);
+  background: var(--ds-code-bg);
+}
+.md-typeset pre > code {
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-r-3);
+}
+
+/* Tables: the summary page's sheet, with mono uppercase column labels. */
+.md-typeset table:not([class]) {
+  font-size: 0.72rem;
+  background: var(--ds-sheet);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-r-3);
+  box-shadow: none;
+}
+.md-typeset table:not([class]) th {
+  font-family: var(--md-code-font-family);
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ds-text-lo);
+  background: var(--ds-sheet-head);
+}
+.md-typeset table:not([class]) td { border-top-color: var(--ds-line); }
+
+/* Navigation */
+.md-nav__link--active,
+.md-nav__item .md-nav__link--active { color: var(--ds-accent-ink); font-weight: 500; }
+.md-nav__link:hover { color: var(--ds-accent-ink); }
+
+/* Focus: the 2px ring of the landing page, on every interactive element. */
+.md-typeset a:focus-visible,
+.md-nav__link:focus-visible,
+.md-footer__link:focus-visible,
+.md-source:focus-visible,
+.md-top:focus-visible {
+  outline: 2px solid var(--ds-focus);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+.md-header a:focus-visible,
+.md-header label:focus-visible,
+.md-header button:focus-visible,
+.md-search__input:focus-visible,
+.md-footer a:focus-visible {
+  outline: 2px solid var(--ds-header-focus);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .md-typeset h2::before,
+  .md-typeset table:not([class]),
+  .md-typeset pre > code { border-color: CanvasText; }
+}
+
+/* Paper is always light, whichever scheme the reader had on screen. */
+@media print {
+  [data-md-color-scheme] {
+    --ds-page: var(--ds-ground);
+    --ds-code-surface: var(--ds-sheet);
+  }
+  [data-md-color-scheme="slate"] .md-main { background-image: none; }
+  .md-typeset a { color: inherit; }
+}

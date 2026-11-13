@@ -40,11 +40,11 @@ def _in_force(exception: EvidenceException, now: datetime) -> bool:
 def _window_note(exception: EvidenceException, now: datetime) -> str:
     """Say why a well-formed waiver is not in force, if it is not."""
     if now >= exception.expires_at:
-        return " [yellow](EXPIRED — waives nothing)[/yellow]"
+        return " [status.warn](EXPIRED — waives nothing)[/status.warn]"
     if now < exception.approved_at:
         return (
-            f" [yellow](NOT YET IN EFFECT until "
-            f"{exception.approved_at.isoformat()} — waives nothing)[/yellow]"
+            f" [status.warn](NOT YET IN EFFECT until "
+            f"{exception.approved_at.isoformat()} — waives nothing)[/status.warn]"
         )
     return ""
 
@@ -146,7 +146,7 @@ def register(app: typer.Typer) -> None:
             # Waiver fields are free text from the file: escaped, so `[/x]` in
             # an approver cannot raise MarkupError and `[tag]` is not dropped.
             console.print(
-                f"[green]{escape(exception.exception_id)}[/green] valid · "
+                f"[status.ok]{escape(exception.exception_id)}[/status.ok] valid · "
                 f"control={escape(exception.control_id)} · "
                 f"approver={escape(exception.approver)} "
                 f"· expires_at={exception.expires_at.isoformat()}{expiry_note}"
@@ -229,11 +229,11 @@ def register(app: typer.Typer) -> None:
             # width on an 80-column terminal, and the state belongs to the date.
             expires_cell = exc.expires_at.isoformat()
             if now >= exc.expires_at:
-                expires_cell = f"[yellow]{expires_cell} (expired)[/yellow]"
+                expires_cell = f"[status.warn]{expires_cell} (expired)[/status.warn]"
             elif now < exc.approved_at:
                 expires_cell = (
-                    f"[yellow]{expires_cell} (not yet in effect until "
-                    f"{exc.approved_at.isoformat()})[/yellow]"
+                    f"[status.warn]{expires_cell} (not yet in effect until "
+                    f"{exc.approved_at.isoformat()})[/status.warn]"
                 )
             if is_json_logs():
                 emit_event(
@@ -272,15 +272,15 @@ def register(app: typer.Typer) -> None:
         # waiver dated in the future is equally dormant, and calling that
         # "active" is what made this command disagree with the release gate.
         console.print(
-            f"[bold]{parseable - dormant}[/bold] active · "
-            f"[yellow]{dormant}[/yellow] not in force · "
-            f"[yellow]{invalid}[/yellow] unparseable · "
-            f"[yellow]{duplicates}[/yellow] duplicate id(s)"
+            f"[count]{parseable - dormant}[/count] active · "
+            f"[status.warn]{dormant}[/status.warn] not in force · "
+            f"[status.warn]{invalid}[/status.warn] unparseable · "
+            f"[status.warn]{duplicates}[/status.warn] duplicate id(s)"
         )
         console.print(
-            '[dim]"Active" counts the approval window only. A waiver scoped to '
+            '[muted]"Active" counts the approval window only. A waiver scoped to '
             "another application or release still shows as active here; scope is "
-            "applied by `run` and `evaluate`.[/dim]"
+            "applied by `run` and `evaluate`.[/muted]"
         )
         # Like `validate`: a file that fails to parse, or an id defined twice,
         # is a failed validation (exit 3), so the pre-commit hook stops on it.

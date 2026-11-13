@@ -27,6 +27,11 @@ site_dir: site-docs
 
 theme:
   name: material
+  logo: assets/mark.svg
+  favicon: assets/favicon.svg
+  font:
+    text: Space Grotesk
+    code: JetBrains Mono
   features:
     - navigation.instant
     - navigation.sections
@@ -39,18 +44,21 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
+
+extra_css:
+  - stylesheets/extra.css
 
 markdown_extensions:
   - admonition

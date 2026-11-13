@@ -209,6 +209,24 @@ are the same.
   `witness.dev`-namespaced predicate URI that has not been tested with
   `witness verify`.
 
+### summary.html and console colours
+
+- `summary.html` has a new layout and the colours of the project page. It
+  follows the system theme (dark or light) and always prints light. It still
+  loads nothing from the network, and `bundle.json`, `report.md`, the
+  structural digest, verdicts and exit codes do not change.
+- `summary.html` now shows the release tag, the full commit, the artifact
+  digest, the pipeline run and the build id. A script that parses the page
+  should read `bundle.json` instead: the markup and class names changed, and
+  the `status-<verdict>` class appears once, on the verdict panel only.
+- Console colours changed. On a terminal with 256 colours or more the verdict
+  is a badge and the status words use the project page hues. A 16-colour
+  terminal (a CI log with `FORCE_COLOR`) keeps the named ANSI colours, with
+  the verdict now coloured too. On any colour terminal numbers and paths are
+  no longer highlighted. With `NO_COLOR` set, or when the output is a
+  pipe or a file, the bytes are the same as before. Texts and exit codes are
+  unchanged.
+
 ## 4.2.0
 
 Four behaviours change for pipelines that worked on 4.1.x. The sample release

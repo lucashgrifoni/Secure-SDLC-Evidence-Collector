@@ -103,8 +103,10 @@ def register(app: typer.Typer) -> None:
             )
         else:
             if match:
-                console.print(f"[green]match[/green] · {actual}")
+                console.print(f"[status.ok]match[/status.ok] · {actual}")
             else:
-                console.print(f"[red]drift[/red] · actual={actual} · expected={expected_norm}")
+                console.print(
+                    f"[status.bad]drift[/status.bad] · actual={actual} · expected={expected_norm}"
+                )
 
         raise typer.Exit(code=0 if match else 2)
