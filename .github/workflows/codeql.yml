@@ -53,7 +53,7 @@ jobs:
         language: ["python", "javascript-typescript", "actions"]
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2
         with:
           egress-policy: audit
 
@@ -63,7 +63,7 @@ jobs:
           persist-credentials: false
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3
+        uses: github/codeql-action/init@9418214df1f2c4b8128c770156c409013b07d6b9 # v3
         with:
           languages: ${{ matrix.language }}
           queries: security-and-quality
@@ -72,9 +72,9 @@ jobs:
       # autobuild action exists so this workflow keeps working if a
       # native extension is ever introduced.
       - name: Autobuild
-        uses: github/codeql-action/autobuild@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3
+        uses: github/codeql-action/autobuild@9418214df1f2c4b8128c770156c409013b07d6b9 # v3
 
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3
+        uses: github/codeql-action/analyze@9418214df1f2c4b8128c770156c409013b07d6b9 # v3
         with:
           category: "/language:${{ matrix.language }}"
