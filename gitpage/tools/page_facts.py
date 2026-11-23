@@ -1,7 +1,8 @@
 """Inject and check the CLI facts shown on the GitPage landing page.
 
 The landing page (gitpage/index.html) shows the collector version, the verdict
-of the sample release, a not_ready example and the number of evidence types.
+and control count of the sample release, a not_ready example and the number of
+evidence types.
 Each value sits in an element marked ``data-fact="<name>"`` (its text, plus a
 ``data-counter`` attribute or a ``chip--<status>`` class on the same tag) or
 ``data-fact-attrs="<name>"`` (its ``data-meter`` attribute and ``--w`` width).
@@ -39,6 +40,7 @@ REQUIRED_FACTS = (
     "sample.confidence",
     "sample.status",
     "sample.evidence",
+    "sample.controls",
     "example.coverage",
     "example.confidence",
     "example.status",
@@ -113,6 +115,7 @@ def compute_facts(
     e_sum = _summary(example, "example bundle")
     s_cov = _number(s_sum.get("evidence_coverage_score"), "sample coverage")
     s_conf = _number(s_sum.get("confidence_score"), "sample confidence")
+    s_controls = _number(s_sum.get("total_controls"), "sample control count")
     e_cov = _number(e_sum.get("evidence_coverage_score"), "example coverage")
     e_conf = _number(e_sum.get("confidence_score"), "example confidence")
     evidence = sample.get("evidence")
@@ -142,6 +145,7 @@ def compute_facts(
         "sample.confidence": Fact(f"{s_conf}%", number=s_conf),
         "sample.status": Fact(s_sum["release_status"], status=s_sum["release_status"]),
         "sample.evidence": Fact(str(len(evidence)), number=len(evidence)),
+        "sample.controls": Fact(str(s_controls)),
         "example.coverage": Fact(str(e_cov), number=e_cov),
         "example.confidence": Fact(str(e_conf), number=e_conf),
         "example.status": Fact(e_sum["release_status"], status=e_sum["release_status"]),

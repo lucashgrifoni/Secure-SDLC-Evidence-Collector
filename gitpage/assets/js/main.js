@@ -5,6 +5,7 @@
    - Animated meters
    - Motion toggle
    - Navigation state (active link per section) and the small-screen menu
+   - Copy button for the install command
 
    The HTML ships every final value and every section visible. Content is
    hidden for a reveal, or reset to zero for a count-up, only when this script
@@ -188,6 +189,40 @@
         menu.open = false;
         menu.querySelector("summary").focus();
       }
+    });
+  }
+
+  // --- COPY INSTALL COMMAND ------------------------------------------------
+  // The command is plain text that a click selects in full, so it works without
+  // this script. Where the clipboard API is refused (an insecure origin or a
+  // denied permission), the text is selected for the reader to copy instead.
+  const copyBtn = document.querySelector("[data-copy]");
+  const copyStatus = document.querySelector("[data-copy-status]");
+  if (copyBtn) {
+    const source = document.getElementById(copyBtn.getAttribute("data-copy"));
+    let resetTimer = 0;
+    function report(label, message) {
+      copyBtn.textContent = label;
+      if (copyStatus) copyStatus.textContent = message;
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => { copyBtn.textContent = "Copy"; }, 2000);
+    }
+    function selectSource() {
+      const range = document.createRange();
+      range.selectNodeContents(source);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      report("Selected", "Command selected; press Ctrl+C or Command+C to copy it.");
+    }
+    copyBtn.addEventListener("click", () => {
+      if (!source) return;
+      const text = source.textContent.trim();
+      if (!navigator.clipboard) { selectSource(); return; }
+      navigator.clipboard.writeText(text).then(
+        () => report("Copied", "Install command copied."),
+        selectSource
+      );
     });
   }
 

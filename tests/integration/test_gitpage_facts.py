@@ -12,6 +12,7 @@ deploy from main.
 from __future__ import annotations
 
 import importlib.util
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -100,6 +101,8 @@ def test_injected_page_matches_the_cli(page_inputs: list[str]) -> None:
     page = Path(page_inputs[1]).read_text(encoding="utf-8")
     assert f'data-fact="version">v{__version__}<' in page
     assert 'data-fact="example.status">not_ready<' in page
+    sample = json.loads(Path(page_inputs[3]).read_text(encoding="utf-8"))
+    assert f'data-fact="sample.controls">{sample["summary"]["total_controls"]}<' in page
 
 
 @pytest.mark.integration
