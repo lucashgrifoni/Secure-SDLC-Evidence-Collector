@@ -94,7 +94,7 @@ def test_pre_commit_pin_points_at_a_tag_that_ships_the_manifest(path: Path) -> N
         )
 
 
-def test_readme_lists_every_shipped_evidence_type() -> None:
+def test_cli_reference_lists_every_shipped_evidence_type() -> None:
     """The README's enum block drifted six values behind the code.
 
     It named 15 types while 21 shipped — the five AI types added in T6.5 and
@@ -103,16 +103,18 @@ def test_readme_lists_every_shipped_evidence_type() -> None:
     represent an IaC finding, when it can and does.
 
     The enum is the single source of truth. This test does not check prose, it
-    checks that every shipped value is reachable from the README, so the next
+    checks that every shipped value is reachable from the CLI reference, which
+    took over the list when the README was shortened, so the next
     addition cannot land without the docs following.
     """
-    readme = (Path(__file__).resolve().parents[2] / "README.md").read_text(encoding="utf-8")
+    reference = Path(__file__).resolve().parents[2] / "docs" / "cli-reference.md"
+    text = reference.read_text(encoding="utf-8")
     missing = [
         evidence_type.value
         for evidence_type in EvidenceType
-        if f"`{evidence_type.value}`" not in readme
+        if f"`{evidence_type.value}`" not in text
     ]
-    assert not missing, f"README does not mention shipped evidence types: {missing}"
+    assert not missing, f"docs/cli-reference.md misses shipped evidence types: {missing}"
 
 
 def _prose(path: Path) -> str:

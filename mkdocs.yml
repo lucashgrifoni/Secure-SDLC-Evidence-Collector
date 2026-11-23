@@ -94,6 +94,7 @@ nav:
   - Home: index.md
   - Start:
       - Getting started: getting-started.md
+      - CLI reference: cli-reference.md
       - Troubleshooting: troubleshooting.md
       - Upgrading: upgrading.md
   - Integrate:

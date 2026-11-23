@@ -7,7 +7,7 @@ table and fails when the code emits an event that is missing here, or when the
 table lists an event the code no longer emits.
 
 The exit code stays the primary gate signal (see
-[Exit codes](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector#exit-codes)).
+[Exit codes](cli-reference.md#exit-codes)).
 Use the events for the detail behind it: the verdict and counts of a run, the
 path of every collection error, the file a command wrote. Changes to event
 names or keys are recorded in [upgrading](upgrading.md).

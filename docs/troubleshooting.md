@@ -15,8 +15,8 @@ release in the repository.
 | `2` | `not_ready` |
 | `3` | the command could not run; nothing was produced, so do not read it as a verdict |
 
-The full matrix, and the codes of the other commands, are in the README
-section [Exit codes](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector#exit-codes).
+The full matrix, and the codes of the other commands, are in the CLI reference
+section [Exit codes](cli-reference.md#exit-codes).
 
 ## A conditional release exits 0
 
