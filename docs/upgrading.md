@@ -8,7 +8,7 @@ lists every change. The 4.0.0 digest migration is in
 are under "Migrating to 3.0.0" in the
 [README](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector#migrating-to-300).
 
-## Unreleased
+## 4.3.0
 
 ### GitHub Action
 
