@@ -304,6 +304,36 @@ JSON logs are off. Every event, the command that emits it and its payload
 keys are listed in the [JSON logs event reference](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/json-logs.md); the
 gate result of `run`, `evaluate` and `bundle` is the `bundle_built` event.
 
+### Upgrading to 4.3.0
+
+4.3.0 keeps the CLI defaults, the exit codes and the default catalog's rules,
+but a pipeline can see these changes:
+
+- Scanner files are read as the scanner wrote them, so a verdict can get
+  stricter on unchanged files. A SARIF result with no `level` takes its
+  rule's level, a SARIF run that reports a failed execution no longer
+  satisfies its control, any open finding fails `secrets_scan`, and Checkov,
+  KICS, tfsec and Terrascan SARIF counts as `iac_scan` instead of
+  `sast_scan`. The sample release keeps its `ready` verdict and its digest.
+- GitLab Security Reports in `--artifacts-dir` are read as scan evidence.
+  Up to 4.2.0 they matched no parser, so a verdict can change in either
+  direction.
+- The GitHub Action and the reusable workflow record the release tag,
+  pipeline run and build id, and `branch` no longer defaults to
+  `github.ref_name`. The digest of a bundle they produce changes
+  on every run; set `pipeline-run-id: ""`, `build-id: ""` and `branch` to
+  keep comparing digests across runs.
+- The opt-in SSDF 1.2 and OSPS Baseline catalogs recommend new evidence. A
+  release that was `ready` under one of them is `conditional` until it
+  supplies that evidence.
+- `summary.html`, `report.md` and the terminal output of `run`, `compare`
+  and `doctor` have a new layout. Scripts should read `bundle.json` or the
+  JSON outputs, which keep their shape. Terminal output sent to a pipe or a
+  file, or printed with `NO_COLOR` set, is byte for byte what 4.2.0 printed.
+
+Every change, with what to do about each, is in
+[docs/upgrading.md](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/upgrading.md#430).
+
 ### Upgrading to 4.2.0
 
 4.2.0 is a minor release, but four behaviours change for existing pipelines:
