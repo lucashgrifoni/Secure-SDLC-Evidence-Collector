@@ -303,6 +303,88 @@
 .md-nav__item .md-nav__link--active { color: var(--ds-accent-ink); font-weight: 500; }
 .md-nav__link:hover { color: var(--ds-accent-ink); }
 
+/* Task tabs: a green rule under the active one. Material hides the tabs on
+   narrow screens; they stay, and scroll sideways, so a phone reader sees
+   the task groups without opening the drawer. */
+.md-tabs__item--active { box-shadow: inset 0 -2px 0 var(--ds-header-focus); }
+.md-tabs__item--active .md-tabs__link { font-weight: 500; }
+@media screen and (max-width: 76.234375em) {
+  .md-tabs { display: block; }
+}
+
+/* Breadcrumb above the page title (navigation.path). */
+.md-path { font-family: var(--md-code-font-family); font-size: 0.6rem; }
+
+/* Grid cards: the summary page's sheet. */
+.md-typeset .grid.cards > ul > li {
+  background: var(--ds-sheet);
+  border-color: var(--ds-line);
+  border-radius: var(--ds-r-3);
+}
+.md-typeset .grid.cards > ul > li:hover { border-color: var(--ds-line-2); }
+
+/* Home page */
+.md-typeset .home-lede {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  max-width: 34rem;
+}
+/* The install command in the header's navy, in both schemes. */
+.md-typeset .home-install {
+  --md-code-bg-color: var(--ds-header-bg);
+  --md-code-fg-color: var(--ds-header-fg);
+  --md-code-bg-color--light: transparent;
+  --md-code-bg-color--lighter: transparent;
+}
+/* The command wraps on a phone, clear of the copy button, instead of scrolling. */
+.md-typeset .home-install pre > code {
+  border-color: var(--ds-line-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding-right: 3em;
+}
+.md-typeset .home-install .md-code__button { color: var(--ds-header-fg); }
+.md-typeset .home-install .md-code__button:hover { color: var(--ds-header-focus); }
+.md-typeset .home-kicker {
+  font-family: var(--md-code-font-family);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ds-accent-ink);
+}
+.md-typeset .home-paths p,
+.md-typeset .home-verdicts p { margin: 0.4em 0; }
+.md-typeset .verdict-pill {
+  display: inline-block;
+  font-family: var(--md-code-font-family);
+  font-size: 0.65rem;
+  font-weight: 600;
+  border: 1px solid transparent; /* visible in forced colours */
+  border-radius: 99px;
+  padding: 0.15rem 0.55rem;
+}
+.md-typeset .verdict-pill--ok { color: var(--ds-ok-ink); background: var(--ds-ok-tint); }
+.md-typeset .verdict-pill--warn { color: var(--ds-warn-ink); background: var(--ds-warn-tint); }
+.md-typeset .verdict-pill--bad { color: var(--ds-bad-ink); background: var(--ds-bad-tint); }
+.md-typeset .verdict-exit {
+  font-family: var(--md-code-font-family);
+  font-size: 0.65rem;
+  color: var(--ds-text-hi);
+}
+/* Three verdicts and four task groups side by side when the page is wide. */
+.md-typeset .grid.home-verdicts {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+}
+.md-typeset .grid.home-tasks {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+}
+.md-typeset .home-tasks ul {
+  list-style: none;
+  margin-left: 0;
+}
+.md-typeset .home-tasks ul li { margin-left: 0; }
+
 /* Focus: the 2px ring of the landing page, on every interactive element. */
 .md-typeset a:focus-visible,
 .md-nav__link:focus-visible,
