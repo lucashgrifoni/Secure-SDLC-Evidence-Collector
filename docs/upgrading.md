@@ -308,6 +308,31 @@ the JSON outputs rather than the terminal text.
   consumes; `bundle.json`, the structural digest, verdicts and exit codes do
   not change.
 
+### summary.html redesign
+
+- A bar stays at the top of the page with the application, the release, the
+  verdict and links to each section with its count. The verdict panel shows
+  why and the next step beside three measures: evidence coverage, evidence
+  strength and the controls by status.
+- "Evidence strength" is the new label of the `confidence_score` value. The
+  field in `bundle.json` keeps its name and its value; the page now says how
+  many controls the score averages and how many of them are high, medium or
+  low.
+- A new "Controls at a glance" map shows one tile per control, most critical
+  first, each linking to its row. The control table uses the same order.
+- Gaps are grouped by criticality, each group says what it weighs on the
+  verdict, and each gap shows what to produce. The full gap description
+  stays in `bundle.json` and `report.md`.
+- The evidence inventory shows the source kind and the finding counts of
+  each record instead of the subject reference, which stays in
+  `bundle.json` and `report.md`.
+- The release record lists the provenance values that were recorded and
+  names the ones that were not, with the `run` option that records each.
+- Tables become labelled cards on narrow screens. The page still loads
+  nothing from the network, prints light with a page header and page
+  numbers, and the `status-<verdict>` class still appears once, on the
+  verdict panel.
+
 ## 4.2.0
 
 Four behaviours change for pipelines that worked on 4.1.x. The sample release

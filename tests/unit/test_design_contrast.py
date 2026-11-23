@@ -136,15 +136,12 @@ def _docs_themes() -> dict[str, dict[str, str]]:
     }
 
 
-# The lightest (dark theme) or darkest (light theme) the page ground gets.
-_GROUND = {"dark": ["ground", "glow-b", "glow-a"], "light": ["ground-top"], "print": ["ground"]}
-
-
 def _summary_pairs(theme: str) -> list[Pair]:
-    ground, sheet, target, head = _GROUND[theme], ["sheet"], ["sheet", "target"], ["sheet-head"]
+    ground, sheet, target, head = ["ground"], ["sheet"], ["sheet", "target"], ["sheet-head"]
     pairs: list[Pair] = [
         ("page heading", "text-hi", ground, TEXT),
-        ("page secondary text", "text-lo", ground, TEXT),
+        ("page secondary text and section bar links", "text-lo", ground, TEXT),
+        ("section bar link on hover", "text-hi", [*ground, "code-bg"], TEXT),
         ("page code chip", "text-hi", [*ground, "code-bg"], TEXT),
         ("page focus ring", "focus", ground, GRAPHIC),
         ("callout text", "text-hi", [*ground, "warn-tint"], TEXT),
@@ -155,41 +152,71 @@ def _summary_pairs(theme: str) -> list[Pair]:
         ("cell code chip", "text-hi", [*sheet, "code-bg"], TEXT),
         ("cell link", "accent-ink", sheet, TEXT),
         ("cell link in a code chip", "accent-ink", [*sheet, "code-bg"], TEXT),
+        ("gap evidence type", "text", [*sheet, "code-bg"], TEXT),
         ("column label", "text-lo", head, TEXT),
-        ("group row label", "text-hi", head, TEXT),
-        ("link in a code chip on a header row", "accent-ink", [*head, "code-bg"], TEXT),
-        ("criticality bars", "text", sheet, GRAPHIC),
+        ("gap group heading", "text-hi", head, TEXT),
+        ("gap group weight note", "text-lo", head, TEXT),
+        ("critical gap group heading", "bad-ink", head, TEXT),
+        ("high gap group heading", "warn-ink", head, TEXT),
+        ("critical gap group stripe", "bad-fill", head, GRAPHIC),
+        ("high gap group stripe", "warn-fill", head, GRAPHIC),
         ("sheet focus ring", "focus", sheet, GRAPHIC),
         ("custom catalog flag", "warn-ink", [*sheet, "warn-tint"], TEXT),
         ("target row text", "text", target, TEXT),
         ("target row secondary text", "text-lo", target, TEXT),
         ("target row link in a code chip", "accent-ink", [*target, "code-bg"], TEXT),
         ("coverage meter", "meter-a", [*sheet, "track"], GRAPHIC),
-        ("confidence meter", "meter-alt-a", [*sheet, "track"], GRAPHIC),
-        ("next step text", "text-hi", ["panel-b", "code-bg"], TEXT),
-        ("next step code chip", "text-hi", ["panel-b", "code-bg", "code-bg"], TEXT),
+        ("strength meter, high", "ok-fill", [*sheet, "track"], GRAPHIC),
+        ("strength meter, medium", "text-lo", [*sheet, "track"], GRAPHIC),
+        ("strength meter, low", "muted-fill", sheet, GRAPHIC),
     ]
+    for level, ink in (("critical", "bad-ink"), ("high", "warn-ink"), ("medium", "text-lo")):
+        pairs += [
+            (f"{level} criticality word", ink, sheet, TEXT),
+            (f"{level} criticality word on a target row", ink, target, TEXT),
+        ]
     for tone in ("ok", "warn", "bad", "muted"):
         pairs += [
             (f"{tone} pill", f"{tone}-ink", [*sheet, f"{tone}-tint"], TEXT),
             (f"{tone} pill on a target row", f"{tone}-ink", [*target, f"{tone}-tint"], TEXT),
-            (f"{tone} controls bar segment", f"{tone}-fill", sheet, GRAPHIC),
+            (f"{tone} section bar pill", f"{tone}-ink", [*ground, f"{tone}-tint"], TEXT),
+            (f"{tone} tile status, icon and legend", f"{tone}-ink", sheet, TEXT),
+            (f"{tone} tile stripe and controls bar segment", f"{tone}-fill", sheet, GRAPHIC),
         ]
     for tone in ("ok", "warn", "bad"):
-        glow = ["panel-a", f"{tone}-glow"]
+        # The panel tint fades from the top-left corner to the bare sheet.
+        tint = [*sheet, f"{tone}-tint"]
         pairs += [
-            (f"{tone} verdict word", f"{tone}-strong", glow, LARGE),
-            (f"{tone} verdict word, lower panel", f"{tone}-strong", ["panel-b"], LARGE),
-            (f"{tone} verdict literal chip", f"{tone}-ink", [*glow, f"{tone}-tint"], TEXT),
-            (f"{tone} verdict tag", f"{tone}-ink", glow, TEXT),
-            (f"{tone} verdict status bar", f"{tone}-fill", ["panel-a"], GRAPHIC),
-            (f"{tone} verdict labels", "text-lo", glow, TEXT),
-            (f"{tone} verdict reasons", "text", glow, TEXT),
-            (f"{tone} verdict code chip", "text-hi", [*glow, "code-bg"], TEXT),
-            (f"{tone} verdict link in a code chip", "accent-ink", [*glow, "code-bg"], TEXT),
-            (f"{tone} verdict 'more' marker", "accent-ink", glow, TEXT),
-            (f"{tone} verdict caution icon", "warn-ink", glow, GRAPHIC),
+            (f"{tone} verdict word", f"{tone}-strong", tint, LARGE),
+            (f"{tone} verdict word on the bare sheet", f"{tone}-strong", sheet, LARGE),
+            (f"{tone} verdict tag", f"{tone}-ink", tint, TEXT),
+            (f"{tone} verdict labels", "text-lo", tint, TEXT),
+            (f"{tone} verdict reasons", "text", tint, TEXT),
+            (f"{tone} verdict meaning and next step", "text-hi", tint, TEXT),
+            (f"{tone} verdict code chip", "text-hi", [*tint, "code-bg"], TEXT),
+            (f"{tone} verdict link", "accent-ink", tint, TEXT),
+            (f"{tone} verdict link in a code chip", "accent-ink", [*tint, "code-bg"], TEXT),
+            (f"{tone} verdict caution icon", "warn-ink", tint, GRAPHIC),
         ]
+        # A missing critical item makes the verdict not_ready and a high one
+        # keeps it below ready, so a chip only ever sits in these panels.
+        for chip in {"ok": ["muted"], "warn": ["warn", "muted"], "bad": ["bad", "warn", "muted"]}[
+            tone
+        ]:
+            pairs += [
+                (
+                    f"{chip} chip control in a {tone} verdict",
+                    f"{chip}-ink",
+                    [*tint, f"{chip}-tint"],
+                    TEXT,
+                ),
+                (
+                    f"{chip} chip evidence type in a {tone} verdict",
+                    "text",
+                    [*tint, f"{chip}-tint"],
+                    TEXT,
+                ),
+            ]
     return pairs
 
 

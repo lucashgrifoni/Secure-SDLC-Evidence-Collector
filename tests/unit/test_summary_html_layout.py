@@ -10,7 +10,9 @@ undone in the template:
 - rows become cards below the width at which the widest known table fits;
 - a long unbroken value in a free-text cell wraps instead of widening the table;
 - the verdict panel keeps every critical item in view and moves the rest of a
-  long list behind a disclosure, so the next step stays near the top.
+  long list behind a disclosure, so the next step stays near the top;
+- the control map, the gaps and the control table read most critical first,
+  and every tile and chip lands on the row it names.
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ from evidence_collector.domain.models import (
     Application,
     ControlEvaluation,
     EvidenceBundle,
+    Gap,
     ReleaseContext,
     Summary,
 )
@@ -79,6 +82,16 @@ def _css(html: str) -> str:
     return html[html.index("<style>") : html.index("</style>")]
 
 
+def _chips(html: str) -> list[str]:
+    """The missing items a panel shows, as `CONTROL:evidence_type`."""
+    return [
+        f"{control}:{evidence_type}"
+        for control, evidence_type in re.findall(
+            r'class="chip"[^>]*><b>([^<]+)</b><span>([^<]+)</span>', html
+        )
+    ]
+
+
 def _verdict_panel(html: str) -> str:
     start = html.index('<section class="verdict')
     return html[start : html.index("</section>", start)]
@@ -117,8 +130,8 @@ def test_verdict_panel_keeps_critical_items_in_view_and_folds_the_rest() -> None
     html = bundle_to_html(bundle)
     panel = _verdict_panel(html)
     in_view, _, folded = panel.partition('<details class="more">')
-    shown = re.findall(r'class="chip"[^>]*><code>([^<]+)</code>', in_view)
-    hidden = re.findall(r'class="chip"[^>]*><code>([^<]+)</code>', folded)
+    shown = _chips(in_view)
+    hidden = _chips(folded)
     assert shown == bundle.summary.missing_critical_evidence[:CHIPS_IN_VIEW]
     assert shown + hidden == bundle.summary.missing_critical_evidence
     assert f"<summary>{len(hidden)} more</summary>" in folded
@@ -127,8 +140,8 @@ def test_verdict_panel_keeps_critical_items_in_view_and_folds_the_rest() -> None
 def test_every_critical_item_stays_in_view_even_past_the_cap() -> None:
     bundle = _not_ready_bundle(critical=CHIPS_IN_VIEW + 2, high=3)
     in_view = _verdict_panel(bundle_to_html(bundle)).partition('<details class="more">')[0]
-    for item in bundle.summary.missing_critical_evidence[: CHIPS_IN_VIEW + 2]:
-        assert f"<code>{item}</code>" in in_view
+    critical = bundle.summary.missing_critical_evidence[: CHIPS_IN_VIEW + 2]
+    assert _chips(in_view)[: len(critical)] == critical
 
 
 def test_a_short_list_has_no_disclosure() -> None:
@@ -138,4 +151,112 @@ def test_a_short_list_has_no_disclosure() -> None:
 
 def test_group_labels_start_their_own_line() -> None:
     css = _css(bundle_to_html(_not_ready_bundle(critical=1, high=1)))
-    assert re.search(r"\.why \.sub \{ display: block;", css)
+    assert re.search(r"\n  \.chips-label \{ display: block;", css)
+
+
+def _tiles(html: str) -> list[tuple[str, str]]:
+    """Each tile of the control map as (row anchor, control id)."""
+    return re.findall(
+        r'<a class="tile"[^>]*href="#(ctl-\d+)">\s*<span class="tile-top">.*?<b>([^<]+)</b>',
+        html,
+        re.S,
+    )
+
+
+def _row_control(html: str, anchor: str) -> str:
+    row = html[html.index(f'<tr role="row" id="{anchor}">') :]
+    match = re.search(r'<th role="rowheader"[^>]*>\s*<code>([^<]+)</code>', row)
+    assert match is not None
+    return match.group(1)
+
+
+def _mixed_bundle() -> EvidenceBundle:
+    """Controls listed least critical first, with gaps in the same order."""
+    order = [
+        ("LOW-1", ControlCriticality.LOW),
+        ("MED-1", ControlCriticality.MEDIUM),
+        ("HIGH-1", ControlCriticality.HIGH),
+        ("CRIT-1", ControlCriticality.CRITICAL),
+        ("HIGH-2", ControlCriticality.HIGH),
+    ]
+    controls = [_evaluation(control_id, level) for control_id, level in order]
+    gaps = [
+        Gap(
+            control_id=c.control_id, criticality=c.criticality, description=f"gap of {c.control_id}"
+        )
+        for c in controls
+    ]
+    bundle = _not_ready_bundle(critical=0, high=0)
+    summary = bundle.summary.model_copy(
+        update={"total_controls": len(controls), "controls_missing": len(controls)}
+    )
+    return bundle.model_copy(
+        update={"control_evaluations": controls, "gaps": gaps, "summary": summary}
+    )
+
+
+def test_every_tile_links_to_the_row_of_its_control() -> None:
+    html = bundle_to_html(_mixed_bundle())
+    tiles = _tiles(html)
+    assert [control_id for _, control_id in tiles] == [
+        "CRIT-1",
+        "HIGH-1",
+        "HIGH-2",
+        "MED-1",
+        "LOW-1",
+    ]
+    for anchor, control_id in tiles:
+        assert _row_control(html, anchor) == control_id
+
+
+def test_every_missing_item_chip_links_to_the_row_of_its_control() -> None:
+    html = bundle_to_html(_not_ready_bundle(critical=2, high=2))
+    links = re.findall(r'<a class="chip"[^>]*href="#(ctl-\d+)"><b>([^<]+)</b>', html)
+    assert len(links) == 4
+    for anchor, control_id in links:
+        assert _row_control(html, anchor) == control_id
+
+
+def test_gaps_are_grouped_most_critical_first_with_their_weight() -> None:
+    html = bundle_to_html(_mixed_bundle())
+    section = html[html.index('id="gaps"') : html.index('id="controls"')]
+    groups = re.findall(
+        r'<div class="gapgroup g-(\w+)">\s*<h3>(\w+)<small>(\d+) · ([^<]+)</small>', section
+    )
+    assert groups == [
+        ("critical", "Critical", "1", "each one blocks the release"),
+        ("high", "High", "2", "each one keeps the release conditional at best"),
+        ("medium", "Medium", "1", "required evidence of a medium control"),
+        ("low", "Low", "1", "recommended evidence, never blocks on its own"),
+    ]
+    listed = re.findall(r"gap of ([A-Z]+-\d)", section)
+    assert listed == ["CRIT-1", "HIGH-1", "HIGH-2", "MED-1", "LOW-1"]
+
+
+def test_every_control_keeps_its_rationale() -> None:
+    bundle = _mixed_bundle()
+    html = bundle_to_html(bundle)
+    assert html.count("<summary>Rationale</summary>") == len(bundle.control_evaluations)
+    assert html.count("<p>required evidence is missing</p>") == len(bundle.control_evaluations)
+
+
+def test_the_controls_legend_shows_the_counts_the_breakdown_states() -> None:
+    bundle = _mixed_bundle()
+    summary = bundle.summary.model_copy(
+        update={
+            "controls_met": 2,
+            "controls_partial": 1,
+            "controls_missing": 1,
+            "controls_not_applicable": 1,
+        }
+    )
+    html = bundle_to_html(bundle.model_copy(update={"summary": summary}))
+    legend = re.search(r'<p class="legend" aria-hidden="true">(.*?)</p>', html, re.S)
+    breakdown = re.search(r'<div class="meta">(.*?)</div>', html, re.S)
+    assert legend is not None and breakdown is not None
+    shown = [
+        " ".join(re.sub(r"<[^>]+>", " ", item).split())
+        for item in re.findall(r"<span data-tone[^>]*>(.*?)</span>", legend.group(1), re.S)
+    ]
+    assert shown == ["2 met", "1 partial", "1 missing", "1 n/a"]
+    assert breakdown.group(1) == " · ".join(shown)
