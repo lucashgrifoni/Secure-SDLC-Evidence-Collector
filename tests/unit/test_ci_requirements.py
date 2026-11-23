@@ -28,6 +28,7 @@ _ADVISORY_FIXES = {
     "certifi": Version("2026.10.18"),  # GHSA-6q48-6c7w-9gw2
     "filelock": Version("4.2.1"),  # GHSA-v4x8-3wr5-3wq8 and the rest of that batch
     "opentelemetry-api": Version("1.45.2"),  # GHSA-mf5v-w3w3-f6cg, GHSA-xcq7-p3pf-p88h
+    "pydantic": Version("2.14.2"),  # CVE-2026-133424, CVE-2026-133429, CVE-2026-133426
     "uv": Version("0.13.4"),  # GHSA-hq85-5cpj-mr62
     "virtualenv": Version("21.14.9"),  # GHSA-c978-59m8-c77v and the rest of that batch
 }
