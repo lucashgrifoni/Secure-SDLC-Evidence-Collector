@@ -81,6 +81,8 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Getting started: getting-started.md
+  - Troubleshooting: troubleshooting.md
   - Bundle schema reference: bundle_schema.md
   - JSON logs events: json-logs.md
   - Upgrading: upgrading.md
