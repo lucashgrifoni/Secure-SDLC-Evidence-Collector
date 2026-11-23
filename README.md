@@ -93,6 +93,8 @@ This collector reframes the question around **evidence, not findings**:
 
 ## Install
 
+New to the collector? [Getting started](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/docs/getting-started.md) walks through the CLI, the GitHub Action, the GitLab component and the Docker image, each from install to first verdict.
+
 Install the published package from PyPI (recommended for most users):
 
 ```bash

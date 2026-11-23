@@ -1,0 +1,17 @@
+# Artifact signature: required by SSDF-PS.2 (critical) and recommended by
+# SSDF-PS.3 and SAMM-IMPL-SB-2 in the default catalog.
+#
+# The collector does not verify the signature this file describes. Verify it
+# yourself (for example with `cosign verify-blob`) before you set the status.
+# Replace every value below; `status: unknown` satisfies no control.
+evidence_type: artifact_signature
+producer: "cosign"
+subject_type: artifact
+subject_ref: "example-app:1.0.0"
+status: unknown
+confidence: medium
+generated_at: "2026-01-01T00:00:00Z"
+summary: "Release artifact signed with cosign keyless signing"
+metadata:
+  signature_bundle: "dist/example-app-1.0.0.sigstore.json"
+  issuer: "https://token.actions.githubusercontent.com"
