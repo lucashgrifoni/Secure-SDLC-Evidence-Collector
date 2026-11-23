@@ -24,6 +24,7 @@ from typer.testing import CliRunner
 from evidence_collector.cli.main import app
 from evidence_collector.domain.enums import ReleaseStatus
 from evidence_collector.domain.models import EvidenceBundle
+from evidence_collector.exporters.markdown import RISK_SET_VERDICT, bundle_to_markdown
 
 # examples/sample_release/artifacts/trivy.sarif reports exactly this CVE.
 SAMPLE_CVE = "CVE-2024-12345"
@@ -128,6 +129,10 @@ def test_enrich_applies_the_recorded_risk_mode_kev_ransomware_blocks(
     assert assessment.kev_ransomware_cve_count == 1
     assert assessment.kev_cve_count == 1
     assert "no vulnerability intelligence" not in assessment.rationale
+    # No critical gap is behind this verdict, so report.md must not claim one.
+    report = bundle_to_markdown(enriched)
+    assert f"> **Not ready** (`not_ready`). {RISK_SET_VERDICT}" in report
+    assert "A critical control lacks required evidence" not in report
 
 
 @pytest.mark.integration
@@ -172,6 +177,9 @@ def test_enrich_high_epss_downgrades_to_conditional_under_recorded_threshold(
     assert enriched.summary.risk_assessment is not None
     assert enriched.summary.risk_assessment.epss_percentile_threshold == pytest.approx(0.95)
     assert enriched.summary.risk_assessment.high_epss_cve_count == 1
+    report = bundle_to_markdown(enriched)
+    assert f"> **Conditional** (`conditional`). {RISK_SET_VERDICT}" in report
+    assert "No critical control lacks required evidence" not in report
 
 
 @pytest.mark.integration

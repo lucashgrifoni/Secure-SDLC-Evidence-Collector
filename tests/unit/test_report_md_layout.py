@@ -42,7 +42,11 @@ from evidence_collector.domain.models import (
     Summary,
 )
 from evidence_collector.exporters._jinja import md_code, md_escape
-from evidence_collector.exporters.markdown import bundle_to_markdown
+from evidence_collector.exporters.markdown import (
+    RISK_SET_VERDICT,
+    VERDICT_MEANINGS,
+    bundle_to_markdown,
+)
 
 _RELEASE = ReleaseContext(
     release_id="2026.04.10",
@@ -264,8 +268,10 @@ def test_sections_come_in_the_approved_order() -> None:
     assert landmarks == [
         "# Secure SDLC Evidence Report: payments-api 2026.04.10",
         "> **Not ready** (`not_ready`). A critical control lacks required evidence.",
-        "> **Risk-weighted verdict (`epss-weighted`):** presence-based verdict `not_ready`."
-        " No CVE crossed a threshold.",
+        (
+            "> **Risk-weighted verdict (`epss-weighted`):** presence-based verdict `not_ready`."
+            + " No CVE crossed a threshold."
+        ),
         "| Evidence coverage | Evidence strength | Controls |",
         "> **1 supplied input(s) could not be read.**",
         "## What to produce (4 gaps)",
@@ -402,6 +408,48 @@ def test_the_builtin_catalog_raises_no_flag() -> None:
     builtin = bundle.catalog.model_copy(update={"origin": "builtin"})
     content = bundle_to_markdown(bundle.model_copy(update={"catalog": builtin}))
     assert "not the catalog shipped" not in content
+
+
+# ---------------------------------------------------------------------------
+# Verdict meaning: the risk-weighted rule is named when it moved the verdict
+# ---------------------------------------------------------------------------
+
+
+def _risk_verdict_line(status: ReleaseStatus, **counts: int) -> str:
+    """The verdict line of a report whose presence-based verdict was ready."""
+    bundle = _full_bundle()
+    risk = RiskAssessment(
+        mode="epss-weighted",
+        epss_percentile_threshold=0.95,
+        exploitable_cve_count=counts.get("exploitable", 0),
+        kev_cve_count=counts.get("kev", 0),
+        kev_ransomware_cve_count=counts.get("kev_ransomware", 0),
+        high_epss_cve_count=counts.get("high_epss", 0),
+        base_release_status=ReleaseStatus.READY,
+        rationale="Recorded reason.",
+    )
+    summary = bundle.summary.model_copy(update={"release_status": status, "risk_assessment": risk})
+    content = bundle_to_markdown(bundle.model_copy(update={"summary": summary}))
+    return next(line for line in content.splitlines() if line.startswith("> **"))
+
+
+def test_a_kev_ransomware_block_is_explained_by_the_risk_rule() -> None:
+    line = _risk_verdict_line(ReleaseStatus.NOT_READY, kev=1, kev_ransomware=1, exploitable=1)
+    assert line == f"> **Not ready** (`not_ready`). {RISK_SET_VERDICT}"
+
+
+def test_a_high_epss_downgrade_is_explained_by_the_risk_rule() -> None:
+    line = _risk_verdict_line(ReleaseStatus.CONDITIONAL, high_epss=1, exploitable=1)
+    assert line == f"> **Conditional** (`conditional`). {RISK_SET_VERDICT}"
+
+
+def test_a_verdict_the_risk_rule_did_not_move_keeps_the_presence_meaning() -> None:
+    # The release-anchor drift check lowered a ready verdict after the risk
+    # mode found nothing; the risk rule is not the reason.
+    line = _risk_verdict_line(ReleaseStatus.CONDITIONAL)
+    assert (
+        line == f"> **Conditional** (`conditional`). {VERDICT_MEANINGS[ReleaseStatus.CONDITIONAL]}"
+    )
 
 
 # ---------------------------------------------------------------------------
