@@ -18,23 +18,31 @@ undone in the template:
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 
+import pytest
+
+from evidence_collector.controls.engine import evaluate_controls
 from evidence_collector.domain.enums import (
     ConfidenceLevel,
     ControlCriticality,
     ControlEvaluationStatus,
     ControlFramework,
+    EvidenceType,
     ReleaseStatus,
 )
 from evidence_collector.domain.models import (
     Application,
+    ControlDefinition,
     ControlEvaluation,
     EvidenceBundle,
+    EvidenceException,
     Gap,
     ReleaseContext,
     Summary,
 )
 from evidence_collector.exporters.html import bundle_to_html
+from evidence_collector.scoring.engine import build_summary
 
 CARD_BREAKPOINT_MIN_PX = 1000
 CHIPS_IN_VIEW = 4
@@ -223,14 +231,113 @@ def test_gaps_are_grouped_most_critical_first_with_their_weight() -> None:
     groups = re.findall(
         r'<div class="gapgroup g-(\w+)">\s*<h3>(\w+)<small>(\d+) · ([^<]+)</small>', section
     )
-    assert groups == [
-        ("critical", "Critical", "1", "each one blocks the release"),
-        ("high", "High", "2", "each one keeps the release conditional at best"),
-        ("medium", "Medium", "1", "required evidence of a medium control"),
-        ("low", "Low", "1", "recommended evidence, never blocks on its own"),
+    assert [(key, label, count) for key, label, count, _ in groups] == [
+        ("critical", "Critical", "1"),
+        ("high", "High", "2"),
+        ("medium", "Medium", "1"),
+        ("low", "Low", "1"),
     ]
+    assert {key: note for key, _, _, note in groups} == GAP_NOTES
     listed = re.findall(r"gap of ([A-Z]+-\d)", section)
     assert listed == ["CRIT-1", "HIGH-1", "HIGH-2", "MED-1", "LOW-1"]
+
+
+GAP_NOTES = {
+    "critical": "each one makes the release not_ready",
+    "high": "each one keeps the release conditional at best",
+    "medium": "each one keeps the release conditional at best",
+    "low": "each one keeps the release conditional at best unless a waiver covers its control",
+}
+NOW = datetime(2026, 6, 1, tzinfo=UTC)
+
+
+def _control(
+    criticality: ControlCriticality,
+    *,
+    required: list[EvidenceType] | None = None,
+    recommended: list[EvidenceType] | None = None,
+) -> ControlDefinition:
+    return ControlDefinition(
+        control_id="CTL-1",
+        framework=ControlFramework.NIST_SSDF,
+        name="The only control",
+        description="A control with no evidence supplied.",
+        criticality=criticality,
+        required_evidence_types=required or [],
+        recommended_evidence_types=recommended or [],
+    )
+
+
+def _engine_bundle(
+    control: ControlDefinition, exceptions: list[EvidenceException] | None = None
+) -> EvidenceBundle:
+    """Evaluate and score one control with no evidence, as `run` does."""
+    evaluations, gaps = evaluate_controls(
+        [control], [], exceptions=exceptions or [], application="app", release="1", now=NOW
+    )
+    return EvidenceBundle(
+        bundle_id="bundle-engine",
+        generated_at=NOW,
+        application=Application(name="app", repository="acme/app"),
+        release=ReleaseContext(release_id="1", commit_sha="abcdef1"),
+        evidence=[],
+        control_evaluations=evaluations,
+        gaps=gaps,
+        exceptions=exceptions or [],
+        summary=build_summary([control], evaluations, gaps),
+    )
+
+
+def _gap_notes(html: str) -> dict[str, str]:
+    return dict(
+        re.findall(r'<div class="gapgroup g-(\w+)">\s*<h3>\w+<small>\d+ · ([^<]+)</small>', html)
+    )
+
+
+@pytest.mark.parametrize(
+    ("criticality", "verdict"),
+    [
+        (ControlCriticality.CRITICAL, ReleaseStatus.NOT_READY),
+        (ControlCriticality.HIGH, ReleaseStatus.CONDITIONAL),
+        (ControlCriticality.MEDIUM, ReleaseStatus.CONDITIONAL),
+        (ControlCriticality.LOW, ReleaseStatus.CONDITIONAL),
+    ],
+)
+def test_a_lone_missing_required_gap_reads_as_the_engine_scores_it(
+    criticality: ControlCriticality, verdict: ReleaseStatus
+) -> None:
+    bundle = _engine_bundle(_control(criticality, required=[EvidenceType.SAST_SCAN]))
+    assert [gap.criticality for gap in bundle.gaps] == [criticality]
+    assert bundle.summary.release_status is verdict
+    html = bundle_to_html(bundle)
+    assert _gap_notes(html) == {criticality.value: GAP_NOTES[criticality.value]}
+    assert "never blocks" not in html
+
+
+def test_a_lone_recommended_gap_is_low_and_keeps_the_release_conditional() -> None:
+    bundle = _engine_bundle(_control(ControlCriticality.HIGH, recommended=[EvidenceType.SBOM]))
+    assert [gap.criticality for gap in bundle.gaps] == [ControlCriticality.LOW]
+    assert bundle.control_evaluations[0].evaluation_status is ControlEvaluationStatus.PARTIAL
+    assert bundle.summary.release_status is ReleaseStatus.CONDITIONAL
+    assert _gap_notes(bundle_to_html(bundle)) == {"low": GAP_NOTES["low"]}
+
+
+def test_a_waived_gap_is_low_and_says_it_does_not_count() -> None:
+    waiver = EvidenceException(
+        exception_id="EXC-1",
+        control_id="CTL-1",
+        approver="approver@example.test",
+        approved_at=datetime(2026, 1, 1, tzinfo=UTC),
+        expires_at=datetime(2027, 1, 1, tzinfo=UTC),
+        justification="Compensating control documented.",
+    )
+    control = _control(ControlCriticality.CRITICAL, required=[EvidenceType.SAST_SCAN])
+    bundle = _engine_bundle(control, [waiver])
+    assert [gap.criticality for gap in bundle.gaps] == [ControlCriticality.LOW]
+    assert bundle.summary.release_status is ReleaseStatus.READY
+    html = bundle_to_html(bundle)
+    assert _gap_notes(html) == {"low": GAP_NOTES["low"]}
+    assert "The control is waived, so this gap does not count against the verdict." in html
 
 
 def test_every_control_keeps_its_rationale() -> None:

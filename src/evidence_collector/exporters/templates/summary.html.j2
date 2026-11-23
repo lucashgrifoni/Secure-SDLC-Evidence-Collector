@@ -44,12 +44,14 @@
 {#- Row positions for the cross-links, and the controls each record supports. -#}
 {% set control_row = {} %}
 {% set control_level = {} %}
+{% set control_status = {} %}
 {% set evidence_row = {} %}
 {% set exception_row = {} %}
 {% set supports = {} %}
 {% for evaluation in controls %}
   {% set _ = control_row.setdefault(evaluation.control_id, loop.index) %}
   {% set _ = control_level.setdefault(evaluation.control_id, evaluation.criticality.value) %}
+  {% set _ = control_status.setdefault(evaluation.control_id, evaluation.evaluation_status.value) %}
   {% for ref in evaluation.evidence_refs %}
     {% set _ = supports.setdefault(ref, []).append(evaluation.control_id) %}
   {% endfor %}
@@ -86,11 +88,15 @@
   "conditional": "No critical control lacks required evidence, but at least one control is partial or missing, or supplied evidence was set aside.",
   "not_ready": "A critical control lacks required evidence.",
 } %}
+{#- What a gap of each level does to the verdict, as the scoring engine
+    decides it: a critical gap makes the release not_ready, and any control
+    left missing or partial keeps it conditional at best. A waiver turns its
+    control's gaps into low ones that no longer count. -#}
 {% set gap_note = {
-  "critical": "each one blocks the release",
+  "critical": "each one makes the release not_ready",
   "high": "each one keeps the release conditional at best",
-  "medium": "required evidence of a medium control",
-  "low": "recommended evidence, never blocks on its own",
+  "medium": "each one keeps the release conditional at best",
+  "low": "each one keeps the release conditional at best unless a waiver covers its control",
 } %}
 {% set control_tone = {"met": "ok", "partial": "warn", "missing": "bad", "waived": "muted", "not_applicable": "muted"} %}
 {% set control_glyph = {"met": "met", "partial": "partial", "missing": "missing", "waived": "waived", "not_applicable": "na"} %}
@@ -847,7 +853,10 @@
       <span class="etype">{{ gap.evidence_type.value if gap.evidence_type else "-" }}</span>
       {#- The hint names the records that are present and did not satisfy the
           control, so it carries what the description says, as an action. -#}
-      <p>{{ ticked(gap.remediation or gap.description) }}</p>
+      <div>
+        <p>{{ ticked(gap.remediation or gap.description) }}</p>
+        {% if control_status.get(gap.control_id) == "waived" %}<span class="sub">The control is waived, so this gap does not count against the verdict.</span>{% endif %}
+      </div>
     </li>
     {% endfor %}
   </ul>
