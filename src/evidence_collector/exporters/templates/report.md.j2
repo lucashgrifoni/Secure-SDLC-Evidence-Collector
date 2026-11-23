@@ -1,58 +1,21 @@
-# Secure SDLC Evidence Report
+{% set summary = bundle.summary %}
+{% set exceptions_in_force, exceptions_not_in_force = split_exceptions(bundle) %}
+# Secure SDLC Evidence Report: {{ bundle.application.name | md }} {{ bundle.release.release_id | md }}
 
-**Bundle ID:** `{{ bundle.bundle_id | md_code }}`
-**Bundle version:** {{ bundle.bundle_version | md }}
-**Generated at:** {{ bundle.generated_at.isoformat() }}
-
-## Application
-
-| Field | Value |
-|-------|-------|
-| Name | `{{ bundle.application.name | md_code }}` |
-| Repository | `{{ bundle.application.repository | md_code }}` |
-| Environment | {{ bundle.application.environment | md }} |
-| Owner team | {{ bundle.application.owner_team | md or "-" }} |
-
-## Release
-
-| Field | Value |
-|-------|-------|
-| Release ID | `{{ bundle.release.release_id | md_code }}` |
-| Commit SHA | `{{ bundle.release.commit_sha | md_code }}` |
-| Branch | `{{ bundle.release.branch | md_code }}` |
-| Pipeline run | {{ bundle.release.pipeline_run_id | md or "-" }} |
-| Build ID | {{ bundle.release.build_id | md or "-" }} |
-| Artifact digest | `{{ bundle.release.artifact_digest | md_code or "-" }}` |
-| Tag | {{ bundle.release.tag | md or "-" }} |
-{% if bundle.catalog %}
-## Control catalog
-
-Every verdict below is relative to this catalog. A bundle evaluated against a
-different control set is a different claim, so it is recorded here as well as
-in `bundle.json`.
-
-| Field | Value |
-|-------|-------|
-| Origin | {{ bundle.catalog.origin | md }}{% if bundle.catalog.origin == "custom" %} — **not the catalog shipped with the tool**{% endif +%} |
-| Name | `{{ bundle.catalog.name | md_code }}` |
-| SHA-256 | `{{ bundle.catalog.sha256 | md_code }}` |
-| Controls defined | {{ bundle.catalog.control_count }} |
+> **{{ verdict_word }}** (`{{ summary.release_status.value }}`). {{ verdict_meaning }}
+{% if summary.risk_assessment %}
+{% set risk = summary.risk_assessment %}
+>
+> **Risk-weighted verdict (`{{ risk.mode | md_code }}`):** presence-based verdict `{{ risk.base_release_status.value }}`. {{ risk.rationale | md }}
 {% endif %}
-## Verdict
+{% if bundle.catalog and bundle.catalog.origin == "custom" %}
+>
+> Evaluated against a custom control catalog, **not the catalog shipped with the tool**. The record at the end names it.
+{% endif %}
 
-- **Release status:** `{{ bundle.summary.release_status.value }}`
-- **Evidence coverage score:** {{ bundle.summary.evidence_coverage_score }}/100
-- **Confidence score:** {{ bundle.summary.confidence_score }}/100
-- **Controls:** {{ bundle.summary.controls_met }} met · {{ bundle.summary.controls_partial }} partial · {{ bundle.summary.controls_missing }} missing · {{ bundle.summary.controls_waived }} waived · {{ bundle.summary.controls_not_applicable }} n/a
-{% if bundle.summary.missing_critical_evidence %}
-- **Missing critical/high evidence:** {{ bundle.summary.missing_critical_evidence | map("md") | join(", ") }}
-{% else %}
-- **Missing critical/high evidence:** none
-{% endif %}
-{% if bundle.summary.risk_assessment %}
-{% set risk = bundle.summary.risk_assessment %}
-- **Risk-weighted verdict (`{{ risk.mode | md_code }}`):** presence-based verdict `{{ risk.base_release_status.value }}`. {{ risk.rationale | md }}
-{% endif %}
+| Evidence coverage | Evidence strength | Controls |
+|---|---|---|
+| {{ summary.evidence_coverage_score }}/100 | {{ summary.confidence_score }}/100 | {{ summary.controls_met }} met · {{ summary.controls_partial }} partial · {{ summary.controls_missing }} missing · {{ summary.controls_waived }} waived · {{ summary.controls_not_applicable }} n/a |
 {% if bundle.collection_errors %}
 
 > **{{ bundle.collection_errors | length }} supplied input(s) could not be read.**
@@ -67,23 +30,43 @@ in `bundle.json`.
 {% endfor %}
 {% endif %}
 
-## Control evaluations
+## What to produce ({{ gaps | length }} gap{{ "" if gaps | length == 1 else "s" }})
 
-| Control | Framework | Status | Criticality | Confidence | Evidence refs |
-|---------|-----------|--------|-------------|------------|---------------|
-{% for evaluation in bundle.control_evaluations %}
-| `{{ evaluation.control_id | md_code }}` | {{ evaluation.framework.value }} | **{{ evaluation.evaluation_status.value }}** | {{ evaluation.criticality.value }} | {{ evaluation.confidence.value }} | {{ evaluation.evidence_refs | map("md") | join(", ") if evaluation.evidence_refs else "-" }} |
+{% if summary.missing_critical_evidence %}
+**Missing critical/high evidence:** {{ summary.missing_critical_evidence | map("md") | join(", ") }}
+{% else %}
+**Missing critical/high evidence:** none
+{% endif %}
+{% if gaps %}
+
+| Weight | Control | Missing evidence |
+|---|---|---|
+{% for gap in gaps %}
+| **{{ gap.criticality.value }}** | `{{ gap.control_id | md_code }}` {{ control_names.get(gap.control_id) | md }} | `{{ gap.evidence_type.value if gap.evidence_type else "-" }}` |
 {% endfor %}
 
-### Rationales
+<details><summary>How to close each gap</summary>
 
-{% for evaluation in bundle.control_evaluations %}
-- **`{{ evaluation.control_id | md_code }}` — {{ evaluation.control_name | md }}**
-  {{ evaluation.rationale | md }}
+{% for gap in gaps %}
+- **`{{ gap.control_id | md_code }}`** · `{{ gap.evidence_type.value if gap.evidence_type else "-" }}` ({{ gap.criticality.value }}): {{ gap.description | md }}
+  {{ gap.remediation | md or "No remediation hint available." }}
 {% endfor %}
 
-{% set exceptions_in_force, exceptions_not_in_force = split_exceptions(bundle) %}
+</details>
+{% else %}
+
+No gaps detected.
+{% endif %}
+
+## Controls ({{ controls | length }})
+
+| Control | Criticality | Status | Confidence | Evidence |
+|---|---|---|---|---|
+{% for evaluation in controls %}
+| `{{ evaluation.control_id | md_code }}` {{ evaluation.control_name | md }} | {{ evaluation.criticality.value }} | **{{ evaluation.evaluation_status.value }}** | {{ evaluation.confidence.value }} | {{ evaluation.evidence_refs | map("md") | join(", ") if evaluation.evidence_refs else "none" }} |
+{% endfor %}
 {% if exceptions_in_force %}
+
 ## Approved exceptions
 
 | Exception ID | Control | Approver | Approved at | Expires at | Reference |
@@ -98,8 +81,8 @@ in `bundle.json`.
 - **`{{ exception.exception_id | md_code }}`** ({{ exception.control_id | md }}): {{ exception.justification | md }}
 {% endfor %}
 {% endif %}
-
 {% if exceptions_not_in_force %}
+
 ## Exceptions not in force
 
 Supplied with the evidence but not applied to this release.
@@ -111,35 +94,19 @@ Supplied with the evidence but not applied to this release.
 {% endfor %}
 {% endif %}
 
-{% if bundle.gaps %}
-## Gaps
+<details><summary>Evidence inventory ({{ bundle.evidence | length }})</summary>
 
-| Control | Evidence type | Criticality | Description |
-|---------|---------------|-------------|-------------|
-{% for gap in bundle.gaps %}
-| `{{ gap.control_id | md_code }}` | {{ gap.evidence_type.value if gap.evidence_type else "-" }} | {{ gap.criticality.value }} | {{ gap.description | md }} |
-{% endfor %}
-
-### Remediation hints
-
-{% for gap in bundle.gaps %}
-- **`{{ gap.control_id | md_code }}`** — {{ gap.remediation | md or "No remediation hint available." }}
-{% endfor %}
-{% else %}
-## Gaps
-
-No gaps detected.
-{% endif %}
-
-## Evidence inventory
-
+{% if bundle.evidence %}
 | ID | Type | Status | Confidence | Producer | Subject |
 |----|------|--------|------------|----------|---------|
 {% for item in bundle.evidence %}
 | `{{ item.evidence_id | md_code }}` | {{ item.evidence_type.value }} | {{ item.status.value }} | {{ item.confidence.value }} | {{ item.producer | md }} | `{{ item.subject_ref | md_code }}` |
 {% endfor %}
-
+{% else %}
+No evidence was collected.
+{% endif %}
 {% for item in bundle.evidence %}
+
 ### `{{ item.evidence_id | md_code }}` — {{ item.evidence_type.value }}
 
 - **Source:** {{ item.source.name | md }} ({{ item.source.kind | md }}){% if item.source.version %} · version {{ item.source.version | md }}{% endif +%}
@@ -155,5 +122,48 @@ No gaps detected.
 {% if item.raw %}
 - **Artifact:** `{{ (item.raw.artifact_path or item.raw.artifact_uri) | md_code }}` ({{ item.raw.integrity_hash | md or "no hash" }})
 {% endif %}
-
 {% endfor %}
+
+</details>
+
+<details><summary>Record: application, release, catalog, bundle</summary>
+
+{% if bundle.catalog %}
+Every verdict above is relative to the control catalog below. A bundle
+evaluated against a different control set is a different claim, so the
+catalog is recorded here as well as in `bundle.json`.
+
+{% endif %}
+| Field | Value |
+|-------|-------|
+| Application | `{{ bundle.application.name | md_code }}` |
+| Repository | `{{ bundle.application.repository | md_code }}` |
+| Environment | {{ bundle.application.environment | md }} |
+| Owner team | {{ bundle.application.owner_team | md or "-" }} |
+| Release ID | `{{ bundle.release.release_id | md_code }}` |
+| Commit SHA | `{{ bundle.release.commit_sha | md_code }}` |
+| Branch | `{{ bundle.release.branch | md_code }}` |
+| Pipeline run | {{ bundle.release.pipeline_run_id | md or "-" }} |
+| Build ID | {{ bundle.release.build_id | md or "-" }} |
+| Artifact digest | `{{ bundle.release.artifact_digest | md_code or "-" }}` |
+| Tag | {{ bundle.release.tag | md or "-" }} |
+{% if bundle.catalog %}
+| Catalog origin | {{ bundle.catalog.origin | md }}{% if bundle.catalog.origin == "custom" %}, **not the catalog shipped with the tool**{% endif +%} |
+| Catalog name | `{{ bundle.catalog.name | md_code }}` |
+| Catalog SHA-256 | `{{ bundle.catalog.sha256 | md_code }}` |
+| Controls defined | {{ bundle.catalog.control_count }} |
+{% endif %}
+| Bundle ID | `{{ bundle.bundle_id | md_code }}` |
+| Bundle version | {{ bundle.bundle_version | md }} |
+| Generated at | {{ bundle.generated_at.isoformat() }} |
+
+</details>
+
+<details><summary>Rationale per control</summary>
+
+{% for evaluation in controls %}
+- **`{{ evaluation.control_id | md_code }}` — {{ evaluation.control_name | md }}** ({{ evaluation.framework.value }})
+  {{ evaluation.rationale | md }}
+{% endfor %}
+
+</details>

@@ -284,6 +284,30 @@ the JSON outputs rather than the terminal text.
   those facts, so a build whose page disagrees with the CLI still fails.
   Nothing in the CLI, `bundle.json`, verdicts or exit codes changes.
 
+### report.md redesign
+
+- `report.md` opens with the decision. The title names the application and
+  release, a quote under it gives the verdict word, the literal status and
+  what it means, and a one-row table shows evidence coverage, evidence
+  strength (the `confidence_score` field, renamed on the page only) and the
+  control counts. A risk-weighted verdict and a custom catalog are noted in
+  the same quote.
+- `## What to produce (N gaps)` lists the gaps, most critical first, with
+  the control, its name and the missing evidence type. The description and
+  remediation hint of each gap moved into a collapsed block under the table.
+  `## Controls (N)` lists the controls most critical first; within one
+  criticality the order of `bundle.json` is kept.
+- The evidence inventory, the record of application, release, catalog and
+  bundle, and the per-control rationales (now with the framework) moved into
+  collapsed `<details>` blocks at the end. Every value the report showed
+  before is still there.
+- Sections that a script may have looked for are gone: `## Verdict`,
+  `## Application`, `## Release`, `## Control catalog`,
+  `## Control evaluations`, `## Gaps` and `## Evidence inventory`, and the
+  `**Release status:**` bullet. Read `bundle.json` for anything a program
+  consumes; `bundle.json`, the structural digest, verdicts and exit codes do
+  not change.
+
 ## 4.2.0
 
 Four behaviours change for pipelines that worked on 4.1.x. The sample release

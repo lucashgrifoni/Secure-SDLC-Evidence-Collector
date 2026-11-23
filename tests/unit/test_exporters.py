@@ -181,7 +181,7 @@ def _hostile_bundle() -> EvidenceBundle:
         update={
             "producer": _XSS,
             "subject_ref": "pkg:npm/evil|md",
-            "summary": "3 components\n\n## Verdict\n\n- **Release status:** `ready`",
+            "summary": "3 components\n\n> **Ready** (`ready`). forged\n\n## Controls (9)",
         }
     )
     evaluation = bundle.control_evaluations[0].model_copy(
@@ -227,18 +227,21 @@ def test_markdown_report_cannot_be_restructured_by_untrusted_strings(
     Markdown has no autoescape: an unescaped `|` closes a table cell and
     shifts every later column, and a newline ends the row outright so whatever
     follows is parsed as top-level Markdown. That is enough to forge a
-    `## Verdict` section reading `ready` inside a report whose real verdict is
+    verdict line reading `ready` inside a report whose real verdict is
     `not_ready` — from a string the tool merely copied out of an SBOM.
     """
     path = export_markdown(_hostile_bundle(), tmp_path / "report.md")
     content = path.read_text(encoding="utf-8")
 
-    # A heading is only a heading at the start of a line. The injected text
-    # survives verbatim — inline, inside the bullet it was written into — but
-    # the document still has exactly the one `## Verdict` this tool wrote.
+    # A heading or a quote only starts at the start of a line. The injected
+    # text survives verbatim — inline, inside the bullet it was written into —
+    # but the document keeps only the verdict and headings this tool wrote.
     lines = content.splitlines()
-    assert [line for line in lines if line.startswith("## Verdict")] == ["## Verdict"]
-    assert "## Verdict" in content
+    assert [line for line in lines if line.startswith("## Controls")] == ["## Controls (1)"]
+    assert [line for line in lines if line.startswith("> **")] == [
+        "> **Ready** (`ready`). Every control is met, waived or not applicable."
+    ]
+    assert "## Controls (9)" in content
     assert "second line" in content
     assert "\nsecond line" not in content
 
@@ -342,7 +345,7 @@ def test_bundle_id_cannot_forge_document_structure(tmp_path: Path) -> None:
     and `_default_bundle_id` builds that id by concatenating `--application` and
     `--release-id` verbatim. Both are free-form scalars with a length cap and no
     character validation, so a newline in either landed at the top level of the
-    report — forging a `## Verdict` section reading `ready` above the real one.
+    report — forging a verdict reading `ready` above the real one.
 
     The same release id *is* filtered seventeen lines later in the Release
     table. The filter was applied to the table copy and missed the derived one.
@@ -351,16 +354,17 @@ def test_bundle_id_cannot_forge_document_structure(tmp_path: Path) -> None:
     # can only have come from the forged id.
     honest = _build_bundle()
     blocked = honest.summary.model_copy(update={"release_status": ReleaseStatus.NOT_READY})
-    forged = "\n\n## Verdict\n\n- **Release status:** `ready`\n\n**x:** "
+    forged = "\n\n> **Ready** (`ready`). x\n\n## Controls (9)\n\n**x:** "
     bundle = honest.model_copy(update={"bundle_id": f"bundle-{forged}-1", "summary": blocked})
 
     path = export_markdown(bundle, tmp_path / "report.md")
     content = path.read_text(encoding="utf-8")
 
     lines = content.splitlines()
-    assert [line for line in lines if line.startswith("## Verdict")] == ["## Verdict"]
-    assert not [line for line in lines if line.startswith("- **Release status:** `ready`")]
-    assert "- **Release status:** `not_ready`" in content
+    assert [line for line in lines if line.startswith("## Controls")] == ["## Controls (1)"]
+    assert [line for line in lines if line.startswith("> **")] == [
+        "> **Not ready** (`not_ready`). A critical control lacks required evidence."
+    ]
 
 
 def test_md_escape_cannot_be_defeated_by_a_pre_escaped_pipe() -> None:

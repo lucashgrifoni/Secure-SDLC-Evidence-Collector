@@ -15,6 +15,7 @@ bundle. A bundle built in the default mode keeps its verdict untouched.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,7 @@ from typer.testing import CliRunner
 from evidence_collector.cli.main import app
 from evidence_collector.domain.enums import ReleaseStatus
 from evidence_collector.domain.models import EvidenceBundle
+from evidence_collector.exporters.markdown import RISK_SET_VERDICT, bundle_to_markdown
 
 # examples/sample_release/artifacts/trivy.sarif reports exactly this CVE.
 SAMPLE_CVE = "CVE-2024-12345"
@@ -127,6 +129,10 @@ def test_enrich_applies_the_recorded_risk_mode_kev_ransomware_blocks(
     assert assessment.kev_ransomware_cve_count == 1
     assert assessment.kev_cve_count == 1
     assert "no vulnerability intelligence" not in assessment.rationale
+    # No critical gap is behind this verdict, so report.md must not claim one.
+    report = bundle_to_markdown(enriched)
+    assert f"> **Not ready** (`not_ready`). {RISK_SET_VERDICT}" in report
+    assert "A critical control lacks required evidence" not in report
 
 
 @pytest.mark.integration
@@ -171,6 +177,9 @@ def test_enrich_high_epss_downgrades_to_conditional_under_recorded_threshold(
     assert enriched.summary.risk_assessment is not None
     assert enriched.summary.risk_assessment.epss_percentile_threshold == pytest.approx(0.95)
     assert enriched.summary.risk_assessment.high_epss_cve_count == 1
+    report = bundle_to_markdown(enriched)
+    assert f"> **Conditional** (`conditional`). {RISK_SET_VERDICT}" in report
+    assert "No critical control lacks required evidence" not in report
 
 
 @pytest.mark.integration
@@ -427,10 +436,15 @@ def test_enrich_refreshes_the_cra_global_exploitation_signal(
 # ---------------------------------------------------------------------------
 
 
+def _report_status(report: Path) -> str:
+    """The literal status on the verdict line under the title of report.md."""
+    verdict = re.search(r"^> \*\*[^*]+\*\* \(`(\w+)`\)\.", report.read_text(encoding="utf-8"), re.M)
+    assert verdict, "report.md has no verdict line"
+    return verdict.group(1)
+
+
 def _assert_reports_say(directory: Path, status: str) -> None:
-    assert f"**Release status:** `{status}`" in (directory / "report.md").read_text(
-        encoding="utf-8"
-    )
+    assert _report_status(directory / "report.md") == status
     assert f"status-{status}" in (directory / "summary.html").read_text(encoding="utf-8")
 
 
@@ -472,10 +486,10 @@ def test_enrich_to_another_output_writes_reports_the_input_directory_had(
         "--kev-feed",
         str(_kev_feed(tmp_path, ransomware=True)),
     )
-    assert "**Release status:** `not_ready`" in (dest / "report.md").read_text(encoding="utf-8")
+    assert _report_status(dest / "report.md") == "not_ready"
     assert not (dest / "summary.html").exists()
     # The input's own report is left alone when the output goes elsewhere.
-    assert "**Release status:** `ready`" in (out / "report.md").read_text(encoding="utf-8")
+    assert _report_status(out / "report.md") == "ready"
 
 
 @pytest.mark.integration
@@ -574,7 +588,7 @@ def test_enrich_same_directory_warning_in_plain_output(
     )
     assert result.exit_code == 0, result.output
     assert "left alone" in result.output
-    assert "**Release status:** `ready`" in (out / "report.md").read_text(encoding="utf-8")
+    assert _report_status(out / "report.md") == "ready"
 
 
 # ---------------------------------------------------------------------------
@@ -619,7 +633,7 @@ def test_enrich_output_named_like_a_report_in_another_directory_keeps_it_json(
     )
     bundle = EvidenceBundle.model_validate_json((dest / "summary.html").read_text(encoding="utf-8"))
     assert bundle.summary.release_status is ReleaseStatus.NOT_READY
-    assert "**Release status:** `not_ready`" in (dest / "report.md").read_text(encoding="utf-8")
+    assert _report_status(dest / "report.md") == "not_ready"
 
 
 # ---------------------------------------------------------------------------
