@@ -148,7 +148,7 @@ changes and this page does not.
 | `fail-on` | `not_ready` | `not_ready` | `conditional` | The component fails on a `conditional` release by default; the GitHub surfaces pass it. `none` (observe mode) exists only on the GitHub surfaces |
 | `python-version` | `3.12` | `3.12` | — | The component runs a pinned `python:3.12` image |
 | `version` | `""` | — | — | Empty installs the Action's own copy with hash-locked dependencies; otherwise a git ref of this repository |
-| `collector-version` | — | `""` | `4.2.0` | Empty installs the latest PyPI release; the component pins one |
+| `collector-version` | — | `""` | `4.3.0` | Empty installs the latest PyPI release; the component pins one |
 | `harden-runner` | — | `true` | — | Only the reusable workflow adds Harden-Runner to your job; see above |
 | `install-from-checkout` | — | `false` | — | For this project's self-test |
 | `stage` | — | — | `test` | GitLab only |
