@@ -28,7 +28,15 @@ from pathlib import Path
 import pytest
 import yaml
 
-from evidence_collector.domain.enums import EvidenceType
+from evidence_collector.domain.enums import (
+    ControlCriticality,
+    ControlEvaluationStatus,
+    ControlFramework,
+    EvidenceType,
+    ReleaseStatus,
+)
+from evidence_collector.domain.models import ControlEvaluation, Gap
+from evidence_collector.scoring import compute_release_status
 
 _DOCS_INDEX = Path("docs/index.md")
 _README = Path("README.md")
@@ -195,3 +203,41 @@ def test_action_docs_list_every_bundled_catalog() -> None:
 def test_docs_home_keeps_the_signature_anchor_other_pages_link_to() -> None:
     """SECURITY.md, comparison.md and the OSPS self-assessment link to it."""
     assert "\n## Verifying signatures\n" in _DOCS_INDEX.read_text(encoding="utf-8")
+
+
+def _home_verdict_card(verdict: str) -> str:
+    """The prose of one card in the home page's verdict legend."""
+    text = _DOCS_INDEX.read_text(encoding="utf-8")
+    start = text.index(f'verdict-pill--{verdict}">')
+    end = text.index('class="verdict-exit"', start)
+    return " ".join(text[start:end].split())
+
+
+def _missing_required(criticality: ControlCriticality) -> ControlEvaluation:
+    return ControlEvaluation(
+        control_id="X-1",
+        framework=ControlFramework.ORG_INTERNAL,
+        control_name="x",
+        evaluation_status=ControlEvaluationStatus.MISSING,
+        criticality=criticality,
+        missing_required_evidence_types=[EvidenceType.SAST_SCAN],
+        rationale="x",
+    )
+
+
+@pytest.mark.parametrize(
+    "criticality", [c for c in ControlCriticality if c != ControlCriticality.CRITICAL]
+)
+def test_home_legend_names_every_criticality_that_gives_conditional(
+    criticality: ControlCriticality,
+) -> None:
+    """The legend once left out `low`, while the engine still returns conditional for it."""
+    gap = Gap(
+        control_id="X-1",
+        evidence_type=EvidenceType.SAST_SCAN,
+        criticality=criticality,
+        description="x",
+    )
+    verdict = compute_release_status([_missing_required(criticality)], [gap])
+    assert verdict == ReleaseStatus.CONDITIONAL
+    assert criticality.value in _home_verdict_card("warn")

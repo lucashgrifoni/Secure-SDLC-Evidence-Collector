@@ -69,8 +69,8 @@ turn it into the exit code below.
 
 -   <span class="verdict-pill verdict-pill--warn">conditional</span>
 
-    No critical control lacks required evidence, but a high or medium control
-    does, or recommended evidence is missing.
+    No critical control lacks required evidence, but a high, medium or low
+    control does, or only recommended evidence is missing.
 
     <span class="verdict-exit">exit 0, or 1 with --fail-on conditional</span>
 
