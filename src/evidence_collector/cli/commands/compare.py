@@ -9,13 +9,15 @@ import typer
 from rich.markup import escape
 from rich.table import Table
 
-from evidence_collector.application.compare import compare_bundles, load_bundle
+from evidence_collector.application.compare import BundleComparison, compare_bundles, load_bundle
+from evidence_collector.cli._compare_view import render_compare_view
 from evidence_collector.cli._errors import report_error
 from evidence_collector.cli._exit_codes import EXIT_INPUT_ERROR, UNREADABLE_INPUT
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._state import console, is_json_logs
+from evidence_collector.cli._terminal import uses_layout
 from evidence_collector.domain.enums import ReleaseStatus
-from evidence_collector.domain.models import CatalogRef
+from evidence_collector.domain.models import CatalogRef, EvidenceBundle
 
 _FORMATS = ("table", "json")
 
@@ -94,89 +96,101 @@ def register(app: typer.Typer) -> None:
             console.print_json(data=comparison.to_dict())
             return
 
-        # Ids and EPSS model versions are read from the bundle files: escaped so
-        # `[/x]` cannot raise MarkupError and `[tag]` is not swallowed.
-        table = Table(
-            title=f"Bundle diff: {escape(baseline.bundle_id)} → {escape(candidate.bundle_id)}"
-        )
-        table.add_column("Metric")
-        table.add_column("Before")
-        table.add_column("After")
-        table.add_column("Delta")
-        table.add_row(
-            "release_status",
-            comparison.before_release_status.value,
-            comparison.after_release_status.value,
-            _status_delta(comparison.before_release_status, comparison.after_release_status),
-        )
-        table.add_row(
-            "coverage",
-            str(baseline.summary.evidence_coverage_score),
-            str(candidate.summary.evidence_coverage_score),
-            f"{comparison.coverage_delta:+d}",
-        )
-        table.add_row(
-            "confidence",
-            str(baseline.summary.confidence_score),
-            str(candidate.summary.confidence_score),
-            f"{comparison.confidence_delta:+d}",
-        )
-        console.print(table)
+        if uses_layout(console):
+            render_compare_view(console, baseline, candidate, comparison)
+        else:
+            _print_tables(baseline, candidate, comparison)
+        _print_drift_warnings(comparison)
 
-        control_table = Table(title="Control-level diff")
-        control_table.add_column("Control ID")
-        control_table.add_column("Before")
-        control_table.add_column("After")
-        control_table.add_column("Change")
-        catalog_drift = set(comparison.catalog_drift_controls())
-        for delta in comparison.control_deltas:
-            control_table.add_row(
-                escape(delta.control_id),
-                delta.before.value if delta.before else "-",
-                delta.after.value if delta.after else "-",
-                f"{delta.category} (catalog)"
-                if delta.control_id in catalog_drift
-                else delta.category,
-            )
-        console.print(control_table)
 
-        # Every verdict is relative to a catalog: identical evidence evaluated
-        # against a weakened one reads as an improvement. Name both catalogs
-        # so the control movement above is not mistaken for evidence movement.
-        if comparison.catalog_drift and comparison.before_catalog and comparison.after_catalog:
-            console.print(
-                "[status.warn]Catalog changed:[/status.warn] baseline was evaluated against "
-                f"{_describe_catalog(comparison.before_catalog)}; candidate against "
-                f"{_describe_catalog(comparison.after_catalog)}. Control changes marked "
-                "'(catalog)' may come from the catalog rather than the evidence."
-            )
-        elif comparison.catalog_unknown:
-            missing = [
-                side
-                for side, catalog in (
-                    ("baseline", comparison.before_catalog),
-                    ("candidate", comparison.after_catalog),
-                )
-                if catalog is None
-            ]
-            console.print(
-                f"[status.warn]Catalog unknown:[/status.warn] the {' and '.join(missing)} bundle "
-                "records no control catalog (made before catalog provenance was recorded). "
-                "Control changes cannot be attributed to the evidence rather than to a "
-                "catalog change."
-            )
+def _print_tables(
+    baseline: EvidenceBundle, candidate: EvidenceBundle, comparison: BundleComparison
+) -> None:
+    """The metric and control tables printed outside a colour terminal."""
+    # Ids and EPSS model versions are read from the bundle files: escaped so
+    # `[/x]` cannot raise MarkupError and `[tag]` is not swallowed.
+    table = Table(
+        title=f"Bundle diff: {escape(baseline.bundle_id)} → {escape(candidate.bundle_id)}"
+    )
+    table.add_column("Metric")
+    table.add_column("Before")
+    table.add_column("After")
+    table.add_column("Delta")
+    table.add_row(
+        "release_status",
+        comparison.before_release_status.value,
+        comparison.after_release_status.value,
+        _status_delta(comparison.before_release_status, comparison.after_release_status),
+    )
+    table.add_row(
+        "coverage",
+        str(baseline.summary.evidence_coverage_score),
+        str(candidate.summary.evidence_coverage_score),
+        f"{comparison.coverage_delta:+d}",
+    )
+    table.add_row(
+        "confidence",
+        str(baseline.summary.confidence_score),
+        str(candidate.summary.confidence_score),
+        f"{comparison.confidence_delta:+d}",
+    )
+    console.print(table)
 
-        # EPSS scores are not comparable across model versions: v5 re-fits
-        # the model rather than re-scoring under the old one, so exposure
-        # can appear to move when only the model changed. Saying so is the
-        # difference between a diff a reader can act on and one that
-        # quietly misleads.
-        if comparison.epss_model_drift:
-            console.print(
-                "[status.warn]EPSS model drift:[/status.warn] baseline used "
-                f"{escape(', '.join(comparison.before_epss_model_versions))}; candidate used "
-                f"{escape(', '.join(comparison.after_epss_model_versions))}. "
-                "EPSS scores are not comparable across model versions — treat any "
-                "score or risk movement as unexplained until re-enriched under a "
-                "single model."
+    control_table = Table(title="Control-level diff")
+    control_table.add_column("Control ID")
+    control_table.add_column("Before")
+    control_table.add_column("After")
+    control_table.add_column("Change")
+    catalog_drift = set(comparison.catalog_drift_controls())
+    for delta in comparison.control_deltas:
+        control_table.add_row(
+            escape(delta.control_id),
+            delta.before.value if delta.before else "-",
+            delta.after.value if delta.after else "-",
+            f"{delta.category} (catalog)" if delta.control_id in catalog_drift else delta.category,
+        )
+    console.print(control_table)
+
+
+def _print_drift_warnings(comparison: BundleComparison) -> None:
+    """Say when the catalog or the EPSS model differs between the two bundles."""
+    # Every verdict is relative to a catalog: identical evidence evaluated
+    # against a weakened one reads as an improvement. Name both catalogs
+    # so the control movement above is not mistaken for evidence movement.
+    if comparison.catalog_drift and comparison.before_catalog and comparison.after_catalog:
+        console.print(
+            "[status.warn]Catalog changed:[/status.warn] baseline was evaluated against "
+            f"{_describe_catalog(comparison.before_catalog)}; candidate against "
+            f"{_describe_catalog(comparison.after_catalog)}. Control changes marked "
+            "'(catalog)' may come from the catalog rather than the evidence."
+        )
+    elif comparison.catalog_unknown:
+        missing = [
+            side
+            for side, catalog in (
+                ("baseline", comparison.before_catalog),
+                ("candidate", comparison.after_catalog),
             )
+            if catalog is None
+        ]
+        console.print(
+            f"[status.warn]Catalog unknown:[/status.warn] the {' and '.join(missing)} bundle "
+            "records no control catalog (made before catalog provenance was recorded). "
+            "Control changes cannot be attributed to the evidence rather than to a "
+            "catalog change."
+        )
+
+    # EPSS scores are not comparable across model versions: v5 re-fits
+    # the model rather than re-scoring under the old one, so exposure
+    # can appear to move when only the model changed. Saying so is the
+    # difference between a diff a reader can act on and one that
+    # quietly misleads.
+    if comparison.epss_model_drift:
+        console.print(
+            "[status.warn]EPSS model drift:[/status.warn] baseline used "
+            f"{escape(', '.join(comparison.before_epss_model_versions))}; candidate used "
+            f"{escape(', '.join(comparison.after_epss_model_versions))}. "
+            "EPSS scores are not comparable across model versions — treat any "
+            "score or risk movement as unexplained until re-enriched under a "
+            "single model."
+        )

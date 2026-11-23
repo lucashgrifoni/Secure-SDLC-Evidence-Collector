@@ -7,7 +7,7 @@ from typing import Annotated, Literal, cast
 
 import typer
 
-from evidence_collector.application.orchestrator import run_pipeline
+from evidence_collector.application.orchestrator import BundleBuildResult, run_pipeline
 from evidence_collector.application.profiles import ReleaseProfile, load_cra_context
 from evidence_collector.cli._builders import build_application, build_release
 from evidence_collector.cli._errors import report_error
@@ -22,6 +22,9 @@ from evidence_collector.cli._render import (
     render_summary,
     warn_outside_artifact_root,
 )
+from evidence_collector.cli._run_view import render_run_view
+from evidence_collector.cli._state import console
+from evidence_collector.cli._terminal import uses_layout
 from evidence_collector.collectors.github import GitHubCollector, GitHubCollectorConfig
 from evidence_collector.domain.models import NormalizedEvidence
 from evidence_collector.paths import relative_to_root
@@ -274,9 +277,19 @@ def register(app: typer.Typer) -> None:
             cra_context=cra_context,
             fedramp_class=cast(Literal["A", "B", "C", "D"] | None, fedramp_class),
         )
-        render_summary(result)
-        render_collection_errors(result)
-        if result.collection_report is not None:
-            render_ignored_artifacts(result.collection_report.ignored)
+        exit_code = fail_on_exit_code(result.bundle.summary.release_status, fail_on)
+        if uses_layout(console):
+            # Warnings first, so the verdict block ends the output with the exit code.
+            _render_warnings(result)
+            render_run_view(console, result, exit_code)
+        else:
+            render_summary(result)
+            _render_warnings(result)
 
-        raise typer.Exit(code=fail_on_exit_code(result.bundle.summary.release_status, fail_on))
+        raise typer.Exit(code=exit_code)
+
+
+def _render_warnings(result: BundleBuildResult) -> None:
+    render_collection_errors(result)
+    if result.collection_report is not None:
+        render_ignored_artifacts(result.collection_report.ignored)

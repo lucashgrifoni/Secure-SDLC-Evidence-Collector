@@ -227,6 +227,33 @@ are the same.
   pipe or a file, the bytes are the same as before. Texts and exit codes are
   unchanged.
 
+### CLI output redesign
+
+The new layout appears only on an interactive colour terminal. With
+`NO_COLOR` or `TERM=dumb` set, or when the output goes to a pipe or a file,
+`run`, `compare` and `doctor` print the same tables as before, byte for byte.
+`--json-logs` events, `compare --format json`, `doctor --json`, `bundle.json`
+and exit codes do not change. `FORCE_COLOR` makes Rich treat the output as a
+terminal, so a CI log with it set gets the new layout; parse `bundle.json` or
+the JSON outputs rather than the terminal text.
+
+- `run` starts with the verdict, the application, the release and the short
+  commit, then the meaning of the verdict. Coverage and evidence strength are
+  bars with their number; the strength line says how many controls rest on
+  tool output and how many on hand-written attestations. Missing critical and
+  high evidence is listed one item per line with its control and evidence
+  type, followed by the next step, the files written (`summary.html` first)
+  and the exit code. Collection warnings now print before this block.
+- `compare` starts with the verdict before and after and the direction of the
+  change, then the score deltas, the number of improved, regressed and
+  unchanged controls, and one line per control that moved. Unchanged
+  controls are folded into a single line.
+- `doctor` separates required checks from optional ones. An optional token or
+  tool that is not set shows a dash instead of a green mark, and the last
+  line says how many optional items are not set.
+- On the legacy Windows console, or when the output encoding is not UTF-8,
+  the bars, marks and arrows are printed as ASCII (`#`, `x`, `->`, `^`).
+
 ## 4.2.0
 
 Four behaviours change for pipelines that worked on 4.1.x. The sample release
