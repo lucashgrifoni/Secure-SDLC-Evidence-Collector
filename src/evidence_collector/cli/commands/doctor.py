@@ -8,9 +8,11 @@ from typing import Annotated
 import typer
 from rich.table import Table
 
+from evidence_collector.cli._doctor_view import render_doctor_view
 from evidence_collector.cli._logging import emit_event
 from evidence_collector.cli._preflight import doctor_checks, doctor_payload
 from evidence_collector.cli._state import console, is_json_logs
+from evidence_collector.cli._terminal import uses_layout
 
 # The checks live in `_preflight`, which imports the standard library only, so
 # they still run when a dependency this module needs is missing.
@@ -40,6 +42,8 @@ def register(app: typer.Typer) -> None:
             emit_event("doctor_checked", **doctor_payload(results))
         elif json_output:
             typer.echo(json.dumps(doctor_payload(results), indent=2))
+        elif uses_layout(console):
+            render_doctor_view(console, results)
         else:
             table = Table(title="sdlc-evidence doctor", show_header=True)
             table.add_column("Check")
