@@ -21,7 +21,7 @@ gitpage/
     css/
       styles.css
     js/
-      main.js         # reveal, counters, meters, tilt, motion toggle, active nav, small-screen menu
+      main.js         # reveal, counters, meters, tilt, motion toggle, active nav, small-screen menu, copy button
       scene.js        # hero 3D scene (Evidence Core + particles + streams)
   tools/
     page_facts.py     # injects and checks the CLI facts at Pages build time (not published)
@@ -62,7 +62,7 @@ The site is published by `.github/workflows/deploy-github-pages.yml` on every pu
 
 ### CLI facts
 
-The version badge and footer, the hero numbers, the scoring example (`payments-api 2026.04.10`, the sample release without its rollback plan and artifact signature), the `bundle.json` excerpt and the evidence-type count are elements marked `data-fact="..."` or `data-fact-attrs="..."`. The workflow runs the CLI, then:
+The version badge and footer, the sample release card and its control count in the steps row, the scoring example (`payments-api 2026.04.10`, the sample release without its rollback plan and artifact signature), the `bundle.json` excerpt and the evidence-type count are elements marked `data-fact="..."` or `data-fact-attrs="..."`. The workflow runs the CLI, then:
 
 ```bash
 python gitpage/tools/page_facts.py inject --page site/index.html --sample site/evidence/bundle.json \
@@ -85,7 +85,7 @@ Defined as CSS variables in `assets/css/styles.css`:
 
 ## 3D / 4D effects implemented
 
-- **Evidence Core** in the hero: central icosahedron with wireframe + halo + pulse, surrounded by three orbital rings holding 11 nodes that represent evidence sources.
+- **Evidence Core** in the hero's right column: central icosahedron with wireframe + halo + pulse, surrounded by three orbital rings holding 11 nodes that represent evidence sources.
 - **Particle field** with ~240 particles drifting on a sphere, with **dynamic lines** connecting nearby particles (visual lineage).
 - **Lineage streams**: 14 "packets" flowing from the core to the orbital nodes, reinforcing the raw -> normalized -> assertion metaphor over time.
 - **Camera parallax** via `pointermove`, with easing.
@@ -95,7 +95,7 @@ Defined as CSS variables in `assets/css/styles.css`:
 - **Animated SVG pipe** in the model section, with green packets traversing Raw -> Normalized -> Assertion.
 - **Motion toggle** in the nav, plus automatic respect for `prefers-reduced-motion`.
 - **Scene pause** when the tab is inactive (via `visibilitychange`).
-- **Fallback**: if WebGL is not available, the hero canvas is hidden and the rest of the page keeps working.
+- **Fallback**: a static wireframe globe (inline SVG) fills the same box until the scene starts, and stays when WebGL or JavaScript is not available.
 
 ## Accessibility and UX
 
@@ -107,7 +107,9 @@ Defined as CSS variables in `assets/css/styles.css`:
 - Print uses a light stylesheet without the 3D stage or the navigation.
 - The model diagram switches to a stacked text version below 720px and in print.
 - No horizontal overflow on mobile (tested on viewports starting at 320px). The `bundle.json` excerpt wraps instead of scrolling sideways.
-- No text overlapping the canvas: the hero uses `z-index: -1` on the 3D stage and content sits above it.
+- No text over the 3D scene: the hero is two columns, text and buttons on the left and the scene in its own square box on the right (below 960px, under the text). Only the sample release card overlaps the lower part of the scene. The box has a fixed aspect ratio, so the scene loading later does not move anything.
+- The install command is plain text that one click selects in full; the Copy button appears once `main.js` has run (its space is reserved, so nothing shifts) and selects the text instead when the browser refuses clipboard access.
+- `confidence_score` is labelled "Evidence strength" on the sample card and in the scoring example; the `bundle.json` field keeps its name.
 
 ## Editorial stance
 

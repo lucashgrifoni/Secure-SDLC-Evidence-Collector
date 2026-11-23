@@ -268,6 +268,22 @@ the JSON outputs rather than the terminal text.
   removed: [Getting started](getting-started.md) and the signature steps
   cover the same surfaces.
 
+### GitPage redesign
+
+- The project page hero puts the text on the left and the 3D globe on the
+  right, in its own box, so the globe is never behind text or buttons. "Get
+  started" opens the getting-started guide in these docs. The
+  `pip install` command is plain text you can select and copy without
+  JavaScript; a Copy button appears when JavaScript runs.
+- A sample release card over the globe shows the verdict, coverage, evidence
+  strength and evidence count of the sample release, with a link to its
+  evidence summary. The page labels `confidence_score` as "Evidence
+  strength"; the field in `bundle.json` keeps its name.
+- Every number on the page still comes from the CLI when the site is built.
+  The control count in the new Collect, Evaluate, Prove row is one more of
+  those facts, so a build whose page disagrees with the CLI still fails.
+  Nothing in the CLI, `bundle.json`, verdicts or exit codes changes.
+
 ## 4.2.0
 
 Four behaviours change for pipelines that worked on 4.1.x. The sample release

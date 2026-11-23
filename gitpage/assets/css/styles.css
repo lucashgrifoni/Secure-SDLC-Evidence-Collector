@@ -140,6 +140,14 @@ code, .mono {
 /* ========== UTILS ========== */
 .wrap        { max-width: var(--wrap); margin: 0 auto; padding: 0 28px; }
 .wrap--narrow { max-width: var(--wrap-narrow); }
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 .skip-link {
   position: absolute; left: 12px; top: 12px;
@@ -340,20 +348,16 @@ code, .mono {
 html:not(.js) [data-toggle-motion] { visibility: hidden; }
 
 /* ========== HERO ========== */
+/* Text on the left, the 3D scene on the right in its own box, so the scene never
+   sits behind text or buttons. The sample card overlaps the lower part of the
+   scene, and the three steps follow as a row. */
 .hero {
   position: relative;
-  min-height: calc(100svh - var(--nav-h));
-  display: grid;
-  place-items: center;
-  padding: clamp(48px, 8vw, 96px) 0 clamp(72px, 9vw, 120px);
+  padding: clamp(40px, 6vw, 72px) 0 clamp(56px, 7vw, 88px);
   overflow: hidden;
   isolation: isolate;
 }
 .hero__stage { position: absolute; inset: 0; z-index: -1; }
-#hero-canvas {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-}
 .hero__grid {
   position: absolute; inset: 0;
   background-image:
@@ -375,13 +379,14 @@ html:not(.js) [data-toggle-motion] { visibility: hidden; }
 .hero__glow--a { width: 520px; height: 520px; left: -8%;  top: 18%;   background: rgba(8,185,139,.18); }
 .hero__glow--b { width: 640px; height: 640px; right: -18%; bottom: -12%; background: rgba(12,18,76,.55); }
 
-.hero__content {
-  position: relative;
+.hero__inner {
   max-width: var(--wrap);
   margin: 0 auto;
-  padding: 24px 28px;
-  width: 100%;
-  text-align: center;
+  padding: 0 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+  gap: clamp(32px, 4vw, 56px);
+  align-items: center;
 }
 
 .hero__badge {
@@ -395,7 +400,7 @@ html:not(.js) [data-toggle-motion] { visibility: hidden; }
   font-size: .72rem;
   letter-spacing: .12em;
   text-transform: uppercase;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 .hero__badge-dot {
   width: 6px; height: 6px; border-radius: 50%;
@@ -404,92 +409,218 @@ html:not(.js) [data-toggle-motion] { visibility: hidden; }
   animation: pulse 1.6s ease-in-out infinite;
 }
 
-.hero__title { margin: 0 0 24px; font-weight: 400; }
-.hero__line { display: block; }
-.hero__line--accent {
+.hero__title {
+  margin: 0 0 22px;
+  font-size: clamp(2.5rem, 5.4vw, 4.25rem);
+  font-weight: 400;
+  line-height: 1.04;
+}
+.hero__accent {
   font-style: italic;
   font-weight: 300;
   background: linear-gradient(95deg, var(--c-accent-hi), #8defc6 60%, var(--c-accent));
   -webkit-background-clip: text;
   background-clip: text;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
   color: transparent;
 }
 
 .hero__lede {
-  max-width: 720px;
-  margin: 0 auto 36px;
+  max-width: 52ch;
+  margin: 0 0 28px;
   color: var(--c-text-lo);
-  font-size: clamp(1rem, 1.25vw, 1.12rem);
+  font-size: clamp(1rem, 1.3vw, 1.15rem);
   line-height: 1.6;
 }
 .hero__lede strong { color: var(--c-text-hi); font-weight: 500; }
-.hero__lede em { color: var(--c-text-hi); font-style: italic; font-weight: 300; }
 
 .hero__ctas {
-  display: inline-flex; gap: 12px;
-  flex-wrap: wrap; justify-content: center;
-  margin-bottom: 56px;
+  display: flex; gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
 }
 
-/* Hero stats — slimmer, more editorial */
-.hero__stats {
-  margin: 0 auto;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0;
-  max-width: 880px;
-  border: 1px solid var(--b-1);
-  border-radius: var(--r-3);
-  background: linear-gradient(180deg, rgba(12,18,76,.55), rgba(7,11,50,.45));
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  overflow: hidden;
-}
-.hero__stats > div {
-  padding: 18px 22px;
-  text-align: left;
-  border-right: 1px solid var(--b-1);
-}
-.hero__stats > div:last-child { border-right: none; }
-.hero__stats dt {
-  font-family: var(--f-mono);
-  font-size: .68rem;
-  color: var(--c-text-xlo);
-  text-transform: uppercase;
-  letter-spacing: .15em;
-  margin: 0 0 8px;
-}
-.hero__stats dd {
+/* Install command: plain selectable text; one click selects all of it. The
+   Copy button needs JavaScript, so it stays hidden (keeping its space) until
+   main.js has run. */
+.cmd {
+  display: inline-flex; align-items: center; gap: 12px;
+  max-width: 100%;
   margin: 0;
-  font-family: var(--f-display);
-  font-size: 1.6rem;
-  font-weight: 400;
-  letter-spacing: -0.02em;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--b-2);
+  border-radius: var(--r-3);
+  background: var(--s-3);
+  font-family: var(--f-mono);
+  font-size: .88rem;
   color: var(--c-text-hi);
 }
-
-.hero__sample {
-  max-width: 880px;
-  margin: 14px auto 0;
+.cmd__prompt { color: var(--c-accent); }
+.cmd__text {
+  min-width: 0;
+  font-size: inherit;
+  overflow-wrap: anywhere;
+  user-select: all;
+  -webkit-user-select: all;
+}
+.cmd__copy {
+  flex: none;
+  min-width: 9ch;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid var(--b-3);
+  border-radius: var(--r-2);
+  background: transparent;
+  color: var(--c-text-lo);
   font-family: var(--f-mono);
   font-size: .72rem;
-  letter-spacing: .04em;
+  font-weight: 500;
+  letter-spacing: .06em;
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+}
+.cmd__copy:hover { color: var(--c-text-hi); border-color: var(--c-accent); }
+.cmd__copy:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+html:not(.js) .cmd__copy { visibility: hidden; }
+
+.hero__visual {
+  width: 100%;
+  max-width: 480px;
+  justify-self: end;
+  display: grid;
+}
+.hero__globe {
+  position: relative;
+  aspect-ratio: 1;
+  mask-image: radial-gradient(circle at center, #000 58%, transparent 72%);
+  -webkit-mask-image: radial-gradient(circle at center, #000 58%, transparent 72%);
+}
+#hero-canvas,
+.hero__globe-fallback {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+}
+/* Shown until the 3D scene runs, and instead of it without WebGL or JavaScript. */
+.hero__globe-fallback {
+  fill: none;
+  stroke: var(--c-accent);
+  stroke-opacity: .5;
+  stroke-width: 1;
+}
+.hero__globe.is-live .hero__globe-fallback { display: none; }
+
+.sample-card {
+  position: relative;
+  margin: -40% 6% 0;
+  padding: 18px 20px;
+  border: 1px solid var(--b-accent);
+  border-radius: var(--r-3);
+  background: rgba(12,18,76,.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-card);
+}
+.sample-card__kicker {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: .68rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
   color: var(--c-text-lo);
 }
+.sample-card__verdict { margin: 6px 0 0; }
+/* .chip.verdict outranks the chip rules further down, which only set the color here. */
+.chip.verdict {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--f-display);
+  font-size: 1.9rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-transform: capitalize;
+}
+/* The icon follows the status class page_facts.py writes, so the verdict does not rely on color alone. */
+.verdict::before {
+  content: "";
+  width: .85em; height: .85em;
+  background-color: currentColor;
+  -webkit-mask: var(--verdict-icon) center / contain no-repeat;
+  mask: var(--verdict-icon) center / contain no-repeat;
+}
+.verdict.chip--ready       { --verdict-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.4'%3E%3Ccircle cx='8' cy='8' r='6.6'/%3E%3Cpath d='M4.6 8.4l2.3 2.3 4.5-5'/%3E%3C/svg%3E"); }
+.verdict.chip--conditional { --verdict-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.4'%3E%3Ccircle cx='8' cy='8' r='6.6'/%3E%3Cpath d='M8 4.5v4.2M8 10.8v.8'/%3E%3C/svg%3E"); }
+.verdict.chip--not-ready   { --verdict-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.4'%3E%3Ccircle cx='8' cy='8' r='6.6'/%3E%3Cpath d='M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8'/%3E%3C/svg%3E"); }
 
-.hero__hint {
-  margin-top: 52px;
-  display: inline-flex; flex-direction: column; align-items: center; gap: 10px;
-  color: var(--c-text-xlo);
+.sample-card__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 0;
+}
+/* A label that wraps to two lines keeps its value on the same baseline as the others. */
+.sample-card__stats > div {
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.sample-card__stats dt {
   font-family: var(--f-mono);
-  font-size: .68rem; letter-spacing: .25em; text-transform: uppercase;
+  font-size: .66rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--c-text-lo);
 }
-.hero__hint-line {
-  width: 1px; height: 44px;
-  background: linear-gradient(180deg, transparent, var(--c-accent), transparent);
-  animation: hintSlide 2.6s ease-in-out infinite;
+.sample-card__stats dd {
+  margin: 2px 0 0;
+  font-family: var(--f-display);
+  font-size: 1.3rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-hi);
 }
+.sample-card__link {
+  display: inline-flex; align-items: center;
+  min-height: 24px;
+  margin-top: 10px;
+  font-family: var(--f-mono);
+  font-size: .78rem;
+}
+
+.steps {
+  width: calc(100% - 56px);
+  max-width: calc(var(--wrap) - 56px);
+  margin: clamp(40px, 5vw, 56px) auto 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--b-1);
+  border: 1px solid var(--b-1);
+  border-radius: var(--r-4);
+  overflow: hidden;
+}
+.steps__item {
+  display: grid; align-content: start; gap: 4px;
+  padding: 20px 22px;
+  background: var(--c-navy);
+}
+.steps__kicker {
+  font-family: var(--f-mono);
+  font-size: .7rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--c-accent);
+}
+.steps__title {
+  font-family: var(--f-display);
+  font-size: 1.08rem;
+  font-weight: 500;
+  color: var(--c-text-hi);
+}
+.steps__text { font-size: .93rem; color: var(--c-text-lo); }
 
 /* ========== SECTION BASE ========== */
 .section {
@@ -1154,12 +1285,6 @@ a.output-card__file:focus-visible { outline: 2px solid var(--c-accent); outline-
   0%, 100% { opacity: .55; transform: scale(1); }
   50%      { opacity: 1;   transform: scale(1.25); }
 }
-@keyframes hintSlide {
-  0%   { transform: scaleY(0); transform-origin: top;    opacity: .2; }
-  50%  { transform: scaleY(1); transform-origin: top;    opacity: 1; }
-  51%  { transform: scaleY(1); transform-origin: bottom; }
-  100% { transform: scaleY(0); transform-origin: bottom; opacity: .2; }
-}
 @keyframes pipeFlow { to { stroke-dashoffset: -40; } }
 @keyframes packetA {
   0%   { transform: translate(170px, 150px); opacity: 0; }
@@ -1183,14 +1308,14 @@ a.output-card__file:focus-visible { outline: 2px solid var(--c-accent); outline-
 }
 @media (max-width: 960px) {
   .scoring { grid-template-columns: 1fr; }
-  .hero__stats { grid-template-columns: repeat(2, 1fr); }
-  .hero__stats > div:nth-child(2) { border-right: none; }
-  .hero__stats > div:nth-child(1), .hero__stats > div:nth-child(2) { border-bottom: 1px solid var(--b-1); }
+  .hero__inner { grid-template-columns: 1fr; }
+  .hero__visual { justify-self: center; max-width: 440px; }
 }
 @media (max-width: 720px) {
   .model__svg { display: none; }
   .model__stack { display: grid; }
   .model__stage { padding: 20px; }
+  .steps { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
   /* Hidden visually but kept as the brand link's accessible name. */
@@ -1202,18 +1327,12 @@ a.output-card__file:focus-visible { outline: 2px solid var(--c-accent); outline-
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  .hero { padding-bottom: 48px; }
-  .hero__content { padding: 16px; }
-  .hero__stats { grid-template-columns: 1fr; }
-  .hero__stats > div {
-    border-right: none;
-    border-bottom: 1px solid var(--b-1);
-    padding: 14px 18px;
-  }
-  .hero__stats > div:last-child { border-bottom: none; }
-  .hero__stats dd { font-size: 1.35rem; }
-  .hero__ctas .btn { width: 100%; justify-content: center; }
-  .hero__ctas { width: 100%; }
+  .hero { padding-top: 32px; padding-bottom: 48px; }
+  .hero__inner { padding: 0 16px; }
+  .steps { width: calc(100% - 32px); }
+  .cmd { font-size: .8rem; }
+  .sample-card { margin-inline: 0; padding: 16px; }
+  .sample-card__stats { gap: 8px; }
   .pain-list { grid-template-columns: 1fr; border-left: none; border-top: 1px solid var(--b-1); }
   .status-card { grid-template-columns: 1fr; gap: 10px; justify-items: start; }
   .pain-list li { border-right: none; }
@@ -1228,7 +1347,6 @@ a.output-card__file:focus-visible { outline: 2px solid var(--c-accent); outline-
     scroll-behavior: auto !important;
   }
   [data-reveal] { opacity: 1; transform: none; }
-  .hero__hint-line { animation: none; opacity: .4; }
 }
 
 [data-motion="off"] *,
@@ -1250,14 +1368,19 @@ a.output-card__file:focus-visible { outline: 2px solid var(--c-accent); outline-
     --c-accent-hi: #067a5c;
   }
   body { background: #fff; color: var(--c-text); }
-  .nav, .skip-link, .hero__stage, .hero__hint, .hero__ctas, .close__ctas { display: none !important; }
+  .nav, .skip-link, .hero__stage, .hero__globe, .hero__ctas, .cmd__copy, .close__ctas { display: none !important; }
   [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
   .meter__bar { width: var(--w, 0) !important; transition: none !important; }
-  .hero { min-height: 0; padding: 24px 0; }
-  .hero__line--accent { background: none; color: var(--c-accent-hi); }
+  .hero { padding: 24px 0; }
+  .hero__inner { grid-template-columns: 1fr; }
+  .hero__visual { justify-self: start; }
+  .hero__accent { background: none; color: var(--c-accent-hi); }
+  .sample-card { margin: 0; backdrop-filter: none; box-shadow: none; }
+  .steps, .steps__item { background: none; }
+  .steps__kicker { color: var(--c-accent-hi); }
   .hero__badge { color: var(--c-text-hi); }
   .section, .section--alt { padding: 28px 0; background: none; }
-  .hero__stats, .scoring__card, .close, .foot, .model__stage, .preview { background: none; }
+  .cmd, .sample-card, .scoring__card, .close, .foot, .model__stage, .preview { background: none; }
   /* The diagram's labels would print at about 6pt; the text version stays readable. */
   .model__svg { display: none; }
   .model__stack { display: grid; }

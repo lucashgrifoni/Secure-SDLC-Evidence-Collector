@@ -421,6 +421,8 @@
   // Kick off
   resize();
   animate();
+  // The scene now covers the box, so the static outline drawn for no-WebGL can go.
+  container.classList.add("is-live");
 
   // Expose a tiny API
   window.__hero3D = {
