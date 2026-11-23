@@ -254,6 +254,20 @@ the JSON outputs rather than the terminal text.
 - On the legacy Windows console, or when the output encoding is not UTF-8,
   the bars, marks and arrows are printed as ASCII (`#`, `x`, `->`, `^`).
 
+### Docs site redesign
+
+- The site navigation is grouped by task in tabs: Start, Integrate,
+  Understand the output, Operate, Maturity and Architecture decisions. Every
+  page keeps its URL, so existing links and bookmarks still work.
+- The site follows the system theme by default. The header toggle switches
+  to light, then dark, then back to the system theme.
+- The home page is new: the install command, one card per way to run the
+  collector, the three verdicts with their exit codes, and links grouped by
+  task. The signature verification steps stay on the home page, at the same
+  `#verifying-signatures` anchor. The table of where each surface lives was
+  removed: [Getting started](getting-started.md) and the signature steps
+  cover the same surfaces.
+
 ## 4.2.0
 
 Four behaviours change for pipelines that worked on 4.1.x. The sample release

@@ -190,3 +190,8 @@ def test_action_docs_list_every_bundled_catalog() -> None:
         assert name in action, f"action.yml does not list {name}"
     for flag in ("cra-context", "fedramp-class"):
         assert f"`{flag}`" in docs
+
+
+def test_docs_home_keeps_the_signature_anchor_other_pages_link_to() -> None:
+    """SECURITY.md, comparison.md and the OSPS self-assessment link to it."""
+    assert "\n## Verifying signatures\n" in _DOCS_INDEX.read_text(encoding="utf-8")

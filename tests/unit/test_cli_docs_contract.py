@@ -357,3 +357,28 @@ def test_every_adr_is_in_the_adr_index_and_the_site_nav() -> None:
     for adr in adrs:
         assert f"./{adr.name}" in index, f"docs/adr/README.md does not link {adr.name}"
         assert f"adr/{adr.name}" in nav, f"mkdocs.yml nav does not list {adr.name}"
+
+
+def _nav_pages(entries: list[Any]) -> list[str]:
+    pages: list[str] = []
+    for entry in entries:
+        for target in entry.values():
+            pages += _nav_pages(target) if isinstance(target, list) else [target]
+    return pages
+
+
+def test_every_published_page_is_in_the_site_nav() -> None:
+    """Regrouping the nav into tabs must not drop a page from the menus.
+
+    mkdocs --strict only reports an unlisted page as INFO, so a page left out
+    of the nav would still build and be reachable by URL alone.
+    """
+    config = yaml.safe_load(Path("mkdocs.yml").read_text(encoding="utf-8"))
+    excluded = tuple(line.strip() for line in config["exclude_docs"].splitlines() if line.strip())
+    published = {
+        page.relative_to("docs").as_posix()
+        for page in Path("docs").rglob("*.md")
+        if not page.relative_to("docs").as_posix().startswith(excluded)
+    }
+    missing = published - set(_nav_pages(config["nav"]))
+    assert not missing, f"pages missing from the mkdocs.yml nav: {sorted(missing)}"

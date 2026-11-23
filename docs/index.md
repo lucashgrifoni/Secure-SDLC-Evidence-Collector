@@ -1,47 +1,142 @@
-# Secure SDLC Evidence Collector — Technical documentation
+---
+hide:
+  - navigation
+---
 
-This is the technical site for the Secure SDLC Evidence Collector.
-The product README at the repository root tells you **what the tool
-does**; this site tells you **how to integrate it, extend it, and
-operate it in a real pipeline**.
+# Documentation
 
-## What you'll find here
+Collect the security evidence of a release, check it against a control
+catalog, and get a verdict you can gate a pipeline on.
+{ .home-lede }
 
-- **[Bundle schema reference](./bundle_schema.md)** — the canonical
-  shape of `bundle.json` that pipelines consume and policy engines
-  validate.
-- **[JSON logs event reference](./json-logs.md)** — every NDJSON event
-  the CLI emits under `--json-logs`, with its payload keys.
-- **[Upgrading](./upgrading.md)** — changes to verdicts, exit codes and
-  outputs in each release, with what to do about each.
-- **[GitHub Action documentation](./github_action.md)** — inputs,
-  outputs, examples, and recipes for using the action in your release
-  workflows.
-- **[Release readiness checklist](./release-readiness.md)** — the
-  go/no-go criteria this project checks before tagging one of its own
-  releases. How `ready` / `conditional` / `not_ready` is decided, and
-  the exit codes to gate a pipeline on, are in the README's
-  [Exit codes](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector#exit-codes)
-  section and [Limitations](./limitations.md).
-- **[Limitations](./limitations.md)** — what the collector explicitly
-  does not do, so adopters do not assume coverage that is not there.
-- **[Traceability matrix](./traceability.md)** — control-to-evidence
-  mapping with NIST SSDF and OWASP SAMM coordinates.
-- **[Maturity roadmap](./MATURITY_ROADMAP.md)** — the hardening and
-  adoption plan, with what has shipped and what is deferred.
-- **[Architecture decision records](./adr/README.md)** — the
-  non-obvious decisions that shape this project and the reasoning
-  behind them.
+<div class="home-install" markdown>
 
-## Where the product lives
+```text
+python -m pip install secure-sdlc-evidence-collector
+```
 
-| Surface                              | Location                                                                                  |
-|--------------------------------------|-------------------------------------------------------------------------------------------|
-| CLI (`sdlc-evidence`)                | `src/evidence_collector/cli/main.py`                                                      |
-| GitHub Action                        | [`action.yml`](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/action.yml) |
-| Container image                      | `publish-pypi.yml` builds and signs `ghcr.io/lucashgrifoni/secure-sdlc-evidence-collector` (multi-arch, cosign keyless + SBOM attestation) on tag push. Every release since `2.0.0` is published and verifiable, except `3.0.0`, whose pipeline failed before anything was signed. |
-| Wheel + sdist                        | Built and signed by `publish-pypi.yml`; PyPI publishing depends on the repository's Trusted Publisher configuration in PyPI. |
-| Bundle JSON Schema                   | Exported by `sdlc-evidence schema`; validated in CI on every run.                         |
+</div>
+
+## Start in five minutes
+
+Each path goes from install to a first verdict in
+[Getting started](getting-started.md).
+
+<div class="grid cards home-paths" markdown>
+
+-   <span class="home-kicker">CLI</span>
+
+    **[Run it locally](getting-started.md#cli-with-pip)**
+
+    Install with pip, run the sample release and read the verdict. Needs
+    Python 3.12 or 3.13.
+
+-   <span class="home-kicker">GitHub Actions</span>
+
+    **[Add the Action](getting-started.md#github-action)**
+
+    One step after your scanners. The verdict lands in the job summary;
+    start in observe mode with `fail-on: none`.
+
+-   <span class="home-kicker">GitLab CI/CD</span>
+
+    **[Use the component](getting-started.md#gitlab-cicd-catalog-component)**
+
+    Include it from the CI/CD Catalog after your scanner jobs. It fails
+    the job on `conditional` by default.
+
+-   <span class="home-kicker">Docker</span>
+
+    **[Run the image](getting-started.md#docker-image)**
+
+    No Python on the host. Build the image from the repository and mount
+    your scanner output.
+
+</div>
+
+## Read the verdict
+
+Every run ends with one of three verdicts. `run`, `evaluate` and `bundle`
+turn it into the exit code below.
+
+<div class="grid cards home-verdicts" markdown>
+
+-   <span class="verdict-pill verdict-pill--ok">ready</span>
+
+    Every control is met, waived or not applicable.
+
+    <span class="verdict-exit">exit 0</span>
+
+-   <span class="verdict-pill verdict-pill--warn">conditional</span>
+
+    No critical control lacks required evidence, but a high or medium control
+    does, or recommended evidence is missing.
+
+    <span class="verdict-exit">exit 0, or 1 with --fail-on conditional</span>
+
+-   <span class="verdict-pill verdict-pill--bad">not_ready</span>
+
+    A critical control lacks required evidence.
+
+    <span class="verdict-exit">exit 2</span>
+
+</div>
+
+A failure that is not a verdict, such as unreadable input, exits `3`. The
+GitLab component gates on `conditional` by default; the CLI, the Action and
+the reusable workflow gate on `not_ready`. The full matrix is in the README's
+[Exit codes](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector#exit-codes)
+section, and what a verdict does not prove is in [Limitations](limitations.md).
+
+## Find it by task
+
+<div class="grid home-tasks" markdown>
+
+<div markdown>
+
+**Integrate**
+
+- [GitHub Action inputs and outputs](github_action.md)
+- [Run it as a reusable workflow](reusable_workflow.md)
+- [Write the attestations no scanner produces](getting-started.md#add-your-own-attestations)
+- [Evidence profile migration](evidence-profile-migration.md)
+
+</div>
+
+<div markdown>
+
+**Understand the output**
+
+- [`bundle.json` schema](bundle_schema.md)
+- [Events in `--json-logs`](json-logs.md)
+- [What the collector does not do](limitations.md)
+- [Control to evidence traceability](traceability.md)
+
+</div>
+
+<div markdown>
+
+**Operate**
+
+- [Upgrading between versions](upgrading.md)
+- [Verify a release signature](#verifying-signatures)
+- [Roll back a release](rollback.md)
+- [Troubleshooting](troubleshooting.md)
+
+</div>
+
+<div markdown>
+
+**Plan**
+
+- [Maturity roadmap](MATURITY_ROADMAP.md)
+- [Architecture decisions](adr/README.md)
+- [Release readiness checklist](release-readiness.md)
+- [Comparison with alternatives](comparison.md)
+
+</div>
+
+</div>
 
 ## Verifying signatures
 

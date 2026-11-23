@@ -34,6 +34,8 @@ theme:
     code: JetBrains Mono
   features:
     - navigation.instant
+    - navigation.tabs
+    - navigation.path
     - navigation.sections
     - navigation.expand
     - navigation.top
@@ -41,7 +43,13 @@ theme:
     - search.suggest
     - content.code.copy
     - content.tabs.link
+  # The first entry follows the operating system; the toggle then cycles
+  # through light and dark and back to the system choice.
   palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
       primary: custom
@@ -54,8 +62,8 @@ theme:
       primary: custom
       accent: custom
       toggle:
-        icon: material/weather-sunny
-        name: Switch to light mode
+        icon: material/brightness-auto
+        name: Follow the system theme
 
 extra_css:
   - stylesheets/extra.css
@@ -64,6 +72,7 @@ markdown_extensions:
   - admonition
   - attr_list
   - def_list
+  - md_in_html
   - footnotes
   - tables
   - toc:
@@ -79,30 +88,36 @@ markdown_extensions:
   - pymdownx.tasklist:
       custom_checkbox: true
 
+# Tabs group the pages by task. Every page keeps its URL; only its place in
+# the navigation moved.
 nav:
   - Home: index.md
-  - Getting started: getting-started.md
-  - Troubleshooting: troubleshooting.md
-  - Bundle schema reference: bundle_schema.md
-  - JSON logs events: json-logs.md
-  - Upgrading: upgrading.md
-  - Evidence profile migration: evidence-profile-migration.md
-  - GitHub Action: github_action.md
-  - Reusable workflow: reusable_workflow.md
-  - Release readiness: release-readiness.md
-  - Rolling back a release: rollback.md
-  - AI evidence: ai-evidence.md
-  - Comparison vs alternatives: comparison.md
-  - GUAC integration: guac.md
-  - Control gaps as SARIF: sarif.md
-  - Plugins: plugins.md
-  - Policy snippets: policies.md
-  - Limitations: limitations.md
-  - Traceability: traceability.md
+  - Start:
+      - Getting started: getting-started.md
+      - Troubleshooting: troubleshooting.md
+      - Upgrading: upgrading.md
+  - Integrate:
+      - GitHub Action: github_action.md
+      - Reusable workflow: reusable_workflow.md
+      - Evidence profile migration: evidence-profile-migration.md
+  - Understand the output:
+      - Bundle schema reference: bundle_schema.md
+      - JSON logs events: json-logs.md
+      - Limitations: limitations.md
+      - Traceability: traceability.md
+      - Control gaps as SARIF: sarif.md
+      - Comparison vs alternatives: comparison.md
+  - Operate:
+      - Release readiness: release-readiness.md
+      - Rolling back a release: rollback.md
+      - Plugins: plugins.md
+      - Policy snippets: policies.md
+      - AI evidence: ai-evidence.md
+      - GUAC integration: guac.md
   - Maturity:
       - Roadmap: MATURITY_ROADMAP.md
       - OSPS Baseline self-assessment: osps-baseline-self-assessment.md
-  - Repository wiki: openwiki.md
+      - Repository wiki: openwiki.md
   - Architecture decisions:
       - Index: adr/README.md
       - ADR-0001 Pydantic v2: adr/0001-pydantic-v2.md
