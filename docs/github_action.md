@@ -50,7 +50,7 @@ jobs:
 
       # Step 2 — assemble the evidence bundle
       - id: collect
-        uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.2.0 # x-release-please-version
+        uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.3.0 # x-release-please-version
         with:
           application: "payments-api"
           release-id: ${{ github.ref_name }}
@@ -106,7 +106,7 @@ on:
 
 # ...same steps as above, with:
       - id: collect
-        uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.2.0 # x-release-please-version
+        uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.3.0 # x-release-please-version
         with:
           application: "payments-api"
           release-id: pr-${{ github.event.number }}
@@ -130,7 +130,7 @@ on:
   pull_request:
 
 # ...same steps as above, with:
-      - uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.2.0 # x-release-please-version
+      - uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.3.0 # x-release-please-version
         with:
           application: "payments-api"
           release-id: pr-${{ github.event.number }}
@@ -193,7 +193,7 @@ Set both to `""` when you compare digests across runs.
 ### Applying waivers in CI
 
 ```yaml
-- uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.2.0 # x-release-please-version
+- uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.3.0 # x-release-please-version
   with:
     application: payments-api
     release-id: ${{ github.ref_name }}
@@ -238,7 +238,7 @@ failed, because a `not_ready` release is the one with gaps to show:
 
 ```yaml
       - id: collect
-        uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.2.0 # x-release-please-version
+        uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.3.0 # x-release-please-version
         with:
           application: "payments-api"
           release-id: ${{ github.ref_name }}
@@ -309,7 +309,7 @@ permissions:
 
 steps:
   - id: evidence
-    uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.2.0 # x-release-please-version
+    uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.3.0 # x-release-please-version
     with:
       application: payments-api
       release-id: ${{ github.ref_name }}

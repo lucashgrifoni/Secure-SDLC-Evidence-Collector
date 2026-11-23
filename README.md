@@ -16,7 +16,7 @@ Collects the evidence a release already produces and tells you whether it proves
 
 | Current release | Default catalog | Outputs | Python |
 |---|---|---|---|
-| v4.2.0 <!-- x-release-please-version --> | 13 controls | `bundle.json`, `report.md`, `summary.html` | 3.12+ |
+| v4.3.0 <!-- x-release-please-version --> | 13 controls | `bundle.json`, `report.md`, `summary.html` | 3.12+ |
 
 Use it when an auditor, a release manager or an AppSec lead asks "prove this release is ready" and the answer today is a checklist of screenshots. It is not a scanner and it does not certify compliance.
 
@@ -75,7 +75,7 @@ Drop `--attestations-dir` to see `not_ready` and the missing critical evidence. 
 GitHub Action:
 
 ```yaml
-- uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.2.0 # x-release-please-version
+- uses: lucashgrifoni/Secure-SDLC-Evidence-Collector@v4.3.0 # x-release-please-version
   with:
     application: payments-api
     release-id: ${{ github.ref_name }}
@@ -91,7 +91,7 @@ pre-commit, to validate waiver files and smoke-test the pinned release:
 ```yaml
 repos:
   - repo: https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector
-    rev: v4.2.0  # x-release-please-version
+    rev: v4.3.0  # x-release-please-version
     hooks:
       - id: sdlc-evidence-validate-exceptions
       - id: sdlc-evidence-doctor
