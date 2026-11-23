@@ -109,7 +109,7 @@ Defined as CSS variables in `assets/css/styles.css`:
 - No horizontal overflow on mobile (tested on viewports starting at 320px). The `bundle.json` excerpt wraps instead of scrolling sideways.
 - No text over the 3D scene: the hero is two columns, text and buttons on the left and the scene in its own square box on the right (below 960px, under the text). Only the sample release card overlaps the lower part of the scene. The box has a fixed aspect ratio, so the scene loading later does not move anything.
 - The install command is plain text that one click selects in full; the Copy button appears once `main.js` has run (its space is reserved, so nothing shifts) and selects the text instead when the browser refuses clipboard access.
-- `confidence_score` is labelled "Evidence strength" on the sample card and in the scoring example, as in the report and summary.
+- `confidence_score` is labelled "Evidence strength" on the sample card and in the scoring example; the `bundle.json` field keeps its name.
 
 ## Editorial stance
 

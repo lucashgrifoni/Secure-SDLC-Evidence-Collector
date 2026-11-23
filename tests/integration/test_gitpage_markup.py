@@ -15,8 +15,12 @@ from itertools import pairwise
 from pathlib import Path
 
 import pytest
+import yaml
 
-PAGE = Path(__file__).resolve().parents[2] / "gitpage" / "index.html"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+PAGE = REPO_ROOT / "gitpage" / "index.html"
+# The Pages workflow builds the mkdocs site under this path of the published site.
+DOCS_PREFIX = "docs/"
 HEADINGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
 
 Attributes = dict[str, str | None]
@@ -157,6 +161,40 @@ def test_page_has_no_inline_script(page: _Page) -> None:
 def test_get_started_leads_to_the_docs_guide(page: _Page) -> None:
     targets = [attrs.get("href") for attrs, text in page.links if text == "Get started"]
     assert targets == ["docs/getting-started/"]
+
+
+def _nav_files(node: object) -> list[str]:
+    """Every Markdown file named in a mkdocs nav tree."""
+    if isinstance(node, str):
+        return [node] if node.endswith(".md") else []
+    if isinstance(node, dict):
+        return [path for value in node.values() for path in _nav_files(value)]
+    if isinstance(node, list):
+        return [path for item in node for path in _nav_files(item)]
+    return []
+
+
+def _docs_url(markdown_file: str) -> str:
+    """The directory URL mkdocs gives a page, relative to the docs site root."""
+    stem = markdown_file.removesuffix(".md")
+    parent, _, name = stem.rpartition("/")
+    if name in {"index", "README"}:
+        return f"{parent}/" if parent else ""
+    return f"{stem}/"
+
+
+@pytest.mark.integration
+def test_docs_links_point_to_pages_in_the_docs_nav(page: _Page) -> None:
+    """A link into the docs site, Get started included, must not lead to a 404."""
+    config = yaml.safe_load((REPO_ROOT / "mkdocs.yml").read_text(encoding="utf-8"))
+    published = {_docs_url(path) for path in _nav_files(config["nav"])}
+    docs_links = [
+        str(attrs["href"])[len(DOCS_PREFIX) :]
+        for attrs, _ in page.links
+        if str(attrs.get("href") or "").startswith(DOCS_PREFIX)
+    ]
+    assert "getting-started/" in docs_links
+    assert [link for link in docs_links if link not in published] == []
 
 
 @pytest.mark.integration
