@@ -41,11 +41,12 @@ updates:
           - "version-update:semver-major"
 
   # Hash-locked CI requirements (.github/requirements/*.in -> *.txt), generated
-  # by `uv pip compile --universal --generate-hashes`. Dependabot's uv ecosystem
-  # only handles uv.lock, so the pip ecosystem watches these requirement files:
-  # it bumps a pinned version together with its hashes. A full re-lock (new
-  # transitive dependencies) uses the command in each .txt header, and the
-  # `pip check` after every install fails CI if a bump leaves a lock inconsistent.
+  # by `uv pip compile --universal --generate-hashes`. Dependabot's pip updates
+  # recompile them without --universal and drop the platform markers, so the
+  # lock check in CI rejected every one of its pull requests. Version-update
+  # pull requests are off (limit 0); Dependabot still raises alerts for these
+  # files. `make refresh-locks` recompiles them with the recorded command and the
+  # same 7-day cooldown.
   - package-ecosystem: "pip"
     directory: "/.github/requirements"
     schedule:
@@ -53,7 +54,7 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "America/Sao_Paulo"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     labels:
       - "deps"
       - "ci"

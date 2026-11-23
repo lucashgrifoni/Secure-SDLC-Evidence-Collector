@@ -1,4 +1,4 @@
-.PHONY: install install-dev lint format typecheck test test-cov run-example run-self-release clean
+.PHONY: install install-dev lint format typecheck test test-cov run-example run-self-release refresh-locks clean
 
 PY ?= python
 RUFF_TARGETS ?= src tests scripts
@@ -48,6 +48,9 @@ run-self-release:
 		--attestations-dir examples/self_release/attestations \
 		--artifact-root . \
 		--output-dir output/self_release
+
+refresh-locks:  # recompile .github/requirements to the newest releases older than 7 days
+	$(PY) scripts/check_requirement_locks.py --refresh
 
 clean:
 	rm -rf build/ dist/ *.egg-info src/*.egg-info

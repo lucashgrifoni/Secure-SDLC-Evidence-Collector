@@ -58,3 +58,22 @@ def test_a_lock_without_a_recorded_command_is_an_error(tmp_path: Path) -> None:
     (directory / "dev.txt").write_text("click==8.0\n", encoding="utf-8")
     with pytest.raises(ValueError, match="no recorded"):
         check.stale_locks(directory, _uv_writes(""))
+
+
+def test_refresh_upgrades_each_lock_in_place_behind_the_cooldown(tmp_path: Path) -> None:
+    from datetime import UTC, datetime
+
+    directory = _lock_dir(tmp_path, "click==8.0\n")
+    calls: list[tuple[list[str], Path]] = []
+
+    def run(command: Sequence[str], cwd: Path) -> None:
+        calls.append((list(command), cwd))
+
+    names = check.refresh_locks(directory, datetime(2026, 11, 23, tzinfo=UTC), run)
+
+    assert names == ["dev.txt"]
+    command, cwd = calls[0]
+    assert cwd == directory
+    assert command[:3] == ["uv", "pip", "compile"]
+    assert "--universal" in command
+    assert command[-3:] == ["--upgrade", "--exclude-newer", "2026-11-16"]

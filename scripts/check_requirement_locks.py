@@ -7,7 +7,12 @@ the result differs from the committed lock. A lock edited by hand, or
 recompiled without ``--universal`` (dropping platform markers such as
 ``colorama ; sys_platform == 'win32'``), shows up as a difference.
 
-Usage: python scripts/check_requirement_locks.py [requirements-dir]
+With ``--refresh`` it rewrites the locks in place instead: each recorded command
+runs with ``--upgrade`` and ``--exclude-newer`` set to seven days ago, so a
+release younger than a week is not picked up. This replaces Dependabot's pip
+updates for this directory, which recompiled without ``--universal``.
+
+Usage: python scripts/check_requirement_locks.py [--refresh] [requirements-dir]
 """
 
 from __future__ import annotations
@@ -19,7 +24,11 @@ import subprocess
 import sys
 import tempfile
 from collections.abc import Callable, Sequence
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
+# The same delay the Dependabot cooldown applies to the other ecosystems.
+COOLDOWN = timedelta(days=7)
 
 _PREFIX = "#    uv pip compile "
 
@@ -59,8 +68,26 @@ def stale_locks(directory: Path, run: Runner = _run) -> list[str]:
     return problems
 
 
+def refresh_locks(directory: Path, now: datetime, run: Runner = _run) -> list[str]:
+    """Recompile every lock in place to the newest versions older than the cooldown."""
+    cutoff = (now - COOLDOWN).strftime("%Y-%m-%d")
+    refreshed: list[str] = []
+    for lock in sorted(directory.glob("*.txt")):
+        run([*_recorded_command(lock), "--upgrade", "--exclude-newer", cutoff], directory)
+        refreshed.append(lock.name)
+    return refreshed
+
+
 def main(argv: Sequence[str]) -> int:
-    directory = Path(argv[1]) if len(argv) > 1 else Path(".github/requirements")
+    args = list(argv[1:])
+    refresh = "--refresh" in args
+    if refresh:
+        args.remove("--refresh")
+    directory = Path(args[0]) if args else Path(".github/requirements")
+    if refresh:
+        names = refresh_locks(directory, datetime.now(UTC))
+        print(f"Refreshed {len(names)} lock(s): {', '.join(names)}. Review the diff and run CI.")
+        return 0
     problems = stale_locks(directory)
     for diff in problems:
         print(diff)
