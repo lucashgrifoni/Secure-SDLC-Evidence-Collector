@@ -85,8 +85,8 @@ turn it into the exit code below.
 
 A failure that is not a verdict, such as unreadable input, exits `3`. The
 GitLab component gates on `conditional` by default; the CLI, the Action and
-the reusable workflow gate on `not_ready`. The full matrix is in the README's
-[Exit codes](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector#exit-codes)
+the reusable workflow gate on `not_ready`. The full matrix is in the CLI reference's
+[Exit codes](cli-reference.md#exit-codes)
 section, and what a verdict does not prove is in [Limitations](limitations.md).
 
 ## Find it by task

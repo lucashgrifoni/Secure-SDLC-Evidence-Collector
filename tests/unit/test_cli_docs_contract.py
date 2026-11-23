@@ -30,6 +30,9 @@ from evidence_collector.cli._errors import report_error
 from evidence_collector.cli.main import app
 
 _README = Path("README.md")
+# The command list, option groups and exit codes moved out of the README so
+# it stays short; the reference page is now the documented contract.
+_CLI_REFERENCE = Path("docs/cli-reference.md")
 _EVENTS_DOC = Path("docs/json-logs.md")
 _CLI_PACKAGE = Path("src/evidence_collector/cli")
 
@@ -60,10 +63,10 @@ def _options(command: Any) -> list[Any]:
 
 
 def _readme_synopsis() -> dict[str, list[str]]:
-    """Command path -> positional placeholders, from the README's CLI block."""
-    text = _README.read_text(encoding="utf-8")
-    block = re.search(r"## CLI\n+```\n(.*?)```", text, re.DOTALL)
-    assert block, "README.md has no fenced block under '## CLI'"
+    """Command path -> positional placeholders, from the CLI reference's command block."""
+    text = _CLI_REFERENCE.read_text(encoding="utf-8")
+    block = re.search(r"## Commands\n+```\n(.*?)```", text, re.DOTALL)
+    assert block, "docs/cli-reference.md has no fenced block under '## Commands'"
     commands = set(_leaf_commands())
     synopsis: dict[str, list[str]] = {}
     for line in block.group(1).splitlines():
@@ -120,8 +123,8 @@ def _option_names(command: Any) -> set[str]:
     }
 
 
-def _readme_paragraph(starting_with: str) -> str:
-    text = _README.read_text(encoding="utf-8")
+def _reference_paragraph(starting_with: str) -> str:
+    text = _CLI_REFERENCE.read_text(encoding="utf-8")
     start = text.index(starting_with)
     end = text.index("\n\n", start)
     return " ".join(text[start:end].split())
@@ -132,10 +135,10 @@ def test_bundle_help_and_readme_name_every_evaluate_option_bundle_lacks() -> Non
     missing = _option_names(commands["evaluate"]) - _option_names(commands["bundle"])
     assert missing, "bundle now accepts every evaluate option; update the docs"
     bundle_help = commands["bundle"].help or ""
-    readme = _readme_paragraph("`bundle` is a partial alias of `evaluate`")
+    readme = _reference_paragraph("`bundle` is a partial alias of `evaluate`")
     for option in sorted(missing):
         assert option in bundle_help, f"bundle --help does not say it lacks {option}"
-        assert option in readme, f"README does not say bundle lacks {option}"
+        assert option in readme, f"CLI reference does not say bundle lacks {option}"
     assert "Partial alias" in bundle_help.splitlines()[0]
 
 
@@ -149,15 +152,17 @@ def test_repeatable_options_say_so_in_the_help(path: str) -> None:
         )
 
 
-def test_readme_marks_the_repeatable_run_options() -> None:
-    text = _README.read_text(encoding="utf-8")
+def test_reference_marks_the_repeatable_run_options() -> None:
+    text = _CLI_REFERENCE.read_text(encoding="utf-8")
     section = text[text.index("### Ingestion options") : text.index("### GitHub integration")]
     repeatable = [param for param in _options(_leaf_commands()["run"]) if param.multiple]
     assert repeatable, "run no longer has a repeatable option"
     for param in repeatable:
         bullet = re.search(rf"- `{re.escape(param.opts[0])} [^\n]*(?:\n  [^\n]*)*", section)
-        assert bullet, f"README has no bullet for {param.opts[0]}"
-        assert "repeatable" in bullet.group(0), f"README does not mark {param.opts[0]} repeatable"
+        assert bullet, f"CLI reference has no bullet for {param.opts[0]}"
+        assert "repeatable" in bullet.group(0), (
+            f"CLI reference does not mark {param.opts[0]} repeatable"
+        )
 
 
 def _option_help(path: str, option: str) -> str:
@@ -172,10 +177,10 @@ def test_catalog_help_is_the_same_on_every_evaluating_command() -> None:
     assert len(set(helps.values())) == 1, helps
 
 
-def test_fail_on_ready_caveat_is_in_the_help_and_the_readme() -> None:
+def test_fail_on_ready_caveat_is_in_the_help_and_the_reference() -> None:
     for path in ("run", "evaluate"):
         assert "'ready' is accepted and behaves like conditional" in _option_help(path, "--fail-on")
-    readme = _readme_paragraph("- `--fail-on ready|conditional|not_ready`")
+    readme = _reference_paragraph("- `--fail-on ready|conditional|not_ready`")
     assert "`ready` is accepted and behaves like `conditional`" in readme
 
 
@@ -251,14 +256,14 @@ def test_readme_links_into_the_repository_name_files_that_exist() -> None:
     assert [path for path in paths if not Path(path).exists()] == []
 
 
-def test_readme_states_the_fail_on_default_of_the_action_and_the_gitlab_component() -> None:
+def test_reference_states_the_fail_on_default_of_the_action_and_the_gitlab_component() -> None:
     action = yaml.safe_load(Path("action.yml").read_text(encoding="utf-8"))
     component_spec = next(
         yaml.safe_load_all(
             Path("examples/gitlab-component/templates/collect.yml").read_text(encoding="utf-8")
         )
     )
-    readme = " ".join(_README.read_text(encoding="utf-8").split())
+    readme = " ".join(_CLI_REFERENCE.read_text(encoding="utf-8").split())
     action_default = action["inputs"]["fail-on"]["default"]
     component_default = component_spec["spec"]["inputs"]["fail-on"]["default"]
     assert f"GitHub Action (`action.yml`): `fail-on` defaults to `{action_default}`" in readme

@@ -3,10 +3,8 @@
 Changes that can alter what a pipeline sees: verdicts, exit codes, outputs,
 recorded bundle content and CI surface behavior. The newest release is at the
 top. [CHANGELOG.md](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/blob/main/CHANGELOG.md)
-lists every change. The 4.0.0 digest migration is in
-[evidence profile migration](evidence-profile-migration.md); the 3.0.0 changes
-are under "Migrating to 3.0.0" in the
-[README](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector#migrating-to-300).
+lists every change. The [4.0.0](#400) and [3.0.0](#300) migrations are at the
+end of this page.
 
 ## 4.3.0
 
@@ -352,3 +350,103 @@ component instead of letting it be skipped.
 sdlc-evidence vex output/bundle.json --consume supplier.vex.json \
   --product pkg:pypi/requests@2.30.0
 ```
+
+## 4.0.0
+
+The bundle schema stays at 2.1.0 and bundles generated before 4.0.0 keep
+verifying against their own pins. New SBOM metadata and catalog descriptions
+change newly generated structural digests (the sample moves to
+`e859f47511065d3119c73b47b7290aef552fdbfdf9d7b4fc3711cfff8e5fb729`), so review
+and pin a new digest when you regenerate evidence. `run` gains
+`--cra-context` for `--profile cra-2026` and `--fedramp-class` for
+`--profile fedramp-20x`. Details and limits are in
+[evidence profile migration](evidence-profile-migration.md).
+
+## 3.0.0
+
+These changes are observable to existing callers. The first two change exit
+codes and rationale text; the rest change the bundle schema, the `collect`
+output, the API defaults and how an empty catalog is handled.
+
+**1. Input errors now exit `3` everywhere (was `2` on five commands).**
+
+`vex`, `guac`, `statement`, `enrich` and `oscal` returned `2` for a missing or
+malformed bundle — indistinguishable from a `not_ready` release — while
+`verify`, `compare` and `evaluate` already returned `3` for the identical
+input. A CI wrapper needed a per-subcommand table to tell the two apart.
+
+```bash
+# before: had to know which subcommand you were calling
+if [ $code -eq 2 ]; then ... fi   # not_ready? or a broken file? depends
+
+# after: the code alone is enough
+case $code in
+  0) echo "ready" ;;
+  1) echo "conditional" ;;
+  2) echo "not_ready" ;;
+  3) echo "the command could not run — no bundle was produced" ;;
+esac
+```
+
+If you branch on `2` after `vex`/`guac`/`statement`/`enrich`/`oscal`, switch to
+`3`. If you branch on non-zero, nothing changes.
+
+**2. Control rationales are no longer Python `repr`.**
+
+`control_evaluations[*].rationale` rendered lists through Python's `repr`:
+
+```diff
+- Control SSDF-PW.7 is met by evidence ['sast-cfcf7a634b32'].
++ Control SSDF-PW.7 is met by evidence sast-cfcf7a634b32.
+```
+
+The field is free text and the verdict is unchanged, but `rationale` is inside
+the structural hash and inside the in-toto predicate. **Any `verify --expected`
+pin recorded against a 2.x bundle will no longer match**, and a re-signed
+statement over the same inputs carries a different `subject.digest.sha256`.
+
+Regenerate pins with:
+
+```bash
+sdlc-evidence verify path/to/bundle.json
+```
+
+Bundles produced by 2.x are still readable by 3.0.0 — only newly produced ones
+hash differently.
+
+**3. The bundle schema moves from `1.0.0` to `2.1.0`.**
+
+`collection_errors` (2.0.0) lists the inputs that could not be read and is
+omitted when there are none. `catalog` (2.1.0) names the control catalog behind
+the verdict and is always present, so a validator pinned to the `1.0.0` schema
+rejects every new bundle. Validate against the published schema, read
+`collection_errors` with a default, and regenerate `verify --expected` pins,
+since `bundle_version` is part of the structural hash.
+
+**4. `collect --output` writes an object instead of a list.**
+
+```json
+{"evidence": [...], "collection_errors": [...]}
+```
+
+Read `payload["evidence"]`. `evaluate --evidence` accepts both shapes, so files
+written by 2.x still work.
+
+**5. Usage errors exit `3`.**
+
+An unknown flag, a missing required option or a rejected value used to exit
+`2`, the `not_ready` code. They exit `3` now, like every other input error.
+
+**6. The API serves `/docs` and `/openapi.json` only on request.**
+
+Set `SDLC_EVIDENCE_API_DOCS=1`, or pass `expose_docs=True` when embedding the
+app, to serve them.
+
+**7. A catalog with no controls is refused.**
+
+`controls: []` used to evaluate to `ready` because nothing was checked; it now
+exits `3`. A `--catalog` name that is not found on disk still falls back to the
+bundled catalog of the same name. With a `.yaml` name, which could be a local
+file you meant, the run prints a warning saying so; the name without the
+extension (`catalog-ssdf-1.2`) selects the bundled catalog without one, unless a
+file of that name with `.yaml` sits in the working directory.
