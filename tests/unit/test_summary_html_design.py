@@ -161,25 +161,106 @@ def test_the_verdict_class_appears_once_in_the_panel_only(bundle: EvidenceBundle
 
 def test_the_verdict_reads_as_a_word_and_a_heading(bundle: EvidenceBundle) -> None:
     html = bundle_to_html(bundle)
+    status = bundle.summary.release_status.value
+    word = {"ready": "Ready", "not_ready": "Not ready"}[status]
     assert "<main" in html
-    assert re.search(r"<h2[^>]*>Release status</h2>", html)
-    assert f"<code>{bundle.summary.release_status.value}</code>" in html
+    assert re.search(
+        rf'<h1 class="word"><svg[^>]*><use href="#i-v-{status}"/></svg>{word}</h1>', html
+    )
+    assert '<p class="eyebrow">Release status</p>' in html
+
+
+def test_the_section_bar_names_the_release_and_its_literal_verdict(bundle: EvidenceBundle) -> None:
+    html = bundle_to_html(bundle)
+    bar = html[html.index('<header class="bar">') : html.index("</header>")]
+    status = bundle.summary.release_status.value
+    assert f"<b>{bundle.application.name}</b> {bundle.release.release_id}" in bar
+    assert re.search(
+        rf'<span class="pill" data-tone="[a-z]+"><svg[^>]*>.*?</svg>{status}</span>', bar
+    )
+    for anchor, label in (
+        ("status", "Status"),
+        ("map", f"Controls {len(bundle.control_evaluations)}"),
+        ("gaps", f"Gaps {len(bundle.gaps)}"),
+        ("evidence", f"Evidence {len(bundle.evidence)}"),
+        ("exceptions", f"Exceptions {len(bundle.exceptions)}"),
+        ("record", "Record"),
+    ):
+        assert f'<a href="#{anchor}">{label}</a>' in bar
+        assert f'id="{anchor}"' in html
 
 
 def test_the_scores_say_what_they_measure(bundle: EvidenceBundle) -> None:
     html = bundle_to_html(bundle)
-    assert "Weighted share of the required and recommended evidence" in html
-    assert "backed by manually attested evidence counts one level lower" in html
+    assert '<div class="label">Evidence coverage</div>' in html
+    assert '<div class="label">Evidence strength</div>' in html
+    assert "How much of the expected evidence was found." in html
+    assert "Required evidence weighs twice as much as recommended evidence." in html
+
+
+def _strength_sentence(html: str) -> str:
+    start = html.index('<p class="hint strength">')
+    return " ".join(html[start : html.index("</p>", start)].split())
+
+
+def test_the_strength_sentence_counts_the_controls_it_averages(
+    ready_bundle: EvidenceBundle,
+) -> None:
+    backed = [
+        e
+        for e in ready_bundle.control_evaluations
+        if e.evaluation_status.value in {"met", "partial", "waived"}
+    ]
+    mix = [
+        f"{count} {level}"
+        for level in ("high", "medium", "low")
+        if (count := sum(1 for e in backed if e.confidence.value == level))
+    ]
+    assert len(mix) > 1
+    sentence = _strength_sentence(bundle_to_html(ready_bundle))
+    assert (
+        f"Average confidence of the {len(backed)} control(s) that are met, partial or waived: "
+        f"{' · '.join(mix)}." in sentence
+    )
+    assert "counts one level lower" in sentence
+    assert "Missing controls are not in this number." in sentence
+
+
+def test_the_strength_sentence_says_when_nothing_is_averaged(
+    not_ready_bundle: EvidenceBundle,
+) -> None:
+    assert not any(
+        e.evaluation_status.value in {"met", "partial", "waived"}
+        for e in not_ready_bundle.control_evaluations
+    )
+    sentence = _strength_sentence(bundle_to_html(not_ready_bundle))
+    assert "No control is met, partial or waived" in sentence
 
 
 def test_release_provenance_is_shown(ready_bundle: EvidenceBundle) -> None:
     html = bundle_to_html(ready_bundle)
     for value in (COMMIT, "v2026.04.10", DIGEST, "run-4242", "build-77"):
         assert value in html, value
+    assert "Not recorded for this run" not in html
 
 
-def test_absent_provenance_reads_not_recorded(not_ready_bundle: EvidenceBundle) -> None:
-    assert "not recorded" in bundle_to_html(not_ready_bundle)
+def test_the_record_names_what_was_not_recorded(not_ready_bundle: EvidenceBundle) -> None:
+    html = bundle_to_html(not_ready_bundle)
+    record = html[html.index('id="record"') : html.index("</section>", html.index('id="record"'))]
+    assert "Not recorded for this run: tag, artifact digest, pipeline run, build." in record
+    for flag in ("--tag", "--artifact-digest", "--pipeline-run-id", "--build-id"):
+        assert f"<code>{flag}</code>" in record
+    assert "<dt>tag</dt>" not in record
+    assert "not recorded</span>" not in html
+
+
+def test_a_partly_recorded_build_lists_only_the_missing_values(
+    not_ready_bundle: EvidenceBundle,
+) -> None:
+    release = not_ready_bundle.release.model_copy(update={"tag": "v9", "build_id": "b-1"})
+    html = bundle_to_html(not_ready_bundle.model_copy(update={"release": release}))
+    assert "Not recorded for this run: artifact digest, pipeline run." in html
+    assert '<dt>tag</dt><dd class="mono">v9</dd>' in html
 
 
 def test_private_and_per_file_details_stay_out_of_the_page(ready_bundle: EvidenceBundle) -> None:
