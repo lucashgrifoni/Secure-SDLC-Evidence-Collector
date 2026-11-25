@@ -76,7 +76,7 @@ def test_refresh_upgrades_each_lock_in_place_behind_the_cooldown(tmp_path: Path)
     assert cwd == directory
     assert command[:3] == ["uv", "pip", "compile"]
     assert "--universal" in command
-    assert command[-3:] == ["--upgrade", "--exclude-newer", "2026-11-16"]
+    assert command[-3:] == ["--upgrade", "--exclude-newer", "2026-11-16T00:00:00Z"]
 
 
 def test_refresh_replaces_the_cutoff_recorded_by_the_previous_refresh(tmp_path: Path) -> None:
@@ -101,5 +101,5 @@ def test_refresh_replaces_the_cutoff_recorded_by_the_previous_refresh(tmp_path: 
     check.refresh_locks(directory, datetime(2026, 12, 1, tzinfo=UTC), run)
 
     assert calls[0].count("--exclude-newer") == 1
-    assert calls[0][-2:] == ["--exclude-newer", "2026-11-24"]
+    assert calls[0][-2:] == ["--exclude-newer", "2026-11-24T00:00:00Z"]
     assert "2026-11-16" not in calls[0]
