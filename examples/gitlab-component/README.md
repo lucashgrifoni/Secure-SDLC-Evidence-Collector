@@ -11,7 +11,7 @@ GitLab downloads artifacts from earlier stages into the collector job.
 
 ```yaml
 include:
-  - component: gitlab.com/lucas.henriquegrifoni/secure-sdlc-evidence-component/collect@1.2.0
+  - component: gitlab.com/lucas.henriquegrifoni/secure-sdlc-evidence-component/collect@1.2.1
     inputs:
       application: my-application
       artifacts-dir: scanner-output
@@ -58,7 +58,7 @@ is read is in the collector's `README.md` and `docs/limitations.md`.
 | profile | none | Regulatory profile: `none`, `cra-2026` or `fedramp-20x` |
 | cra-context | empty | CRA operator context JSON; needs profile `cra-2026` |
 | fedramp-class | empty | CR26 class A, B, C or D, metadata only; needs profile `fedramp-20x` |
-| collector-version | 4.3.0 | Exact package version |
+| collector-version | 4.3.1 | Exact package version |
 | fail-on | conditional | Lowest release status that fails the job; see the differences below |
 
 The profile inputs map to the collector's `--profile`, `--cra-context` and
@@ -107,7 +107,7 @@ own dependency and third-party notices.
 
 ## Version updates and rollback
 
-Version 1.2.0 installs collector 4.3.0 and pip 26.2.1. Python and the release
+Version 1.2.1 installs collector 4.3.1 and pip 26.2.1. Python and the release
 CLI images are pinned by digest. The collector's transitive dependencies are
 resolved by PyPI at installation time; an exact collector version alone does
 not lock the full dependency tree.
