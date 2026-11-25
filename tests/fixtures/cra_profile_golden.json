@@ -39,8 +39,7 @@
           "5",
           "6",
           "7",
-          "v21",
-          "v26a"
+          "v21"
         ],
         "presence_only": true
       },
@@ -69,8 +68,7 @@
           "v22",
           "v23",
           "v24",
-          "v25",
-          "v26a"
+          "v25"
         ],
         "presence_only": true
       }
@@ -82,9 +80,9 @@
       "1",
       "v26"
     ],
-    "srp_glossary_date": "2026-10-15",
+    "srp_glossary_date": "2026-10-21",
     "srp_glossary_url": "https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2",
-    "srp_glossary_version": "1.5",
+    "srp_glossary_version": "1.6",
     "submission_status": "not_submitted"
   },
   "incident_bare": {
@@ -130,7 +128,6 @@
           "i31",
           "i32",
           "i37",
-          "i38",
           "i39"
         ],
         "presence_only": true
@@ -174,9 +171,9 @@
     "srp_declared_field_ids": [
       "1"
     ],
-    "srp_glossary_date": "2026-10-15",
+    "srp_glossary_date": "2026-10-21",
     "srp_glossary_url": "https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2",
-    "srp_glossary_version": "1.5",
+    "srp_glossary_version": "1.6",
     "submission_status": "not_submitted"
   },
   "incident_full": {
@@ -253,9 +250,9 @@
       "i37",
       "i38"
     ],
-    "srp_glossary_date": "2026-10-15",
+    "srp_glossary_date": "2026-10-21",
     "srp_glossary_url": "https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2",
-    "srp_glossary_version": "1.5",
+    "srp_glossary_version": "1.6",
     "submission_status": "not_submitted"
   },
   "no_context": {
@@ -293,9 +290,9 @@
       }
     },
     "reporting_obligation_start": "2026-09-11",
-    "srp_glossary_date": "2026-10-15",
+    "srp_glossary_date": "2026-10-21",
     "srp_glossary_url": "https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2",
-    "srp_glossary_version": "1.5",
+    "srp_glossary_version": "1.6",
     "submission_status": "not_submitted"
   },
   "vulnerability_bare": {
@@ -339,8 +336,7 @@
           "6",
           "7",
           "v21",
-          "v26",
-          "v26a"
+          "v26"
         ],
         "presence_only": true
       },
@@ -371,8 +367,7 @@
           "v23",
           "v24",
           "v25",
-          "v26",
-          "v26a"
+          "v26"
         ],
         "presence_only": true
       }
@@ -383,9 +378,9 @@
     "srp_declared_field_ids": [
       "1"
     ],
-    "srp_glossary_date": "2026-10-15",
+    "srp_glossary_date": "2026-10-21",
     "srp_glossary_url": "https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2",
-    "srp_glossary_version": "1.5",
+    "srp_glossary_version": "1.6",
     "submission_status": "not_submitted"
   },
   "vulnerability_full": {
@@ -421,8 +416,7 @@
           "4",
           "5",
           "6",
-          "7",
-          "v26a"
+          "7"
         ],
         "presence_only": true
       },
@@ -447,8 +441,7 @@
           "7",
           "v23",
           "v24",
-          "v25",
-          "v26a"
+          "v25"
         ],
         "presence_only": true
       }
@@ -464,9 +457,9 @@
       "v22",
       "v26"
     ],
-    "srp_glossary_date": "2026-10-15",
+    "srp_glossary_date": "2026-10-21",
     "srp_glossary_url": "https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2",
-    "srp_glossary_version": "1.5",
+    "srp_glossary_version": "1.6",
     "submission_status": "not_submitted"
   }
 }

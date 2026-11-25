@@ -85,7 +85,7 @@ def test_a_new_cr26_version_with_the_same_statements_is_only_a_notice() -> None:
     ("url_key", "response"),
     [
         ("cr26_main", (200, b"__statement__")),
-        ("srp", (200, b"<em>Version 1.6. Last update: 1 March 2027</em>")),
+        ("srp", (200, b"<em>Version 1.7. Last update: 1 March 2027</em>")),
         ("osps", (200, b'Current version: <a href="v">v2027.03.01</a>')),
         ("ssdf", (200, b"<title>SP 800-218 Rev. 1, Final</title>")),
         ("srp", (503, b"")),

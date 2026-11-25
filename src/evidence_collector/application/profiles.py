@@ -59,9 +59,10 @@ _STEWARD_INCIDENT_SCOPE = {
     "status": "not_assessed",
 }
 _NOT_APPLICABLE = {"status": "not_applicable", "reason": "awareness_precedes_obligation_start"}
-# 2026.10.13.01 changed only the 800-53 mappings of the six catalog KSIs.
-FEDRAMP_RULESET_VERSION = "2026.10.13.01"
-FEDRAMP_RULESET_COMMIT = "a89d78477ddea98dc57eca24f5007794c2b4eeb6"
+# 2026.11.02.01 rewords the KSI-SCR-MIT statement into the passive voice;
+# its meaning, the 800-53 mappings and the other five catalog KSIs are unchanged.
+FEDRAMP_RULESET_VERSION = "2026.11.02.01"
+FEDRAMP_RULESET_COMMIT = "64fa769510416fa75fd00a4689466094265b8083"
 
 
 class CraReportingContext(BaseModel):

@@ -61,3 +61,9 @@ selected KSIs; their statements are unchanged, so the evidence mapping is too.
 The provenance file now records the new revision. The SRP field stages above
 were checked against ENISA glossary 1.5 (15 October 2026), which kept the 1.4
 field ids and per-stage requirements.
+
+Update 2026-11-25: re-pinned to CR26 2026.11.02.01 (commit `64fa7695`), which
+rewords the KSI-SCR-MIT statement into the passive voice without changing what
+it asks; the SP 800-53 references of the six KSIs are unchanged. The SRP table
+follows ENISA glossary 1.6 (21 October 2026): optional field 7a is accepted,
+i38 is no longer required at 72h and v26a is required at no stage.

@@ -1,8 +1,8 @@
 {
-  "source": "https://raw.githubusercontent.com/FedRAMP/rules/a89d78477ddea98dc57eca24f5007794c2b4eeb6/fedramp-consolidated-rules.json",
-  "commit": "a89d78477ddea98dc57eca24f5007794c2b4eeb6",
-  "ruleset_version": "2026.10.13.01",
-  "source_sha256": "fb48d677a85d77fb72735a325de2c1945a1e0ceab1d2e655292fe9ebe3e4e0b4",
+  "source": "https://raw.githubusercontent.com/FedRAMP/rules/64fa769510416fa75fd00a4689466094265b8083/fedramp-consolidated-rules.json",
+  "commit": "64fa769510416fa75fd00a4689466094265b8083",
+  "ruleset_version": "2026.11.02.01",
+  "source_sha256": "782faecae3eee4aa2aa9d32cdb0de4c929524f2e41dc1f3d143a94a9ca64c4e3",
   "mapping_authority": "project_interpretation",
   "assessment": "partial_supporting_evidence",
   "selected_indicators": {
