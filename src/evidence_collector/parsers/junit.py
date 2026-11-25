@@ -16,7 +16,7 @@ never performs parsing here.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 # Element and ParseError are used only for typing and exception handling.
@@ -48,6 +48,8 @@ class ParsedJUnit:
     skipped: int
     time_seconds: float
     suite_name: str | None
+    # Count attributes that are not whole numbers, as attribute='value'.
+    unreadable_counts: list[str] = field(default_factory=list)
 
 
 def _parse_int(value: str | None, default: int = 0) -> int:
@@ -59,9 +61,24 @@ def _parse_int(value: str | None, default: int = 0) -> int:
         return default
 
 
-def _count(suite: Element, attribute: str, child: str | None) -> int:
-    """The larger of a suite attribute and the matching test cases under it."""
-    declared = max(_parse_int(suite.get(attribute)), 0)
+def _is_int(value: str) -> bool:
+    try:
+        int(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _count(suite: Element, attribute: str, child: str | None, unreadable: list[str]) -> int:
+    """The larger of a suite attribute and the matching test cases under it.
+
+    An attribute that is not a whole number is noted in `unreadable` and
+    read as 0, so the test cases decide the count.
+    """
+    raw = suite.get(attribute)
+    if raw is not None and not _is_int(raw):
+        unreadable.append(f"{attribute}={raw!r}")
+    declared = max(_parse_int(raw), 0)
     cases = suite.iter("testcase")
     observed = sum(1 for case in cases if child is None or case.find(child) is not None)
     return max(declared, observed)
@@ -132,12 +149,13 @@ def parse_junit(path: str | Path) -> ParsedJUnit:
     errors = 0
     skipped = 0
     time_seconds = 0.0
+    unreadable: list[str] = []
     for suite in suites:
-        total += _count(suite, "tests", None)
-        failures += _count(suite, "failures", "failure")
-        errors += _count(suite, "errors", "error")
+        total += _count(suite, "tests", None, unreadable)
+        failures += _count(suite, "failures", "failure", unreadable)
+        errors += _count(suite, "errors", "error", unreadable)
         skipped_attribute = "skipped" if suite.get("skipped") else "skip"
-        skipped += _count(suite, skipped_attribute, "skipped")
+        skipped += _count(suite, skipped_attribute, "skipped", unreadable)
         time_seconds += _parse_float(suite.get("time"))
 
     if total == 0 and not suites:
@@ -152,4 +170,5 @@ def parse_junit(path: str | Path) -> ParsedJUnit:
         skipped=skipped,
         time_seconds=time_seconds,
         suite_name=suite_name,
+        unreadable_counts=unreadable,
     )

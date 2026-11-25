@@ -81,6 +81,8 @@ class ParsedSarif:
     tool_error_count: int = 0
     # The run has no ``results`` array (SARIF: unknown, not zero findings).
     results_absent: bool = False
+    # Results whose ``level`` is a string SARIF does not define (3.27.10).
+    invalid_level_count: int = 0
 
 
 def _normalize_severity(raw_level: str) -> str:
@@ -261,6 +263,7 @@ def parse_sarifs(path: str | Path) -> list[ParsedSarif]:
         total = 0
         problems = 0
         suppressed = 0
+        invalid_levels = 0
         cve_ids: set[str] = set()
         results = run.get("results")
         for result in results if isinstance(results, list) else []:
@@ -273,6 +276,9 @@ def parse_sarifs(path: str | Path) -> list[ParsedSarif]:
             if not _reports_no_problem(result):
                 problems += 1
             findings_count[_severity_bucket(result, driver, extensions)] += 1
+            level = result.get("level")
+            if isinstance(level, str) and level.lower() not in _SEVERITY_MAP:
+                invalid_levels += 1
             _collect_cves_from_result(result, cve_ids)
 
         parsed.append(
@@ -290,6 +296,7 @@ def parse_sarifs(path: str | Path) -> list[ParsedSarif]:
                 execution_failed=execution_failed,
                 tool_error_count=tool_error_count,
                 results_absent=not isinstance(results, list),
+                invalid_level_count=invalid_levels,
             )
         )
 

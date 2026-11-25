@@ -50,6 +50,8 @@ SUPPORTED_SCAN_TYPES = frozenset(
 _SEVERITY_BUCKETS = frozenset({"critical", "high", "medium", "low", "info", "unknown"})
 
 SCAN_STATUS_FAILURE = "failure"
+# The two values schema 15 allows for scan.status.
+SCAN_STATUSES = frozenset({"success", SCAN_STATUS_FAILURE})
 
 
 @dataclass
@@ -65,6 +67,8 @@ class ParsedGitLabSecurityReport:
     findings_count: dict[str, int] = field(default_factory=dict)
     cve_ids: list[str] = field(default_factory=list)
     image: str | None = None
+    # Entries of the vulnerabilities array that are not objects; not counted.
+    skipped_entries: int = 0
 
     @property
     def total_findings(self) -> int:
@@ -145,8 +149,10 @@ def parse_gitlab_security_report(path: str | Path) -> ParsedGitLabSecurityReport
     findings_count: dict[str, int] = {}
     cve_ids: list[str] = []
     image: str | None = None
+    skipped_entries = 0
     for vulnerability in data["vulnerabilities"]:
         if not isinstance(vulnerability, dict):
+            skipped_entries += 1
             continue
         bucket = _bucket(vulnerability.get("severity"))
         findings_count[bucket] = findings_count.get(bucket, 0) + 1
@@ -168,4 +174,5 @@ def parse_gitlab_security_report(path: str | Path) -> ParsedGitLabSecurityReport
         findings_count=findings_count,
         cve_ids=cve_ids,
         image=image,
+        skipped_entries=skipped_entries,
     )
