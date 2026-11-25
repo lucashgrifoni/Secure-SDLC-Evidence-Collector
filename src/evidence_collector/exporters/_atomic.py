@@ -47,7 +47,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["write_all_or_nothing", "write_atomic"]
+__all__ = ["ensure_directory", "write_all_or_nothing", "write_atomic"]
 
 
 # Windows reports an exclusive create of a name whose previous owner is still
@@ -67,6 +67,25 @@ def _busy(lock: Path) -> OSError:
     )
 
 
+def _refuses_new_files(directory: Path) -> bool:
+    """True when a fresh, uniquely named file cannot be created in `directory`.
+
+    Tells a delete-pending lock (only that name is refused) from a folder the
+    user cannot write to (every name is refused); Windows reports both as
+    PermissionError.
+    """
+    probe = directory / f".sdlc-evidence-probe-{uuid.uuid4().hex}"
+    try:
+        descriptor = os.open(probe, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    os.close(descriptor)
+    _unlink_quietly(probe)
+    return False
+
+
 def _acquire(lock: Path) -> int:
     for attempt in range(_LOCK_RETRIES):
         try:
@@ -77,9 +96,33 @@ def _acquire(lock: Path) -> int:
             if not _WINDOWS:
                 raise
             if attempt == _LOCK_RETRIES - 1:
+                if _refuses_new_files(lock.parent):
+                    raise PermissionError(
+                        errno.EACCES,
+                        f"cannot create files in {lock.parent}: permission denied. "
+                        "Check the folder's permissions or pass another output folder",
+                    ) from exc
                 raise _busy(lock) from exc
             time.sleep(_LOCK_RETRY_SECONDS)
     raise AssertionError("unreachable")  # pragma: no cover
+
+
+def ensure_directory(directory: Path) -> None:
+    """Create `directory` and its parents, naming a file that stands in the way.
+
+    A plain mkdir over a file raises FileExistsError or NotADirectoryError in
+    the system language, naming only the path it was given.
+    """
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+    except (FileExistsError, NotADirectoryError) as exc:
+        blocker = next(
+            (part for part in (directory, *directory.parents) if part.is_file()), directory
+        )
+        raise NotADirectoryError(
+            errno.ENOTDIR,
+            f"{blocker} is a file, not a folder. Pass a folder as the output directory",
+        ) from exc
 
 
 @contextmanager
@@ -98,7 +141,7 @@ def _output_locks(targets: list[Path]) -> Iterator[None]:
     try:
         locks = sorted({target.parent.resolve() / f".{target.name}.lock" for target in targets})
         for lock in locks:
-            lock.parent.mkdir(parents=True, exist_ok=True)
+            ensure_directory(lock.parent)
             descriptor = _acquire(lock)
             acquired.append(lock)
             with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
@@ -202,7 +245,7 @@ def _write_atomic_unlocked(target: Path, content: str) -> Path:
     # "Access is denied" naming a scratch file the user never created.
     if target.is_dir():
         raise IsADirectoryError(errno.EISDIR, "Output path exists as a directory", str(target))
-    target.parent.mkdir(parents=True, exist_ok=True)
+    ensure_directory(target.parent)
     temp = _stage(target, content)
     try:
         os.replace(temp, target)
@@ -264,7 +307,7 @@ def _write_set_unlocked(payloads: dict[Path, str]) -> list[Path]:
     replaced: list[Path] = []
     try:
         for target, content in payloads.items():
-            target.parent.mkdir(parents=True, exist_ok=True)
+            ensure_directory(target.parent)
             staged[target] = _stage(target, content)
         for target in staged:
             if target.exists():
