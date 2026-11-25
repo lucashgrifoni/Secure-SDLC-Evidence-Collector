@@ -122,7 +122,7 @@ def test_a_held_report_set_does_not_block_a_different_file(tmp_path: Path) -> No
 
 
 def _deny_lock_creation(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *, windows: bool
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *, windows: bool, only_locks: bool = False
 ) -> tuple[OSError, int]:
     import errno
     import os
@@ -132,7 +132,12 @@ def _deny_lock_creation(
 
     attempts: list[object] = []
 
-    def denied(*args: object, **_kwargs: object) -> int:
+    real_open = os.open
+
+    def denied(*args: object, **kwargs: object) -> int:
+        path = str(args[0])
+        if only_locks and not path.endswith(".lock"):
+            return real_open(*args, **kwargs)  # type: ignore[arg-type]
         attempts.append(args[0])
         raise PermissionError(errno.EACCES, "Permission denied")
 
@@ -151,10 +156,21 @@ def test_windows_lock_contention_reports_the_busy_error(
     """A delete-pending lock on Windows raises PermissionError, not EEXIST."""
     import errno
 
-    error, attempts = _deny_lock_creation(monkeypatch, tmp_path, windows=True)
+    error, attempts = _deny_lock_creation(monkeypatch, tmp_path, windows=True, only_locks=True)
     assert error.errno == errno.EBUSY
     assert "Another writer" in str(error)
     assert attempts > 1, "a delete-pending lock clears quickly, so retry first"
+
+
+def test_windows_folder_without_write_permission_is_not_reported_as_busy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every create fails, not only the lock's: the folder refuses new files."""
+    error, _attempts = _deny_lock_creation(monkeypatch, tmp_path, windows=True)
+    assert isinstance(error, PermissionError)
+    assert "Another writer" not in str(error)
+    assert "cannot create files in" in str(error)
+    assert str(tmp_path) in str(error)
 
 
 def test_a_permission_error_elsewhere_is_not_reported_as_busy(
@@ -214,3 +230,17 @@ def test_a_non_ascii_hostname_does_not_break_the_write(
     assert (tmp_path / "bundle.json").read_text(encoding="utf-8") == "x"
     assert seen and "host=LUCÍA-PC\n" in seen[0]
     assert sorted(path.name for path in tmp_path.iterdir()) == ["bundle.json"]
+
+
+def test_an_output_path_that_is_a_file_names_it_plainly(tmp_path: Path) -> None:
+    """mkdir on a file raised a localized FileExistsError naming nothing useful."""
+    import errno
+
+    occupied = tmp_path / "out"
+    occupied.write_text("not a folder", encoding="utf-8")
+    with pytest.raises(NotADirectoryError) as caught:
+        write_atomic(occupied / "bundle.json", "x")
+    assert caught.value.errno == errno.ENOTDIR
+    assert "is a file, not a folder" in str(caught.value)
+    assert str(occupied) in str(caught.value)
+    assert occupied.read_text(encoding="utf-8") == "not a folder"

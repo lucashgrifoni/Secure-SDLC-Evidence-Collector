@@ -40,7 +40,7 @@ from evidence_collector.domain.models import (
     ReleaseContext,
     Summary,
 )
-from evidence_collector.exporters import export_report_set
+from evidence_collector.exporters import ensure_directory, export_report_set
 from evidence_collector.scoring import (
     RiskMode,
     RiskThresholds,
@@ -267,7 +267,7 @@ def run_pipeline(
     )
     bundle = apply_profile(bundle, profile, cra_context=cra_context, fedramp_class=fedramp_class)
 
-    output_dir.mkdir(parents=True, exist_ok=True)
+    ensure_directory(output_dir)
     reports = export_report_set(bundle, output_dir)
 
     return BundleBuildResult(

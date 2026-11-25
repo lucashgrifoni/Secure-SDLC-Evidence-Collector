@@ -24,7 +24,7 @@ from evidence_collector.cli._render import (
 )
 from evidence_collector.cli._state import EVIDENCE_ADAPTER
 from evidence_collector.domain.models import CollectionError
-from evidence_collector.exporters import export_report_set
+from evidence_collector.exporters import ensure_directory, export_report_set
 from evidence_collector.scoring import (
     DEFAULT_EPSS_PERCENTILE_THRESHOLD,
     RiskMode,
@@ -135,7 +135,7 @@ def evaluate(
         collection_errors=collection_errors,
     )
 
-    output_dir.mkdir(parents=True, exist_ok=True)
+    ensure_directory(output_dir)
     reports = export_report_set(bundle, output_dir)
 
     result = BundleBuildResult(
