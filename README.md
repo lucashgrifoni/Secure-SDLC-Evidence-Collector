@@ -139,7 +139,6 @@ Releases go to PyPI through Trusted Publishing. Wheel, sdist, release bundle and
 | `action.yml` | GitHub Action |
 | `tests/` | Unit, integration and property tests |
 | `docs/` | Documentation site, ADRs and the published bundle schema |
-| `gitpage/` | Landing page served at the root of the GitHub Pages site |
 | `.github/` | CI, security, release and Pages workflows |
 
 ## Development

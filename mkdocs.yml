@@ -2,7 +2,7 @@
 #
 # The site is published as a sub-path (`/docs/`) of the GitHub Pages
 # deploy in `.github/workflows/deploy-github-pages.yml`. The root of
-# the Pages site hosts the gitpage/ landing page, and `/evidence/` hosts
+# the Pages site redirects here, and `/evidence/` hosts
 # the evidence summary the CLI generates from the sample release, so the
 # project dogfoods its own output.
 #
