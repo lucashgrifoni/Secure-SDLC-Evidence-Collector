@@ -68,12 +68,27 @@ def stale_locks(directory: Path, run: Runner = _run) -> list[str]:
     return problems
 
 
+def _without_cutoff(command: Sequence[str]) -> list[str]:
+    """Drop the --exclude-newer that uv recorded from the previous refresh."""
+    kept: list[str] = []
+    skip_value = False
+    for arg in command:
+        if skip_value:
+            skip_value = False
+        elif arg == "--exclude-newer":
+            skip_value = True
+        elif not arg.startswith("--exclude-newer="):
+            kept.append(arg)
+    return kept
+
+
 def refresh_locks(directory: Path, now: datetime, run: Runner = _run) -> list[str]:
     """Recompile every lock in place to the newest versions older than the cooldown."""
     cutoff = (now - COOLDOWN).strftime("%Y-%m-%d")
     refreshed: list[str] = []
     for lock in sorted(directory.glob("*.txt")):
-        run([*_recorded_command(lock), "--upgrade", "--exclude-newer", cutoff], directory)
+        command = _without_cutoff(_recorded_command(lock))
+        run([*command, "--upgrade", "--exclude-newer", cutoff], directory)
         refreshed.append(lock.name)
     return refreshed
 
