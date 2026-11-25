@@ -4,6 +4,28 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.3.1](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.3.0...v4.3.1) (2026-11-25)
+
+
+### Fixed
+
+* **bundle:** keep the default bundle id within its limit for long application names ([#240](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/240)) ([2c5f9f5](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/2c5f9f5566d312330e3ea8b022ca96bed8dc1345))
+* **cli:** wrap the folded compare list under its marker and say "1 control" ([#237](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/237)) ([e2f19b7](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/e2f19b70ed2a6b20ba459bf5dd9b68685b64b9f0))
+* **exporters:** name a folder without write permission and a file used as the output folder ([#238](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/238)) ([dd5e009](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/dd5e009ee92b34ba1c8ae94e6acc1af7026e8892))
+* **parsers:** warn on malformed GitLab, JUnit and SARIF values instead of reading them silently ([#239](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/239)) ([d8c2b72](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/d8c2b725a0eb284b1f52452407a7bb9a0592714c))
+* **profiles:** follow FedRAMP CR26 2026.11.02.01 and ENISA SRP glossary 1.6 ([#236](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/236)) ([5a263f3](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/5a263f337c6f69122d888a2805b96078bd66c0f6))
+
+
+### Documentation
+
+* one-line quickstart for any shell, Docker note for Git for Windows, self-hosted docs fonts ([#235](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/235)) ([a3b06f1](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/a3b06f1ef10b42aee20f6d4333a37ceef05f3108))
+* title the 4.3.1 upgrade notes ([#241](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/241)) ([46ceecf](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/46ceecf5da569a805466dae049b8b9d3fac4998c))
+
+
+### CI
+
+* **deps:** stop Dependabot pip updates on the hash locks and add make refresh-locks ([#231](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/issues/231)) ([9207a80](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/commit/9207a80561eaf587806c6e01d86bc253e673795c))
+
 ## [4.3.0](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector/compare/v4.2.0...v4.3.0) (2026-11-23)
 
 
