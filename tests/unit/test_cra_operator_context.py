@@ -1,6 +1,6 @@
 """CRA clocks need operator evidence; enrichment is not legal applicability."""
 
-from typing import Any
+from typing import Any, Literal
 
 import pytest
 from pydantic import ValidationError
@@ -34,11 +34,11 @@ def test_operator_deadlines_are_integrity_protected(tmp_path) -> None:
     assert structural_sha256(path) != expected
 
 
-def test_incident_occurrence_is_optional_in_the_final_stage() -> None:
+def _bare_completeness(notification_type: Literal["vulnerability", "incident"]) -> dict[str, Any]:
     context = profiles.CraReportingContext(
         release_id="2026.05.19",
         commit_sha="abcdef1234567890",
-        notification_type="incident",
+        notification_type=notification_type,
     )
     result = (
         profiles.apply_profile(
@@ -47,8 +47,24 @@ def test_incident_occurrence_is_optional_in_the_final_stage() -> None:
         .evidence[0]
         .metadata["cra"]
     )
-    assert "i38" in result["srp_completeness"]["72h_notification"]["missing_field_ids"]
-    assert "i38" not in result["srp_completeness"]["final_report"]["missing_field_ids"]
+    completeness: dict[str, Any] = result["srp_completeness"]
+    return completeness
+
+
+def test_incident_occurrence_is_optional_at_every_stage() -> None:
+    """Glossary 1.6 made i38 Optional at 72h; 1.5 required it there."""
+    completeness = _bare_completeness("incident")
+    assert "i38" not in completeness["72h_notification"]["missing_field_ids"]
+    assert "i38" not in completeness["final_report"]["missing_field_ids"]
+    assert "i32" in completeness["72h_notification"]["missing_field_ids"]
+
+
+def test_vulnerability_occurrence_time_is_no_longer_required() -> None:
+    """Glossary 1.6 copies v26a from the optional early-warning value at 72h."""
+    completeness = _bare_completeness("vulnerability")
+    for stage in ("early_warning", "72h_notification", "final_report"):
+        assert "v26a" not in completeness[stage]["missing_field_ids"]
+    assert "v21" in completeness["72h_notification"]["missing_field_ids"]
 
 
 def test_timestamp_overflow_is_an_input_error() -> None:
@@ -97,8 +113,8 @@ def test_awareness_and_remediation_anchor_vulnerability_clocks() -> None:
     assert cra["reporting_deadlines"]["early_warning"] == "2026-10-02T13:00:00+00:00"
     assert cra["reporting_deadlines"]["full_notification"] == "2026-10-04T13:00:00+00:00"
     assert cra["reporting_deadlines"]["final_report"]["due_at"] == "2026-10-18T12:00:00+00:00"
-    assert cra["srp_glossary_version"] == "1.5"
-    assert cra["srp_glossary_date"] == "2026-10-15"
+    assert cra["srp_glossary_version"] == "1.6"
+    assert cra["srp_glossary_date"] == "2026-10-21"
     assert cra["srp_completeness"]["early_warning"]["missing_field_ids"] == [
         "3",
         "4",
@@ -106,7 +122,16 @@ def test_awareness_and_remediation_anchor_vulnerability_clocks() -> None:
         "6",
         "7",
     ]
-    assert "v26a" in cra["srp_completeness"]["72h_notification"]["missing_field_ids"]
+    # v21 is the one field the 72h notification adds; glossary 1.6 no longer
+    # requires v26a there.
+    assert cra["srp_completeness"]["72h_notification"]["missing_field_ids"] == [
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "v21",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -171,8 +196,8 @@ def test_fedramp_does_not_invent_a_retention_policy() -> None:
         .metadata["fedramp"]
     )
     assert "retention_years" not in fedramp
-    assert fedramp["ruleset_version"] == "2026.10.13.01"
-    assert fedramp["ruleset_commit"] == "a89d78477ddea98dc57eca24f5007794c2b4eeb6"
+    assert fedramp["ruleset_version"] == "2026.11.02.01"
+    assert fedramp["ruleset_commit"] == "64fa769510416fa75fd00a4689466094265b8083"
     assert fedramp["class"] is None
 
 
@@ -397,3 +422,14 @@ def test_fedramp_class_d_warns_that_20x_class_d_is_still_in_development(
         class_a.evidence[0].metadata["fedramp"]
     )
     assert class_d.evidence[0].metadata["fedramp"]["class"] == "D"
+
+
+def test_glossary_field_7a_is_accepted_from_the_reporter() -> None:
+    """Glossary 1.6 added 7a, an optional free-text field about the manufacturer."""
+    context = profiles.CraReportingContext(
+        release_id="2026.05.19",
+        commit_sha="abcdef1234567890",
+        notification_type="vulnerability",
+        srp_fields={"7a": "Part of a larger group"},
+    )
+    assert context.srp_fields == {"7a": "Part of a larger group"}

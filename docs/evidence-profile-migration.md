@@ -159,11 +159,17 @@ it produces the same metadata and digest as before the field existed.
 
 KEV and EPSS do not establish exploitation in this product, manufacturer
 awareness or legal applicability; those states remain `not_assessed`.
-Completeness uses ENISA SRP glossary 1.5, last updated 15 October 2026, and
+Completeness uses ENISA SRP glossary 1.6, last updated 21 October 2026, and
 records required field IDs by stage. Collector 4.0.0 to 4.2.0 recorded
-glossary 1.4, dated 1 October 2026; 1.5 kept the same field IDs and the same
-required fields per stage, so only `srp_glossary_version` and
-`srp_glossary_date` change. Optional field `40` (AR Note) is accepted; field
+glossary 1.4, dated 1 October 2026, and 4.3.0 recorded 1.5, dated 15 October
+2026, with the same field IDs and required fields. 1.6 adds optional field
+`7a` (Additional Information), makes `i38` (when the incident occurred)
+optional at 72h, and requires `v26a` (when the vulnerability was exploited)
+at no stage, so those two IDs leave the `missing_field_ids` lists. A later
+stage still lists the fields of the stages before it: 1.6 shows the common
+fields as N/A at 72h and in the final report, and carrying them over is this
+project's reading of a report that updates the earlier one. Optional fields
+`7a` and `40` (AR Note) are accepted; field
 `41` (CSIRT Note) is written by the CSIRT and is rejected. Narrative adequacy and operator timestamps need
 human review. Context is hashed; supplied narratives are not repeated per
 evidence. This is release context, not a per-CVE case or SRP submission payload.
@@ -192,11 +198,12 @@ The GitHub Action and reusable workflow accept optional `cra-context` and
 ## FedRAMP and framework references
 
 `run --profile fedramp-20x --fedramp-class A` records operator-selected class
-A–D (any case) and CR26 version 2026.10.13.01 at commit
-`a89d78477ddea98dc57eca24f5007794c2b4eeb6`. Collector 4.0.0 to 4.2.0 recorded
-2026.10.05.01 at `1c33385a06acf4faf50da2b9b4dc31cd826e5b91`; the newer
-revision changed only the SP 800-53 references of the six catalog KSIs, not
-their statements. No automatic class or 10-year
+A–D (any case) and CR26 version 2026.11.02.01 at commit
+`64fa769510416fa75fd00a4689466094265b8083`. Collector 4.0.0 to 4.2.0 recorded
+2026.10.05.01 at `1c33385a06acf4faf50da2b9b4dc31cd826e5b91`, and 4.3.0
+recorded 2026.10.13.01 at `a89d78477ddea98dc57eca24f5007794c2b4eeb6`. 2026.10.13.01 changed
+only the SP 800-53 references of the six catalog KSIs; 2026.11.02.01 rewords
+the KSI-SCR-MIT statement into the passive voice without changing what it asks. No automatic class or 10-year
 retention rule is imposed. The class is metadata only: it does not change
 which controls are evaluated or the verdict.
 
@@ -290,8 +297,8 @@ triggering commit.
 - [G7 SBOM for AI](https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/KI/SBOM-for-AI_minimum-elements.pdf?__blob=publicationFile&v=4)
 - [CRA Articles 14, 24 and 71](https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32024R2847)
 - [Commission: CRA reporting obligations](https://digital-strategy.ec.europa.eu/en/policies/cra-reporting)
-- [ENISA SRP 1.5](https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2)
-- [Pinned FedRAMP CR26](https://github.com/FedRAMP/rules/blob/a89d78477ddea98dc57eca24f5007794c2b4eeb6/fedramp-consolidated-rules.json)
+- [ENISA SRP 1.6](https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2)
+- [Pinned FedRAMP CR26](https://github.com/FedRAMP/rules/blob/64fa769510416fa75fd00a4689466094265b8083/fedramp-consolidated-rules.json)
 - [FedRAMP 20x classes](https://www.fedramp.gov/20x/)
 - [NIST SP 800-218A](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-218A.pdf)
 - [Preserved CSF references](adr/0014-csf-2-crosswalk-for-built-in-catalogs.md)

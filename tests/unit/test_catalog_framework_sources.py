@@ -27,8 +27,8 @@ def test_cr26_catalog_uses_selected_actual_ids_and_explicit_partial_scope() -> N
         assert c.framework.value == "ORG_INTERNAL"
         assert "supporting evidence" in c.name.lower()
         assert "partial" in c.description.lower()
-        assert "2026.10.13.01" in c.description
-        assert "a89d78477ddea98dc57eca24f5007794c2b4eeb6" in c.description
+        assert "2026.11.02.01" in c.description
+        assert "64fa769510416fa75fd00a4689466094265b8083" in c.description
 
 
 def test_cr26_pin_agrees_across_profile_catalog_and_provenance_record() -> None:
@@ -48,11 +48,11 @@ def test_cr26_pin_agrees_across_profile_catalog_and_provenance_record() -> None:
     assert provenance["commit"] == FEDRAMP_RULESET_COMMIT
     assert provenance["ruleset_version"] == FEDRAMP_RULESET_VERSION
     assert FEDRAMP_RULESET_COMMIT in provenance["source"]
-    # sha256 of fedramp-consolidated-rules.json at that commit. 2026.10.13.01
-    # changed only the 800-53 mappings (`controls`) and `updated` of the six
-    # KSIs; their statements are unchanged.
+    # sha256 of fedramp-consolidated-rules.json at that commit. 2026.11.02.01
+    # rewords the KSI-SCR-MIT statement only; the 800-53 mappings (`controls`)
+    # of the six KSIs are unchanged.
     assert provenance["source_sha256"] == (
-        "fb48d677a85d77fb72735a325de2c1945a1e0ceab1d2e655292fe9ebe3e4e0b4"
+        "782faecae3eee4aa2aa9d32cdb0de4c929524f2e41dc1f3d143a94a9ca64c4e3"
     )
     assert provenance["selected_indicators"]["KSI-CMT-VTD"]["source_controls"] == [
         "cm-3",

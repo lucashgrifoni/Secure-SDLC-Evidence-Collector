@@ -6,8 +6,11 @@ empty at each notification stage. The field identifiers and each stage's
 glossary version is a change to this table and its diff shows exactly which
 field moved. ``profiles._cra_metadata`` only computes set differences.
 
-A stage repeats the fields of the stage before it: the glossary marks them
-"By default copied from previous step", and a later report still needs them.
+A stage repeats the fields of the stage before it, because a later report
+still needs them. Glossary 1.5 marked them "By default copied from previous
+step"; 1.6 shows the common fields as N/A at 72h and in the final report and
+keeps that wording only for v26a and i31. The carry-over is this project's
+reading of a report that updates the earlier one, not a glossary statement.
 """
 
 from __future__ import annotations
@@ -41,13 +44,16 @@ def _ids(*ids: str) -> frozenset[str]:
 _COMMON = ("1", "2", "3", "4", "5", "6", "7")
 
 SRP_GLOSSARY = SrpGlossary(
-    # "CRA SRP Glossary Version 1.5. Last update: 15 October 2026". The 1.5
-    # field ids and per-stage Required columns are the same as in 1.4.
-    version="1.5",
-    date="2026-10-15",
+    # "CRA SRP Glossary Version 1.6. Last update: 21 October 2026". Against 1.5:
+    # new optional field 7a (Additional Information); i38 is Optional at 72h
+    # (was Required); v26a is Optional in the early warning and "By default
+    # copied from previous step" at 72h, so no stage requires it any more.
+    version="1.6",
+    date="2026-10-21",
     url="https://www.enisa.europa.eu/topics/product-security/single-reporting-platform-srp/cra-srp-glossary2",
     reporter_field_ids=frozenset(
         [str(i) for i in range(1, 19)]
+        + ["7a"]
         + [f"v{i}" for i in range(19, 31)]
         + ["v26a"]
         + [f"i{i}" for i in range(31, 40)]
@@ -57,16 +63,12 @@ SRP_GLOSSARY = SrpGlossary(
     required={
         "vulnerability": {
             "early_warning": _ids(*_COMMON, "v26"),
-            "72h_notification": _ids(*_COMMON, "v26", "v21", "v26a"),
-            "final_report": _ids(
-                *_COMMON, "v26", "v21", "v26a", "16", "17", "v22", "v23", "v24", "v25"
-            ),
+            "72h_notification": _ids(*_COMMON, "v26", "v21"),
+            "final_report": _ids(*_COMMON, "v26", "v21", "16", "17", "v22", "v23", "v24", "v25"),
         },
         "incident": {
             "early_warning": _ids(*_COMMON, "i31", "i37"),
-            "72h_notification": _ids(*_COMMON, "i31", "i37", "i32", "i38", "i39"),
-            # i38 (time of occurrence) is required at 72h but optional in the
-            # final report.
+            "72h_notification": _ids(*_COMMON, "i31", "i37", "i32", "i39"),
             "final_report": _ids(
                 *_COMMON, "i31", "i37", "i32", "i39", "16", "17", "i33", "i34", "i35", "i36"
             ),

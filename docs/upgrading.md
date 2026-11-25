@@ -6,6 +6,27 @@ top. [CHANGELOG.md](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collec
 lists every change. The [4.0.0](#400) and [3.0.0](#300) migrations are at the
 end of this page.
 
+## Unreleased
+
+### Opt-in profiles
+
+The default catalog and runs without `--profile` are unchanged, so their
+bundles and structural digests stay the same.
+
+- **`--profile cra-2026`**: follows ENISA SRP glossary 1.6 (was 1.5).
+  `metadata.cra.srp_glossary_version` is `1.6` and `srp_glossary_date` is
+  `2026-10-21`. `v26a` no longer appears in the vulnerability
+  `missing_field_ids` at 72h or in the final report, and `i38` no longer
+  appears in the incident list at 72h. A context may now fill field `7a`.
+  The verdict does not change.
+- **`--profile fedramp-20x` and `catalog-fedramp-cr26.yaml`**: the CR26 pin
+  moves from 2026.10.13.01 to 2026.11.02.01 (commit `64fa7695`).
+  `metadata.fedramp.ruleset_version`, `metadata.fedramp.ruleset_commit`, the
+  catalog descriptions and `catalog.sha256` change; evidence rules and
+  verdicts do not.
+- Bundles produced with these profiles or that catalog get new structural
+  digests. Re-pin `verify --expected` after regenerating them.
+
 ## 4.3.0
 
 ### GitHub Action
