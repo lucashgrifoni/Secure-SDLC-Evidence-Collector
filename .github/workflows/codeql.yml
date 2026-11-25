@@ -47,8 +47,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # `javascript-typescript` covers the landing-page assets under
-        # gitpage/. This is the single CodeQL home for the repo; the security
+        # `javascript-typescript` covers the scripts under scripts/.
+        # This is the single CodeQL home for the repo; the security
         # pipeline (security-ci-cd.yml) intentionally does not re-run CodeQL.
         language: ["python", "javascript-typescript", "actions"]
     steps:

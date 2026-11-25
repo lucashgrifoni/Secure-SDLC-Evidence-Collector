@@ -1,7 +1,7 @@
 # Deploy GitHub Pages — publishes the project site (Python / mkdocs).
 #
 # The build job stages three surfaces into a single Pages deploy:
-#   /          -> gitpage/ landing page (index.html + assets)
+#   /          -> redirect to /docs/
 #   /evidence/ -> CLI-generated evidence summary, bundle, and report
 #   /docs/     -> mkdocs --strict technical site
 #
@@ -20,11 +20,8 @@
 # Runner image: both jobs pin `ubuntu-24.04` instead of the moving
 # `ubuntu-latest` label, so a runner image change is a reviewed edit here.
 #
-# Landing page facts: the version, the sample verdict, the not_ready example
-# and the evidence-type count on gitpage/index.html are rewritten from this
-# run's CLI output, then checked; the build fails if any of them differs.
-# Pull requests that touch the landing page run the build job only, so the
-# check runs before merge and nothing is deployed.
+# Pull requests that touch the docs run the build job only, so mkdocs --strict
+# runs before merge and nothing is deployed.
 
 name: Deploy GitHub Pages
 
@@ -36,7 +33,6 @@ on:
     branches:
       - main
     paths:
-      - "gitpage/**"
       - "docs/**"
       - "mkdocs.yml"
       - ".github/workflows/deploy-github-pages.yml"
@@ -89,11 +85,26 @@ jobs:
           python -m pip install --no-deps -e .
           python -m pip check
 
-      - name: Stage landing page (gitpage) at site root
+      # The documentation lives under /docs/ (the schema $id, the PyPI link
+      # and the CLI point there), so the site root only redirects to it.
+      - name: Stage root redirect to the docs
         run: |
           mkdir -p site
-          cp gitpage/index.html site/index.html
-          cp -r gitpage/assets site/assets
+          cat > site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <title>Secure SDLC Evidence Collector</title>
+          <meta name="robots" content="noindex">
+          <meta http-equiv="refresh" content="0; url=docs/">
+          <link rel="canonical" href="https://lucashgrifoni.github.io/Secure-SDLC-Evidence-Collector/docs/">
+          </head>
+          <body>
+          <p>The documentation is at <a href="docs/">docs/</a>.</p>
+          </body>
+          </html>
+          HTML
 
       # The commit and ref come from the runner environment instead of being
       # substituted into the script.
@@ -112,43 +123,8 @@ jobs:
           cp README.md site/README.md
           cp CHANGELOG.md site/CHANGELOG.md
 
-      # The scoring example on the landing page is the sample release without
-      # its rollback plan and artifact signature. It is generated here (not
-      # published) so the page shows what the CLI really returns for it.
-      - name: Generate landing page example (not published)
-        run: |
-          example_att="$RUNNER_TEMP/example-attestations"
-          mkdir -p "$example_att"
-          cp examples/sample_release/attestations/*.yaml "$example_att/"
-          rm "$example_att/rollback_plan.yaml" "$example_att/artifact_signature.yaml"
-          status=0
-          python -m evidence_collector.cli.main run \
-            --application payments-api \
-            --repository acme/payments-api \
-            --release-id 2026.04.10 \
-            --commit-sha abc1234 \
-            --branch main \
-            --artifacts-dir examples/sample_release/artifacts \
-            --attestations-dir "$example_att" \
-            --output-dir "$RUNNER_TEMP/example" || status=$?
-          # A not_ready release exits 2; anything else but 0 is a real failure.
-          # page_facts.py checks the verdict itself.
-          if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then exit "$status"; fi
-          python -m evidence_collector.cli.main schema > "$RUNNER_TEMP/schema.json"
-          python -m evidence_collector.cli.main --version > "$RUNNER_TEMP/version.txt"
-
-      - name: Inject and check landing page facts
-        run: |
-          facts=(--page site/index.html
-                 --sample site/evidence/bundle.json
-                 --example "$RUNNER_TEMP/example/bundle.json"
-                 --schema "$RUNNER_TEMP/schema.json"
-                 --version "$(cat "$RUNNER_TEMP/version.txt")")
-          python gitpage/tools/page_facts.py inject "${facts[@]}"
-          python gitpage/tools/page_facts.py check "${facts[@]}"
-
       # Pages layout after this job:
-      #   /            -> gitpage/ landing page (index.html + assets)
+      #   /            -> redirect to /docs/
       #   /evidence/   -> CLI-generated evidence summary, bundle, report
       #   /docs/       -> mkdocs technical site
       # All three ship from the same Pages deploy.
