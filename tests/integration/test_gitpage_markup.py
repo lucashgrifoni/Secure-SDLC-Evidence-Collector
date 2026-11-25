@@ -186,7 +186,10 @@ def _docs_url(markdown_file: str) -> str:
 @pytest.mark.integration
 def test_docs_links_point_to_pages_in_the_docs_nav(page: _Page) -> None:
     """A link into the docs site, Get started included, must not lead to a 404."""
-    config = yaml.safe_load((REPO_ROOT / "mkdocs.yml").read_text(encoding="utf-8"))
+    # mkdocs resolves !ENV from the environment; the nav does not use it.
+    config = yaml.safe_load(
+        (REPO_ROOT / "mkdocs.yml").read_text(encoding="utf-8").replace("!ENV ", "")
+    )
     published = {_docs_url(path) for path in _nav_files(config["nav"])}
     docs_links = [
         str(attrs["href"])[len(DOCS_PREFIX) :]
