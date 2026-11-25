@@ -26,6 +26,8 @@ from evidence_collector.cli._run_view import render_run_view
 from evidence_collector.cli._terminal import (
     ASCII_GLYPHS,
     UNICODE_GLYPHS,
+    StrengthMix,
+    describe_mix,
     glyphs_for,
     uses_layout,
 )
@@ -258,6 +260,32 @@ def test_compare_shows_direction_deltas_and_folds_unchanged_controls(
     assert "▲ SAMM-IMPL-SB-2         partial → met" in text
     assert lines[-1].strip() == (
         "= ORG-SECRETS-SCAN, SAMM-VERIF-ST-1, SSDF-PW.4, SSDF-PW.7, SSDF-PW.8"
+    )
+
+
+def test_compare_wraps_the_folded_unchanged_controls_under_their_marker(
+    bundles: dict[str, Path],
+) -> None:
+    """On a narrow terminal the unchanged list continued at column 0."""
+    before = load_bundle(bundles["not_ready"] / "bundle.json")
+    after = load_bundle(bundles["ready"] / "bundle.json")
+    console = _terminal(width=40)
+    render_compare_view(console, before, after, compare_bundles(before, after))
+    lines = _text(console).splitlines()
+    first = next(i for i, line in enumerate(lines) if line.lstrip().startswith("= "))
+    folded = lines[first:]
+    assert len(folded) > 1, "the list should need more than one line at width 40"
+    assert folded[0].startswith("    = ")
+    assert all(line.startswith("      ") for line in folded[1:]), folded
+    assert ", ".join(" ".join(line.split()) for line in folded).count("SSDF-PW.8") == 1
+
+
+def test_one_scored_control_reads_in_the_singular() -> None:
+    assert describe_mix(StrengthMix(scored=1, by_tool=1, by_hand=0)) == (
+        "of the 1 control with evidence"
+    )
+    assert describe_mix(StrengthMix(scored=3, by_tool=3, by_hand=0)) == (
+        "of the 3 controls with evidence"
     )
 
 

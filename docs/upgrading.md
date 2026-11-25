@@ -271,7 +271,9 @@ the JSON outputs rather than the terminal text.
   tool that is not set shows a dash instead of a green mark, and the last
   line says how many optional items are not set.
 - On the legacy Windows console, or when the output encoding is not UTF-8,
-  the bars, marks and arrows are printed as ASCII (`#`, `x`, `->`, `^`).
+  the bars, marks and arrows are printed as ASCII: `#` and `.` for the bars,
+  `+` and `x` for met and failed, `-` for a dash or a separator dot, `->` for
+  an arrow, and `^` and `v` for up and down.
 
 ### Docs site redesign
 
