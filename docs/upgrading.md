@@ -6,7 +6,7 @@ top. [CHANGELOG.md](https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collec
 lists every change. The [4.0.0](#400) and [3.0.0](#300) migrations are at the
 end of this page.
 
-## Unreleased
+## 4.3.1
 
 ### Opt-in profiles
 
