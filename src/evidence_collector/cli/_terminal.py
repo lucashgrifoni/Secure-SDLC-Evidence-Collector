@@ -130,7 +130,8 @@ def describe_mix(mix: StrengthMix) -> str:
     if mix.scored == 0:
         return "no control has evidence yet"
     if mix.by_hand == 0 and mix.without_evidence == 0:
-        return f"of the {mix.scored} controls with evidence"
+        noun = "control" if mix.scored == 1 else "controls"
+        return f"of the {mix.scored} {noun} with evidence"
     parts = [
         f"{count} {kind}"
         for count, kind in (

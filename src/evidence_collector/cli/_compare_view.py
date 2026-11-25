@@ -10,8 +10,11 @@ from __future__ import annotations
 
 from typing import Final, cast
 
-from rich.console import Console
+from rich.console import Console, RenderableType
 from rich.markup import escape
+from rich.padding import Padding
+from rich.table import Table
+from rich.text import Text
 
 from evidence_collector.application.compare import BundleComparison, ControlDelta
 from evidence_collector.cli._exit_codes import exit_code_for_status
@@ -30,7 +33,7 @@ def render_compare_view(
 ) -> None:
     """Print the diff for a person reading a colour terminal."""
     glyphs = glyphs_for(console)
-    lines = [
+    lines: list[RenderableType] = [
         _headline(baseline, candidate, comparison, glyphs),
         "",
         *_score_deltas(baseline, candidate, comparison, glyphs),
@@ -99,7 +102,7 @@ def _score_deltas(
     return [coverage, strength]
 
 
-def _control_movement(comparison: BundleComparison, glyphs: Glyphs) -> list[str]:
+def _control_movement(comparison: BundleComparison, glyphs: Glyphs) -> list[RenderableType]:
     controls = cast(dict[str, list[str]], comparison.to_dict()["controls"])
     improved, regressed = set(controls["improved"]), set(controls["regressed"])
     drifted = set(controls["catalog_drift"])
@@ -113,10 +116,21 @@ def _control_movement(comparison: BundleComparison, glyphs: Glyphs) -> list[str]
         f"[muted]{len(unchanged)} unchanged[/muted]",
     ]
     width = max((len(d.control_id) for d in moved), default=0) + 3
-    rows = [_control_row(d, improved, regressed, drifted, width, glyphs) for d in moved]
+    rows: list[RenderableType] = [
+        _control_row(d, improved, regressed, drifted, width, glyphs) for d in moved
+    ]
     if unchanged:
-        rows.append(f"{INDENT_ITEM}[muted]= {escape(', '.join(unchanged))}[/muted]")
+        rows.append(_folded(unchanged))
     return [f"  [brand]Controls[/brand]   {f' {glyphs.dot} '.join(counts)}", *rows]
+
+
+def _folded(unchanged: list[str]) -> RenderableType:
+    """The unchanged controls on one line, wrapped under the first name, not at column 0."""
+    grid = Table.grid(padding=(0, 1))
+    grid.add_column(style="muted")
+    grid.add_column(style="muted")
+    grid.add_row("=", Text(", ".join(unchanged)))
+    return Padding(grid, (0, 0, 0, len(INDENT_ITEM)))
 
 
 def _control_row(
