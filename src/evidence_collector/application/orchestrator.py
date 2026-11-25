@@ -62,9 +62,17 @@ class BundleBuildResult:
 _BUNDLE_ID_ALLOWED = re.compile(r"[^a-z0-9._-]+")
 
 
-def _slug(value: str) -> str:
+# `--application` takes 200 characters and `--release-id` 100, while the id
+# is capped at 200. These caps keep "bundle-YYYYMMDD-<app>-<release>-<8 hex>"
+# at 166 characters at most; the random suffix keeps the id unique.
+_APPLICATION_SLUG_MAX = 80
+_RELEASE_SLUG_MAX = 60
+
+
+def _slug(value: str, limit: int) -> str:
     """Reduce a free-form name to something safe to paste into an identifier."""
-    return _BUNDLE_ID_ALLOWED.sub("-", value.strip().lower()).strip("-") or "unnamed"
+    slug = _BUNDLE_ID_ALLOWED.sub("-", value.strip().lower()).strip("-")
+    return slug[:limit].rstrip("-") or "unnamed"
 
 
 def _default_bundle_id(application: Application, release: ReleaseContext) -> str:
@@ -79,7 +87,9 @@ def _default_bundle_id(application: Application, release: ReleaseContext) -> str
     arbitrary text either way, so it is reduced to a slug at the source.
     """
     today = datetime.now(tz=UTC).strftime("%Y%m%d")
-    return f"bundle-{today}-{_slug(application.name)}-{_slug(release.release_id)}-{uuid.uuid4().hex[:8]}"
+    application_slug = _slug(application.name, _APPLICATION_SLUG_MAX)
+    release_slug = _slug(release.release_id, _RELEASE_SLUG_MAX)
+    return f"bundle-{today}-{application_slug}-{release_slug}-{uuid.uuid4().hex[:8]}"
 
 
 def _release_anchor_drift(
