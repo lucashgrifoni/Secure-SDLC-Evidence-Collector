@@ -41,7 +41,10 @@ from evidence_collector.parsers._common import ParsedArtifact
 from evidence_collector.parsers.attestation import ParsedAttestation
 from evidence_collector.parsers.croissant import ParsedCroissant
 from evidence_collector.parsers.garak import ParsedGarak
-from evidence_collector.parsers.gitlab_security import ParsedGitLabSecurityReport
+from evidence_collector.parsers.gitlab_security import (
+    SCAN_STATUSES,
+    ParsedGitLabSecurityReport,
+)
 from evidence_collector.parsers.inspect_eval import ParsedInspectEval
 from evidence_collector.parsers.intoto_provenance import ParsedProvenance
 from evidence_collector.parsers.intoto_statement import (
@@ -429,7 +432,12 @@ def normalize_sarif(
     # (Semgrep 1.179.0 writes executionSuccessful=true and an error notice
     # when a rule does not parse, then exits 2). Each of these is recorded in
     # metadata only when it occurs, so a plain run keeps its exact record.
-    doubtful_run = parsed.execution_failed or parsed.results_absent or parsed.tool_error_count > 0
+    doubtful_run = (
+        parsed.execution_failed
+        or parsed.results_absent
+        or parsed.tool_error_count > 0
+        or parsed.invalid_level_count > 0
+    )
     overall_confidence = (
         ConfidenceLevel.LOW
         if classification.reason == "fallback_sast" or doubtful_run
@@ -444,6 +452,16 @@ def normalize_sarif(
         metadata["tool_error_notifications"] = parsed.tool_error_count
     if parsed.suppressed_count:
         metadata["suppressed_count"] = parsed.suppressed_count
+    if parsed.invalid_level_count:
+        metadata["invalid_level_count"] = parsed.invalid_level_count
+        logger.warning(
+            "SARIF run from %s in %s has %d result(s) with a level that SARIF does not "
+            "define (none, note, warning, error); they were counted as medium and the "
+            "record is at low confidence",
+            parsed.tool_name,
+            parsed.artifact.path.name,
+            parsed.invalid_level_count,
+        )
     if not parsed.execution_failed and (parsed.results_absent or parsed.tool_error_count):
         logger.warning(
             "SARIF run from %s in %s %s; recorded at low confidence",
@@ -1459,6 +1477,15 @@ def normalize_junit(
         status = EvidenceStatus.INVALID
     else:
         status = EvidenceStatus.PASSED
+    metadata: dict[str, Any] = {}
+    if parsed.unreadable_counts:
+        metadata["unreadable_count_attributes"] = list(parsed.unreadable_counts)
+        logger.warning(
+            "JUnit file %s has count attributes that are not whole numbers (%s); "
+            "the test cases decided those counts and the record is at low confidence",
+            parsed.artifact.path.name,
+            ", ".join(parsed.unreadable_counts),
+        )
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
             "test",
@@ -1472,11 +1499,12 @@ def normalize_junit(
         subject_type=SubjectType.COMMIT,
         subject_ref=release.commit_sha,
         status=status,
-        confidence=ConfidenceLevel.HIGH,
+        confidence=ConfidenceLevel.LOW if parsed.unreadable_counts else ConfidenceLevel.HIGH,
         release_id=release.release_id,
         commit_sha=release.commit_sha,
         generated_at=None,
         raw=_raw_ref(parsed.artifact, artifact_root),
+        metadata=metadata,
         findings_count={
             "total": parsed.total,
             "failures": parsed.failures,
@@ -1714,6 +1742,20 @@ def _gitlab_status(
     return EvidenceStatus.FAILED if blocking > 0 else EvidenceStatus.PASSED
 
 
+def _gitlab_doubts(parsed: ParsedGitLabSecurityReport) -> list[str]:
+    """What makes a GitLab report a weak reading, one phrase each."""
+    doubts: list[str] = []
+    if parsed.skipped_entries:
+        doubts.append(
+            f"has {parsed.skipped_entries} vulnerability entries that are not objects; "
+            "they were not counted"
+        )
+    if parsed.scan_status not in SCAN_STATUSES:
+        shown = "missing" if parsed.scan_status is None else repr(parsed.scan_status)
+        doubts.append(f"has scan.status {shown}, where schema 15 allows success or failure")
+    return doubts
+
+
 def _gitlab_summary(parsed: ParsedGitLabSecurityReport, evidence_type: EvidenceType) -> str:
     who = f"GitLab {parsed.scan_type} ({parsed.scanner_id})"
     if parsed.scan_failed:
@@ -1752,6 +1794,16 @@ def normalize_gitlab_security_report(
     }
     if parsed.image:
         metadata["image"] = parsed.image
+    doubtful = _gitlab_doubts(parsed)
+    if parsed.skipped_entries:
+        metadata["gitlab_skipped_entries"] = parsed.skipped_entries
+    for doubt in doubtful:
+        logger.warning(
+            "GitLab %s report %s %s; recorded at low confidence",
+            parsed.scan_type,
+            parsed.artifact.path.name,
+            doubt,
+        )
     return NormalizedEvidence(
         evidence_id=_new_evidence_id(
             "gitlab", parsed.artifact.integrity_hash, parsed.scan_type, release.release_id
@@ -1766,7 +1818,7 @@ def normalize_gitlab_security_report(
         if on_commit
         else (release.artifact_digest or release.release_id),
         status=_gitlab_status(parsed, evidence_type),
-        confidence=ConfidenceLevel.LOW if parsed.scan_failed else ConfidenceLevel.HIGH,
+        confidence=ConfidenceLevel.LOW if parsed.scan_failed or doubtful else ConfidenceLevel.HIGH,
         classification=EvidenceClassification(
             confidence=ConfidenceLevel.HIGH,
             reason="driver_match",

@@ -27,6 +27,23 @@ bundles and structural digests stay the same.
 - Bundles produced with these profiles or that catalog get new structural
   digests. Re-pin `verify --expected` after regenerating them.
 
+### Malformed scanner and test files
+
+Statuses and verdicts do not change. Three kinds of malformed input that were
+read silently are now recorded at `low` confidence, with the problem in the
+evidence metadata and a warning on the console and in NDJSON logs:
+
+- a GitLab Security Report whose `vulnerabilities` array holds entries that
+  are not objects (`metadata.gitlab_skipped_entries`), or whose `scan.status`
+  is missing or neither `success` nor `failure`;
+- a JUnit suite whose `tests`, `failures`, `errors` or `skipped` attribute is
+  not a whole number (`metadata.unreadable_count_attributes`); the test cases
+  still decide that count;
+- a SARIF result whose `level` is not one of `none`, `note`, `warning` or
+  `error` (`metadata.invalid_level_count`); it is still counted as medium.
+
+A bundle built from such a file gets a new structural digest.
+
 ## 4.3.0
 
 ### GitHub Action
