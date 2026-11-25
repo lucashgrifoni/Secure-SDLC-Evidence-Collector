@@ -147,6 +147,12 @@ exclude_docs: |
 
 plugins:
   - search
+  # Downloads the Google Fonts and other external assets at build time and
+  # serves them from the site, so a reader's browser requests nothing from a
+  # third party. Enabled where CI is set (GitHub Actions sets it): the plugin
+  # caches through symbolic links, which a default Windows account cannot make.
+  - privacy:
+      enabled: !ENV [CI, false]
 
 extra:
   social:

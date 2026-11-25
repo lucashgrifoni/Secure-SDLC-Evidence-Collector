@@ -378,7 +378,8 @@ def test_every_published_page_is_in_the_site_nav() -> None:
     mkdocs --strict only reports an unlisted page as INFO, so a page left out
     of the nav would still build and be reachable by URL alone.
     """
-    config = yaml.safe_load(Path("mkdocs.yml").read_text(encoding="utf-8"))
+    # mkdocs resolves !ENV from the environment; the nav does not use it.
+    config = yaml.safe_load(Path("mkdocs.yml").read_text(encoding="utf-8").replace("!ENV ", ""))
     excluded = tuple(line.strip() for line in config["exclude_docs"].splitlines() if line.strip())
     published = {
         page.relative_to("docs").as_posix()

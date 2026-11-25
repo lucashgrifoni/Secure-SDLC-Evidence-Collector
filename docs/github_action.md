@@ -382,4 +382,8 @@ docker run --rm \
 Alternatively keep the image's UID and give it the directory
 (`sudo chown 10001:10001 output`). Docker Desktop on Windows and macOS
 maps bind-mount ownership, so the command also works there without
-`--user`.
+`--user`. In Git Bash on Windows, start the command with
+`MSYS_NO_PATHCONV=1` so Git Bash does not rewrite the `/workspace/...`
+paths into Windows paths; the
+[Docker section of Getting started](getting-started.md#docker-image) has the
+PowerShell form.

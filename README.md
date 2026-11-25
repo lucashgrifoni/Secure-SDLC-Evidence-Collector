@@ -35,18 +35,11 @@ The verdict comes from the criticality of the gaps, never from the score. In the
 ```bash
 python -m pip install secure-sdlc-evidence-collector
 git clone https://github.com/lucashgrifoni/Secure-SDLC-Evidence-Collector.git
-cd Secure-SDLC-Evidence-Collector
-sdlc-evidence run \
-    --application payments-api \
-    --repository acme/payments-api \
-    --release-id 2026.04.10 \
-    --commit-sha abcdef1234567890 \
-    --artifacts-dir examples/sample_release/artifacts \
-    --attestations-dir examples/sample_release/attestations \
-    --output-dir output/sample_release
+cd Secure-SDLC-Evidence-Collector/examples/sample_release
+sdlc-evidence run --application payments-api --repository acme/payments-api --release-id 2026.04.10 --commit-sha abcdef1234567890 --artifacts-dir artifacts --attestations-dir attestations --output-dir ../../output/sample_release
 ```
 
-The sample release ends `ready` with 13 of 13 controls met. The run writes:
+The same commands work in bash, zsh and PowerShell. The sample release ends `ready` with 13 of 13 controls met. The run writes, in `output/sample_release/` at the root of the clone:
 
 - `summary.html` for people who decide on the release.
 - `report.md` for review, with what to produce for each gap.
