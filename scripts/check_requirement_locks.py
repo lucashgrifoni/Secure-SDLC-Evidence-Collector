@@ -84,7 +84,7 @@ def _without_cutoff(command: Sequence[str]) -> list[str]:
 
 def refresh_locks(directory: Path, now: datetime, run: Runner = _run) -> list[str]:
     """Recompile every lock in place to the newest versions older than the cooldown."""
-    cutoff = (now - COOLDOWN).strftime("%Y-%m-%d")
+    cutoff = (now - COOLDOWN).strftime("%Y-%m-%dT00:00:00Z")
     refreshed: list[str] = []
     for lock in sorted(directory.glob("*.txt")):
         command = _without_cutoff(_recorded_command(lock))
